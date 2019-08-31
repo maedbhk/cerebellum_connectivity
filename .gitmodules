@@ -1,0 +1,3 @@
+[submodule "surfAnalysisPy"]
+	path = surfAnalysisPy
+	url = https://github.com/DiedrichsenLab/surfAnalysisPy
