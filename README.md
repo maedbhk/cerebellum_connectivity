@@ -1,7 +1,37 @@
 cerebellum_connectivity 
 ==============================
+Install `pyenv` using Homebrew:
 
-Modelling cerebro-cerebellar connectivity using MDTB data
+    $ brew update
+    $ brew install pyenv
+
+Add `pyenv init` to your shell:
+
+    $ echo -e 'if command -v pyenv 1>/dev/null 2>&1; then\n  eval "$(pyenv init -)"\nfi' >> ~/.bash_profile
+    $ source ~/.bash_profile
+
+Install the required version of python:
+
+    $ pyenv install 3.7.0
+
+### Installing the Required Python Packages
+
+This project uses [`pipenv`](https://github.com/pypa/pipenv) for virtual environment and python package management.
+
+Ensure pipenv is installed globally:
+
+    $ brew install pipenv
+
+Navigate to the top-level directory in 'cerebellum_connectivity' and install the packages from the `Pipfile.lock`.
+This will automatically create a new virtual environment for you and install all requirements using the correct version of python.
+
+    $ pipenv install
+
+## Activating the virtual environment:
+
+    $ pipenv shell
+
+> NOTE: To deactivate the virtual environment when you are done working, simply type `exit`
 
 Project Organization
 ------------
@@ -54,4 +84,3 @@ Project Organization
 
 --------
 
-<p><small>Project based on the <a target="_blank" href="https://drivendata.github.io/cookiecutter-data-science/">cookiecutter data science project template</a>. #cookiecutterdatascience</small></p>
