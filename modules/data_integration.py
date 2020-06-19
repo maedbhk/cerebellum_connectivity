@@ -11,10 +11,9 @@ Data integration module for the connectivity project
 import pandas as pd
 import numpy as np
 #import scipy as sp
-#import scipy.io as sp_io     # for .mat files saved with versions before 7
+import scipy.io as spio     # for .mat files saved with versions before 7
 import mat73                 # for .mat files saved with version 7.3 and higher
 import nibabel as nib        # to handle gifti files
-# from scipy.io import loadmat # for .mat files saved with versions before 7
 
 # function definitions
 def matImport(path2mfile, form = 'dict'):
@@ -26,7 +25,7 @@ def matImport(path2mfile, form = 'dict'):
         * predicted time series
         * raw time series
         * residuals
-    - a structure with the model's data: Just in case the model was created in matlab
+    - a structure with the model's data: just in case the model was created in matlab
         * different models will have different fields?!
         * All models should have the W (regression parameter corresponding to connectivity weights)
         
@@ -37,14 +36,71 @@ def matImport(path2mfile, form = 'dict'):
     
     OUTPUTS:
     - mat    : variable containing the loaded mat file
+    
+    additional notes:
+    some matfiles are nested structures. If they are saved with versions other than -7.3, scipy.io.loadmat
+    should be used. However, this method cannot handle nested structures (and most of out mat files are 
+    nested structures). To solve this problem, I am using the method proposed in:
+    https://stackoverflow.com/questions/7008608/scipy-io-loadmat-nested-structures-i-e-dictionaries
+    Basically, this stackoverflow suggests using a modified version of the loadmat function.
     """
     
     # For mat files saved as version 7.3: use mat73 package
     # if you do not have mat73 package, pip install mat73
     # https://pypi.org/project/mat73/
-    # For mat files saved as version 7 and before: use scipy.io.loadmat
-    print('loading mat file saved as "-v7.3"')
-    data_dict = mat73.loadmat(path2mfile) # a dictionary
+    # For mat files saved as version 7 and before: use the modified version of scipy.io.loadmat
+    
+    try: # tries loading the mat files saved as versions before 7.3
+
+        # These functions are copy-pasted from this thread in stackoverflow
+        # https://stackoverflow.com/questions/7008608/scipy-io-loadmat-nested-structures-i-e-dictionaries
+        # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+        print('loading mat file')
+        def loadmat(path2mfile):
+            '''
+            this function should be called instead of direct spio.loadmat
+            as it cures the problem of not properly recovering python dictionaries
+            from mat files. It calls the function check keys to cure all entries
+            which are still mat-objects
+            '''
+            data = spio.loadmat(path2mfile, struct_as_record=False, squeeze_me=True)
+            return _check_keys(data)
+
+        def _check_keys(dict):
+            '''
+            checks if entries in dictionary are mat-objects. If yes
+            todict is called to change them to nested dictionaries
+            '''
+            for key in dict:
+                if isinstance(dict[key], spio.matlab.mio5_params.mat_struct):
+                    dict[key] = _todict(dict[key])
+            return dict        
+
+        def _todict(matobj):
+            '''
+            A recursive function which constructs from matobjects nested dictionaries
+            '''
+            dict = {}
+            for strg in matobj._fieldnames:
+                elem = matobj.__dict__[strg]
+                if isinstance(elem, spio.matlab.mio5_params.mat_struct):
+                    dict[strg] = _todict(elem)
+                else:
+                    dict[strg] = elem
+            return dict
+        # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+        data_dict = loadmat(path2mfile)
+        keys = list(data_dict.keys())
+        for k in keys:
+              if k.startswith('_'):
+                data_dict.pop(k)
+
+    except NotImplementedError: # tries importing mat fiels saved as -v7.3
+
+        data_dict = mat73.loadmat(path2mfile) # a dictionary
+
+    except:
+        ValueError('could not read the mat file')
         
     
     if len(data_dict.keys()) == 1: # one-var structs
