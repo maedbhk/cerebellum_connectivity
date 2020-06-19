@@ -42,7 +42,7 @@ def get_data(sn = returnSubjs, glm = 7, roi = 'grey_nan', which = 'cond', avg = 
     avg   : flag indicating whether you want to average across runs within a session or not
     
     OUTPUTS
-    data_dict:
+    data_dict: a dictionary containing data for both studies, all the subjects, both sessions
     
     
     Some additional notes:
