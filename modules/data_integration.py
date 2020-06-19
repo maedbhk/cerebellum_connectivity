@@ -39,7 +39,7 @@ def matImport(path2mfile, form = 'dict'):
     
     additional notes:
     some matfiles are nested structures. If they are saved with versions other than -7.3, scipy.io.loadmat
-    should be used. However, this method cannot handle nested structures (and most of out mat files are 
+    should be used. However, this method cannot handle nested structures (and most of our mat files are 
     nested structures). To solve this problem, I am using the method proposed in:
     https://stackoverflow.com/questions/7008608/scipy-io-loadmat-nested-structures-i-e-dictionaries
     Basically, this stackoverflow suggests using a modified version of the loadmat function.
