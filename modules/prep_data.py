@@ -33,7 +33,7 @@ returnSubjs = np.array([2,3,4,6,8,9,10,12,14,15,17,18,19,20,21,22,24,25,26,27,28
 # define functions
 def get_data(sn = returnSubjs, glm = 7, roi = 'grey_nan', which = 'cond', avg = 1):
     """
-    get_data prepares per subject data for modelling
+    get_data prepares per subject data for modelling. It uses cerebellar data for each subject, transformed into suit space!
     INPUTS
     sn    : a numpy array with ids of all the subjects that will be used 
     roi   : string specifying the name of the ROI you want the data for
@@ -104,7 +104,12 @@ def get_data(sn = returnSubjs, glm = 7, roi = 'grey_nan', which = 'cond', avg = 
         data_dict[e] = B_alls
         #data_dict['avg'] =
         
-        outfile = os.path.join(encodingDir, 'mbeta_%s_all.dat'% roi)
+        if avg == 1: # saving as mbeta (betas averaged across runs of each session)
+            outname = 'mbeta_%s_all'%roi
+        elif avg == 0:
+            outname = 'beta_%s_all'%roi
+        
+        outfile = os.path.join(encodingDir, outname)
         pickle.dump(B_alls, open(outfile, "wb")) # "wb": Writing Binary file
     
     return data_dict
