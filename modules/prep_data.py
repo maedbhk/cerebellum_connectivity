@@ -14,7 +14,7 @@ import numpy as np
 #import scipy as sp
 import data_integration as di
 import essentials as es
-import pickle # used for saving data (pip/pip3 install picke-mixin)
+import pickle # used for saving data (pip/pip3 install pickle-mixin)
 
 # setting some default paths
 baseDir         = '/Users/ladan/Documents/Project-Cerebellum/Cerebellum_Data'
@@ -62,7 +62,7 @@ def get_data(sn = returnSubjs, glm = 7, roi = 'grey_nan', which = 'cond', avg = 
     # looping over experiments
     data_dict = {} # will store all the data
     for e in np.arange(1, 3):
-        print('preparing data for study %d'% e)
+        print('........ preparing data for study %d'% e)
 
         # setting directories
         glmDir      = os.path.join(baseDir , 'sc%d'% e , 'GLM_firstlevel_%d'% glm)
@@ -70,15 +70,17 @@ def get_data(sn = returnSubjs, glm = 7, roi = 'grey_nan', which = 'cond', avg = 
         
         B_alls = {} # data for each experiment will be saved in a dictionary
         for s in sn:
-            print('Doing subject %02d' % s)
+            print('.... Doing subject %02d' % s)
 
             # getting the data for the roi
+            print('.. Y_info')
             path2data = os.path.join(encodingDir , 's%02d'%s ,'Y_info_glm%d_%s.mat' %(glm, roi))
             data_dict = di.matImport(path2data, form = 'dict') # import data as a dictionary
 
             D = data_dict['data']
 
             # getting SPM_info for the tasks info
+            print('.. SPM_info')
             path2spm = os.path.join(glmDir , 's%02d'%s , 'SPM_info.mat')
             T        = di.matImport(path2spm, form = 'dict') # import data as a dictionary
             
@@ -89,25 +91,27 @@ def get_data(sn = returnSubjs, glm = 7, roi = 'grey_nan', which = 'cond', avg = 
                 
             B_sess = {}
             for se in [1, 2]:
+                B_sess['sess%d'%se] = {}
+                print('.Doing subject %02d, sess %d' % (s, se))
                 if avg == 1:
                     X          = es.indicatorMatrix('identity_p', T[which]*(T['sess'] == se))
 
                     # np.linalg.pinv is pretty slow!
                     # also, we need to decide on an appropriate data type here
                     ## I'm gonna go with nested dictionaries here!
-                    B_sess[se]   = np.linalg.pinv(X) @ D[0:X.shape[0],:] # This calculates average beta across runs, skipping intercepts, for each session
+                    B_sess['sess%d'%se]['data']   = np.linalg.pinv(X) @ D[0:X.shape[0],:] # This calculates average beta across runs, skipping intercepts, for each session
                     
                 #elif avg == 0: # UNDER "CONSTRUCTION"
                 
-            B_alls[s] = B_sess
+            B_alls['s%02d'%s] = B_sess
     
-        data_dict[e] = B_alls
+        data_dict['sc%d'%e] = B_alls
         #data_dict['avg'] =
         
         if avg == 1: # saving as mbeta (betas averaged across runs of each session)
-            outname = 'mbeta_%s_all'%roi
+            outname = 'mbeta_%s_all.dat'%roi
         elif avg == 0:
-            outname = 'beta_%s_all'%roi
+            outname = 'beta_%s_all.dat'%roi
         
         outfile = os.path.join(encodingDir, outname)
         pickle.dump(B_alls, open(outfile, "wb")) # "wb": Writing Binary file
