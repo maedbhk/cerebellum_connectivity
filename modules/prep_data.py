@@ -9,7 +9,7 @@ Used for preparing data for connectivity modelling and evaluation
 
 # importing packages
 import os # to handle path information
-#import pandas as pd
+import pandas as pd
 import numpy as np
 #import scipy as sp
 import data_integration as di
@@ -117,3 +117,74 @@ def get_data(sn = returnSubjs, glm = 7, roi = 'grey_nan', which = 'cond', avg = 
         pickle.dump(B_alls, open(outfile, "wb")) # "wb": Writing Binary file
     
     return data_dict
+
+def get_wcon(experNum = [1, 2], glm = 7, roi = 'grey_nan', avg = 1):
+    """
+    get_wcon uses the data saved in get_data and the text file created to prepare the data for modelling
+    
+    INPUTS
+    experNum : the default is set so that it has both experiments, but you can change it
+    glm      : glm number
+    roi      : the roi you want to use: grey_nan, tesselsWB162, ...
+    avg      : use the averaged data across runs or not!
+    
+    OUTPUTS
+    Y  : 
+    Sf : The integrated dataframe that is created using the task_info text file and
+    will be used for modelling and evaluation
+    
+    """
+    
+    # based on avg flag, determine which file has to be loaded in
+    if avg == 1: # data averaged across runs
+        inname = 'mbeta_%s_all.dat'%roi
+    elif avg == 0: # data for individual runs
+        inname = 'beta_%s_all.dat'%roi
+
+    # Load the betas for all the conditions
+    YD = {} # this dictionary will store all the data for all the experiments
+    for e in experNum:
+        print('Doing study %d' % e)
+        # setting directories
+        encodingDir = os.path.join(baseDir, 'sc%d'%e, encodeDir, 'glm%d'%glm)
+        infile      = os.path.join(encodingDir, inname)
+
+        # using pickle.load to load the .dat file
+        YD['sc%d'%e]       = pickle.load(open(infile, "rb"))
+
+    # making an integrated data structure
+    ## load in the task info text file made for the connectivity project into a dataframe
+    Tf = pd.read_csv(os.path.join(baseDir, 'sc1_sc2_taskConds_conn.txt'), sep = '\t')
+
+    # create an empty dataframe
+    Sf = pd.DataFrame(columns = Tf.columns)
+    for e in experNum:
+        Tfi = Tf.loc[Tf.StudyNum == e]
+        T1  = Tfi.copy()
+        T2  = Tfi.copy()
+
+        T1['sess'] = (np.ones((len(Tfi.index), 1))).astype(int)
+        T2['sess'] = (2*np.ones((len(Tfi.index), 1))).astype(int)
+
+        Tfi = pd.concat([T1, T2], axis = 0)
+        Sf  = pd.concat([Sf, Tfi], axis = 0)
+
+    Y = {} # Y is defined to be a dictionary
+    for s in list(YD['sc1'].keys()):
+        Y[s] = {}
+        for se in [1, 2]:
+            # for each session, it gets the two experiments and concatenates them.
+            tmp = {} # empty dictionary values of which will be concatenated and put into the new dictionary
+            for e in experNum: 
+
+                # subtract columnar means
+                colMean    = np.nanmean(YD['sc%d'%e][s]['sess%d'%se]['data'], axis = 0)
+                subColMean = YD['sc%d'%e][s]['sess%d'%se]['data'] - colMean
+                tmp[e]     = subColMean
+
+            # concatenate data
+            fin = np.concatenate((tmp[1], tmp[2]), axis = 0)
+
+            Y[s] = fin
+    
+    return (Y, Sf)
