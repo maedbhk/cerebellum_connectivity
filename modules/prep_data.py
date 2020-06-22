@@ -42,7 +42,20 @@ def get_data(sn = returnSubjs, glm = 7, roi = 'grey_nan', which = 'cond', avg = 
     avg   : flag indicating whether you want to average across runs within a session or not
     
     OUTPUTS
-    data_dict: a dictionary containing data for both studies, all the subjects, both sessions
+    DD_all: a dictionary containing data for both studies, all the subjects, both sessions
+            The key "hierarchy" for this dictionary is: 
+            DD_all{'sc1': {DD1}, 'sc2': {DD2}} The first level key is study id
+            DD1{'s02': {DDD1}, 's03': {}, 's04': {}, ...} The second level key is subjects' ids
+            DDD1{'sess1': {DDDD1}, 'sess2':{}} The third level key is session id
+            DDDD1{'data': np.ndarray} The fourth level key is 'data'
+            After four levels of nested dictionaries, you'll get to the numpy array with the data
+            
+    There are also dictionaries that will be saved during execution of get_data: B_alls
+            B_alls has one level of dictionaries lower than DD_all:
+            DD1{'s02': {DDD1}, 's03': {}, 's04': {}, ...} The second level key is subjects' ids
+            DDD1{'sess1': {DDDD1}, 'sess2':{}} The third level key is session id
+            DDDD1{'data': np.ndarray} The fourth level key is 'data'
+            After three levels of nested dictionaries, you'll get to the numpy array with the data
     
     
     Some additional notes:
@@ -60,9 +73,9 @@ def get_data(sn = returnSubjs, glm = 7, roi = 'grey_nan', which = 'cond', avg = 
 
     """
     # looping over experiments
-    data_dict = {} # will store all the data
+    DD_all = {} # will store all the data
     for e in np.arange(1, 3):
-        print('........ preparing data for study %d'% e)
+        print('........ preparing data for study %d roi %s'% (e, roi))
 
         # setting directories
         glmDir      = os.path.join(baseDir , 'sc%d'% e , 'GLM_firstlevel_%d'% glm)
@@ -105,7 +118,7 @@ def get_data(sn = returnSubjs, glm = 7, roi = 'grey_nan', which = 'cond', avg = 
                 
             B_alls['s%02d'%s] = B_sess
     
-        data_dict['sc%d'%e] = B_alls
+        DD_all['sc%d'%e] = B_alls
         #data_dict['avg'] =
         
         if avg == 1: # saving as mbeta (betas averaged across runs of each session)
@@ -116,7 +129,7 @@ def get_data(sn = returnSubjs, glm = 7, roi = 'grey_nan', which = 'cond', avg = 
         outfile = os.path.join(encodingDir, outname)
         pickle.dump(B_alls, open(outfile, "wb")) # "wb": Writing Binary file
     
-    return data_dict
+    return DD_all
 
 def get_wcon(experNum = [1, 2], glm = 7, roi = 'grey_nan', avg = 1):
     """
@@ -129,7 +142,9 @@ def get_wcon(experNum = [1, 2], glm = 7, roi = 'grey_nan', avg = 1):
     avg      : use the averaged data across runs or not!
     
     OUTPUTS
-    Y  : 
+    Y  : a single level dictionary with the key being the subject id and the value being a numpy array
+         Y{'s02': [np1], 's03': [np2], ...}
+         np1: a numpy array containing the concatenated data for both sessions of s02 ...
     Sf : The integrated dataframe that is created using the task_info text file and
     will be used for modelling and evaluation
     
@@ -149,7 +164,8 @@ def get_wcon(experNum = [1, 2], glm = 7, roi = 'grey_nan', avg = 1):
         encodingDir = os.path.join(baseDir, 'sc%d'%e, encodeDir, 'glm%d'%glm)
         infile      = os.path.join(encodingDir, inname)
 
-        # using pickle.load to load the .dat file
+        # using pickle.load to load the .dat file saved in get_data
+        ## YD will be B_alls from get_data
         YD['sc%d'%e]       = pickle.load(open(infile, "rb"))
 
     # making an integrated data structure
