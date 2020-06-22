@@ -43,6 +43,8 @@ def matImport(path2mfile, form = 'dict'):
     nested structures). To solve this problem, I am using the method proposed in:
     https://stackoverflow.com/questions/7008608/scipy-io-loadmat-nested-structures-i-e-dictionaries
     Basically, this stackoverflow suggests using a modified version of the loadmat function.
+    
+    WARNING: This function cannot read SPM.mat files. SPM.mat fiels saved with 'v7.3' will raise an error!
     """
     
     # For mat files saved as version 7.3: use mat73 package
