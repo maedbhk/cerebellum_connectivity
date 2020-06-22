@@ -11,7 +11,7 @@ Data integration module for the connectivity project
 import pandas as pd
 import numpy as np
 #import scipy as sp
-import scipy.io as spio     # for .mat files saved with versions before 7
+import scipy.io as sio     # for .mat files saved with versions before 7
 import mat73                 # for .mat files saved with version 7.3 and higher
 import nibabel as nib        # to handle gifti files
 
@@ -60,12 +60,12 @@ def matImport(path2mfile, form = 'dict'):
         print('loading mat file')
         def loadmat(path2mfile):
             '''
-            this function should be called instead of direct spio.loadmat
+            this function should be called instead of direct sio.loadmat
             as it cures the problem of not properly recovering python dictionaries
             from mat files. It calls the function check keys to cure all entries
             which are still mat-objects
             '''
-            data = spio.loadmat(path2mfile, struct_as_record=False, squeeze_me=True)
+            data = sio.loadmat(path2mfile, struct_as_record=False, squeeze_me=True)
             return _check_keys(data)
 
         def _check_keys(dict):
@@ -74,7 +74,7 @@ def matImport(path2mfile, form = 'dict'):
             todict is called to change them to nested dictionaries
             '''
             for key in dict:
-                if isinstance(dict[key], spio.matlab.mio5_params.mat_struct):
+                if isinstance(dict[key], sio.matlab.mio5_params.mat_struct):
                     dict[key] = _todict(dict[key])
             return dict        
 
@@ -85,7 +85,7 @@ def matImport(path2mfile, form = 'dict'):
             dict = {}
             for strg in matobj._fieldnames:
                 elem = matobj.__dict__[strg]
-                if isinstance(elem, spio.matlab.mio5_params.mat_struct):
+                if isinstance(elem, sio.matlab.mio5_params.mat_struct):
                     dict[strg] = _todict(elem)
                 else:
                     dict[strg] = elem
