@@ -50,14 +50,33 @@ def evaluate(M, subset = [], splitby = [], rois = ['grey_nan', 'tesselsWB162'], 
     
     Y_roi = {} # a dictionary with the roi name as the key and Y as the value 
     for ri in np.arange(len(rois)):
+        print('........ Doing get_wcon for %s' % rois[ri])
         # get data for all ROIs:
+        print(Y_roi.keys())
         [Y_roi[rois[ri]], Sf] = prep_data.get_wcon(experNum = experNum, glm = glm, roi = rois[ri], avg = 1)
+        print(Y_roi.keys())
+        
+    # Checking and creating subset and splitby
+    ## subset:
+    if not subset: #if subset is empty
+        subset = (np.array(Sf['StudyNum'] == 2))*1 # an array with 0s for StudyNum = 1 and 1s for StudyNum = 2
+        
+    Sf['subset'] = subset # put subset into the dataframe (Sf)
+    ## splitby:
+    if not splitby: # if splitby is empty
+        splitby = np.ones((subset.shape), dtype = int)
+    Sf['splitby'] = splitby # put splitby into the dataframe (Sf)
+    
+    # getting the evaluation dataset
+    sS     = Sf.loc[Sf.subset == 1]
+    splits = np.unique(sS.splitby)
+#     print(splits)
 
         
     
     
-    
-    return (Ypred, Ytest, R)
+    #return (Ypred, Ytest, R)
+    return (Y_roi, Sf)
 
 def evaluate_all ():
     
