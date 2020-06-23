@@ -34,10 +34,11 @@ def olsregress(X, Y):
     Y     : The response variables
     
     OUTPUTS
-    reg   : output of sklearn linear regression, or the output of my own code for the model!
-    Ypred : predicted values
+    M     : a dictionary with two keys: the connectivity weight estimates
+            the predicted responses (Ypred)
     
     """
+    M = {} # the dictionary that will contain all the info for the model
     # My code: SO SLOW!
 #     M = {}
 #     # estimating weights using ordinary least squares
@@ -47,25 +48,31 @@ def olsregress(X, Y):
     
     # using sklearn
     # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LinearRegression.html
-    reg = LinearRegression().fit(X, Y)
+    reg_sk = LinearRegression().fit(X, Y)
+    
+    ## coefficient weights + Ypred
+    M['W']     = reg_sk.coef_
+    M['Ypred'] = reg_sk.predict(X)
     
     
-    return reg
+    
+    return M
 # ridge regressions
-def ridgereg(X, Y, method = 'l2-reg', lam = 10):
+def ridgeregress(X, Y, method = 'l2-reg', lam = 10):
     """
     ridgereg is used to implement ridge regression.
     INPUTS
-    X     : The design matrix in the regression
-    Y     : The response variables
-    lam   : Lambda variable for the ridge regression
+    X      : The design matrix in the regression
+    Y      : The response variables
+    method : the method used for ridge regression
+    lam    : Lambda variable for the ridge regression
     
     OUTPUTS
-    reg   : output of sklearn ridge regression, or the output of my own code for the model!
-    Ypred : predicted values
+    M     : a dictionary with two keys: the connectivity weight estimates
+            the predicted responses (Ypred). For some models it might have other keys!
     """
     # My code: SO SLOW
-#     M = {}
+    M = {} # the dictionary that will contain all the info for the model
 #     # n: # of conditions
 #     # p: # of cortical regions
 #     # m: # of cerebellar regions (voxels)
@@ -82,20 +89,25 @@ def ridgereg(X, Y, method = 'l2-reg', lam = 10):
     if method == 'l2-reg': # using l2-regularization
         # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.Ridge.html
         ridgeReg_mod = Ridge(alpha = lam)
-        reg          = ridgeReg_mod.fit(X, Y)
+        reg_sk       = ridgeReg_mod.fit(X, Y)
         
     elif method == 'l1-reg': # using l1-regularization
         # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.Lasso.html
         lasso_mod = Lasso(alpha = lam)
-        reg       = lasso_mod.fit(X, Y)
+        reg_sk    = lasso_mod.fit(X, Y)
         
     elif method == 'elasticNet': # combines l1 and l2 regression?
         # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.ElasticNet.html#sklearn.linear_model.ElasticNet
         elastic_mod = ElasticNet(random_state=0)
-        reg         = elastic_mod.fit(X, Y)
+        reg_sk      = elastic_mod.fit(X, Y)
+        
+    ## coefficient weights + Ypred
+    M['W']      = reg_sk.coef_
+    M['Ypred']  = reg_sk.predict(X)
+    M['lambda'] = lam
     
     
-    return reg
+    return M
 # pca regression
 def pcregress(X, Y, N = 10):
     """
@@ -106,17 +118,22 @@ def pcregress(X, Y, N = 10):
     N      : number of PLS component
     
     OUTPUTS
-    reg   : output of sklearn PCA regression, or the output of my own code for the model!
-    Ypred : predicted values
+    M     : a dictionary with two keys: the connectivity weight estimates
+            the predicted responses (Ypred). For some models it might have other keys!
     """
-    
+    M = {} # the dictionary that will contain all the info for the model
     # using sklearn
     ## 1. apply PCA
     pca       = PCA(n_components = N)
     X_reduced = pca.fit_transform(X)
     
     ## 2. do the regression
-    reg = LinearRegression().fit(X_reduced, Y)
+    reg_sk = LinearRegression().fit(X_reduced, Y)
+    
+    ## coefficient weights + Ypred
+    M['W']     = reg_sk.coef_
+    M['Ypred'] = reg_sk.predict(X)
+    M['nPC']   = N
 
     return reg
 # pls regression
@@ -131,19 +148,30 @@ def plsregress(X, Y, method = 'svd', N = 10, scale = True):
     scale  : scale X and Y before pls regression (True) or not (False)
     
     OUTPUTS
-    reg   : output of sklearn PLS regression, or the output of my own code for the model!
-    Ypred : predicted values
+    M     : a dictionary with two keys: the connectivity weight estimates
+            the predicted responses (Ypred). For some models it might also have other keys!
     """
-    
+    M = {} # the dictionary that will contain all the info for the model
     # using sklearn
     # https://ogrisel.github.io/scikit-learn.org/sklearn-tutorial/modules/generated/sklearn.pls.PLSRegression.html
 #     from sklearn.pls import PLSCanonical, PLSRegression, CCA
     # https://scikit-learn.org/stable/modules/generated/sklearn.cross_decomposition.PLSRegression.html
 #     pls2_mod = PLSRegression(n_components = N, algorithm = method)
     pls2_mod = PLSRegression(n_components = N, scale = scale)
-    reg      = pls2_mod.fit(X, Y)
+    reg_sk   = pls2_mod.fit(X, Y)
     
-    return reg
+    ## coefficient weights + Ypred
+    M['W']     = reg_sk.coef_
+    M['Ypred'] = reg_sk.predict(X)
+    M['nPLS']  = N
+    M['XL']    = reg_sk.x_loadings_ # X loadings
+    M['XS']    = reg_sk.x_scores_   # X scores
+    M['XW']    = reg_sk.x_weights_  # weights used to project X to the latent structure
+    M['YL']    = reg_sk.y_loadings_ # Y loadings
+    M['YS']    = reg_sk.y_scores_   # Y scores
+    M['YW']    = reg_sk.y_weights_  # weights used to project Y to the latent structure
+    
+    return M
 
 def R2calc(X, Y, reg):
     """
