@@ -1069,6 +1069,44 @@ switch what
         sc1sc2_conn_model('CONN:MDTB:model_mbeta', 'method', 'ridgeFixed', 'sn', subs, 'params', [0, 20], 'overwrite', 1);
         sc1sc2_conn_model('CONN:MDTB:model_mbeta', 'method', 'pcr', 'sn', subs, 'params', [10, 12], 'overwrite', 1, 'scale', 1);
         sc1sc2_conn_model('CONN:MDTB:model_mbeta', 'method', 'plsr_1', 'sn', subs, 'params', [10, 12], 'overwrite', 1, 'scale', 1);
+
+    case 'CONN:MDTB:sample_DesignMatrix'      % saves a sample design matrix for weighting estimates later during evaluation
+        % later in the python code this design matrix will be needed. It
+        % would be better to save this design matrix so that I don't need
+        % to load the whole SPM.mat structure in python. So far, today is
+        % June 22 2020, I haven't figured out a way to import SPM.mat
+        % structure into python!
+        % Example: sc1sc2_conn_model('CONN:MDTB:sample_DesignMatrix', 'sn', 2, 'experNums', [1], 'glm', 7)
+        
+        sn        = returnSubjs;  
+        experNums = [1, 2];
+        glm       = 7;
+        
+        vararginoptions(varargin, {'sn', 'experNums', 'glm'})
+        
+        experStr = {'sc1', 'sc2'};
+        
+        for e = experNums
+            fprintf('Doing experiment %d\n', e);
+            glmDir   = fullfile(baseDir,experStr{e},sprintf('GLM_firstlevel_%d',glm));
+            for s = sn
+                fprintf('Doing subject %s\n', subj_name{s});
+                % load in spm file
+                % Checks if SPM_light exists. Loads it if its exists, otherwise
+                % the bigger SPM.mat file will be loaded
+                if exist(fullfile(glmDir, subj_name{s}, 'SPM_light.mat'), 'file')
+                    load(fullfile(glmDir, subj_name{s}, 'SPM_light.mat'));
+                else
+                    load(fullfile(glmDir, subj_name{s}, 'SPM.mat'));
+                end
+                spm.Sess = SPM.Sess;      % Session Structure
+                spm.X    = SPM.xX.X;      % Design matrix
+                spm.wX   = SPM.xX.xKXs.X; % Filtered design matrix
+                
+                save(fullfile(glmDir, subj_name{s},'SampleDesignMatrix.mat'), '-struct', 'spm', '-v7');
+                
+            end % s(sn)
+        end
         
     case 'CONN:MDTB:evaluate'                 % Evaluates predictive performance of connectivity model
         % borrowed from sc1sc2_connectivity('evaluate')
