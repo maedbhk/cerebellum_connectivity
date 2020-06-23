@@ -27,11 +27,11 @@ suitToolDir     = '/Users/ladan/Documents/MATLAB/suit'
 encodeDir       = 'encoding'
 
 # sestting defaults for some variables
-returnSubjs = np.array([2,3,4,6,8,9,10,12,14,15,17,18,19,20,21,22,24,25,26,27,28,29,30,31])
+# returnSubjs = np.array([2,3,4,6,8,9,10,12,14,15,17,18,19,20,21,22,24,25,26,27,28,29,30,31])
 
 
 # define functions
-def get_data(sn = returnSubjs, glm = 7, roi = 'grey_nan', which = 'cond', avg = 1):
+def get_data(sn, glm = 7, roi = 'grey_nan', which = 'cond', avg = 1):
     """
     get_data prepares per subject data for modelling. It uses cerebellar data for each subject, transformed into suit space!
     INPUTS
