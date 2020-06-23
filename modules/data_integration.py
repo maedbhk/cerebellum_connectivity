@@ -36,6 +36,12 @@ def matImport(path2mfile, form = 'dict'):
     
     OUTPUTS:
     - mat    : variable containing the loaded mat file
+               It's either a dictionary (form = 'dict') or a dataframe (form = 'dataframe')
+               In case it is a dictionary, the key hierarchy is as follows:
+                   1) If the .mat file is a nested structure variable: Y, Y.a, Y.b, Y.c:
+                      mat{'Y':{'a': , 'b': , 'c': }}
+                   2) If the .mat file is a structure with multiple fields: a, b, c
+                      mat{'a': , 'b': , 'c': , }
     
     additional notes:
     some matfiles are nested structures. If they are saved with versions other than -7.3, scipy.io.loadmat
