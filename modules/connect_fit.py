@@ -8,11 +8,11 @@ Connectivity modelling module for connectivity project
 """
 
 # import packages
-import os
-import pandas as pd
+#import os
+#import pandas as pd
 import numpy as np
-import scipy as sp
-import data_integration as di
+#import scipy as sp
+#import data_integration as di
 
 # importing sklearn tools. Might not need them in future!
 from sklearn.linear_model import LinearRegression
@@ -21,7 +21,7 @@ from sklearn.linear_model import Lasso
 from sklearn.linear_model import ElasticNet
 from sklearn.decomposition import PCA
 from sklearn.cross_decomposition import PLSRegression
-from sklearn.preprocessing import scale # ?!
+#from sklearn.preprocessing import scale # ?!
 
 
 # define funcitons
@@ -135,7 +135,7 @@ def pcregress(X, Y, N = 10):
     M['Ypred'] = reg_sk.predict(X)
     M['nPC']   = N
 
-    return reg
+    return M
 # pls regression
 def plsregress(X, Y, method = 'svd', N = 10, scale = True):
     """
