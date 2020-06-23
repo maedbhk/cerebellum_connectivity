@@ -145,3 +145,39 @@ def plsregress(X, Y, method = 'svd', N = 10, scale = True):
     
     return reg
 
+def R2calc(X, Y, reg):
+    """
+    calculates R2, R and the voxel wise versions of them.
+    INPUTS: 
+    X     : Regressors/explanatory variables/predictors: cortical activity profiles
+    Y     : Response variable: cerebellar activity profiles
+    reg   : for models estimated using sklearn, this is the output of the sklearn. In future versions of 
+            the code this will change, because all we need to calculate R2 values is the estimated weights matrix
+            
+    OUTPUTS:
+    R2
+    R
+    R2_vox
+    R_vox
+    """
+    
+    # if the model is estimated using sklearn (if not, you just the W or a dictionary with a key = W)
+    Ypred = reg.predict(X)
+    
+    # Calculating R2
+    res = Y - Ypred
+    SSR = np.nansum(res **2, axis = 0) # remember: without setting the axis, it just "flats" out the whole array and sum over all
+    SST = np.nansum(Y*Y, axis = 0)
+    
+    R2_vox = 1 - (SSR/SST)
+    R2     = 1 - (np.nansum(SSR)/np.nansum(SST))
+    
+    # Calculating R 
+    SYP = np.nansum(Y*Ypred, axis = 0);
+    SPP = np.nansum(Ypred*Ypred, axis = 0);
+
+    R     = np.nansum(SYP)/np.sqrt(np.nansum(SST)*np.nansum(SPP));
+    R_vox = SYP/np.sqrt(SST*SPP) # per voxel
+
+    return (R2, R, R2_vox, R_vox)
+
