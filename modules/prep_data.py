@@ -206,7 +206,7 @@ def get_wcon(experNum = [1, 2], glm = 7, roi = 'grey_nan', avg = 1):
                 # subtract columnar means
                 colMean    = np.nanmean(YD['sc%d'%e][s]['sess%d'%se]['data'], axis = 0)
                 subColMean = YD['sc%d'%e][s]['sess%d'%se]['data'] - colMean
-                tmp[se]     = subColMean
+                tmp[se]    = subColMean
 
             # concatenate data
             fin = np.concatenate((tmp[1], tmp[2]), axis = 0)
