@@ -136,7 +136,7 @@ def connect_fit(X, Y, model, scale = True, **kwargs):
 #         from sklearn.pls import PLSCanonical, PLSRegression, CCA
         # https://scikit-learn.org/stable/modules/generated/sklearn.cross_decomposition.PLSRegression.html
 #         pls2_mod = PLSRegression(n_components = N, algorithm = method)
-        pls2_mod = PLSRegression(n_components = N, fit_intercept = False, scale = True)
+        pls2_mod = PLSRegression(n_components = N)
         reg_sk   = pls2_mod.fit(X, Y)
 
         ## coefficient weights + Ypred
@@ -238,49 +238,52 @@ def model_fit(sn, model, params, glm = 7, rois = {'cortex':'tesselsWB162', 'cere
     for s in sn:
         print('........ Doing Modelling for s%02d'% s)
         outname = os.path.join(outDir, '%s_s%02d.dat'%(name, s))
-        
-        # add the new model to the previous one or over-write it?
-        if (os.path.exists(outname) and overwrite == True):
-            Rr = pickle.load(open(outname, "rb"))
-        else:
-            Rr = {}
             
         # Get data
         xx = X['s%02d'%s][trainXindx, :]
         yy = Y['s%02d'%s][trainYindx, :]
-        
+         
+        # add the new model to the previous one or over-write it?
+        if (os.path.exists(outname) and overwrite == False):
+            tmpR = pickle.load(open(outname, "rb"))
+        else:
+            print('!!!!!!!! overwriting the old model file !!!!!!!!')
+            # creating a default empty dictionary as reference. Each time a model 
+            # is fitted an element is appended to the values of this dictionary
+            tmpR = {'sn':[], 'M':[], 'params':[], 'model':[], 
+                'inclInstr': [], 'trainMode':[], 'xname':[], 
+                'R2':[], 'R2vox':[], 'R':[], 'Rvox':[]}  
         
         # Run all the models with different parameters
         ## For now, I am just working with a 1-D numpy array
-        tmpR = {}
         if not params.size: # if params is empty
             print('parameter array is empty')
             
         else: # if params is not empty
-            ps = [] # each parameter will be appended to this list
             for ip in params: # looping over all the parameters
                 print('...... Doing model fitting for %s param: %s' % (model, ip))
                 # fit the model
                 M, R2, R, R2vox, Rvox = connect_fit(xx, yy, model = model, scale = True, args = ip)
+                # get R2, R
+#                 (R2, R, R2_vox, R_vox) = R2calc(xx, yy, M)
                 
-                tmpR['sn']        = s
-                tmpR['M']         = M
-                tmpR['params']    = ps.append(ip)
-                tmpR['model']     = model
-                tmpR['incInstr']  = inclInstr
-                tmpR['trainMode'] = trainMode
-                tmpR['xname']     = rois['cortex']
+                tmpR['sn'].append(s)
+                tmpR['M'].append(M)
+                tmpR['params'].append(ip)
+                tmpR['model'].append(model)
+                tmpR['inclInstr'].append(inclInstr)
+                tmpR['trainMode'].append(trainMode)
+                tmpR['xname'].append(rois['cortex'])
                 
-                tmpR['R2']        = R2
-                tmpR['R']         = R
-                tmpR['R2vox']     = R2vox
-                tmpR['Rvox']      = Rvox
-                
-                Rr.update(tmpR) # update the current dictionary
-                
+                tmpR['R2'].append(R2)
+                tmpR['R'].append(R)
+                tmpR['R2vox'].append(np.array(R2vox))
+                tmpR['Rvox'].append(np.array(Rvox))
+            Rr = tmpR
+            
         RR['s%02d'%s] = Rr
         
         # save R
-        pickle.dump(R, open(outname, "wb")) # "wb": Writing Binary file
+        pickle.dump(Rr, open(outname, "wb")) # "wb": Writing Binary file
 
     return RR
