@@ -193,7 +193,7 @@ def R2calc(X, Y, M):
     return (R2, R, R2_vox, R_vox)
     
 
-def model(sn, method, params, glm = 7, rois = {'cortex':'tesselsWB162', 'cerebellum':'grey_nan'}, 
+def model_fit(sn, method, params, glm = 7, rois = {'cortex':'tesselsWB162', 'cerebellum':'grey_nan'}, 
           trainMode = 'crossed', trainExper = 1, inclInstr = 1, scale = True, 
           overwrite = True, avg = 1):
     """
