@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 """
 Created on Tue Jun 23 20:08:47 2020
+model module contains functions needed for fitting different models. The model 
+structure will also be saved in model_fit
 
 @author: ladan
 """
