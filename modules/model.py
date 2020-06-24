@@ -9,13 +9,14 @@ structure will also be saved in model_fit
 """
 # import packages
 import os # to handle path information
-import pandas as pd
+#import pandas as pd
 import numpy as np
-import scipy as sp
-import data_integration as di
-import essentials as es
+#import scipy as sp
+#import data_integration as di
+#import essentials as es
 import pickle # used for saving data (pip/pip3 install pickle-mixin)
 import prep_data
+
 
 # import sklearn
 ## once I have my own functions I will get rid of this section
@@ -25,7 +26,7 @@ from sklearn.linear_model import Lasso
 from sklearn.linear_model import ElasticNet
 from sklearn.decomposition import PCA
 from sklearn.cross_decomposition import PLSRegression
-# from sklearn.preprocessing import scale # ?!
+from sklearn.preprocessing import StandardScaler
 
 # setting some defaults paths
 baseDir         = '/Users/ladan/Documents/Project-Cerebellum/Cerebellum_Data'
@@ -41,7 +42,7 @@ encodeDir       = 'encoding'
 #returnSubjs = np.array([2,3,4,6,8,9,10,12,14,15,17,18,19,20,21,22,24,25,26,27,28,29,30,31])
 
 # define functions
-def connect_fit(X, Y, model, **kwargs):
+def connect_fit(X, Y, model, scale = True, **kwargs):
     """
     connect_fit fits different models and returns the parameters of the model alongside the predicted values
     INPUTS
@@ -55,13 +56,27 @@ def connect_fit(X, Y, model, **kwargs):
             'pcregress'  N
             'plsregress' N
             'regbicluster'
+    scale : set to True if you want to scale the data before model fitting or False if you don't!
     
     OUTPUTS
     M     : a dictionary with two keys: the connectivity weight estimates
             the predicted responses (Ypred). 
             The keys in M will depend on the model
-    
+    R2    :
+    R     :
+    R2vox :
+    Rvox  :
     """
+    if scale:
+
+        scalerX = StandardScaler()
+        scalerX.fit(X)
+        X  = scalerX.transform(X)
+        
+        scalerY = StandardScaler()
+        scalerY.fit(Y)
+        Y  = scalerY.transform(Y)
+        
     if model == 'olsregress':     # ols regression
         M = {} # the dictionary that will contain all the info for the model
         # My code: SO SLOW!
@@ -71,81 +86,60 @@ def connect_fit(X, Y, model, **kwargs):
 
         # using sklearn
         # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LinearRegression.html
-        reg_sk = LinearRegression().fit(X, Y)
+        reg_sk = LinearRegression(fit_intercept = False).fit(X, Y)
 
-        ## coefficient weights + Ypred
-        M['W']     = reg_sk.coef_
-        M['Ypred'] = reg_sk.predict(X)
-        
     elif model == 'l2regress':    # l2 ridge regression
         M   = {}
-        lam = args
+        lam = kwargs['args']
         # using sklearn
         # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.Ridge.html
-        ridgeReg_mod = Ridge(alpha = lam)
+        ridgeReg_mod = Ridge(alpha = lam, fit_intercept = False)
         reg_sk       = ridgeReg_mod.fit(X, Y)
-        
-        ## coefficient weights + Ypred
-        M['W']      = reg_sk.coef_
-        M['Ypred']  = reg_sk.predict(X)
-        M['lambda'] = lam
+        M['lambda']  = lam
         
     elif model == 'l1regress':    # l1 ridge regression
         M   = {}
-        lam = args
+        lam = kwargs['args']
         # using sklearn
         # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.Lasso.html
-        lasso_mod = Lasso(alpha = lam)
-        reg_sk    = lasso_mod.fit(X, Y)
-        
-        ## coefficient weights + Ypred
-        M['W']      = reg_sk.coef_
-        M['Ypred']  = reg_sk.predict(X)
+        lasso_mod   = Lasso(alpha = lam, fit_intercept = False)
+        reg_sk      = lasso_mod.fit(X, Y)
         M['lambda'] = lam
         
     elif model == 'elasticnet':   # elastic net ridge regression
         M   = {}
-        lam = args
+        lam = kwargs['args']
         # using sklearn
         # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.ElasticNet.html#sklearn.linear_model.ElasticNet
-        elastic_mod = ElasticNet(random_state=0)
+        elastic_mod = ElasticNet(random_state=0, fit_intercept = False)
         reg_sk      = elastic_mod.fit(X, Y)
-        
-        ## coefficient weights + Ypred
-        M['W']      = reg_sk.coef_
-        M['Ypred']  = reg_sk.predict(X)
         M['lambda'] = lam
         
     elif model == 'pcregress':    # principal component regression
         M = {} # the dictionary that will contain all the info for the model
-        N = args
+        N = kwargs['args']
         # using sklearn
         ## 1. apply PCA
         pca       = PCA(n_components = N)
         X_reduced = pca.fit_transform(X)
+        X         = X_reduced
 
         ## 2. do the regression
-        reg_sk = LinearRegression().fit(X_reduced, Y)
-
-        ## coefficient weights + Ypred
-        M['W']     = reg_sk.coef_
-        M['Ypred'] = reg_sk.predict(X)
-        M['nPC']   = N
+        reg_sk   = LinearRegression(fit_intercept = False).fit(X_reduced, Y)
+        M['nPC'] = N
         
     elif model == 'plsregress':   # pls regression
         M = {} # the dictionary that will contain all the info for the model
-        N = args
+        N = kwargs['args']
         # using sklearn
         # https://ogrisel.github.io/scikit-learn.org/sklearn-tutorial/modules/generated/sklearn.pls.PLSRegression.html
 #         from sklearn.pls import PLSCanonical, PLSRegression, CCA
         # https://scikit-learn.org/stable/modules/generated/sklearn.cross_decomposition.PLSRegression.html
 #         pls2_mod = PLSRegression(n_components = N, algorithm = method)
-        pls2_mod = PLSRegression(n_components = N, scale = True)
+        pls2_mod = PLSRegression(n_components = N, fit_intercept = False, scale = True)
         reg_sk   = pls2_mod.fit(X, Y)
 
         ## coefficient weights + Ypred
-        M['W']     = reg_sk.coef_
-        M['Ypred'] = reg_sk.predict(X)
         M['nPLS']  = N
         M['XL']    = reg_sk.x_loadings_ # X loadings
         M['XS']    = reg_sk.x_scores_   # X scores
@@ -153,49 +147,38 @@ def connect_fit(X, Y, model, **kwargs):
         M['YL']    = reg_sk.y_loadings_ # Y loadings
         M['YS']    = reg_sk.y_scores_   # Y scores
         M['YW']    = reg_sk.y_weights_  # weights used to project Y to the latent structure
-        
+                
     elif model == 'regbicluster': # regression and biclustering??????????????????????!!!!!!!!!!!!!!!!!!!!
         print('STILL UNDER CONSTRUCTION!!!!')
         
-    return M
-
-def R2calc(X, Y, M):
-    """
-    calculates R2, R and the voxel wise versions of them.
-    INPUTS: 
-    X     : Regressors/explanatory variables/predictors: cortical activity profiles
-    Y     : Response variable: cerebellar activity profiles
-    M     : The dictionary returned by the modelling function containing connectivity weights and Ypred
-            
-    OUTPUTS:
-    R2
-    R
-    R2_vox
-    R_vox
-    """
-    
+    ## coefficient weights + Ypred
+    M['W']        = reg_sk.coef_
+    M['Ypred']    = reg_sk.predict(X)
+    M['reg']      = reg_sk
+        
+    # Calculate R2 and R values    
     # if the model is estimated using sklearn (if not, you just the W or a dictionary with a key = W)
     Ypred = M['Ypred']
-    
+
     # Calculating R2
     res = Y - Ypred
     SSR = np.nansum(res **2, axis = 0) # remember: without setting the axis, it just "flats" out the whole array and sum over all
-    SST = np.nansum(Y*Y, axis = 0)
+    SST = np.sum((Y - Y.mean()) ** 2, axis = 0)
+
     
-    R2_vox = 1 - (SSR/SST)
-    R2     = 1 - (np.nansum(SSR)/np.nansum(SST))
+    R2vox = 1 - (SSR/SST)
+    R2    = 1 - (np.nansum(SSR)/np.nansum(SST))
     
     # Calculating R 
     SYP = np.nansum(Y*Ypred, axis = 0);
     SPP = np.nansum(Ypred*Ypred, axis = 0);
 
-    R     = np.nansum(SYP)/np.sqrt(np.nansum(SST)*np.nansum(SPP));
-    R_vox = SYP/np.sqrt(SST*SPP) # per voxel
+    R    = np.nansum(SYP)/np.sqrt(np.nansum(SST)*np.nansum(SPP));
+    Rvox = SYP/np.sqrt(SST*SPP) # per voxel
+        
+    return M, R2, R, R2vox, Rvox
 
-    return (R2, R, R2_vox, R_vox)
-    
-
-def model_fit(sn, method, params, glm = 7, rois = {'cortex':'tesselsWB162', 'cerebellum':'grey_nan'}, 
+def model_fit(sn, model, params, glm = 7, rois = {'cortex':'tesselsWB162', 'cerebellum':'grey_nan'}, 
           trainMode = 'crossed', trainExper = 1, inclInstr = 1, scale = True, 
           overwrite = True, avg = 1):
     """
@@ -203,9 +186,9 @@ def model_fit(sn, method, params, glm = 7, rois = {'cortex':'tesselsWB162', 'cer
     
     INPUTS:
     sn         : subjects you want to do the modelling for
-    method     : method of regression you want to use for modelling: plsregress, olsregress, 
+    model      : method of regression you want to use for modelling: plsregress, olsregress, 
                  pcregress, ridgeregress
-    params     : parameters of the model you need to set
+    params     : parameters of the model you need to set: a numpy array
     glm        : glm number
     rois       : contains strings with the names of the rois
     trainMode  : training mode: 'crossed' flipping session between X and Y, 'uncrossed': not flipping sessions
@@ -221,7 +204,7 @@ def model_fit(sn, method, params, glm = 7, rois = {'cortex':'tesselsWB162', 'cer
     
         
     # Setting directories
-    name     = 'mb4_%s_%s'% (rois['cortex'], method)
+    name     = 'mb4_%s_%s'% (rois['cortex'], model)
     outDir   = os.path.join(baseDir, 'sc%d'% trainExper, connDir, 'glm%d'%glm, name);
     
         
@@ -231,7 +214,6 @@ def model_fit(sn, method, params, glm = 7, rois = {'cortex':'tesselsWB162', 'cer
     for ri in list(rois.keys()):
         [Data[ri], Tf] = prep_data.get_wcon(experNum = [1, 2], glm = 7, roi = rois[ri], avg = avg)
         
-    Tf.to_csv(os.path.join(baseDir, 'test.csv'), index=False)
     X = Data['cortex']
     Y = Data['cerebellum']
         
@@ -252,20 +234,53 @@ def model_fit(sn, method, params, glm = 7, rois = {'cortex':'tesselsWB162', 'cer
         
         
     # Estimate the model and store the information attached to it
-    RR = {} # dictionary with all the info for the model
+    RR = {} # dictionary with all the info for the model for all the subjects
     for s in sn:
         print('........ Doing Modelling for s%02d'% s)
         outname = os.path.join(outDir, '%s_s%02d.dat'%(name, s))
         
         # add the new model to the previous one or over-write it?
         if (os.path.exists(outname) and overwrite == True):
-            R = pickle.load(open(outname, "rb"))
+            Rr = pickle.load(open(outname, "rb"))
         else:
-            R = {}
+            Rr = {}
             
         # Get data
         xx = X['s%02d'%s][trainXindx, :]
         yy = Y['s%02d'%s][trainYindx, :]
+        
+        
+        # Run all the models with different parameters
+        ## For now, I am just working with a 1-D numpy array
+        tmpR = {}
+        if not params.size: # if params is empty
+            print('parameter array is empty')
+            
+        else: # if params is not empty
+            ps = [] # each parameter will be appended to this list
+            for ip in params: # looping over all the parameters
+                print('...... Doing model fitting for %s param: %s' % (model, ip))
+                # fit the model
+                M, R2, R, R2vox, Rvox = connect_fit(xx, yy, model = model, scale = True, args = ip)
+                
+                tmpR['sn']        = s
+                tmpR['M']         = M
+                tmpR['params']    = ps.append(ip)
+                tmpR['model']     = model
+                tmpR['incInstr']  = inclInstr
+                tmpR['trainMode'] = trainMode
+                tmpR['xname']     = rois['cortex']
+                
+                tmpR['R2']        = R2
+                tmpR['R']         = R
+                tmpR['R2vox']     = R2vox
+                tmpR['Rvox']      = Rvox
+                
+                Rr.update(tmpR) # update the current dictionary
+                
+        RR['s%02d'%s] = Rr
+        
+        # save R
+        pickle.dump(R, open(outname, "wb")) # "wb": Writing Binary file
 
-
-    return xx, yy, Tf, trainXindx, trainYindx
+    return RR
