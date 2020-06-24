@@ -11,6 +11,7 @@ Used for preparing data for connectivity modelling and evaluation
 import os # to handle path information
 import pandas as pd
 import numpy as np
+import numpy.matlib # for repmat
 #import scipy as sp
 import data_integration as di
 import essentials as es
@@ -100,19 +101,27 @@ def get_data(sn, glm = 7, roi = 'grey_nan', which = 'cond', avg = 1):
             ## for now it assumes that you want to average subtract the average across runs of a session
             # Now generate mean estimates per session
             # Note that in the new SPM_info Instruction is coded as cond =0
-            T['cond'] = T['cond'] + 1   # This is only for generating the avergaging matrix
+            ## This part here is done to have different numbers for different conditions.
+            ## I may comment it out in future
+            a = np.arange(0, 17).reshape(-1, 1)
+            b = np.matlib.repmat(a, 16, 1)
+            
+            T['cond'][T['inst'] == 0] = T['cond'][T['inst'] == 0] + 16
+            T['cond'][T['inst'] == 1] = b.reshape((b.shape[0], ))
+            
+            #T['cond'] = T['cond'] + 1   # This is only for generating the avergaging matrix
                 
             B_sess = {}
             for se in [1, 2]:
                 B_sess['sess%d'%se] = {}
                 print('.Doing subject %02d, sess %d' % (s, se))
                 if avg == 1:
-                    X          = es.indicatorMatrix('identity_p', T[which]*(T['sess'] == se))
-
+                    X          = es.indicatorMatrix('identity', T[which]*(T['sess'] == se))
                     # np.linalg.pinv is pretty slow!
                     # also, we need to decide on an appropriate data type here
                     ## I'm gonna go with nested dictionaries here!
                     B_sess['sess%d'%se]['data']   = np.linalg.pinv(X) @ D[0:X.shape[0],:] # This calculates average beta across runs, skipping intercepts, for each session
+                    
                     
                 #elif avg == 0: # UNDER "CONSTRUCTION"
                 
@@ -182,25 +191,27 @@ def get_wcon(experNum = [1, 2], glm = 7, roi = 'grey_nan', avg = 1):
         T1['sess'] = (np.ones((len(Tfi.index), 1))).astype(int)
         T2['sess'] = (2*np.ones((len(Tfi.index), 1))).astype(int)
 
-        Tfi = pd.concat([T1, T2], axis = 0)
-        Sf  = pd.concat([Sf, Tfi], axis = 0)
+        Tfi = pd.concat([T1, T2], axis = 0, ignore_index = True)
+        Sf  = pd.concat([Sf, Tfi], axis = 0, ignore_index = True)
 
     Y = {} # Y is defined to be a dictionary
     for s in list(YD['sc1'].keys()):
         Y[s] = {}
-        for se in [1, 2]:
-            # for each session, it gets the two experiments and concatenates them.
+        tmp2 = {}
+        for e in experNum:
+            # for each study, it gets the two sessions and concatenates them
             tmp = {} # empty dictionary values of which will be concatenated and put into the new dictionary
-            for e in experNum: 
+            for se in [1, 2]:
 
                 # subtract columnar means
                 colMean    = np.nanmean(YD['sc%d'%e][s]['sess%d'%se]['data'], axis = 0)
                 subColMean = YD['sc%d'%e][s]['sess%d'%se]['data'] - colMean
-                tmp[e]     = subColMean
+                tmp[se]     = subColMean
 
             # concatenate data
             fin = np.concatenate((tmp[1], tmp[2]), axis = 0)
+            tmp2[e] = fin
 
-            Y[s] = fin
+        Y[s] = np.concatenate((tmp2[1], tmp2[2]), axis = 0)
     
     return (Y, Sf)
