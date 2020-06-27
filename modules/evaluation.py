@@ -194,7 +194,8 @@ def evaluate_pipeline(sn, model, glm = 7, subset = [], splitby = [], rois = {'co
     and saves the evaliation measures.
     INPUTS
     - sn       : subjects
-    - model    : the model you want to evaluate. You can enter multiple models in an array
+    - model    : the model you want to evaluate. You can enter multiple models in a list.
+                 Always give model as a list!
     - subset   : what data should the evaluation be based upon?
     - splitby  : by which variable should the evaluation be split?
     - rois     : a dictionary of all the rois you want to include in the model
@@ -211,36 +212,37 @@ def evaluate_pipeline(sn, model, glm = 7, subset = [], splitby = [], rois = {'co
     """
     
     # setting directories
-    modelName = 'mb4_%s_%s'% (rois['cortex'], model)
-    modelDir  = os.path.join(baseDir, 'sc%d'% trainExper, connDir, 'glm%d'%glm, modelName)
-    
-    # get the testExper
-    testExper = [item != trainExper for item in experNum]
-    evalDir   = os.path.join(baseDir, 'sc%d'%experNum[testExper], connDir, 'eval_%s'% modelName)
-    # create the directory if it doesn't already exist
-    if not os.path.exists(evalDir):
-        os.makedirs(evalDir)
-    
-    print(evalDir)
-    
-    # initialize a dictionary with all the eval parameters for subjects
-    ER = {'s%02d'%s: [] for s in sn}
-    
-    for s in sn:
-        # load the model file
-        modelname  = os.path.join(modelDir, '%s_s%02d.dat'%(modelName, s))
-        MODEL      = pickle.load(open(modelname, "rb"))
+    for ms in model: # ms: model string
         
-        # Evaluate!
-        [Y_roi, Ytest, Rr] = evaluate_model(MODEL, subset = [], splitby = [], 
-                                            rois = {'cortex':'tesselsWB162', 'cerebellum':'grey_nan'},
-                                            inclInst = inclInst, meanSubt = meanSubt, 
-                                            experNum = experNum, glm = glm, avg = avg, crossed = crossed)
-        # store all the evaluations
-        ER['s%02d'%s] = Rr
-        
-        # save the evaluation 
-        outname = os.path.join(evalDir, 'eval_%s_s%02d.dat'%(modelName, s))
-        pickle.dump(Rr, open(outname, "wb")) # "wb": Writing Binary file
+        modelName = 'mb4_%s_%s'% (rois['cortex'], ms)
+        modelDir  = os.path.join(baseDir, 'sc%d'% trainExper, connDir, 'glm%d'%glm, modelName)
+
+        # get the testExper
+        testExper = [item != trainExper for item in experNum]
+        evalDir   = os.path.join(baseDir, 'sc%d'%experNum[testExper], connDir, 'eval_%s'% modelName)
+        # create the directory if it doesn't already exist
+        if not os.path.exists(evalDir):
+            os.makedirs(evalDir)
+
+        # initialize a dictionary with all the eval parameters for subjects
+        ER = {'s%02d'%s: [] for s in sn}
+
+        for s in sn:
+            # load the model file
+            models  = os.path.join(modelDir, '%s_s%02d.dat'%(modelName, s))
+            MODEL   = pickle.load(open(models, "rb"))
+
+            # Evaluate!
+            [Y_roi, Ytest, Rr] = evaluate_model(MODEL, subset = [], splitby = [], 
+                                                rois = {'cortex':'tesselsWB162', 'cerebellum':'grey_nan'},
+                                                inclInst = inclInst, meanSubt = meanSubt, 
+                                                experNum = experNum, glm = glm, avg = avg, crossed = crossed)
+            # store all the evaluations
+            ER['s%02d'%s] = Rr
+
+            # save the evaluation 
+            outname = os.path.join(evalDir, 'eval_%s_s%02d.dat'%(modelName, s))
+            pickle.dump(Rr, open(outname, "wb")) # "wb": Writing Binary file
         
     return ER
+    
