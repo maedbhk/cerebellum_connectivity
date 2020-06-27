@@ -32,7 +32,7 @@ encodeDir       = 'encoding'
 
 # define functions
 def evaluate_model(Md, subset = [], splitby = [], rois = {'cortex':'tesselsWB162', 'cerebellum':'grey_nan'},
-             inclInst = 1, meanSubt = 1, experNum = [1, 2], glm = 7, avg = 1, crossed = 0):
+             inclInst = 1, meanSubt = 1, experNum = [1, 2], glm = 7, avg = 1, trainMode = 'crossed'):
     
     """
     evaluate will be used to evaluate connectivity models.
