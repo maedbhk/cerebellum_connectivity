@@ -87,6 +87,7 @@ def connect_fit(X, Y, model, scale = True, **kwargs):
         # using sklearn
         # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LinearRegression.html
         reg_sk = LinearRegression(fit_intercept = False).fit(X, Y)
+        M['W'] = reg_sk.coef_
 
     elif model == 'l2regress':    # l2 ridge regression
         M   = {}
@@ -96,6 +97,7 @@ def connect_fit(X, Y, model, scale = True, **kwargs):
         ridgeReg_mod = Ridge(alpha = lam, fit_intercept = False)
         reg_sk       = ridgeReg_mod.fit(X, Y)
         M['lambda']  = lam
+        M['W']       = reg_sk.coef_
         
     elif model == 'l1regress':    # l1 ridge regression
         M   = {}
@@ -105,6 +107,7 @@ def connect_fit(X, Y, model, scale = True, **kwargs):
         lasso_mod   = Lasso(alpha = lam, fit_intercept = False)
         reg_sk      = lasso_mod.fit(X, Y)
         M['lambda'] = lam
+        M['W']      = reg_sk.coef_
         
     elif model == 'elasticnet':   # elastic net ridge regression
         M   = {}
@@ -114,6 +117,7 @@ def connect_fit(X, Y, model, scale = True, **kwargs):
         elastic_mod = ElasticNet(random_state=0, fit_intercept = False)
         reg_sk      = elastic_mod.fit(X, Y)
         M['lambda'] = lam
+        M['W']      = reg_sk.coef_
         
     elif model == 'pcregress':    # principal component regression
         M = {} # the dictionary that will contain all the info for the model
@@ -127,6 +131,7 @@ def connect_fit(X, Y, model, scale = True, **kwargs):
         ## 2. do the regression
         reg_sk   = LinearRegression(fit_intercept = False).fit(X_reduced, Y)
         M['nPC'] = N
+        M['W']   = reg_sk.coef_
         
     elif model == 'plsregress':   # pls regression
         M = {} # the dictionary that will contain all the info for the model
@@ -141,6 +146,7 @@ def connect_fit(X, Y, model, scale = True, **kwargs):
 
         ## coefficient weights + Ypred
         M['nPLS']  = N
+        M['W']     = reg_sk.coef_.transpose()
         M['XL']    = reg_sk.x_loadings_ # X loadings
         M['XS']    = reg_sk.x_scores_   # X scores
         M['XW']    = reg_sk.x_weights_  # weights used to project X to the latent structure
@@ -152,7 +158,6 @@ def connect_fit(X, Y, model, scale = True, **kwargs):
         print('STILL UNDER CONSTRUCTION!!!!')
         
     ## coefficient weights + Ypred
-    M['W']        = reg_sk.coef_
     M['Ypred']    = reg_sk.predict(X)
     M['reg']      = reg_sk
         
