@@ -39,16 +39,16 @@ def evaluate_model(Md, subset = [], splitby = [], rois = {'cortex':'tesselsWB162
     Two types of evaluation can be used: crossed and not-crossed.
     
     INPUTS:
-    - Md       : the structure, dict or dataframe, containing the data for the model. Or outputs of sklearn
-    - subset   : what data should the evaluation be based upon?
-    - splitby  : by which variable should the evaluation be split?
-    - rois     : a dictionary of all the rois you want to include in the model
-    - inclInst : include the instructions in the analysis or not?
-    - meanSubt : subtract the mean or not?
-    - experNum : list with study id: 1 for sc1 and 2 for sc2. Do I need to include it as a variable?
-    - glm      : glm number
-    - avg      : average across runs within a session or not?!
-    - crossed  : doubled crossed cross validation (set to 1), or not (set to 0)
+    - Md        : the structure, dict or dataframe, containing the data for the model. Or outputs of sklearn
+    - subset    : what data should the evaluation be based upon?
+    - splitby   : by which variable should the evaluation be split?
+    - rois      : a dictionary of all the rois you want to include in the model
+    - inclInst  : include the instructions in the analysis or not?
+    - meanSubt  : subtract the mean or not?
+    - experNum  : list with study id: 1 for sc1 and 2 for sc2. Do I need to include it as a variable?
+    - glm       : glm number
+    - avg       : average across runs within a session or not?!
+    - trainMode : doubled crossed cross validation 'crossed', or not ('uncrossed')
     
     OUTPUTS:
     - Ypred : the predicted values for Y (cerebellar activity profiles)
@@ -188,7 +188,7 @@ def evaluate_model(Md, subset = [], splitby = [], rois = {'cortex':'tesselsWB162
     return (predY, Y_roi[testBindx,:], RR)
 
 def evaluate_pipeline(sn, model, glm = 7, subset = [], splitby = [], rois = {'cortex':'tesselsWB162', 'cerebellum':'grey_nan'},
-             inclInst = 1, meanSubt = 1, experNum = [1, 2], avg = 1, crossed = 0, trainExper = 1):
+             inclInst = 1, meanSubt = 1, experNum = [1, 2], avg = 1, trainMode = 'crossed', trainExper = 1):
     """
     loads all the fitted models for the subjects entered in the array for sn, does the evaluation
     and saves the evaliation measures.
@@ -218,8 +218,10 @@ def evaluate_pipeline(sn, model, glm = 7, subset = [], splitby = [], rois = {'co
         modelDir  = os.path.join(baseDir, 'sc%d'% trainExper, connDir, 'glm%d'%glm, modelName)
 
         # get the testExper
-        testExper = [item != trainExper for item in experNum]
-        evalDir   = os.path.join(baseDir, 'sc%d'%experNum[testExper], connDir, 'eval_%s'% modelName)
+        testExper = [item != trainExper for item in experNum] # get the test Experiment
+        testDir   = 'sc%d'% np.array(experNum)[testExper]
+        print(testDir)
+        evalDir   = os.path.join(baseDir, testDir, connDir, 'eval_%s'% modelName)
         # create the directory if it doesn't already exist
         if not os.path.exists(evalDir):
             os.makedirs(evalDir)
@@ -228,6 +230,7 @@ def evaluate_pipeline(sn, model, glm = 7, subset = [], splitby = [], rois = {'co
         ER = {'s%02d'%s: [] for s in sn}
 
         for s in sn:
+            print('........ Evaluation for %s subject s%02d' % (ms, s))
             # load the model file
             models  = os.path.join(modelDir, '%s_s%02d.dat'%(modelName, s))
             MODEL   = pickle.load(open(models, "rb"))
@@ -236,7 +239,7 @@ def evaluate_pipeline(sn, model, glm = 7, subset = [], splitby = [], rois = {'co
             [Y_roi, Ytest, Rr] = evaluate_model(MODEL, subset = [], splitby = [], 
                                                 rois = {'cortex':'tesselsWB162', 'cerebellum':'grey_nan'},
                                                 inclInst = inclInst, meanSubt = meanSubt, 
-                                                experNum = experNum, glm = glm, avg = avg, crossed = crossed)
+                                                experNum = experNum, glm = glm, avg = avg, trainMode = trainMode)
             # store all the evaluations
             ER['s%02d'%s] = Rr
 
