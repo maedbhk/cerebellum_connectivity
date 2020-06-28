@@ -207,12 +207,13 @@ def model_fit(sn, model, params, glm = 7, rois = {'cortex':'tesselsWB162', 'cere
     RR         :
     """
     
-        
     # Setting directories
     name     = 'mb4_%s_%s'% (rois['cortex'], model)
     outDir   = os.path.join(baseDir, 'sc%d'% trainExper, connDir, 'glm%d'%glm, name)
     
-        
+    if not os.path.exists(outDir):
+            os.makedirs(outDir)
+    
     
     # use prep_data.get_wcon to get the data
     Data = {} # dictionary that will have the roi names as its keys
