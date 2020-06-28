@@ -15,6 +15,12 @@ import numpy as np
 #import scipy as sp
 from sklearn.preprocessing import StandardScaler # for scaling the X
 import prep_data # module used to prepare data
+# import packages for visualizations
+# import matplotlib
+# matplotlib.use('TkAgg')
+# import matplotlib.pyplot as plt 
+# %matplotlib inline
+# import seaborn as sns
 
 # setting some defaults paths
 baseDir         = '/Users/ladan/Documents/Project-Cerebellum/Cerebellum_Data'
