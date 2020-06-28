@@ -31,6 +31,7 @@ encodeDir       = 'encoding'
 #returnSubjs = np.array([2,3,4,6,8,9,10,12,14,15,17,18,19,20,21,22,24,25,26,27,28,29,30,31])
 
 # define functions
+## takes model info as input and returns evaluation paprameters
 def evaluate_model(Md, subset = [], splitby = [], rois = {'cortex':'tesselsWB162', 'cerebellum':'grey_nan'},
              inclInst = 1, meanSubt = 1, experNum = [1, 2], glm = 7, avg = 1, trainMode = 'crossed'):
     
@@ -187,6 +188,7 @@ def evaluate_model(Md, subset = [], splitby = [], rois = {'cortex':'tesselsWB162
     
     return (Ytest, predY, RR)
 
+# returns and saves evaluation parameters for all the subjects in the input
 def evaluate_pipeline(sn, model, glm = 7, subset = [], splitby = [], rois = {'cortex':'tesselsWB162', 'cerebellum':'grey_nan'},
              inclInst = 1, meanSubt = 1, experNum = [1, 2], avg = 1, trainMode = 'crossed', trainExper = 1):
     """
@@ -260,4 +262,21 @@ def evaluate_pipeline(sn, model, glm = 7, subset = [], splitby = [], rois = {'co
             pickle.dump(Y, open(outname_Y, "wb")) # "wb": Writing Binary file
         
     return ER, Y
+
+## calculates RDMs using original and predicted test datasets
+def rdm_calc(Y, model, rois = {'cortex':'tesselsWB162', 'cerebellum':'grey_nan'}):
+    """
+    Calculates RDMs using predicted data + Calculates RDMs using actual data
+    INPUTS
+    Y     : Y dictionary containing Ytest and Ypred 
+    model : the model for which you want to calculate RDMs
+    rois  : roi dictionary containing rois used in modelling
+    
+    OUTPUTS
+    RDM  : RDM calculated using actual data
+    pRDM : RDM calculated using predicted data
+    
+    """
+    
+    return (RDM, pRDM)
     
