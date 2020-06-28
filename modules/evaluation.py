@@ -279,4 +279,39 @@ def rdm_calc(Y, model, rois = {'cortex':'tesselsWB162', 'cerebellum':'grey_nan'}
     """
     
     return (RDM, pRDM)
+
+## creates and returns a dataframe which can be used in plotting ...
+def eval_df(sn, glm = 7, models = ['l2regress', 'plsregress'], 
+                 rois = ['tesselsWB162', 'tesselsWB362', 'tesselsWB642'], 
+                 testExper = 2):
+    """
+    This function plot a toy plot: measure vs subject.
+    IINPUTS
+    sn        : subjects on the x-axis
+    glm       : glmNumber
+    models    : a list containing models I want to be included in the plot
+    rois      : a list containing cortical rois used 
+    testExper : Experiment used for testing
+    
+    OUTPUTS
+    df        : dataframe with all the info for the models and cortical ROIs
+    
+    """
+    # create a dataframe with all the data 
+    tmpF = []
+    for rs in rois:
+        for ms in models:
+            # the directory where the model data is saved
+            evalName = 'eval_mb4_%s_%s'% (rs, ms)
+            evalDir   = os.path.join(baseDir, 'sc%d'%testExper, connDir, 'glm%d'%glm, evalName)
+            
+            for s in sn:
+                # load the dictionary for each subject and put it in a dataframe
+                # dataframes will be concatenated
+                evalNames = os.path.join(evalDir, '%s_s%02d.dat'%(evalName, s))
+                EV        = pickle.load(open(evalNames, "rb"))
+                ef        = pd.DataFrame(EV)
+                tmpF.append(ef)
+    df = pd.concat(tmpF, ignore_index=True)
+    return df
     
