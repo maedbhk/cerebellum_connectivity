@@ -237,7 +237,7 @@ def evaluate_pipeline(sn, model, glm = 7, subset = [], splitby = [], rois = {'co
 
             # Evaluate!
             [Y_roi, Ytest, Rr] = evaluate_model(MODEL, subset = [], splitby = [], 
-                                                rois = {'cortex':'tesselsWB162', 'cerebellum':'grey_nan'},
+                                                rois = rois,
                                                 inclInst = inclInst, meanSubt = meanSubt, 
                                                 experNum = experNum, glm = glm, avg = avg, trainMode = trainMode)
             # store all the evaluations
