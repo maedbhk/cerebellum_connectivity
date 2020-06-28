@@ -183,9 +183,9 @@ def evaluate_model(Md, subset = [], splitby = [], rois = {'cortex':'tesselsWB162
                 ginni      = 1 - 2*sum((Wss.transpose()*w).transpose())
                 RR['ginni'].append(np.nanmean(ginni))                             # Ginni index: mean over voxels
 # # #                 R.numReg = M.numReg(m); %% ?????????????????????
-                    
+                Ytest = Y_roi[testBindx,:]
     
-    return (predY, Y_roi[testBindx,:], RR)
+    return (Ytest, predY, RR)
 
 def evaluate_pipeline(sn, model, glm = 7, subset = [], splitby = [], rois = {'cortex':'tesselsWB162', 'cerebellum':'grey_nan'},
              inclInst = 1, meanSubt = 1, experNum = [1, 2], avg = 1, trainMode = 'crossed', trainExper = 1):
@@ -208,6 +208,7 @@ def evaluate_pipeline(sn, model, glm = 7, subset = [], splitby = [], rois = {'co
     
     OUTPUTS
     - ER       : a dictionary containing evaluation parameters for all the subjects with subject ids as keys
+    - Y        : a dictionary containing Ytest and Ypred which can be used later for RDMs?
     
     """
     
@@ -220,32 +221,43 @@ def evaluate_pipeline(sn, model, glm = 7, subset = [], splitby = [], rois = {'co
         # get the testExper
         testExper = [item != trainExper for item in experNum] # get the test Experiment
         testDir   = 'sc%d'% np.array(experNum)[testExper]
-        print(testDir)
-        evalDir   = os.path.join(baseDir, testDir, connDir, 'eval_%s'% modelName)
+        evalDir   = os.path.join(baseDir, testDir, connDir, 'glm%d'%glm, 'eval_%s'% modelName)
+        YtestDir  = os.path.join(baseDir, testDir, connDir, 'glm%d'%glm, 'Y_%s'% modelName)
+        
         # create the directory if it doesn't already exist
         if not os.path.exists(evalDir):
             os.makedirs(evalDir)
+        if not os.path.exists(YtestDir):
+            os.makedirs(YtestDir)
+            
 
         # initialize a dictionary with all the eval parameters for subjects
         ER = {'s%02d'%s: [] for s in sn}
+        Y  = {'s%02d'%s: [] for s in sn}
 
         for s in sn:
+            
+            Y['s%02d'%s] = {'Ytest':[], 'Ypred':[]} # saving Ytest and Ypred in a dictionary  
             print('........ Evaluation for %s subject s%02d' % (ms, s))
             # load the model file
             models  = os.path.join(modelDir, '%s_s%02d.dat'%(modelName, s))
             MODEL   = pickle.load(open(models, "rb"))
 
             # Evaluate!
-            [Y_roi, Ytest, Rr] = evaluate_model(MODEL, subset = [], splitby = [], 
+            [Ytest, Ypred, Rr] = evaluate_model(MODEL, subset = [], splitby = [], 
                                                 rois = rois,
                                                 inclInst = inclInst, meanSubt = meanSubt, 
                                                 experNum = experNum, glm = glm, avg = avg, trainMode = trainMode)
             # store all the evaluations
-            ER['s%02d'%s] = Rr
+            ER['s%02d'%s]         = Rr
+            Y['s%02d'%s]['Ytest'] = Ytest
+            Y['s%02d'%s]['Ypred'] = Ypred
 
             # save the evaluation 
-            outname = os.path.join(evalDir, 'eval_%s_s%02d.dat'%(modelName, s))
-            pickle.dump(Rr, open(outname, "wb")) # "wb": Writing Binary file
+            outname_ER = os.path.join(evalDir, 'eval_%s_s%02d.dat'%(modelName, s))
+            outname_Y  = os.path.join(YtestDir, 'Y_%s_s%02d.dat'%(modelName, s))
+            pickle.dump(Rr, open(outname_ER, "wb")) # "wb": Writing Binary file
+            pickle.dump(Y, open(outname_Y, "wb")) # "wb": Writing Binary file
         
-    return ER
+    return ER, Y
     
