@@ -54,7 +54,7 @@ def evaluate_model(Md, subset = [], splitby = [], rois = {'cortex':'tesselsWB162
     - experNum  : list with study id: 1 for sc1 and 2 for sc2. Do I need to include it as a variable?
     - glm       : glm number
     - avg       : average across runs within a session or not?!
-    - trainMode : doubled crossed cross validation 'crossed', or not ('uncrossed')
+    - trainMode : doubled crossed cross validation crossed ('crossed') or uncrossed ('uncrossed')
     
     OUTPUTS:
     - Ypred : the predicted values for Y (cerebellar activity profiles)
@@ -95,9 +95,10 @@ def evaluate_model(Md, subset = [], splitby = [], rois = {'cortex':'tesselsWB162
     
     # define a dictionary with the keys and empty values:
     RR = {'sn':[], 'params':[], 'model':[], 'trainMode':[], 'xname':[],
-         'Rcv':[], 'Rnc':[], 'Ry':[], 'Rp':[],
-         'splits':[], 
-         'spIdx':[], 'ginni':[]}
+          'Rcv':[], 'Rnc':[], 'Ry':[], 'Rp':[],
+          'Rcvvox':[], 'Rncvox':[], 'Ryvox':[], 'Rpvox':[],
+          'splits':[], 
+          'spIdx':[], 'ginni':[]}
     
     for im in np.arange(0, numModels):
         print('........ Evaluating %s with param %s for s%02d '% 
@@ -151,12 +152,18 @@ def evaluate_model(Md, subset = [], splitby = [], rois = {'cortex':'tesselsWB162
                 Bindxd     = Y_roi[testBindx,:];
                 Y_roi_good = Bindxd[:, goodindx]
                 
-                SSP   = sum(sum(predY[:,goodindx]**2))                   # Sum of square of predictions
-                SSY   = sum(sum(Y_roi[testBindx,:]**2))                  # Sum of squares of data
-                SSCp  = sum(sum(predY[:,goodindx]*predYnc[:,goodindx]))  # Covariance of Predictions
-                SSCy  = sum(sum(Y_roi_good*Y_roi_good))                  # Covariance of Y's
-                SSCn  = sum(sum(predYnc[:,goodindx]*Y_roi_good))         # Covariance of non-cross prediction and data
-                SSCc  = sum(sum(predY[:,goodindx]*Y_roi_good))           # Covariance of cross prediction and data
+                SSP     = sum(sum(predY[:,goodindx]**2))                   # Sum of square of predictions
+                SSPvox  = sum(predY**2)
+                SSY     = sum(sum(Y_roi[testBindx,:]**2))                  # Sum of squares of data
+                SSYvox  = sum(Y_roi[testBindx,:]**2)
+                SSCp    = sum(sum(predY[:,goodindx]*predYnc[:,goodindx]))  # Covariance of Predictions
+                SSCpvox = sum(predY*predYnc)
+                SSCy    = sum(sum(Y_roi_good*Y_roi_good))                  # Covariance of Y's
+                SSCyvox = sum(Y_roi[testBindx,:]*Y_roi[testBindx,:])
+                SSCn    = sum(sum(predYnc[:,goodindx]*Y_roi_good))         # Covariance of non-cross prediction and data
+                SSCnvox = sum(predYnc*Y_roi[testBindx,:])
+                SSCc    = sum(sum(predY[:,goodindx]*Y_roi_good))           # Covariance of cross prediction and data
+                SSCcvox = sum(predY*Y_roi[testBindx,:])
                 
                 RR['sn'].append(Md['sn'][im])
                 RR['params'].append(Md['params'][im])
@@ -166,7 +173,9 @@ def evaluate_model(Md, subset = [], splitby = [], rois = {'cortex':'tesselsWB162
                 
                 RR['Rcv'].append(SSCc / np.sqrt(SSY*SSP)) # Double-Crossvalidated predictive correlation
                 print(f"Rcv is {RR['Rcv']}")
+                RR['Rcvvox'].append(SSCcvox/np.sqrt(SSYvox*SSPvox))
                 RR['Rnc'].append(SSCn / np.sqrt(SSY*SSP)) # Not double-crossvalidated predictive correlation
+                RR['Rncvox'].append(SSCnvox/np.sqrt(SSYvox*SSPvox))
                 print(f"Rnc is {RR['Rnc']}")
                 
                 # If we knew the true pattern, the best correlation we
@@ -174,8 +183,10 @@ def evaluate_model(Md, subset = [], splitby = [], rois = {'cortex':'tesselsWB162
                 # We also want to take into account the relaibility 
                 RR['Ry'].append(SSCy / SSY)               # Reliability of data
                 print(f"Ry is {RR['Ry']}")
+                RR['Ryvox'].append(SSCyvox/SSYvox)
                 RR['Rp'].append(SSCp / SSP)               # Reliability of prediction
                 print(f"Rp is {RR['Rp']}")
+                RR['Rpvox'].append(SSCpvox/SSPvox)
                 RR['splits'].append(splits[spl])
                                           
                 # Calucate Sparseness measures??????????
@@ -189,7 +200,10 @@ def evaluate_model(Md, subset = [], splitby = [], rois = {'cortex':'tesselsWB162
                 ginni      = 1 - 2*sum((Wss.transpose()*w).transpose())
                 RR['ginni'].append(np.nanmean(ginni))                             # Ginni index: mean over voxels
 # # #                 R.numReg = M.numReg(m); %% ?????????????????????
-                Ytest = Y_roi[testBindx,:]
+
+
+    Ytest = Y_roi[testBindx,:]
+                    
     
     return (Ytest, predY, RR)
 
@@ -316,6 +330,13 @@ def eval_df(sn, glm = 7, models = ['l2regress', 'plsregress'],
                 # dataframes will be concatenated
                 evalNames = os.path.join(evalDir, '%s_s%02d.dat'%(evalName, s))
                 EV        = pickle.load(open(evalNames, "rb"))
+                
+                # Discard the voxel-wise measures
+                EV.pop('Rcvvox')
+                EV.pop('Rncvox')
+                EV.pop('Ryvox')
+                EV.pop('Rpvox')
+
                 ef        = pd.DataFrame(EV)
                 tmpF.append(ef)
     df = pd.concat(tmpF, ignore_index=True)
