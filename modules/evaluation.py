@@ -10,12 +10,11 @@ Contains function for evaluating models
 # import packages
 import os
 import pickle # pip/pip3 install pickle-mixin
-#import pandas as pd
+import pandas as pd
 import numpy as np
 #import scipy as sp
-# import sklearn
-import prep_data # module used to prepare data
 from sklearn.preprocessing import StandardScaler # for scaling the X
+import prep_data # module used to prepare data
 
 # setting some defaults paths
 baseDir         = '/Users/ladan/Documents/Project-Cerebellum/Cerebellum_Data'
@@ -296,6 +295,7 @@ def eval_df(sn, glm = 7, models = ['l2regress', 'plsregress'],
     OUTPUTS
     df        : dataframe with all the info for the models and cortical ROIs
     
+    
     """
     # create a dataframe with all the data 
     tmpF = []
@@ -313,5 +313,10 @@ def eval_df(sn, glm = 7, models = ['l2regress', 'plsregress'],
                 ef        = pd.DataFrame(EV)
                 tmpF.append(ef)
     df = pd.concat(tmpF, ignore_index=True)
+    
+    # this line here handles the issue with the legend when using seaborn.lineplot.
+    # more on the issue here: https://github.com/mwaskom/seaborn/issues/1653
+#     df["params"] = ["$%s$" % x for x in df["params"]]
+
     return df
     
