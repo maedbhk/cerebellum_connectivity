@@ -58,18 +58,8 @@ class PrepData:
                 # return Y 
                 Y = self._return_Y()
 
-                # # get Y data for `roi`
-                # print('.. Y_info')
-                # fpath = os.path.join(self.constants.ENCODE_DIR, f's{self.subj:02}', f'Y_info_glm{self.glm}_{self.roi}.mat')
-                # Y = utils.read_mat_as_hdf5(fpath)['Y']['data'][:]
-
                 # return SPM info
                 info = self._return_SPM_info()
-
-                # get SPM_info
-                # print('.. SPM_info')
-                # fpath = os.path.join(constants.GLM_DIR, f's{self.subj:02}', 'SPM_info.mat')
-                # info = utils.read_mat_as_hdf5(fpath)
 
                 # convert info dict to dataframe
                 info_dataframe = utils.convert_to_dataframe(info)
@@ -84,9 +74,6 @@ class PrepData:
 
                     betas = self._get_betas(X, Y)
 
-                    # # is this correct?
-                    # # betas = np.matmul(Y, X).T
-                    # betas = np.matmul(np.linalg.pinv(X), Y.T)
                     B_sess[f'sess{self.sess}']['betas'] = betas 
 
                 B_subjs[f's{self.subj:02}'] = B_sess
