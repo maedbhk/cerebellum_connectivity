@@ -15,7 +15,7 @@ Used for preparing data for connectivity modelling and evaluation
 @authors: Maedbh King and Ladan Shahshahani
 """
 
-class PrepData: 
+class PrepBetas: 
 
     def __init__(self):
         self.experiments = ['sc1'] # ['sc1', 'sc2']
@@ -46,7 +46,7 @@ class PrepData:
 
         return info
 
-    def _get_betas(self, X, Y):
+    def _calculate_betas(self, X, Y):
         # is this correct?
         # betas = np.linalg.pinv(X) @ Y[0:X.shape[0],:]
         betas = np.matmul(np.linalg.pinv(X), Y.T)
@@ -111,7 +111,7 @@ class PrepData:
                     X = self._get_X()
 
                     # calculate betas
-                    betas = self._get_betas(X, Y)
+                    betas = self._calculate_betas(X, Y)
 
                     B_sess[f'sess{self.sess}']['betas'] = betas 
 
@@ -125,7 +125,7 @@ class PrepData:
             import_utils.save_dict_as_hdf5(fpath = self._get_outpath(), data_dict = B_all)
 
 # run to prep data
-prep = PrepData()
+prep = PrepBetas()
 prep.get_data()
 
 
