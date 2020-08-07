@@ -25,7 +25,7 @@ class PrepData:
         self.stim = 'cond' # 'cond' or 'task'
         self.avg = 'run' # 'run' or 'sess'
 
-    def _return_Y(self):
+    def _get_Y(self):
         # get Y data for `roi`
         print('.. Y_info')
         fpath = os.path.join(self.constants.ENCODE_DIR, f's{self.subj:02}', f'Y_info_glm{self.glm}_{self.roi}.mat')
@@ -33,7 +33,13 @@ class PrepData:
 
         return Y
 
-    def _return_SPM_info(self):
+    def _get_X(self):
+        index = self.dataframe[self.stim]*(self.dataframe['sess']==self.sess)
+        X = indicatorMatrix('identity', index.values)
+
+        return X
+    
+    def _get_SPM_info(self):
         print('.. SPM_info')
         fpath = os.path.join(self.constants.GLM_DIR, f's{self.subj:02}', 'SPM_info.mat')
         info = utils.read_mat_as_hdf5(fpath)
@@ -47,7 +53,7 @@ class PrepData:
 
         return betas
     
-    def _check_glm(self):
+    def _check_glm_type(self):
         if self.glm==7:
             self.stim = 'cond'
         elif self.glm==8:
@@ -63,7 +69,7 @@ class PrepData:
         """
 
         # check that we're using correct stim
-        self._check_glm()
+        self._check_glm_type()
 
         # loop over experiments `sc1` and `sc2`
         B_all = {} # initialise nested dict
@@ -77,22 +83,23 @@ class PrepData:
             for self.subj in self.constants.return_subjs:
 
                 # return Y 
-                Y = self._return_Y()
+                Y = self._get_Y()
 
                 # return SPM info
-                info = self._return_SPM_info()
+                info = self._get_SPM_info()
 
                 # convert info dict to dataframe
-                info_dataframe = utils.convert_to_dataframe(info)
+                self.dataframe = utils.convert_to_dataframe(info)
 
                 # loop over `sessions`
                 B_sess = {}
                 for self.sess in self.sessions:
                     B_sess[f'sess{self.sess}'] = {}
 
-                    index = info_dataframe[self.stim]*(info_dataframe['sess']==self.sess)
-                    X = indicatorMatrix('identity', index.values)
+                    # return design matrix
+                    X = self._get_X()
 
+                    # calculate betas
                     betas = self._get_betas(X, Y)
 
                     B_sess[f'sess{self.sess}']['betas'] = betas 
