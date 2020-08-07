@@ -2,10 +2,7 @@
 import os 
 import pandas as pd
 import numpy as np
-# import numpy.matlib
 import scipy as sp
-# import data_integration as di
-# import essentials as es
 
 from connectivity.constants import Defaults
 from connectivity.data import utils
@@ -14,12 +11,12 @@ from connectivity.indicatormatrix import indicatorMatrix
 class PrepData: 
 
     def __init__(self):
-        self.experiments = ['sc1']
+        self.experiments = ['sc1'] # ['sc1', 'sc2']
         self.sessions = [1, 2]
         self.glm = 7
         self.roi = 'grey_nan'
-        self.which = 'cond'
-        self.avg = 1
+        self.stim = 'cond' # 'cond' or 'task'
+        self.avg = 'run' # 'run' or 'sess'
 
     def _return_Y(self):
         # get Y data for `roi`
@@ -38,12 +35,24 @@ class PrepData:
 
     def _get_betas(self, X, Y):
         # is this correct?
-        # betas = np.matmul(Y, X).T
+        # betas = np.linalg.pinv(X) @ Y[0:X.shape[0],:]
         betas = np.matmul(np.linalg.pinv(X), Y.T)
 
         return betas
     
+    def _check_glm(self):
+        if self.glm==7:
+            self.stim = 'cond'
+        elif self.glm==8:
+            self.stim = 'task'
+    
     def get_data(self):
+        """
+        """
+
+        # check that we're using correct stim
+        self._check_glm()
+
         # loop over experiments `sc1` and `sc2`
         B_all = {} # initialise nested dict
         for exp in self.experiments:
@@ -69,7 +78,7 @@ class PrepData:
                 for self.sess in self.sessions:
                     B_sess[f'sess{self.sess}'] = {}
 
-                    index = info_dataframe['cond']*(info_dataframe['sess']==self.sess)
+                    index = info_dataframe[self.stim]*(info_dataframe['sess']==self.sess)
                     X = indicatorMatrix('identity', index.values)
 
                     betas = self._get_betas(X, Y)
@@ -77,6 +86,8 @@ class PrepData:
                     B_sess[f'sess{self.sess}']['betas'] = betas 
 
                 B_subjs[f's{self.subj:02}'] = B_sess
+
+                # add task info to nested dict
             
             B_all[exp] = B_subjs
                 
