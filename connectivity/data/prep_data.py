@@ -52,9 +52,14 @@ class PrepData:
             self.stim = 'cond'
         elif self.glm==8:
             self.stim = 'task'
+        else:
+            print('choose a glm')
     
     def get_data(self):
-        """
+        """ calculates average betas across runs/sessions
+            for exp, subj, sess for voxel/roi data
+            Returns: 
+                saves data dict with averaged betas as HDF5 file
         """
 
         # check that we're using correct stim
