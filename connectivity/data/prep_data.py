@@ -5,7 +5,7 @@ import numpy as np
 import scipy as sp
 
 from connectivity.constants import Defaults
-from connectivity.data import utils
+from connectivity import import_utils
 from connectivity.indicatormatrix import indicatorMatrix
 
 """
@@ -29,7 +29,7 @@ class PrepData:
         # get Y data for `roi`
         print('.. Y_info')
         fpath = os.path.join(self.constants.ENCODE_DIR, f's{self.subj:02}', f'Y_info_glm{self.glm}_{self.roi}.mat')
-        Y = utils.read_mat_as_hdf5(fpath)['Y']['data'][:]
+        Y = import_utils.read_mat_as_hdf5(fpath)['Y']['data'][:]
 
         return Y
 
@@ -42,7 +42,7 @@ class PrepData:
     def _get_SPM_info(self):
         print('.. SPM_info')
         fpath = os.path.join(self.constants.GLM_DIR, f's{self.subj:02}', 'SPM_info.mat')
-        info = utils.read_mat_as_hdf5(fpath)
+        info = import_utils.read_mat_as_hdf5(fpath)
 
         return info
 
@@ -89,7 +89,7 @@ class PrepData:
                 info = self._get_SPM_info()
 
                 # convert info dict to dataframe
-                self.dataframe = utils.convert_to_dataframe(info)
+                self.dataframe = import_utils.convert_to_dataframe(info)
 
                 # loop over `sessions`
                 B_sess = {}
