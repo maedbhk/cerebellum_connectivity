@@ -8,6 +8,13 @@ from connectivity.constants import Defaults
 from connectivity.data import utils
 from connectivity.indicatormatrix import indicatorMatrix
 
+"""
+Created on Fri Jun 19 11:48:47 2020
+Used for preparing data for connectivity modelling and evaluation
+
+@authors: Maedbh King and Ladan Shahshahani
+"""
+
 class PrepData: 
 
     def __init__(self):

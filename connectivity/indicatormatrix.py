@@ -1,14 +1,11 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+import numpy as np
+
 """
 Created on Thu Jun 18 10:44:54 2020
 contains functions that are needed for the other modules. Like indicatorMatrix
 
 @author: ladan
 """
-#import pandas as pd
-import numpy as np
-#import scipy as sp
 
 # define functions
 def indicatorMatrix(what, c):
