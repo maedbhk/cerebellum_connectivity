@@ -59,7 +59,7 @@ class PrepBetas:
         elif self.glm==8:
             self.stim = 'task'
         else:
-            print('choose a glm')
+            print('choose a valid glm')
     
     def _get_outpath(self):
         # save dict to disk as HDF5 file obj
