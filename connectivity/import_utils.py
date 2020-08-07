@@ -14,7 +14,7 @@ Converts mat files into hdf5 objects
 def read_mat_as_hdf5(fpath):
     """ imports mat files and returns HDF5 file object
         Args: 
-            fpath: full path to mat file
+            fpath (str): full path to mat file
         Returns: 
             mat file as HDF5 object
     """
@@ -26,21 +26,31 @@ def read_mat_as_hdf5(fpath):
 
     except OSError: 
         # load mat struct with scipy
-        data_dict = sio.loadmat(fpath, struct_as_record=False, squeeze_me=True)
+        data_dict = sio.loadmat(fpath, struct_as_record = False, squeeze_me = True)
 
         # save dict to hdf5
         fpath = fpath.replace('.mat', '.h5')
-        dd.io.save(fpath, data_dict, compression=None) 
+        dd.io.save(fpath, data_dict, compression = None) 
         return dd.io.load(fpath)
 
 def read_hdf5(fpath):
     """ reads in HDF5 file
         Args: 
-            fpath: full path to .h5 file
+            fpath (str): full path to .h5 file
         Returns
             HDF5 object
     """
     return h5py.File(fpath, 'r')
+
+def save_dict_as_hdf5(fpath, data_dict):
+    """ saves dict as HDF5
+        Args:
+            fpath (str): save path for HDF5 file (.h5)
+            dict (dict): python dict
+        Returns: 
+            saves dict to disk as HDF5 file obj
+    """
+    dd.io.save(fpath, data_dict, compression = None) 
 
 def convert_to_dataframe(file_obj):
     """ reads in datasets from HDF5 and saves out pandas dataframe

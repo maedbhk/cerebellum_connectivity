@@ -61,6 +61,17 @@ class PrepData:
         else:
             print('choose a glm')
     
+    def _get_outpath(self):
+        # save dict to disk as HDF5 file obj
+        if self.avg=='run':
+            out_name = f'mbeta_{self.roi}_all.h5'
+        elif self.avg=='sess':
+            out_name = f'beta_{self.roi}_all.h5'
+
+        out_path = os.path.join(self.constants.ENCODE_DIR, f's{self.subj:02}', out_name)
+        
+        return out_path
+
     def get_data(self):
         """ calculates average betas across runs/sessions
             for exp, subj, sess for voxel/roi data
@@ -109,8 +120,13 @@ class PrepData:
                 # add task info to nested dict
             
             B_all[exp] = B_subjs
-                
-        return B_all
+
+            # save dict as HDF5 file
+            import_utils.save_dict_as_hdf5(fpath = self._get_outpath(), data_dict = B_all)
+
+# run to prep data
+prep = PrepData()
+prep.get_data()
 
 
 
