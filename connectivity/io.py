@@ -7,7 +7,8 @@ import deepdish as dd
 import shutil
 
 """
-Converts mat files into hdf5 objects
+General purpose utils for importing mat files and 
+outputting as HDF5 file objects
 @ author: Maedbh King
 """
 
@@ -20,18 +21,19 @@ def read_mat_as_hdf5(fpath):
     """
     try: 
         # try loading with h5py (mat files saved as -v7.3)
+        f = h5py.File(fpath, 'r')
         hf5_file = fpath.replace('.mat', '.h5')
         shutil.copyfile(fpath, hf5_file)
-        return h5py.File(hf5_file, 'r')
+        return read_hdf5(hf5_file)
 
     except OSError: 
         # load mat struct with scipy
         data_dict = sio.loadmat(fpath, struct_as_record = False, squeeze_me = True)
 
         # save dict to hdf5
-        fpath = fpath.replace('.mat', '.h5')
-        dd.io.save(fpath, data_dict, compression = None) 
-        return dd.io.load(fpath)
+        hf5_file = fpath.replace('.mat', '.h5')
+        save_dict_as_hdf5(fpath = hf5_file, data_dict = data_dict)
+        return read_hdf5(hf5_file)
 
 def read_hdf5(fpath):
     """ reads in HDF5 file
@@ -52,22 +54,22 @@ def save_dict_as_hdf5(fpath, data_dict):
     """
     dd.io.save(fpath, data_dict, compression = None) 
 
-def convert_to_dataframe(file_obj):
+def convert_to_dataframe(file_obj, cols):
     """ reads in datasets from HDF5 and saves out pandas dataframe
         assumes that there are no groups (i.e. no nested datasets)
         Args: 
             fpath: full path to HDF5 file
+            cols: list of cols to include in dataframe
         Returns: 
             pandas dataframe
     """
     dict_all = {}
-    for key in file_obj.keys():
-        if key!='#refs#':
-            try: 
-                col_values = file_obj[key].value.flatten().astype(int)
-            except: 
-                col_values = _convertobj(file_obj = file_obj, key = key)
-            dict_all[key] = col_values
+    for col in cols:
+        try: 
+            col_values = file_obj[col].value.flatten().astype(int)
+        except: 
+            col_values = _convertobj(file_obj = file_obj, key = col)
+        dict_all[col] = col_values
 
     dataframe = pd.DataFrame.from_records(dict_all)
 
