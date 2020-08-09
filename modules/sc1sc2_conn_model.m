@@ -3177,4 +3177,8 @@ end % doing cross validation
 % This code is using sc1_sc2_taskConds_GLM7 in the evaluation cases. For
 % future use, sc1_sc2_taskConds_conn.txt will be used!
 %==========================================================================
+% 'ROI:MDTB:add_to_beta' uses the beta_region files already created to
+% create a new dataa structure, like Y_info files saved in encoding
+% directory. These files can be used in codes written in python! The files
+% will be saved as 'Y_info_glm#_roi.mat'
 
