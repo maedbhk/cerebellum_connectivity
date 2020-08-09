@@ -22,9 +22,11 @@ class PrepBetas:
         self.experiments = ['sc1', 'sc2'] # ['sc1', 'sc2']
         self.sessions = [1, 2]
         self.glm = 7
-        self.roi = 'grey_nan'
+        self.roi = 'cerebellum_grey' # cerebellum_grey (when 'beta_roi'), tesselsWB162, tesselsWB362, tesselsWB642
         self.stim = 'cond' # 'cond' or 'task'
         self.avg = 'run' # 'run' or 'sess'
+        self.fileType = 'beta_roi' # 'Y_info' or 'beta_roi'
+        
 
     def _get_Y(self):
         # get Y data for `roi`
@@ -32,6 +34,7 @@ class PrepBetas:
         return self.Y_info['data'][:]
 
     def _get_X(self):
+        print('_get_X')
         # get stim and sess info from Y_info
         print('.. X')
 
@@ -51,8 +54,11 @@ class PrepBetas:
 
         return info
 
-    def _read_Y_info(self):
-        fpath = os.path.join(self.constants.ENCODE_DIR, f's{self.subj:02}', f'Y_info_glm{self.glm}_{self.roi}.mat')
+    def _read_data(self):
+        if self.fileType == 'Y_info':
+            fpath = os.path.join(self.constants.ENCODE_DIR, f's{self.subj:02}', f'Y_info_glm{self.glm}_{self.roi}.mat')
+        elif self.fileType == 'beta_roi':
+            fpath = os.path.join(self.constants.BETA_REG_DIR, f'glm{self.glm}', f's{self.subj:02}', f'Y_info_glm{self.glm}_{self.roi}.mat')
         return io.read_mat_as_hdf5(fpath)['Y']
     
     def _add_task_conds(self):
@@ -76,7 +82,8 @@ class PrepBetas:
     
     def _calculate_betas(self, X, Y):
         # is this correct?
-        # betas = np.linalg.pinv(X) @ Y[0:X.shape[0],:]
+#         betas = np.linalg.pinv(X) @ Y[0:X.shape[0],:]
+        
         betas = np.matmul(np.linalg.pinv(X), Y.T)
 
         return betas
@@ -96,7 +103,10 @@ class PrepBetas:
         elif self.avg=='sess':
             out_name = f'beta_{self.roi}_all.h5'
 
-        out_path = os.path.join(self.constants.ENCODE_DIR, out_name)
+        if self.fileType == 'Y_info':
+            out_path = os.path.join(self.constants.ENCODE_DIR, out_name)
+        elif self.fileType == 'beta_roi':
+            out_path = os.path.join(self.constants.BETA_REG_DIR, out_name)
         
         return out_path
 
@@ -107,13 +117,12 @@ class PrepBetas:
                 saves data dict with averaged betas as HDF5 file
         """
 
-        # check that we're using correct stim
+        # check that we're using correct stim ('task' for glm8 and 'cond' for glm7)
         self._check_glm_type()
 
         # loop over experiments `sc1` and `sc2` and save to disk
+        B_exp = {}
         for self.exp in self.experiments:
-            B_exp = {}
-
             # get directories for `exp`
             self.constants = Defaults(study_name = self.exp, glm = self.glm)
 
@@ -124,9 +133,10 @@ class PrepBetas:
             B_exp[self.exp]['betas'] = {}
             B_subjs = {}
             for self.subj in self.constants.return_subjs:
+                print(f'doing subject s{self.subj:02}')
 
                 # get Y_info
-                self.Y_info = self._read_Y_info()
+                self.Y_info = self._read_data()
 
                 # get Y
                 Y = self._get_Y()
@@ -144,9 +154,10 @@ class PrepBetas:
                 B_subjs[f's{self.subj:02}'] = B_sess
 
             B_exp[self.exp]['betas'] = B_subjs
-
+        
             # save dict as HDF5 file for each `exp`
-            io.save_dict_as_hdf5(fpath = self._get_outpath(), data_dict = B_exp)
+        io.save_dict_as_hdf5(fpath = self._get_outpath(), data_dict = B_exp)
+        return B_exp
 
     def get_wcon(self):
         pass
