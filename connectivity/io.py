@@ -33,7 +33,7 @@ def read_mat_as_hdf5(fpath):
         # save dict to hdf5
         hf5_file = fpath.replace('.mat', '.h5')
         save_dict_as_hdf5(fpath = hf5_file, data_dict = data_dict)
-        return read_hdf5(hf5_file)
+        return dd.io.load(hf5_file)
 
 def read_hdf5(fpath):
     """ reads in HDF5 file
