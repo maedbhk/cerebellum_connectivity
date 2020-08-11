@@ -23,18 +23,22 @@ class PrepModelData:
     def __init__(self):
         self.experiments = ['sc1', 'sc2'] # ['sc1', 'sc2']
         self.sessions = [1, 2]
-        self.glm = 7
-        self.roi = 'grey_nan'
+        self.glm = 7 # 7 or 8
+        self.roi = 'grey_nan' # cerebellum_grey (when 'beta_roi'), 'grey_nan' (when Y_info) tesselsWB162, tesselsWB362, tesselsWB642
+        self.structure = 'cerebellum' # 'cerebellum' or 'cortex'
+        self.file_type = 'Y_info' # 'Y_info' or 'beta_roi'
         self.stim = 'cond' # 'cond' or 'task'
         self.avg = 'run' # 'run' or 'sess'
         self.subtract_sess_mean = True
-
+        self.subtract_exp_mean = False # not yet implemented
+        
     def _get_Y(self):
         # get Y data for `roi`
         print(f'.. Y for {self.exp} and s{self.subj:02}')
         return self.Y_info['data'][:]
 
     def _get_X(self):
+        print('_get_X')
         # get stim and sess info from Y_info
         print(f'.. X for {self.exp}, s{self.subj:02}, sess{self.sess}')
 
@@ -54,8 +58,11 @@ class PrepModelData:
 
         return info
 
-    def _read_Y_info(self):
-        fpath = os.path.join(self.constants.ENCODE_DIR, f'glm{self.glm}', f's{self.subj:02}', f'Y_info_glm{self.glm}_{self.roi}.mat')
+    def _read_Y_data(self):
+        if self.file_type == 'Y_info':
+            fpath = os.path.join(self.constants.ENCODE_GLM_DIR, f's{self.subj:02}', f'Y_info_glm{self.glm}_{self.roi}.mat')
+        elif self.file_type == 'beta_roi':
+            fpath = os.path.join(self.constants.BETA_REG_GLM_DIR, f's{self.subj:02}', f'Y_info_glm{self.glm}_{self.roi}.mat')
         return io.read_mat_as_hdf5(fpath)['Y']
     
     def _add_task_conds(self):
@@ -85,13 +92,23 @@ class PrepModelData:
 
         return betas
     
-    def _check_glm_type(self):
+    def _check_init(self):
         if self.glm==7:
             self.stim = 'cond'
         elif self.glm==8:
             self.stim = 'task'
         else:
             print('choose a valid glm')
+
+        if self.structure == "cerebellum":
+            if self.file_type == 'beta_roi':
+                self.roi = 'cerebellum_grey'
+            elif self.file_type == 'Y_info':
+                self.roi = 'grey_nan'
+            else:
+                print('choose a valid file type')
+        elif self.structure == "cortex":
+            print('Not yet implemented!')
     
     def _get_path_to_betas(self):
         # save dict to disk as HDF5 file obj
@@ -100,26 +117,30 @@ class PrepModelData:
         elif self.avg=='sess':
             fname = f'beta_{self.roi}_all.h5'
 
-        fpath = os.path.join(self.constants.ENCODE_DIR, f'glm{self.glm}', fname)
+        if self.file_type == 'Y_info':
+            fpath = os.path.join(self.constants.ENCODE_GLM_DIR, fname)
+        elif self.file_type == 'beta_roi':
+            fpath = os.path.join(self.constants.BETA_REG_GLM_DIR, fname)
         
         return fpath
 
     def _concat_exps(self):
         B_concat = {}
-        for self.exp in self.experiments:
+        for exp in self.experiments:
 
             # get directories for `exp`
-            self.constants = Defaults(study_name = self.exp, glm = self.glm)
+            self.constants = Defaults(study_name = exp, glm = self.glm)
 
             # load betas file for `exp`
             fpath = self._get_path_to_betas()
 
-            # create betas if they don't exist
+            # create betas for `experiments` if they don't exist
             if not os.path.isfile(fpath):
                 self.prep_betas()
             
             # load betas from file
-            B_concat[self.exp] = dd.io.load(fpath)[self.exp]
+            B_concat[exp] = dd.io.load(fpath)[exp]
+
         return B_concat
     
     def _concat_info(self, exps_dict):  
@@ -146,13 +167,12 @@ class PrepModelData:
                 saves data dict with averaged betas as HDF5 file
         """
 
-        # check that we're using correct stim
-        self._check_glm_type()
+        # check that we're setting correct parameters
+        self._check_init()
 
         # loop over experiments `sc1` and `sc2` and save to disk
+        B_exp = {}
         for self.exp in self.experiments:
-            B_exp = {}
-
             # get directories for `exp`
             self.constants = Defaults(study_name = self.exp, glm = self.glm)
 
@@ -163,9 +183,10 @@ class PrepModelData:
             B_exp[self.exp]['betas'] = {}
             B_subjs = {}
             for self.subj in self.constants.return_subjs:
+                print(f'doing subject s{self.subj:02}')
 
                 # get Y_info
-                self.Y_info = self._read_Y_info()
+                self.Y_info = self._read_Y_data()
 
                 # get Y
                 Y = self._get_Y()
@@ -183,7 +204,7 @@ class PrepModelData:
                 B_subjs[f's{self.subj:02}'] = B_sess
 
             B_exp[self.exp]['betas'] = B_subjs
-
+        
             # save dict as HDF5 file for each `exp`
             io.save_dict_as_hdf5(fpath = self._get_path_to_betas(), data_dict = B_exp)
 
@@ -193,6 +214,9 @@ class PrepModelData:
             Returns: 
                 B_all (dict): keys are info (e.g. StudyNum) and betas, concatenated across `sessions` and `experiments`
         """
+
+        # check that we're setting correct parameters
+        self._check_init()
 
         # return concatenated experiments
         B_dict = self._concat_exps()

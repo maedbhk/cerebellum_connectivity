@@ -14,6 +14,7 @@ regDir          = 'RegionOfInterest';
 connDir         = 'connModels'; % setting a different directory than in sc1sc2_connectivity
 suitToolDir     = '/Users/ladan/Documents/MATLAB/suit';
 encodeDir       = 'encoding';
+beta_roiDir     = 'beta_roi';
 %==========================================================================
 % setting some variables
 subj_name = {'s01','s02','s03','s04','s05','s06','s07','s08','s09','s10','s11',...
@@ -258,7 +259,7 @@ switch what
         
         % setting directories
         glmDir  = fullfile(baseDir, experiment, sprintf('GLM_firstlevel_%d', glm));
-        betaDir = fullfile(baseDir, experiment, sprintf('Beta_GLM_%d', glm));
+        betaDir = fullfile(baseDir, experiment, beta_roiDir, sprintf('glm%d', glm));
         dircheck(betaDir); % beta values for each parcelType is saved here
         
         if ismember(parcelType, corticalParcels) % the parcelType is from cortex
@@ -379,6 +380,19 @@ switch what
                 B_tmp.SN            = s;
                 B_tmp.structure_cc  = structure_cc; %% is the structure from cortex or cerebellum?
                 
+%                 % here, I will be adding task and cond info from SPM_info
+%                 % to the beta_region file. This would make things alot
+%                 % easier for future analysis
+%                 %%% SPM info file has 16 rows less than beta region. Those
+%                 %%% 16 rows correspond to betas for intercepts
+%                 B_tmp.run  = T.run;
+%                 B_tmp.sess = T.sess;
+%                 B_tmp.CN   = T.CN;
+%                 B_tmp.TN   = T.TN;
+%                 B_tmp.cond = T.cond;
+%                 B_tmp.task = T.task;
+%                 B_tmp.inst = T.inst;
+                
                 B = addstruct(B, B_tmp);
             end % R (regions)
             if strcmp(parcelType, 'tesselsWB')
@@ -392,7 +406,58 @@ switch what
             dircheck(fullfile(betaDir, subj_name{s}));
             save(fullfile(betaDir, subj_name{s}, sprintf('beta_regions_%s.mat', roi_name)), 'B', '-v7.3');
             fprintf('\n');
-        end % sn
+        end % sn       
+    case 'ROI:MDTB:add_to_beta'               % creates a new structure using beta_region files. 
+        % The structure will be uesd in connectivity project only
+        % Example: sc1sc2_conn_model('ROI:MDTB:add_to_beta', 'experiment_num', 1, 'parcelType', 'cerebellum_grey', 'glm', 7)
+        
+        sn             = returnSubjs;
+        experiment_num = 1;
+        parcelType     = 'tesselsWB162';  %% other options are 'Buckner_17', 'yeo_7WB', and 'yeo_17WB'
+        glm            = 7;
+        %%% run 'ROI:mdtb:empty_parcel' to get oparcel.
+        
+        vararginoptions(varargin, {'sn', 'experiment_num', 'glm', 'parcelType', 'oparcel', 'discardp', 'which', 'xres'});
+        
+        experiment = sprintf('sc%d', experiment_num);
+        
+        % setting directories
+        glmDir  = fullfile(baseDir, experiment, sprintf('GLM_firstlevel_%d', glm));
+        betaDir = fullfile(baseDir, experiment, beta_roiDir, sprintf('glm%d', glm));
+        dircheck(betaDir); % beta values for each parcelType is saved here
+        
+        % For each subject, load SPM_info and B file and add the fields
+        for s = sn
+            Y = [];
+            % load SPM_info
+            fprintf('%s modifying B for %s %s \n', parcelType, subj_name{s});
+            
+            % load in SPM_info to get the info for the tasks and
+            % condditions
+            T           = load(fullfile(glmDir, subj_name{s}, 'SPM_info.mat'));
+            
+            % load Beta file
+            load(fullfile(betaDir, subj_name{s}, sprintf('beta_regions_%s', parcelType)));
+            
+            % discarding the intercepts
+            if strcmp(parcelType, 'cerebellum_grey')
+                myfield = 'betasUW';
+                Y.data = B.(myfield){1}(1:end - 16, :); % discarding the intercepts
+            elseif(strcmp(parcelType, 'tesselsWB162'))||(strcmp(parcelType, 'tesselsWB362'))||strcmp(parcelType, 'tesselsWB642')
+                myfield = 'mbetasUW';
+                tmp = B.(myfield)';
+                Y.data = tmp(1:end - 16, :); % discarding the intercepts
+            end  
+                        
+            % adding the extra fields from SPM_info
+            Y = addstruct(Y, T);
+            
+                        
+            % save the betas
+            dircheck(fullfile(betaDir, subj_name{s}));
+            save(fullfile(betaDir, subj_name{s}, sprintf('Y_info_glm%d_%s.mat', glm, parcelType)), 'Y', '-v7.3');
+            fprintf('\n');
+        end % s (sn)
         
     case 'PREP:MDTB:cereb:suit_betas'         % Normalize betas to SUIT space and creates 'wdBetas_UW.mat'
         % it uses the betas univariately prewhitened in the case
@@ -422,7 +487,8 @@ switch what
             % load cerebellar mask in individual func space
             Vi   = spm_vol(fullfile(suitAnatDir, subj_name{s},'maskbrainSUITGrey.nii'));
             X    = spm_read_vols(Vi);
-            indx = find(X > 0);
+            indx = find(X > 0); % indx where my cerebellar grey matter voxels at? linear indices of grey matter voxels
+            % ^^^the number of cerebellar grey matter voxels (size(indx, 1)) should be matching size(B.betasUW{1}, 2) 
             
             filenames = cell(1, size(B.betasUW{1},1));
             % make volume (betas)
@@ -431,7 +497,7 @@ switch what
                 Yy(1,indx) = B.betasUW{1}(b,:);
                 
                 Yy   = reshape(Yy,[Vi.dim(1),Vi.dim(2),Vi.dim(3)]);
-                Yy(Yy==0)=NaN;
+                Yy(Yy==0)=NaN; % non cerebellar grey matter voxels are set to NaN
                 
                 Vi.fname = fullfile(glmDir, subj_name{s},sprintf('temp_cereb_beta_%2.4d.nii',b));
                 spm_write_vol(Vi,Yy);
@@ -526,8 +592,7 @@ switch what
                     B1   = Bb;
                     indx = idx;
                 case 'grey_nan'
-%                     load(fullfile(glmDirSuit, subj_name{s},'wdBetas_UW.mat'));
-                    load(fullfile(baseDir,'wdBetas_UW.mat'));
+                    load(fullfile(glmDirSuit, subj_name{s},'wdBetas_UW.mat'));
                     for b = 1:size(D,1)
                         dat     = squeeze(D(b, :, :, :));
                         Vi.dat  = reshape(dat,[ V.dim(1), V.dim(2), V.dim(3)]);
@@ -1121,7 +1186,7 @@ switch what
         yname     = 'grey_nan';
         xname     = 'tesselsWB162';
         inclInstr = 1; 
-        meanSubt  = 0;               %% Mean pattern subtraction before prediction?
+        meanSubt  = 1;               %% Mean pattern subtraction before prediction?
         
         vararginoptions(varargin(2:end),{'subset','splitby','meanSubt','xname','yname'});
         
@@ -2177,8 +2242,9 @@ switch what
         glm            = 7;
         copywhich      = 'GLM';
         serverDir      = '/Volumes/MotorControl/data/super_cerebellum_new';
+        roi_name       = 'cerebellum_grey'; % options: cerebellum_grey, 'tesselsWB162';
 
-        vararginoptions(varargin, {'sn', 'glm', 'experiment_num', 'con_vs', 'nTrans', 'copywhich'});
+        vararginoptions(varargin, {'sn', 'glm', 'experiment_num', 'con_vs', 'nTrans', 'copywhich', 'roi_name'});
           
         switch copywhich
             case 'region_cortex'
@@ -2292,6 +2358,27 @@ switch what
                         fprintf('mask for %s coppied from the server\n', subj_name{s});
                     else
                         fprintf('copying mask for %s from the server failed\n', subj_name{s});
+                        fprintf('%s\n', message{s});
+                    end
+                end % sn
+            case 'beta_roi'
+                experiment = sprintf('sc%d', experiment_num);
+                destDir   = fullfile(serverDir, experiment, 'beta_roi', sprintf('glm%d', glm));
+                sourceDir = fullfile(baseDir, experiment, 'beta_roi', sprintf('glm%d', glm));
+                for s = sn
+                    sourceFolder = fullfile(sourceDir, subj_name{s});
+                    destFolder   = fullfile(destDir, subj_name{s});
+                    dircheck(destFolder);
+                    
+                    
+                    file2copy = fullfile(sourceFolder, sprintf('Y_info_glm%d_%s.mat', glm, roi_name));
+                    
+                    [success(s), message{s}, ~] = copyfile(file2copy, destFolder, 'f');
+                    
+                    if success(s) == 1
+                        fprintf('cerebellum grey Y info for %s coppied to the server\n', subj_name{s});
+                    else
+                        fprintf('copying cerebellum grey Y info for %s to the server failed\n', subj_name{s});
                         fprintf('%s\n', message{s});
                     end
                 end % sn
@@ -2512,6 +2599,42 @@ switch what
                 save(G, outfile);
             end % h (hemispheres)
         end % sn
+    case 'CONN:py:Cerebellar_pls'             % This case is used to transfer nifti images created in python to suit space
+        % this case is temporary and I am writing it right now cause I
+        % basically have not found any other way to efficiently translate
+        % suit_map2surf code to python. So I create nifti images for the
+        % loadings and in here, I will transfer them into flatmap
+        % Example: sc1sc2_conn_model('CONN:py:Cerebellar_pls', 'xres', 162, 'npls', 7)
+        xres = 162;
+        npls = 7;
+        
+        vararginoptions(varargin, {'xres', 'npls'});
+        
+        mapDir   = '/Users/ladan/Documents/MATLAB/Projects/Connectivity/Connectivity_MDTB/python_code';
+        giftiDir = fullfile(mapDir, 'preliminaryIMs');
+        dircheck(giftiDir);
+        
+        for ic = 0:(npls -1)
+            % load in the niftin image
+            imageName = fullfile(giftiDir, sprintf('groupPLS%d_%d_%d.nii', npls, ic, xres));
+            V         = spm_vol(imageName);
+            
+            % map it to flatmap
+            Dsuit = suit_map2surf(V,'stats','nanmean');
+            
+            % make a gifti out of it
+            wG = surf_makeFuncGifti(Dsuit, 'anatomicalStruct', 'Cerebellum');
+            
+            % save the gifti
+            gName = fullfile(giftiDir, sprintf('group_PLS%d_%d_%d.func.gii', npls, ic, xres));
+            save(wG, gName);
+            
+            columnName{ic+1}  = sprintf('PLS_comp_%d', ic);
+            infilenames{ic+1} = gName;
+        end
+        % also make a group gifti
+        outGroupName = fullfile(giftiDir, sprintf('all_group_PLS%d_%d.func.gii', npls, xres));
+        surf_groupGiftis(infilenames, 'outfilenames', {outGroupName}, 'outcolnames', columnName, 'replaceNaNs', 1);
 
     otherwise
         disp('there is no such case.')
@@ -3054,4 +3177,8 @@ end % doing cross validation
 % This code is using sc1_sc2_taskConds_GLM7 in the evaluation cases. For
 % future use, sc1_sc2_taskConds_conn.txt will be used!
 %==========================================================================
+% 'ROI:MDTB:add_to_beta' uses the beta_region files already created to
+% create a new dataa structure, like Y_info files saved in encoding
+% directory. These files can be used in codes written in python! The files
+% will be saved as 'Y_info_glm#_roi.mat'
 
