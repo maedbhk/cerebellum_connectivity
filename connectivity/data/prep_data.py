@@ -31,6 +31,106 @@ class PrepModelData:
         self.avg = 'run' # 'run' or 'sess'
         self.subtract_sess_mean = True
         self.subtract_exp_mean = False # not yet implemented
+
+    def prep_betas(self):
+        """ calculates average betas across runs/sessions
+            for exp, subj, sess for voxel/roi data
+            Returns: 
+                saves data dict with averaged betas as HDF5 file
+        """
+        # check that we're setting correct parameters
+        self._check_init()
+
+        # loop over experiments `sc1` and `sc2` and save to disk
+        B_exp = {}
+        for self.exp in self.experiments:
+            # get directories for `exp`
+            self.constants = Defaults(study_name = self.exp, glm = self.glm)
+
+            # add task info to nested dict
+            B_exp[self.exp] = self._add_task_conds()
+
+            # loop over `return_subjects`
+            B_exp[self.exp]['betas'] = {}
+            B_subjs = {}
+            for self.subj in self.constants.return_subjs:
+                print(f'doing subject s{self.subj:02}')
+
+                # get Y_info
+                self.Y_info = self._read_Y_data()
+
+                # get Y
+                Y = self._get_Y()
+
+                # loop over `sessions`
+                B_sess = {}
+                for self.sess in self.sessions:
+
+                    # return design matrix
+                    X = self._get_X()
+
+                    # calculate betas
+                    B_sess[f'sess{self.sess}'] = self._calculate_betas(X, Y)
+            
+                B_subjs[f's{self.subj:02}'] = B_sess
+
+            B_exp[self.exp]['betas'] = B_subjs
+        
+            # save dict as HDF5 file for each `exp`
+            io.save_dict_as_hdf5(fpath = self._get_path_to_betas(), data_dict = B_exp)
+
+    def get_model_data(self):
+        """ prepares data for modelling based on specifications set in __init__
+            calls `get_betas` if file has not been saved to disk
+            Returns: 
+                B_all (dict): keys are info (e.g. StudyNum) and betas, concatenated across `sessions` and `experiments`
+        """
+
+        # check that we're setting correct parameters
+        self._check_init()
+
+        # return concatenated experiments
+        B_dict = self._concat_exps()
+
+        # return concatenated info based on `B_concat`
+        info_dict = self._concat_info(exps_dict = copy.deepcopy(B_dict)) # need to do a deepcopy here
+
+        B_subjs = {}
+        B_all = {}
+        for self.subj in self.constants.return_subjs:
+
+            betas = []
+            sessions = []
+            for self.exp in self.experiments:
+
+                # get `exp`
+                B_exp = B_dict[self.exp]
+
+                # get `subj` `betas` dict 
+                B_subj = B_exp['betas'][f's{self.subj:02}']
+                
+                for self.sess in self.sessions:
+
+                    if self.subtract_sess_mean:
+                        # subtract `sess` mean
+                        sess_mean = np.nanmean( B_subj[f'sess{self.sess}'], axis = 0)
+                        sess_betas =  B_subj[f'sess{self.sess}'] - sess_mean
+                    else:
+                        sess_betas =  B_subj[f'sess{self.sess}']
+
+                    # append betas across `subj` and `sess`
+                    betas.append(sess_betas)
+                    sessions.append(np.ones(len(B_exp['StudyNum'])) * self.sess)
+
+            # vertically stack `betas` across `sess` and `exp`
+            B_subjs[f's{self.subj:02}'] = np.vstack(betas)
+
+        # add `info`, `betas`, and `sess` to `B_all`
+        B_all = info_dict
+        B_all['betas'] = B_subjs
+        B_all['sess'] = np.concatenate(sessions)
+
+        return B_all
         
     def _get_Y(self):
         # get Y data for `roi`
@@ -160,108 +260,8 @@ class PrepModelData:
 
         return pd.DataFrame.to_dict(dataframes_all, orient = 'list')       
 
-    def prep_betas(self):
-        """ calculates average betas across runs/sessions
-            for exp, subj, sess for voxel/roi data
-            Returns: 
-                saves data dict with averaged betas as HDF5 file
-        """
-
-        # check that we're setting correct parameters
-        self._check_init()
-
-        # loop over experiments `sc1` and `sc2` and save to disk
-        B_exp = {}
-        for self.exp in self.experiments:
-            # get directories for `exp`
-            self.constants = Defaults(study_name = self.exp, glm = self.glm)
-
-            # add task info to nested dict
-            B_exp[self.exp] = self._add_task_conds()
-
-            # loop over `return_subjects`
-            B_exp[self.exp]['betas'] = {}
-            B_subjs = {}
-            for self.subj in self.constants.return_subjs:
-                print(f'doing subject s{self.subj:02}')
-
-                # get Y_info
-                self.Y_info = self._read_Y_data()
-
-                # get Y
-                Y = self._get_Y()
-
-                # loop over `sessions`
-                B_sess = {}
-                for self.sess in self.sessions:
-
-                    # return design matrix
-                    X = self._get_X()
-
-                    # calculate betas
-                    B_sess[f'sess{self.sess}'] = self._calculate_betas(X, Y)
-            
-                B_subjs[f's{self.subj:02}'] = B_sess
-
-            B_exp[self.exp]['betas'] = B_subjs
-        
-            # save dict as HDF5 file for each `exp`
-            io.save_dict_as_hdf5(fpath = self._get_path_to_betas(), data_dict = B_exp)
-
-    def get_model_data(self):
-        """ prepares data for modelling based on specifications set in __init__
-            calls `get_betas` if file has not been saved to disk
-            Returns: 
-                B_all (dict): keys are info (e.g. StudyNum) and betas, concatenated across `sessions` and `experiments`
-        """
-
-        # check that we're setting correct parameters
-        self._check_init()
-
-        # return concatenated experiments
-        B_dict = self._concat_exps()
-
-        # return concatenated info based on `B_concat`
-        info_dict = self._concat_info(exps_dict = copy.deepcopy(B_dict)) # need to do a deepcopy here
-
-        B_subjs = {}
-        B_all = {}
-        for self.subj in self.constants.return_subjs:
-
-            betas = []
-            sessions = []
-            for self.exp in self.experiments:
-
-                # get `exp`
-                B_exp = B_dict[self.exp]
-
-                # get `subj` `betas` dict 
-                B_subj = B_exp['betas'][f's{self.subj:02}']
-                
-                for self.sess in self.sessions:
-
-                    if self.subtract_sess_mean:
-                        # subtract `sess` mean
-                        sess_mean = np.nanmean( B_subj[f'sess{self.sess}'], axis = 0)
-                        sess_betas =  B_subj[f'sess{self.sess}'] - sess_mean
-                    else:
-                        sess_betas =  B_subj[f'sess{self.sess}']
-
-                    # append betas across `subj` and `sess`
-                    betas.append(sess_betas)
-                    sessions.append(np.ones(len(B_exp['StudyNum'])) * self.sess)
-
-            # vertically stack `betas` across `sess` and `exp`
-            B_subjs[f's{self.subj:02}'] = np.vstack(betas)
-
-        # add `info`, `betas`, and `sess` to `B_all`
-        B_all = info_dict
-        B_all['betas'] = B_subjs
-        B_all['sess'] = np.concatenate(sessions)
-
-        return B_all
-
 # run the following to return model data
 # all inputs are set in __init__
+# will move inputs to config file in future
 prep = PrepModelData()
 model_data = prep.get_model_data()
