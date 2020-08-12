@@ -46,13 +46,20 @@ class TrainModel(DataManager):
         self.subtract_sess_mean = True
         self.subtract_exp_mean = False # not yet implemented
 
-    def model_fit(self):
+    def _get_model_data(self):
         # get model data: `X` and `Y` based on `model_inputs`
         model_data = {}
         for input in self.model_inputs:
             
             self.data_type = self.model_inputs[input]
             model_data[input] = self.get_model_data()
+
+        return model_data
+    
+    def model_fit(self):
+        
+        # get model data: `X` and `Y` based on `model_inputs`
+        model_data = self._get_model_data()
 
         # get defaults
         self.constants = Defaults(study_name = self.experiment[0], glm = self.glm)
