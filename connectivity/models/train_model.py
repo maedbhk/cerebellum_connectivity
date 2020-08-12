@@ -1,7 +1,6 @@
 """
 Created on Tue Jun 23 20:08:47 2020
-Contains functions needed for fitting different models. The model 
-structure will also be saved in model_fit
+Contains functions needed for model fitting
 
 @authors: Ladan Shahshahani and Maedbh King
 """
