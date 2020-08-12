@@ -13,7 +13,7 @@ from connectivity.indicatormatrix import indicatorMatrix
 
 """
 Created on Fri Jun 19 11:48:47 2020
-Used for preparing data for connectivity modelling and evaluation
+Prepares data for connectivity modelling and evaluation
 
 @authors: Ladan Shahshahani and Maedbh King
 """

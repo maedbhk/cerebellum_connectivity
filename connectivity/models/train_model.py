@@ -1,10 +1,4 @@
-"""
-Created on Tue Jun 23 20:08:47 2020
-Contains functions needed for model fitting
-
-@authors: Ladan Shahshahani and Maedbh King
-"""
-# import packages
+# import libraries and packages
 import os
 #import pandas as pd
 import numpy as np
@@ -24,6 +18,13 @@ from sklearn.preprocessing import StandardScaler
 from connectivity import io
 from connectivity.data.prep_data import DataManager
 from connectivity.constants import Defaults
+
+"""
+Created on Tue Jun 23 20:08:47 2020
+Model fitting routine for connectivity models
+
+@authors: Ladan Shahshahani and Maedbh King
+"""
 
 class TrainModel(DataManager):
     """ Model fitting Class 
