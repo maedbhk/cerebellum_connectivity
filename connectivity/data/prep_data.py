@@ -18,31 +18,29 @@ Used for preparing data for connectivity modelling and evaluation
 @authors: Ladan Shahshahani and Maedbh King
 """
 
-class PrepModelData: 
+class DataManager: 
 
     def __init__(self):
-        self.experiments = ['sc1', 'sc2'] # ['sc1', 'sc2']
-        self.sessions = [1, 2]
+        self.experiment = ['sc1', 'sc2'] # ['sc1', 'sc2']
+        self.sessions = [1, 2] # [1, 2]
         self.glm = 7 # 7 or 8
-        self.roi = 'grey_nan' # cerebellum_grey (when 'beta_roi'), 'grey_nan' (when Y_info) tesselsWB162, tesselsWB362, tesselsWB642
-        self.structure = 'cerebellum' # 'cerebellum' or 'cortex'
-        self.file_type = 'Y_info' # 'Y_info' or 'beta_roi'
+        self.data_type = {'roi': 'grey_nan', 'file_dir': 'encoding'} # cerebellum_grey (when 'beta_roi'), 'grey_nan' (when 'encoding') tesselsWB162, tesselsWB362, tesselsWB642
         self.stim = 'cond' # 'cond' or 'task'
         self.avg = 'run' # 'run' or 'sess'
-        self.subtract_sess_mean = True
+        self.subtract_sess_mean = True # True of False
         self.subtract_exp_mean = False # not yet implemented
 
     def get_model_data(self):
         """ prepares data for modelling based on specifications set in __init__
             calls `get_betas` if file has not been saved to disk
             Returns: 
-                B_all (dict): keys are info (e.g. StudyNum) and betas, concatenated across `sessions` and `experiments`
+                B_all (dict): keys are info (e.g. StudyNum) and betas, concatenated across `sessions` and `experiment`
         """
 
         # check that we're setting correct parameters
         self._check_init()
 
-        # return concatenated experiments
+        # return `exp` data
         B_dict = self._concat_exps()
 
         # return concatenated info based on `B_concat`
@@ -54,7 +52,7 @@ class PrepModelData:
 
             betas = []
             sessions = []
-            for self.exp in self.experiments:
+            for self.exp in self.experiment:
 
                 # get `exp`
                 B_exp = B_dict[self.exp]
@@ -94,9 +92,9 @@ class PrepModelData:
         # check that we're setting correct parameters
         self._check_init()
 
-        # loop over experiments `sc1` and `sc2` and save to disk
+        # loop over experiment `sc1` and `sc2` and save to disk
         B_exp = {}
-        for self.exp in self.experiments:
+        for self.exp in self.experiment:
             # get directories for `exp`
             self.constants = Defaults(study_name = self.exp, glm = self.glm)
 
@@ -107,7 +105,7 @@ class PrepModelData:
             B_exp[self.exp]['betas'] = {}
             B_subjs = {}
             for self.subj in self.constants.return_subjs:
-                print(f'doing subject s{self.subj:02}')
+                print(f'prepping betas for s{self.subj:02}')
 
                 # get Y_info
                 self.Y_info = self._read_Y_data()
@@ -159,10 +157,12 @@ class PrepModelData:
         return info
 
     def _read_Y_data(self):
-        if self.file_type == 'Y_info':
-            fpath = os.path.join(self.constants.ENCODE_GLM_DIR, f's{self.subj:02}', f'Y_info_glm{self.glm}_{self.roi}.mat')
-        elif self.file_type == 'beta_roi':
-            fpath = os.path.join(self.constants.BETA_REG_GLM_DIR, f's{self.subj:02}', f'Y_info_glm{self.glm}_{self.roi}.mat')
+        file_dir = self.data_type['file_dir']  
+        roi = self.data_type['roi']
+        if file_dir == 'encoding':
+            fpath = os.path.join(self.constants.ENCODE_GLM_DIR, f's{self.subj:02}', f'Y_info_glm{self.glm}_{roi}.mat')
+        elif file_dir == 'beta_roi':
+            fpath = os.path.join(self.constants.BETA_REG_GLM_DIR, f's{self.subj:02}', f'Y_info_glm{self.glm}_{roi}.mat')
         return io.read_mat_as_hdf5(fpath)['Y']
     
     def _add_task_conds(self):
@@ -183,7 +183,7 @@ class PrepModelData:
         # remove trailing spaces from str cols
         dataframe = strip(dataframe)
 
-        return dataframe.query(f'StudyNum=={exp_num}').groupby(f'{self.stim}Num').first().to_dict(orient='list')
+        return dataframe.query(f'StudyNum=={exp_num}').groupby(f'{self.stim}Num').first().to_dict(orient = 'list')
     
     def _calculate_betas(self, X, Y):
         # is this correct?
@@ -199,34 +199,31 @@ class PrepModelData:
             self.stim = 'task'
         else:
             print('choose a valid glm')
-
-        if self.structure == "cerebellum":
-            if self.file_type == 'beta_roi':
-                self.roi = 'cerebellum_grey'
-            elif self.file_type == 'Y_info':
-                self.roi = 'grey_nan'
-            else:
-                print('choose a valid file type')
-        elif self.structure == "cortex":
-            print('Not yet implemented!')
+        
+        roi = self.data_type['roi']
+        if roi == 'cerebellum_grey':
+            self.data_type['file_dir'] = 'beta_roi'
+        elif roi == 'grey_nan':
+            self.data_type['file_dir'] = 'encoding'
     
     def _get_path_to_betas(self):
         # save dict to disk as HDF5 file obj
+        roi = self.data_type['roi']
         if self.avg=='run':
-            fname = f'mbeta_{self.roi}_all.h5'
+            fname = f'mbeta_{roi}_all.h5'
         elif self.avg=='sess':
-            fname = f'beta_{self.roi}_all.h5'
+            fname = f'beta_{roi}_all.h5'
 
-        if self.file_type == 'Y_info':
+        if self.data_type['file_dir'] == 'encoding':
             fpath = os.path.join(self.constants.ENCODE_GLM_DIR, fname)
-        elif self.file_type == 'beta_roi':
+        elif self.data_type['file_dir'] == 'beta_roi':
             fpath = os.path.join(self.constants.BETA_REG_GLM_DIR, fname)
         
         return fpath
 
     def _concat_exps(self):
         B_concat = {}
-        for exp in self.experiments:
+        for exp in self.experiment:
 
             # get directories for `exp`
             self.constants = Defaults(study_name = exp, glm = self.glm)
@@ -234,7 +231,7 @@ class PrepModelData:
             # load betas file for `exp`
             fpath = self._get_path_to_betas()
 
-            # create betas for `experiments` if they don't exist
+            # create betas for `experiment` if they don't exist
             if not os.path.isfile(fpath):
                 self.prep_betas()
             
@@ -262,6 +259,5 @@ class PrepModelData:
 
 # run the following to return model data
 # all inputs are set in __init__
-# will move inputs to config file in future
-prep = PrepModelData()
+prep = DataManager()
 model_data = prep.get_model_data()
