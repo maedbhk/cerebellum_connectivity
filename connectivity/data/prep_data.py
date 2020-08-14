@@ -32,7 +32,7 @@ class DataManager:
 
     def get_model_data(self):
         """ prepares data for modelling based on specifications set in __init__
-            calls `get_betas` if file has not been saved to disk
+            calls `prep_betas` if file has not been saved to disk
             Returns: 
                 B_all (dict): keys are info (e.g. StudyNum) and betas, concatenated across `sessions` and `experiment`
         """
@@ -105,7 +105,7 @@ class DataManager:
             B_exp[self.exp]['betas'] = {}
             B_subjs = {}
             for self.subj in self.constants.return_subjs:
-                print(f'prepping betas for s{self.subj:02}')
+                print(f'prepping betas for s{self.subj:02} ...')
 
                 # get Y_info
                 self.Y_info = self._read_Y_data()
@@ -132,13 +132,12 @@ class DataManager:
         
     def _get_Y(self):
         # get Y data for `roi`
-        print(f'.. Y for {self.exp} and s{self.subj:02}')
+        print(f'getting Y for {self.exp} and s{self.subj:02} ...')
         return self.Y_info['data'][:]
 
     def _get_X(self):
-        print('_get_X')
         # get stim and sess info from Y_info
-        print(f'.. X for {self.exp}, s{self.subj:02}, sess{self.sess}')
+        print(f'getting X for {self.exp}, s{self.subj:02}, sess{self.sess} ...')
 
         stim = self.Y_info[self.stim].value.flatten()  # `cond` or `task`
         sess = self.Y_info['sess'].value.flatten() 
@@ -150,7 +149,7 @@ class DataManager:
     
     def _read_SPM_info(self):
         # DEPRECIATED, we are now getting this info from Y_info
-        print('.. SPM_info')
+        print(f'getting SPM_info for {self.exp}, s{self.subj:02} ...')
         fpath = os.path.join(self.constants.GLM_DIR, f's{self.subj:02}', 'SPM_info.mat')
         info = io.read_mat_as_hdf5(fpath)
 
@@ -160,9 +159,9 @@ class DataManager:
         file_dir = self.data_type['file_dir']  
         roi = self.data_type['roi']
         if file_dir == 'encoding':
-            fpath = os.path.join(self.constants.ENCODE_GLM_DIR, f's{self.subj:02}', f'Y_info_glm{self.glm}_{roi}.mat')
+            fpath = os.path.join(self.constants.ENCODE_DIR, f's{self.subj:02}', f'Y_info_glm{self.glm}_{roi}.mat')
         elif file_dir == 'beta_roi':
-            fpath = os.path.join(self.constants.BETA_REG_GLM_DIR, f's{self.subj:02}', f'Y_info_glm{self.glm}_{roi}.mat')
+            fpath = os.path.join(self.constants.BETA_REG_DIR, f's{self.subj:02}', f'Y_info_glm{self.glm}_{roi}.mat')
         return io.read_mat_as_hdf5(fpath)['Y']
     
     def _add_task_conds(self):
@@ -215,9 +214,9 @@ class DataManager:
             fname = f'beta_{roi}_all.h5'
 
         if self.data_type['file_dir'] == 'encoding':
-            fpath = os.path.join(self.constants.ENCODE_GLM_DIR, fname)
+            fpath = os.path.join(self.constants.ENCODE_DIR, fname)
         elif self.data_type['file_dir'] == 'beta_roi':
-            fpath = os.path.join(self.constants.BETA_REG_GLM_DIR, fname)
+            fpath = os.path.join(self.constants.BETA_REG_DIR, fname)
         
         return fpath
 

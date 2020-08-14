@@ -5,10 +5,11 @@ import pandas as pd
 import h5py
 import deepdish as dd 
 import shutil
+import json
 
 """
-General purpose utils for importing mat files and 
-outputting as HDF5 file objects
+General purpose utils for loading and saving data
+
 @ author: Maedbh King
 """
 
@@ -43,6 +44,16 @@ def read_hdf5(fpath):
             HDF5 object
     """
     return h5py.File(fpath, 'r')
+
+def save_dict_as_JSON(fpath, data_dict):
+    with open(fpath, 'w') as fp:
+        json.dump(data_dict, fp,  indent=4)
+
+def read_json(fpath):
+    f = open(fpath) 
+  
+    # returns JSON object as a dict 
+    return json.load(f) 
 
 def save_dict_as_hdf5(fpath, data_dict):
     """ saves dict as HDF5
