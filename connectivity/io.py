@@ -5,11 +5,13 @@ import pandas as pd
 import h5py
 import deepdish as dd 
 import shutil
+import json
 
 """
-General purpose utils for importing mat files and 
-outputting as HDF5 file objects
-@ author: Maedbh King
+Created on Wed Aug 05 11:10:12 2020
+General purpose utils for loading and saving data
+
+@author: Maedbh King
 """
 
 def read_mat_as_hdf5(fpath):
@@ -33,7 +35,7 @@ def read_mat_as_hdf5(fpath):
         # save dict to hdf5
         hf5_file = fpath.replace('.mat', '.h5')
         save_dict_as_hdf5(fpath = hf5_file, data_dict = data_dict)
-        return read_hdf5(hf5_file)
+        return dd.io.load(hf5_file)
 
 def read_hdf5(fpath):
     """ reads in HDF5 file
@@ -43,6 +45,29 @@ def read_hdf5(fpath):
             HDF5 object
     """
     return h5py.File(fpath, 'r')
+
+def save_dict_as_JSON(fpath, data_dict):
+    """ saves dict as JSON
+        Args: 
+            fpath (str): full path to .json file
+            data_dict (dict): dict to save
+        Returns
+            saves out JSON file
+    """
+    with open(fpath, 'w') as fp:
+        json.dump(data_dict, fp,  indent=4)
+
+def read_json(fpath):
+    """ loads JSON file as dict
+        Args: 
+            fpath (str): full path to .json file
+        Returns
+            loads JSON as dict
+    """
+    f = open(fpath) 
+  
+    # returns JSON object as a dict 
+    return json.load(f) 
 
 def save_dict_as_hdf5(fpath, data_dict):
     """ saves dict as HDF5
@@ -76,6 +101,8 @@ def convert_to_dataframe(file_obj, cols):
     return dataframe
 
 def _convertobj(file_obj, key):
+    """ converts object reference for `key` in `file_obj`
+    """
     dataset = file_obj[key]
     tostring = lambda obj: ''.join(chr(i) for i in obj[:])
     return [tostring(file_obj[val]) for val in dataset.value.flatten()]
