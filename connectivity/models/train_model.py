@@ -99,10 +99,10 @@ class TrainModel(DataManager):
         """
         # get model data: `X` and `Y` based on `model_inputs`
         model_data = {}
-        for input in self.model_inputs:
+        for model_input in self.model_inputs:
             
-            self.data_type = self.model_inputs[input]
-            model_data[input] = self.get_model_data()
+            self.data_type = self.model_inputs[model_input]
+            model_data[model_input] = self.get_model_data()
 
         return model_data
     
@@ -155,6 +155,9 @@ class TrainModel(DataManager):
         out_path = self._get_outpath(file_type = '.h5')
         io.save_dict_as_hdf5(fpath = out_path, data_dict = hdf5_file)
         
+# run the following
+model = TrainModel()
+model.model_train()
 
 
 
