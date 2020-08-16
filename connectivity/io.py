@@ -26,7 +26,7 @@ def read_mat_as_hdf5(fpath):
         f = h5py.File(fpath, 'r')
         hf5_file = fpath.replace('.mat', '.h5')
         shutil.copyfile(fpath, hf5_file)
-        return read_hdf5(hf5_file)
+        return h5py.File(hf5_file, 'r')
 
     except OSError: 
         # load mat struct with scipy
@@ -44,7 +44,7 @@ def read_hdf5(fpath):
         Returns
             HDF5 object
     """
-    return h5py.File(fpath, 'r')
+    return dd.io.load(fpath)
 
 def save_dict_as_JSON(fpath, data_dict):
     """ saves dict as JSON

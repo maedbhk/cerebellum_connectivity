@@ -1,6 +1,7 @@
 # import libraries and packages
 import os
 import numpy as np
+from time import gmtime, strftime  
 
 from sklearn.linear_model import LinearRegression
 from sklearn.linear_model import Ridge
@@ -27,7 +28,7 @@ class TrainModel(DataManager):
         Model specifications are set in Class __init__
     """
 
-    def __init__(self, model_name = "linear_model"):
+    def __init__(self, model_name = "l2_regress"):
         """ Initialises inputs for TrainModel Class
             Args: 
                 model (str): model name default is "plsregress"
@@ -60,8 +61,13 @@ class TrainModel(DataManager):
         self.subtract_exp_mean = False # not yet implemented
         self.constants = Defaults(study_name = self.experiment[0], glm = self.glm)
 
-    def model_train(self):
+    def model_train(self, **kwargs):
         """ Model fitting routine on individual subject data, saved to disk
+            Kwargs: 
+                lambdas (list): list of lambda values. Used for example when model_name = 'l2_regress'
+            Returns: 
+                saves model params to JSON file format
+                model weights, predictions are saved to HDF5 file format
         """
 
         # get model data: `X` and `Y` based on `model_inputs`
@@ -86,7 +92,7 @@ class TrainModel(DataManager):
 
             # fit and predict model
             # model params are the same for each `sub`
-            model_params, data_all[f's{subj:02}'] = model.run()
+            model_params, data_all[f's{subj:02}'] = model.run(**kwargs)
 
         # update model params
         model_params.update(self._update_model_params())
@@ -129,7 +135,9 @@ class TrainModel(DataManager):
         # fname     = 'mb4_%s_%s'% (rois['cortex'], model)
         X_roi = self.model_inputs['X']['roi']
         Y_roi = self.model_inputs['Y']['roi']
-        fpath = os.path.join(self.constants.CONN_TRAIN_DIR, f'{X_roi}_{Y_roi}_{self.model_name}{file_type}')
+        timestamp = f'{strftime("%Y-%m-%d_%H:%M:%S", gmtime())}'
+        fname = f'{X_roi}_{Y_roi}_{self.model_name}_{timestamp}{file_type}'
+        fpath = os.path.join(self.constants.CONN_TRAIN_DIR, fname)
         
         return fpath
 

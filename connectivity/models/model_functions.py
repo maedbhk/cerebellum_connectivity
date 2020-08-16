@@ -41,16 +41,6 @@ class ModelUtils:
 
         return R2, R2_vox
 
-class LinearModel(ModelUtils):
-
-    def __init__(self, X, Y):
-        self.fit_intercept = False
-        self.X = X
-        self.Y = Y
-
-    def define_model(self):
-        return LinearRegression(fit_intercept = self.fit_intercept)
-    
     def fit(self, model):
         model_fit = model.fit(self.X, self.Y)
         weights = model_fit.coef_
@@ -60,15 +50,26 @@ class LinearModel(ModelUtils):
     def predict(self, model):
         return model.predict(self.X)
 
-    def score(self, model):
-        return model.score(self.X, self.Y)
-
     def model_params(self, model):
         model_params = {'fit_intercept': model.fit_intercept,
                         'n_features': model.n_features_in_,
                         'normalize': model.normalize,
                         }
         return model_params
+    
+    def score(self, model):
+        return model.score(self.X, self.Y)
+
+class LinearModel(ModelUtils):
+
+    def __init__(self, X, Y):
+        self.fit_intercept = False
+        self.normalize = False
+        self.X = X
+        self.Y = Y
+
+    def define_model(self):
+        return LinearRegression(fit_intercept = self.fit_intercept, normalize = self.no)
     
     def run(self):
         # define model
@@ -100,21 +101,71 @@ class L2Regress(ModelUtils):
 
     def __init__(self, X, Y):
         self.fit_intercept = False
+        self.normalize = False
+        self.max_iter = None
+        self.tol = 0.001
+        self.random_state = None
+        self.solver = 'auto'
         self.X = X
         self.Y = Y
     
-    def fit(self, X, Y):
-        # M   = {}
-        lam = kwargs['args']
-        model = Ridge(alpha = lam, fit_intercept = self.fit_intercept)
-        fitted_model = model.fit(self.X, self.Y)
-        # M['lambda']  = lam
-        # M['W']       = fitted_model.coef_
-        weights = fitted_model.coef_
+    def define_model(self):
+        return Ridge(alpha = self.lam,
+                    fit_intercept = self.fit_intercept,
+                    normalize = self.normalize,
+                    max_iter = self.max_iter,
+                    tol = self.tol,
+                    random_state = self.random_state,
+                    solver = self.solver)
+    
+    def run(self, **kwargs):
+        if kwargs.get('lambdas'):
+            lambdas = kwargs['lambdas']
+        else:
+            lambdas = [1] # default is 1
+        
+        # loop over lambdas and get model data
+        # initialize data lists
+        data_dict = {'weights': [], 'Y_pred': [], 'R': [], 'R_vox': [], 'R2': [], 'R2_vox': []}
+        for self.lam in lambdas: 
 
-        Y_pred = fitted_model.predict(X)
+            # define model
+            model = self.define_model()
 
-        return weights, Y_pred
+            # get model weights
+            model_fit, weights = self.fit(model = model)
+
+            # get model prediction
+            Y_pred = self.predict(model = model_fit)
+
+            # calculate R and R^2 scores
+            # R2_py = self.score(model = model_fit)
+
+            R, R_vox = self.calculate_R(Y = self.Y, Y_pred = Y_pred)
+            R2, R2_vox = self.calculate_R2(Y = self.Y, Y_pred = Y_pred)
+
+            # append to dict
+            data_dict['weights'].append(weights)
+            data_dict['Y_pred'].append(Y_pred)
+            data_dict['R'].append(R)
+            data_dict['R_vox'].append(R_vox)
+            data_dict['R2'].append(R_vox)
+            data_dict['R2_vox'].append(R_vox)
+
+        # get model params
+        model_params = self.model_params(model = model)
+
+        # update model params
+        model_params.update({'alphas': lambdas,
+                             'max_iter': self.max_iter,
+                             'tol': self.tol,
+                             'random_state': self.random_state,
+                             'solver': self.solver,
+                            })
+
+        data_dict.update({'X_train': self.X, 'Y_train': self.Y, 'lambdas': lambdas})
+        
+        return model_params, data_dict
 
 MODEL_MAP = {
     "linear_model": LinearModel,
