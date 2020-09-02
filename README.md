@@ -63,11 +63,10 @@ Project Organization
     │
     ├── docs               <- A default Sphinx project; see sphinx-doc.org for details
     │
-    ├── models             <- Trained and serialized models, model predictions, or model summaries
     │
     ├── notebooks          <- Jupyter notebooks. Naming convention is a number (for ordering),
     │                         the creator's initials, and a short `-` delimited description, e.g.
-    │                         `1.0-jqp-initial-data-exploration`.
+    │                         `1.0-mk-initial-data-exploration`.
     │
     ├── references         <- Data dictionaries, manuals, and all other explanatory materials.
     │
@@ -81,7 +80,7 @@ Project Organization
     ├── connectivity       <- Source code for use in this project.
     │   ├── __init__.py    <- Makes connectivity a Python module
     │   ├── constants.py   <- Default directories   
-    │   ├── io.py          <- Import/Output mat files
+    │   ├── io.py          <- Import/Output .mat, .h5, .json files
     │   │
     │   ├── data           <- Scripts to generate data for modelling
     │   │   └── prep_betas.py
