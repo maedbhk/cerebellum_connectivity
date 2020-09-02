@@ -58,6 +58,8 @@ Project Organization
     │       └── encoding
     │       └── suit
     │       └── beta_roi  
+    │   └── config.json    <- config file for training and evaluating models         
+    │   └── tasks.json     <- contains information about tasks across studies
     │
     ├── docs               <- A default Sphinx project; see sphinx-doc.org for details
     │
