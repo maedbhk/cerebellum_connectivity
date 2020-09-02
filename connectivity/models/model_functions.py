@@ -1,6 +1,8 @@
 import os
 import numpy as np
 
+from collections import defaultdict
+
 from sklearn.linear_model import LinearRegression
 from sklearn.linear_model import Ridge
 from sklearn.linear_model import Lasso
@@ -72,6 +74,12 @@ class ModelUtils:
 class LinearModel(ModelUtils):
 
     def __init__(self, X, Y, config):
+        """ does linear regression on 'X' and 'Y'
+            Args: 
+                X (array-like): shape (n_samples, n_features)
+                Y (array-like): (n_samples,) or (n_samples, n_targets)
+                config (dict): dictionary containing model training parameters
+        """
         self.fit_intercept = False
         self.normalize = False
         self.X = X
@@ -111,6 +119,13 @@ class LinearModel(ModelUtils):
 class L2Regress(ModelUtils):
 
     def __init__(self, X, Y, config):
+        """ does l2 regression on 'X' and 'Y'
+        parameters (i.e. lambdas) are given in `config`
+            Args: 
+                X (array-like): shape (n_samples, n_features)
+                Y (array-like): (n_samples,) or (n_samples, n_targets)
+                config (dict): dictionary containing model training parameters
+        """
         self.fit_intercept = False
         self.normalize = False
         self.max_iter = None
@@ -139,7 +154,7 @@ class L2Regress(ModelUtils):
         
         # loop over lambdas and get model data
         # initialize data lists
-        data_dict = {'weights': [], 'Y_pred': [], 'R': [], 'R_vox': [], 'R2': [], 'R2_vox': []}
+        data_dict = defaultdict(list)
         for self.lam in lambdas: 
 
             # define model
@@ -154,16 +169,15 @@ class L2Regress(ModelUtils):
             # calculate R and R^2 scores
             # R2_py = self.score(model = model_fit)
 
+            # get predictions
             R, R_vox = self.calculate_R(Y = self.Y, Y_pred = Y_pred)
             R2, R2_vox = self.calculate_R2(Y = self.Y, Y_pred = Y_pred)
 
-            # append to dict
-            data_dict['weights'].append(weights)
-            data_dict['Y_pred'].append(Y_pred)
-            data_dict['R'].append(R)
-            data_dict['R_vox'].append(R_vox)
-            data_dict['R2'].append(R_vox)
-            data_dict['R2_vox'].append(R_vox)
+            model_output = {'R': R, 'R_vox': R_vox, 'R2': R2, 'R2_vox': R2_vox,
+                      'weights': weights, 'Y_pred': Y_pred}
+
+            for k,v in model_output.items():
+                data_dict[k].append(v)
 
         # get model params
         model_params = self.model_params(model = model)
@@ -183,14 +197,27 @@ class L2Regress(ModelUtils):
 
 class ExampleModel(ModelUtils):
     
-    def __init__(self, X, Y):
+    def __init__(self, X, Y, config):
+        """ does modelling (specifiy model name) on 'X' and 'Y'
+        model-specific parameters (i.e. lambdas) are given in `config`
+            Args: 
+                X (array-like): shape (n_samples, n_features)
+                Y (array-like): (n_samples,) or (n_samples, n_targets)
+                config (dict): dictionary containing model training parameters
+        """
         self.X = X
         self.Y = Y
+        self.config = config
     
     def define_model(self):
         return None
 
-    def run(self, **kwargs):
+    def run(self):
+        """ run model on 'X' and 'Y'
+            Returns: 
+                model_params (dict): model parameters
+                data_dict (dict): outputs of model training (e.g. 'weights', 'Y_pred')
+        """
          
         model = self.define_model()
 
