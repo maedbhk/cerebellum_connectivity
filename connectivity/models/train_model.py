@@ -26,9 +26,10 @@ Model fitting routine for connectivity models
 class TrainModel(DataManager):
 
     def __init__(self, config, **kwargs):
-        """ Model training Class 
+        """ Model training Class, inherits methods from DataManager Class
             Args: 
-                config (dict): dictionary loaded from`config_train.json` containing model inputs
+                config (dict): dictionary loaded from `config.json` containing 
+                training parameters for running connectivity models
 
             Kwargs:
                 model_name (str): model name default is "l2_regress"
@@ -52,7 +53,7 @@ class TrainModel(DataManager):
 
     def model_train(self):
         """ model fitting routine on individual subject data
-            model params saved to JSON and model weights, predictions are saved to HDF5 saved to disk
+            model params saved to JSON and model weights, predictions are saved to HDF5
         """
         # set directories
         self.dirs = Dirs(study_name=self.config['train_on'], glm=self.config['train_glm'])
@@ -86,7 +87,7 @@ class TrainModel(DataManager):
             model_params, data_all[f's{subj:02}'] = model.run()
 
         # update model params
-        model_params.update(self.config) # self._update_model_params()
+        model_params.update(self.config)
 
         # save model parames to JSON and save training weights, predictions to HDF5
         self._save_model_output(json_file=model_params, hdf5_file=data_all)
@@ -123,7 +124,7 @@ class TrainModel(DataManager):
             Args: 
                 model_data (nested dict): contains 'X' and 'Y' data
             Returns: 
-                X_indices (np array), Y_indices (np array)
+                X_indices (np array): Y_indices (np array)
         """
         # get sess indices for X training data
         sessions = model_data['train_X']['sess'].astype(int)
@@ -162,23 +163,6 @@ class TrainModel(DataManager):
         fpath = os.path.join(self.dirs.CONN_TRAIN_DIR, fname)
         
         return fpath
-
-    def _update_model_params(self):
-        """ returns dictionary containing training parameters 
-        """
-        return {
-            'model_name': self.config['model_name'],
-            'train_subjects': self.config['subjects'],
-            'train_glm': self.config['glm'],
-            'train_incl_inst': self.config['incl_inst'],
-            'train_avg': self.config['avg'],
-            'train_subtract_sess_mean': self.config['subtract_sess_mean'],
-            'train_subtract_exp_mean': self.config['subtract_exp_mean'],
-            'train_on': self.config['train_on'],
-            'train_scale': self.config['scale'],
-            'train_inputs': self.config['train_inputs'],
-            'train_mode': self.config['train_mode'],
-            }
     
     def _save_model_output(self, json_file, hdf5_file):
         """ saves model params to json and model data to hdf5

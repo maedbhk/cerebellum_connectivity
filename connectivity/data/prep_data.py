@@ -2,7 +2,6 @@
 import os 
 import pandas as pd
 import numpy as np
-import scipy as sp
 import re
 import deepdish as dd
 import copy

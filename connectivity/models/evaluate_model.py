@@ -22,9 +22,10 @@ Model evaluation routine for connectivity models
 class EvaluateModel(DataManager):
 
     def __init__(self, config, **kwargs):
-        """ Model evaluation class
+        """ Model evaluation Class, inherits methods from DataManager Class
             Args: 
-                config (dict): dictionary loaded from`config_eval.json` containing eval params
+                config (dict): dictionary loaded from`config.json` containing 
+                training and evaluation parameters for running connectivity models
 
             Kwargs:
                 model_name (str): model name default is 'l2_regress'
@@ -144,17 +145,9 @@ class EvaluateModel(DataManager):
                     for k,v in data_dict.items():
                         reliabilities[k].append(v)
 
-        # # update model params here
-        # # a bit hacky but some models (i.e. linear model)
-        # # don't have model params (i.e. lambdas, pcs)
-        # if not model_params:
-        #     model_inputs[param_name] = param_values[0]
-        
         # get eval params
         eval_params = copy.deepcopy(self.config)
         eval_params.update({'model_fname': model_fname, 'eval_splits': list(splits.keys())})
-        # eval_params = self._get_eval_params(model_fname = model_fname,
-        #                                     model_inputs = model_inputs)
 
         # save eval parames to JSON and save eval predictions and reliabilities to HDF5
         self._save_eval_output(json_file = eval_params, hdf5_file = reliabilities)
