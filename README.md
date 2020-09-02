@@ -40,10 +40,24 @@ Project Organization
     ├── Makefile           <- Makefile with commands like `make data` or `make train`
     ├── README.md          <- The top-level README for developers using this project.
     ├── data
-    │   ├── external       <- Data from third party sources.
-    │   ├── interim        <- Intermediate data that has been transformed.
-    │   ├── processed      <- The final, canonical data sets for modeling.
-    │   └── raw            <- The original, immutable data dump.
+    │   └── sc1            <- Data from study 1
+    │       └── anatomicals          
+    │       └── GLM_firstlevel_7
+    │       └── GLM_firstlevel_8
+    │       └── imaging_data
+    │       └── connectivity
+    │       └── encoding
+    │       └── suit
+    │       └── surfaceFreesurfer
+    │       └── surfaceWB
+    │       └── beta_roi
+    │   └── sc2            <- Data from study 2         
+    │       └── GLM_firstlevel_7
+    │       └── GLM_firstlevel_8
+    │       └── connectivity
+    │       └── encoding
+    │       └── suit
+    │       └── beta_roi  
     │
     ├── docs               <- A default Sphinx project; see sphinx-doc.org for details
     │
@@ -64,17 +78,21 @@ Project Organization
     ├── setup.py           <- makes project pip installable (pip install -e .) so connectivity package can be imported
     ├── connectivity       <- Source code for use in this project.
     │   ├── __init__.py    <- Makes connectivity a Python module
+    │   ├── constants.py   <- Default directories   
+    │   ├── io.py          <- Import/Output mat files
     │   │
-    │   ├── data           <- Scripts to download or generate data
-    │   │   └── make_dataset.py
+    │   ├── data           <- Scripts to generate data for modelling
+    │   │   └── prep_betas.py
     │   │
     │   ├── features       <- Scripts to turn raw data into features for modeling
     │   │   └── build_features.py
     │   │
     │   ├── models         <- Scripts to train models and then use trained models to make
     │   │   │                 predictions
-    │   │   ├── predict_model.py
+    │   │   ├── train_evaluate.py
     │   │   └── train_model.py
+    │   │   └── evaluate_model.py
+    │   │   └── model_functions.py
     │   │
     │   └── visualization  <- Scripts to create exploratory and results oriented visualizations
     │       └── visualize.py
