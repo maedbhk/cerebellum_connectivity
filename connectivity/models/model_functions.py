@@ -9,6 +9,15 @@ from sklearn.decomposition import PCA
 from sklearn.cross_decomposition import PLSRegression
 from sklearn.preprocessing import StandardScaler
 
+"""
+Created on Aug 10 10:04:24 2020
+Models for running connectivity models
+Any models can be added. Needs to follow a particular template
+(see ExampleModel Class)
+
+@authors: Maedbh King and Ladan Shahshahani
+"""
+
 class ModelUtils:
     """ general purpose utils for modelling connectivity data
     """
@@ -62,14 +71,16 @@ class ModelUtils:
 
 class LinearModel(ModelUtils):
 
-    def __init__(self, X, Y):
+    def __init__(self, X, Y, config):
         self.fit_intercept = False
         self.normalize = False
         self.X = X
         self.Y = Y
+        self.config = config
 
     def define_model(self):
-        return LinearRegression(fit_intercept = self.fit_intercept, normalize = self.no)
+        return LinearRegression(fit_intercept = self.fit_intercept,
+                                normalize = self.normalize)
     
     def run(self):
         # define model
@@ -99,7 +110,7 @@ class LinearModel(ModelUtils):
 
 class L2Regress(ModelUtils):
 
-    def __init__(self, X, Y):
+    def __init__(self, X, Y, config):
         self.fit_intercept = False
         self.normalize = False
         self.max_iter = None
@@ -108,6 +119,7 @@ class L2Regress(ModelUtils):
         self.solver = 'auto'
         self.X = X
         self.Y = Y
+        self.config = config
     
     def define_model(self):
         return Ridge(alpha = self.lam,
@@ -118,11 +130,12 @@ class L2Regress(ModelUtils):
                     random_state = self.random_state,
                     solver = self.solver)
     
-    def run(self, **kwargs):
-        if kwargs.get('lambdas'):
-            lambdas = kwargs['lambdas']
+    def run(self):
+        # check for model params (i.e. lambdass)
+        if 'lambdas' in self.config:
+            lambdas = self.config['lambdas']
         else:
-            lambdas = [1] # default is 1
+            lambdas = [1]
         
         # loop over lambdas and get model data
         # initialize data lists
@@ -156,7 +169,8 @@ class L2Regress(ModelUtils):
         model_params = self.model_params(model = model)
 
         # update model params
-        model_params.update({'alphas': lambdas,
+        model_params.update({'model_params': 'lambdas',
+                             'lambdas': lambdas,
                              'max_iter': self.max_iter,
                              'tol': self.tol,
                              'random_state': self.random_state,
@@ -165,6 +179,24 @@ class L2Regress(ModelUtils):
 
         data_dict.update({'X_train': self.X, 'Y_train': self.Y, 'lambdas': lambdas})
         
+        return model_params, data_dict
+
+class ExampleModel(ModelUtils):
+    
+    def __init__(self, X, Y):
+        self.X = X
+        self.Y = Y
+    
+    def define_model(self):
+        return None
+
+    def run(self, **kwargs):
+         
+        model = self.define_model()
+
+        model_params = None
+        data_dict = None
+
         return model_params, data_dict
 
 MODEL_MAP = {

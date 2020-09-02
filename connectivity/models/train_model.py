@@ -1,5 +1,6 @@
 # import libraries and packages
 import os
+import copy
 import numpy as np
 from time import gmtime, strftime  
 
@@ -9,11 +10,10 @@ from sklearn.linear_model import Lasso
 from sklearn.linear_model import ElasticNet
 from sklearn.decomposition import PCA
 from sklearn.cross_decomposition import PLSRegression
-from sklearn.preprocessing import StandardScaler
 
 from connectivity import io
 from connectivity.data.prep_data import DataManager
-from connectivity.constants import Defaults
+from connectivity.constants import Defaults, Dirs
 from connectivity.models.model_functions import MODEL_MAP
 
 """
@@ -24,148 +24,175 @@ Model fitting routine for connectivity models
 """
 
 class TrainModel(DataManager):
-    """ Model fitting Class 
-        Model specifications are set in Class __init__
-    """
 
-    def __init__(self, model_name = "l2_regress"):
-        """ Initialises inputs for TrainModel Class
+    def __init__(self, config, **kwargs):
+        """ Model training Class 
             Args: 
-                model (str): model name default is "plsregress"
-            
-            __init__:
-            params (np array): model parameters # TBD
-            glm (int): glm number: default is 7. options are 7 and 8
-            experiment (list of str): study to be used for training. options are 'sc1' or 'sc2'
-            model_inputs (nested dict): primary keys are `X` and `Y` 
-            train_mode (str): training mode: 'crossed' or 'uncrossed'. If 'crossed': sessions are flipped between `X` and `Y`
-            incl_instr (bool): include instructions in model fitting. default is True
-            avg (str): average data across runs within a session or across session. options are 'run' and 'session'
-            substract_sess_mean (bool): subract session mean. default is True
-            subtract_exp_mean (bool): subtract experiment mean. default is False
-        """
-        super().__init__()
-        self.model_name = model_name
-        self.params = None
-        self.glm = 7
-        self.experiment = ['sc1']
-        self.model_inputs = {'X': {'roi': 'tesselsWB162', 'file_dir': 'encoding', 'structure': 'cortex'},
-                             'Y': {'roi': 'grey_nan', 'file_dir': 'encoding', 'structure': 'cerebellum'},
-                            }
-        self.train_mode = 'crossed'
-        self.incl_inst = True
-        # self.scale = True
-        self.overwrite = True
-        self.avg = 'run' # 'run' or 'sess'
-        self.subtract_sess_mean = True
-        self.subtract_exp_mean = False # not yet implemented
-        self.constants = Defaults(study_name = self.experiment[0], glm = self.glm)
+                config (dict): dictionary loaded from`config_train.json` containing model inputs
 
-    def model_train(self, **kwargs):
-        """ Model fitting routine on individual subject data, saved to disk
-            Kwargs: 
-                lambdas (list): list of lambda values. Used for example when model_name = 'l2_regress'
-            Returns: 
-                saves model params to JSON file format
-                model weights, predictions are saved to HDF5 file format
+            Kwargs:
+                model_name (str): model name default is "l2_regress"
+                train_sessions (list): default is [1, 2]. options are [1, 2]
+                train_glm (int):  default is 7. options are 7 and 8
+                train_stim (str): default is 'cond'. options are 'cond' and 'task' (depends on glm)
+                train_avg (str): average over 'run' or 'sess'. default is 'run'
+                train_incl_inst (bool): default is True. 
+                train_subtract_sess_mean (bool): default is True.
+                train_subtract_exp_mean (bool): default is True.
+                train_subjects (list of int): list of subjects. see constants.py for subject list. 
+                train_on (str): study to be used for training. default is 'sc1'. options are 'sc1' or 'sc2'.
+                train_inputs (nested dict): primary keys are `X` and `Y`. secondary keys are 'roi', 'file_dir', 'structure'
+                train_mode (str): training mode: 'crossed' or 'uncrossed'. If 'crossed': sessions are flipped between `X` and `Y`. default is 'crossed'
+                train_scale (bool): normalize `X` and `Y` data. default is True.
+                lambdas (list of int): list of lambdas if `model_name` = 'l2_regress'
+                n_pcs (list of int): list of pcs if `model_name` = 'pls_regress' # not yet implemented
         """
+        self.config = copy.deepcopy(config)
+        self.config.update(**kwargs)
 
-        # get model data: `X` and `Y` based on `model_inputs`
+    def model_train(self):
+        """ model fitting routine on individual subject data
+            model params saved to JSON and model weights, predictions are saved to HDF5 saved to disk
+        """
+        # set directories
+        self.dirs = Dirs(study_name=self.config['train_on'], glm=self.config['train_glm'])
+
+        # get model data: `X` and `Y` based on `train_inputs`
         model_data = self._get_model_data()
         
         # get indices for training data based on `train_mode`
-        Xtrain_idx, Ytrain_idx = self._get_training_mode(model_data = model_data)
+        Xtrain_idx, Ytrain_idx = self._get_training_mode(model_data=model_data)
         
         # fit model for each `subj`
         data_all = {}
-        for subj in self.constants.return_subjs:
+        for subj in self.config['train_subjects']:
 
             print(f'fitting model for s{subj:02} ...')
 
             # Get training data for `X` and `Y`
-            xx = model_data['X']['betas'][f's{subj:02}'][Xtrain_idx] 
-            yy = model_data['Y']['betas'][f's{subj:02}'][Ytrain_idx] 
+            xx = model_data['train_X']['betas'][f's{subj:02}'][Xtrain_idx] 
+            yy = model_data['train_Y']['betas'][f's{subj:02}'][Ytrain_idx] 
 
             # define model
-            ModelClass = MODEL_MAP[self.model_name]
-            model = ModelClass(X = xx, Y = yy)
+            ModelClass = MODEL_MAP[self.config['model_name']]
+            if self.config['train_scale']:
+                # scale `X` and `Y`
+                model = ModelClass(X=self._scale_data(xx), Y=self._scale_data(yy), config=self.config)
+            else:
+                model = ModelClass(X=xx, Y=yy, config=self.config)
 
             # fit and predict model
             # model params are the same for each `sub`
-            model_params, data_all[f's{subj:02}'] = model.run(**kwargs)
+            model_params, data_all[f's{subj:02}'] = model.run()
 
         # update model params
-        model_params.update(self._update_model_params())
+        model_params.update(self.config) # self._update_model_params()
 
-        # save model parames to JSON
-        self._save_model_output(json_file = model_params, hdf5_file = data_all)
+        # save model parames to JSON and save training weights, predictions to HDF5
+        self._save_model_output(json_file=model_params, hdf5_file=data_all)
     
     def _get_model_data(self):
-        """ returns model data based on `model_inputs` set in __init__
+        """ calls `get_conn_data` from `prep_data.py` based on `train_inputs` and `train_on`
+            Returns: 
+                model_data (dict): keys are `train_inputs` keys ('X' and 'Y')
         """
-        # get model data: `X` and `Y` based on `model_inputs`
+        # get model data: `X` and `Y` based on `train_inputs`
         model_data = {}
-        for model_input in self.model_inputs:
+        for model_input in self.config['train_inputs']:
             
-            self.data_type = self.model_inputs[model_input]
-            model_data[model_input] = self.get_model_data()
+            # prepare variables for `prep_data`
+            # this is ugly code -- clean
+            self.data_type = self.config['train_inputs'][model_input]
+            self.experiment = [self.config['train_on']]
+            self.glm = self.config['train_glm']
+            self.stim = self.config['train_stim']
+            self.avg = self.config['train_avg']
+            self.incl_inst = self.config['train_incl_inst']
+            self.subtract_sess_mean = self.config['train_subtract_sess_mean']
+            self.subtract_exp_mean = self.config['train_subtract_exp_mean']
+            self.subjects = self.config['train_subjects']
+            self.sessions = self.config['train_sessions']
+           
+            model_data[model_input] = self.get_conn_data()
 
         return model_data
     
     def _get_training_mode(self, model_data):
+        """ gets indices for 'X' and 'Y' data based on `train_mode`
+        if `train_mode` is `crossed`, then sessions are crossed between 'X' and 'Y'
+            Args: 
+                model_data (nested dict): contains 'X' and 'Y' data
+            Returns: 
+                X_indices (np array), Y_indices (np array)
+        """
         # get sess indices for X training data
-        Xtrain_idx = model_data['X']['sess']
+        sessions = model_data['train_X']['sess'].astype(int)
+        train_stim = self.config['train_stim']
+        stims = model_data['train_X'][f'{train_stim}Num']
 
-        # get sess indices for Y training data
-        Ytrain_idx = model_data['Y']['sess']
+        X_indices = []
+        for stim, sess in zip(stims, sessions):
+            if sess == 1:
+                X_indices.append(stim)
+            elif sess == 2:
+                X_indices.append(stim + max(stims) + 1)
 
-        if self.train_mode == "crossed":
-            Ytrain_idx = model_data['Y']['sess'][::-1] 
-        
-        return Xtrain_idx.astype(int), Ytrain_idx.astype(int)
+        # get indices if eval_mode is `crossed`
+        if self.config['train_mode'] == 'crossed':
+            Y_indices = [*X_indices[-sessions.tolist().count(2):], *X_indices[:sessions.tolist().count(1)]] 
+        else:
+            Y_indices = X_indices
+
+        return np.array(X_indices), np.array(Y_indices)
         
     def _get_outpath(self, file_type):
         """ sets outpath for connectivity training model outputs
             Args: 
                 file_type (str): 'json' or 'h5' 
             Returns: 
-                full path to connectivity output for model training
+                fpath (str): full path to connectivity output for model training
         """
         # define model name
         # fname     = 'mb4_%s_%s'% (rois['cortex'], model)
-        X_roi = self.model_inputs['X']['roi']
-        Y_roi = self.model_inputs['Y']['roi']
+        X_roi = self.config['train_inputs']['train_X']['roi']
+        Y_roi = self.config['train_inputs']['train_Y']['roi']
         timestamp = f'{strftime("%Y-%m-%d_%H:%M:%S", gmtime())}'
-        fname = f'{X_roi}_{Y_roi}_{self.model_name}_{timestamp}{file_type}'
-        fpath = os.path.join(self.constants.CONN_TRAIN_DIR, fname)
+        model_name = self.config['model_name']
+        fname = f'{X_roi}_{Y_roi}_{model_name}_{timestamp}{file_type}'
+        fpath = os.path.join(self.dirs.CONN_TRAIN_DIR, fname)
         
         return fpath
 
     def _update_model_params(self):
-       return {
-            'model_name': self.model_name,
-            'subjects': self.constants.return_subjs,
-            'glm': self.glm,
-            'train_on': self.experiment[0],
-            'model_inputs': self.model_inputs,
-            'train_mode': self.train_mode,
-            'incl_inst': self.incl_inst,
-            'average': self.avg,
-            'subtract_sess_mean': self.subtract_sess_mean,
-            'subtract_exp_mean': self.subtract_exp_mean
+        """ returns dictionary containing training parameters 
+        """
+        return {
+            'model_name': self.config['model_name'],
+            'train_subjects': self.config['subjects'],
+            'train_glm': self.config['glm'],
+            'train_incl_inst': self.config['incl_inst'],
+            'train_avg': self.config['avg'],
+            'train_subtract_sess_mean': self.config['subtract_sess_mean'],
+            'train_subtract_exp_mean': self.config['subtract_exp_mean'],
+            'train_on': self.config['train_on'],
+            'train_scale': self.config['scale'],
+            'train_inputs': self.config['train_inputs'],
+            'train_mode': self.config['train_mode'],
             }
     
     def _save_model_output(self, json_file, hdf5_file):
+        """ saves model params to json and model data to hdf5
+            Args: 
+                json_file (str): json file name
+                hdf5_file (str): hdf5 file name
+        """
         out_path = self._get_outpath(file_type = '.json')
-        io.save_dict_as_JSON(fpath = out_path, data_dict = json_file)
+        io.save_dict_as_JSON(fpath=out_path, data_dict=json_file)
 
         # save model data to HDF5
         out_path = self._get_outpath(file_type = '.h5')
-        io.save_dict_as_hdf5(fpath = out_path, data_dict = hdf5_file)
+        io.save_dict_as_hdf5(fpath=out_path, data_dict=hdf5_file)
         
-# run the following
-model = TrainModel()
-model.model_train()
 
 
 

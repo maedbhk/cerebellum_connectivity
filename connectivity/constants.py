@@ -1,9 +1,18 @@
 from pathlib import Path
 import os
 
-class Defaults: 
 
-    def __init__(self, study_name, glm):
+class Defaults:
+
+    def __init__(self):
+        self.return_subjs = [2,3,4,6,8,9,10,12,14,15,17,18,19,20,21,22,24,25,26,27,28,29,30,31]
+        # self.conn_file = 'sc1_sc2_taskConds_conn.txt'
+        self.conn_file = 'tasks.json'
+        self.config_file = 'config.json'
+
+class Dirs: 
+
+    def __init__(self, study_name='sc1', glm=7):
         self.BASE_DIR = Path(__file__).absolute().parent.parent / 'data'
         self.DATA_DIR = self.BASE_DIR / study_name
         self.BEHAV_DIR = self.DATA_DIR / 'data'
@@ -16,11 +25,6 @@ class Defaults:
         self.CONN_DIR = self.DATA_DIR / 'conn_models' / f'glm{glm}'
         self.CONN_TRAIN_DIR = self.CONN_DIR / 'train'
         self.CONN_EVAL_DIR = self.CONN_DIR / 'eval'
-
-        # self.return_subjs = [2,3,4,6,8,9,10,12,14,15,17,18,19,20,21,22,24,25,26,27,28,29,30,31]
-        self.return_subjs = [3, 4]
-
-        self.conn_file = 'sc1_sc2_taskConds_conn.txt'
 
         # create folders if they don't already exist
         fpaths = [self.BETA_REG_DIR, self.CONN_TRAIN_DIR, self.CONN_EVAL_DIR]
