@@ -87,7 +87,7 @@ def evaluate(config, **kwargs):
     model_eval.model_evaluate() 
 
 # delete existing connectivity files
-# delete_conn_files()
+delete_conn_files()
 
 # get config files for training and evaluating connectivity data
 config_obj = get_config_file()

@@ -86,8 +86,8 @@ class TrainModel(DataManager):
             # model params are the same for each `sub`
             model_params, data_all[f's{subj:02}'] = model.run()
 
-        # update model params
-        model_params.update(self.config)
+        # update model params (don't include parameters prefixed with eval)
+        model_params.update({k:v for k,v in self.config.items() if not 'eval' in k})
 
         # save model parames to JSON and save training weights, predictions to HDF5
         self._save_model_output(json_file=model_params, hdf5_file=data_all)
