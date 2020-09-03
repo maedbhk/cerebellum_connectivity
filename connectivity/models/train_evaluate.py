@@ -24,22 +24,22 @@ def get_config_file():
 def train(config, **kwargs):
     """ This routine does model training and model evaluation
         Args: 
-            config_train (dict): dictionary loaded from `config_train.json`
+            config (dict): dictionary loaded from `config.json`
             
             Kwargs:
                 model_name (str): model name default is "l2_regress"
-                sessions (list): default is [1, 2]. options are [1, 2]
-                glm (int):  default is 7. options are 7 and 8
-                stim (str): default is 'cond'. options are 'cond' and 'task' (depends on glm)
-                avg (str): average over 'run' or 'sess'. default is 'run'
-                incl_inst (bool): default is True. 
-                subtract_sess_mean (bool): default is True.
-                subtract_exp_mean (bool): default is True.
-                subjects (list of int): list of subjects. see constants.py for subject list. 
+                train_sessions (list): default is [1, 2]. options are [1, 2]
+                train_glm (int):  default is 7. options are 7 and 8
+                train_stim (str): default is 'cond'. options are 'cond' and 'task' (depends on glm)
+                train_avg (str): average over 'run' or 'sess'. default is 'run'
+                train_incl_inst (bool): default is True. 
+                train_subtract_sess_mean (bool): default is True.
+                train_subtract_exp_mean (bool): default is True.
+                train_subjects (list of int): list of subjects. see constants.py for subject list. 
                 train_on (str): study to be used for training. default is 'sc1'. options are 'sc1' or 'sc2'.
                 train_inputs (nested dict): primary keys are `X` and `Y`. secondary keys are 'roi', 'file_dir', 'structure'
                 train_mode (str): training mode: 'crossed' or 'uncrossed'. If 'crossed': sessions are flipped between `X` and `Y`. default is 'crossed'
-                scale (bool): normalize `X` and `Y` data. default is True.
+                train_scale (bool): normalize `X` and `Y` data. default is True.
                 lambdas (list of int): list of lambdas if `model_name` = 'l2_regress'
                 n_pcs (list of int): list of pcs if `model_name` = 'pls_regress'
     """
@@ -51,7 +51,7 @@ def train(config, **kwargs):
 def evaluate(config, **kwargs):
     """ This routine does model evaluation
         Args: 
-            config_eval (dict): dictionary loaded from `config_eval.json`
+            config (dict): dictionary loaded from `config.json`
             
             Kwargs:
                 model (str): model name default is 'l2_regress'
