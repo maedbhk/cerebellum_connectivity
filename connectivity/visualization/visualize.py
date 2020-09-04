@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from collections import MutableMapping
 from collections import defaultdict
 
-# import plotly.graph_objects as go
+import plotly.graph_objects as go
 
 from connectivity.constants import Dirs, Defaults
 from connectivity import io
@@ -153,32 +153,39 @@ class Betas(DataManager):
         self.scale = True
         self.defaults = Defaults()
         self.subjects = self.defaults.return_subjs
+        self.dirs = Dirs()
 
     def load_dataframe(self):
+        fpath = os.path.join(self.dirs.BASE_DIR, 'task_betas.csv')
+        
+        # if avg betas file doesn't exist, save to disk
+        if not os.path.exists(fpath):
+            self._save_to_disk()
+
+        return pd.read_csv(fpath)
+
+    def _save_to_disk(self):
         data ={}
         for roi in self.inputs:
-            
+
             self.data_type = self.inputs[roi]
             data[roi] = self.get_conn_data()
 
         # get avg betas for cortex and cerebellum
-        roi_dict = self._get_avg_betas(data_dict=data)
+        roi_dict = self._calc_avg_betas(data_dict=data)
 
-        # horizontally concat dataframes
+        # horizontally concat both dataframes
         X = pd.DataFrame.from_dict(roi_dict['X'])
         Y = pd.DataFrame.from_dict(roi_dict['Y'])
         dataframe = pd.concat([X, Y], axis=1)
 
-        # drop duplicates
+        # drop duplicate columns
         dataframe = dataframe.loc[:, ~dataframe.columns.duplicated()] # drop duplicate cols
 
         # save avg betas to disk
-        dirs = Dirs()
-        dataframe.to_csv(os.path.join(dirs.BASE_DIR, 'task_betas.csv'), index=False)
+        dataframe.to_csv(os.path.join(self.dirs.BASE_DIR, 'task_betas.csv'), index=False)
 
-        return dataframe
-
-    def _get_avg_betas(self, data_dict):
+    def _calc_avg_betas(self, data_dict):
 
         # loop over rois
         roi_dict = {}
@@ -189,6 +196,7 @@ class Betas(DataManager):
             
             avg_betas = defaultdict(list)
             for subj in self.subjects:
+                print(f'averaging betas for s{subj:02}...')
 
                 # get subj betas
                 subj_data = data_dict[roi]['betas'][f's{subj:02}']
@@ -227,26 +235,33 @@ class Betas(DataManager):
 
         return roi_dict
 
-    def task_scatter(self, dataframe):
+    def task_scatter_all(self, dataframe):
 
         dataframe = dataframe[['stim_name', 'cortex_beta', 'cerebellum_beta']].groupby('stim_name').agg('mean').reset_index()
 
         sns.set(rc={'figure.figsize':(10,10)})
-        sns.scatterplot(x="cortex_beta", y="cerebellum_beta", hue=dataframe['stim_name'].tolist(), data=dataframe)
+        sns.scatterplot(x="cerebellum_beta", y="cortex_beta", data=dataframe)
 
         # plot regression line
-        m, b = np.polyfit(dataframe['cortex_beta'], dataframe['cerebellum_beta'], 1)
-        plt.plot(dataframe['cortex_beta'], m*dataframe['cortex_beta']+ b)
+        m, b = np.polyfit(dataframe['cerebellum_beta'], dataframe['cortex_beta'], 1)
+        plt.plot(dataframe['cerebellum_beta'], m*dataframe['cerebellum_beta']+ b)
 
-        plt.xlabel('cortex', fontsize=20),
-        plt.ylabel('cerebellum', fontsize=20)
-        plt.title('', fontsize=20);
+        def label_point(x, y, val, ax):
+            a = pd.concat({'x': x, 'y': y, 'val': val}, axis=1)
+            for i, point in a.iterrows():
+                ax.text(point['x']+.02, point['y'], str(point['val']), fontsize=10)
+
+        label_point(dataframe['cerebellum_beta'], dataframe['cortex_beta'], dataframe['stim_name'], plt.gca())
+
+        plt.xlabel('cerebellum', fontsize=20),
+        plt.ylabel('cortex', fontsize=20)
+        plt.title('avg. betas: study 1 & study 2', fontsize=20);
         plt.tick_params(axis = 'both', which = 'major', labelsize = 20)
         # plt.ylim(bottom=.7, top=1.0)
 
         plt.show()
 
-    def task_scatter_interactive(self, dataframe):
+    def task_scatter_interactive_all(self, dataframe):
         dataframe = dataframe[['stim_name', 'cortex_beta', 'cerebellum_beta']].groupby('stim_name').agg('mean').reset_index()
 
         fig = go.Figure(data=go.Scatter(x=dataframe['cerebellum_beta'],
@@ -276,7 +291,7 @@ class Betas(DataManager):
 
         fig.update_layout(
             height=800,
-            title_text='Avg. betas: Cortex and Cerebellum'
+            title_text=f'Avg. betas: study 1 & study 2'
             )
 
         fig.update_xaxes(
@@ -290,3 +305,85 @@ class Betas(DataManager):
             )
 
         fig.show()
+
+    def task_scatter_study(self, dataframe):
+
+        for exp in [1, 2]:
+            dataframe_exp = dataframe.query(f'study=={exp}')
+
+            # average across task conditions
+            dataframe_exp = dataframe_exp[['stim_name', 'cortex_beta', 'cerebellum_beta']].groupby('stim_name').agg('mean').reset_index()
+
+            sns.set(rc={'figure.figsize':(10,10)})
+            sns.scatterplot(x="cerebellum_beta", y="cortex_beta", data=dataframe_exp)
+
+            # plot regression line
+            m, b = np.polyfit(dataframe_exp['cerebellum_beta'], dataframe_exp['cortex_beta'], 1)
+            plt.plot(dataframe_exp['cerebellum_beta'], m*dataframe_exp['cerebellum_beta']+ b)
+
+            def label_point(x, y, val, ax):
+                a = pd.concat({'x': x, 'y': y, 'val': val}, axis=1)
+                for i, point in a.iterrows():
+                    ax.text(point['x']+.02, point['y'], str(point['val']), fontsize=10)
+
+            label_point(dataframe_exp['cerebellum_beta'], dataframe_exp['cortex_beta'], dataframe_exp['stim_name'], plt.gca())
+
+            plt.xlabel('cerebellum', fontsize=20),
+            plt.ylabel('cortex', fontsize=20)
+            plt.title(f'avg betas: study {exp}', fontsize=20);
+            plt.tick_params(axis = 'both', which = 'major', labelsize = 20)
+            # plt.ylim(bottom=.7, top=1.0)
+
+            plt.show()
+
+    def task_scatter_interactive_study(self, dataframe):
+        
+        for exp in [1, 2]:
+
+            # get study 
+            dataframe_exp = dataframe.query(f'study=={exp}')
+        
+            # avg. across tasks 
+            dataframe_exp = dataframe_exp[['stim_name', 'cortex_beta', 'cerebellum_beta']].groupby('stim_name').agg('mean').reset_index()
+
+            fig = go.Figure(data=go.Scatter(x=dataframe_exp['cerebellum_beta'],
+                            y=dataframe_exp['cortex_beta'],
+                            mode='markers',
+                            marker=dict(
+                            color='LightSkyBlue',
+                            size=20,
+                            line=dict(
+                            color='MediumPurple',
+                            width=2
+                            )),
+                            text=dataframe_exp['stim_name'], 
+                            textfont=dict(
+                            family="sans serif",
+                            size=18,
+                            color="LightSeaGreen")))
+
+            # plot regression line
+            m, b = np.polyfit(dataframe_exp['cortex_beta'], dataframe_exp['cerebellum_beta'], 1)
+
+            fig.add_trace(go.Scatter(
+                    x=dataframe_exp['cortex_beta'], y=m*dataframe_exp['cortex_beta']+ b,
+                    name='regression line',
+                    marker_color='black'
+                    ))
+
+            fig.update_layout(
+                height=800,
+                title_text=f'Avg. betas: study {exp}'
+                )
+
+            fig.update_xaxes(
+                title_font=dict(size=18),
+                title='Cerebellum',
+                )
+
+            fig.update_yaxes(
+                title_font=dict(size=18),
+                title='Cortex',
+                )
+
+            fig.show()
