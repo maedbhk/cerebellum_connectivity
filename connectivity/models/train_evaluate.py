@@ -92,17 +92,14 @@ def evaluate(config, **kwargs):
     model_eval = EvaluateModel(config=config, **kwargs) 
     model_eval.model_evaluate() 
 
-# delete existing connectivity files
-# delete_conn_files()
+def run_connect(**kwargs, train=True, evaluate=True):
 
-# get config files for training and evaluating connectivity data
-config_obj = get_config_file()
+    # get config files for training and evaluating connectivity data
+    config_obj = get_config_file()
 
-# train model
-lambda_list = [[1, 10, 15, 20, 25, 30, 35, 40, 45, 50, 100, 250]]
-for lambdas in lambda_list:
-    train(config=config_obj, model_name='l2_regress', lambdas=lambdas)
+    # train model
+    train(config=config_obj, **kwargs)
 
     # evaluate model
-    evaluate(config=config_obj, model_name='l2_regress', eval_splitby=None, lambdas=lambdas)
+    evaluate(config=config_obj,**kwargs)
 
