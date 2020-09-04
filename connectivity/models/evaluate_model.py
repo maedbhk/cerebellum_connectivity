@@ -12,6 +12,8 @@ from connectivity.data.prep_data import DataManager
 from connectivity.constants import Defaults, Dirs
 from connectivity.models.model_functions import MODEL_MAP
 
+np.seterr(divide='ignore', invalid='ignore')
+
 """
 Created on Sat Jun 27 13:34:09 2020
 Model evaluation routine for connectivity models
@@ -89,7 +91,7 @@ class EvaluateModel(DataManager):
             # get betas for Y evaluation
             Y_eval_subj = Y_eval['betas'][f's{subj:02}']
             X_eval_subj = X_eval['betas'][f's{subj:02}']
-
+                
             # get model weights
             model_weights = model_data[f's{subj:02}']['weights']
 
@@ -102,8 +104,12 @@ class EvaluateModel(DataManager):
             # loop over model weights
             for i, model_weight in enumerate(model_weights):
 
-                # get "good voxels"
-                good_idx = self._get_good_idx(Y=Y_eval_subj, W=model_weight)
+                if self.config['eval_good_vox']:
+                    # get "good voxels"
+                    vox_idx = self._get_good_idx(Y=Y_eval_subj, W=model_weight)
+                else:
+                     # take all voxels
+                    vox_idx = [True for i in np.arange(len(model_weight))]
 
                 # loop over splits
                 for split in splits:
@@ -114,28 +120,32 @@ class EvaluateModel(DataManager):
 
                         # get indices for X and Y for `eval_mode`: `crossed` or `uncrossed`
                         eval_idx[eval_mode] = self._get_eval_idx(eval_mode=eval_mode, X=X_eval)
-                        
-                        # scale the data???
-                        if self.config['eval_scale']:
-                            pass
-                            # scale X eval
-                            # scale Y eval
-                
+                    
                         # calculate prediction between model weights and X evaluation data
                         X =  X_eval_subj[eval_idx[eval_mode]][splits[split]]
-                        Y_preds[eval_mode] = self._predict(X=X, W=model_weight.T)
+
+                        if self.config['eval_scale']:
+                            Y_preds[eval_mode] = self._predict(X=self._scale_data(X), W=model_weight.T)
+                        else:
+                            Y_preds[eval_mode] = self._predict(X=X, W=model_weight.T)
 
                     # get `crossed` and `uncrossed` eval and pred data
-                    eval_Y_crossed = Y_eval_subj[eval_idx['crossed']][splits[split]][:, good_idx]
-                    eval_Y_uncrossed = Y_eval_subj[eval_idx['uncrossed']][splits[split]][:, good_idx]
-                    Y_pred_crossed_good = Y_preds['crossed'][:, good_idx]
-                    Y_pred_uncrossed_good = Y_preds['uncrossed'][:, good_idx]
+                    eval_Y_crossed = Y_eval_subj[eval_idx['crossed']][splits[split]][:, vox_idx]
+                    eval_Y_uncrossed = Y_eval_subj[eval_idx['uncrossed']][splits[split]][:, vox_idx]
+
+                    # scale the eval data
+                    if self.config['eval_scale']:
+                        eval_Y_crossed = self._scale_data(eval_Y_crossed)
+                        eval_Y_uncrossed = self._scale_data(eval_Y_uncrossed)
+
+                    Y_pred_crossed = Y_preds['crossed'][:, vox_idx]
+                    Y_pred_uncrossed = Y_preds['uncrossed'][:, vox_idx]
  
                     # calculate sum-of-squares
                     ssq_all = self._calculate_ssq(eval_Y_crossed=eval_Y_crossed,
                                                 eval_Y_uncrossed=eval_Y_uncrossed,
-                                                Y_pred_crossed=Y_pred_crossed_good,
-                                                Y_pred_uncrossed=Y_pred_uncrossed_good)
+                                                Y_pred_crossed=Y_pred_crossed,
+                                                Y_pred_uncrossed=Y_pred_uncrossed)
                     
                     # calculate sparseness measure
                     # GINNI INDEX
@@ -200,6 +210,9 @@ class EvaluateModel(DataManager):
         if model_params:
             param_name = model_inputs['model_params']
             param_values = model_inputs[param_name]
+        else:
+            param_name = 'model_params'
+            param_values = [None]
         return param_name, param_values
    
     def _get_eval_data(self):
@@ -300,10 +313,10 @@ class EvaluateModel(DataManager):
             data_dict = {'R_pred_crossed_vox': R_pred_crossed_vox, 'R_pred_uncrossed_vox': R_pred_uncrossed_vox,
                         'R_y_vox': R_y_vox, 'R_pred_vox': R_pred_vox}
 
-        data_dict.update({'R_pred_crossed': np.nansum(R_pred_crossed_vox, axis = 0),
-                        'R_pred_uncrossed': np.nansum(R_pred_uncrossed_vox, axis = 0),
-                        'R_y': np.nansum(R_y_vox, axis = 0),
-                        'R_pred': np.nansum(R_pred_vox, axis = 0)})
+        data_dict.update({'R_pred_crossed': np.nanmean(R_pred_crossed_vox, axis=0),
+                        'R_pred_uncrossed': np.nanmean(R_pred_uncrossed_vox, axis=0),
+                        'R_y': np.nanmean(R_y_vox, axis=0),
+                        'R_pred': np.nanmean(R_pred_vox, axis=0)})
 
         return data_dict
     

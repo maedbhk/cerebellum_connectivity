@@ -1,18 +1,24 @@
 import os
 import glob
+import numpy as np
 
 from connectivity import io
 from connectivity.models.evaluate_model import EvaluateModel
 from connectivity.models.train_model import TrainModel
+
 from connectivity.constants import Defaults, Dirs
+
+np.seterr(divide='ignore', invalid='ignore')
 
 def delete_conn_files():
     # delete any pre-existing connectivity files
     for exp in ['sc1', 'sc2']:
         dirs = Dirs(study_name=exp, glm=7)
-        filelist = glob.glob(os.path.join(dirs.CONN_TRAIN_DIR, '*'))
-        for f in filelist:
-            os.remove(f)
+        filelists = [glob.glob(os.path.join(dirs.CONN_TRAIN_DIR, '*')), glob.glob(os.path.join(dirs.CONN_EVAL_DIR, '*'))]
+        for filelist in filelists:
+            for f in filelist:
+                os.remove(f)
+    print('deleting training and evaluation data')
 
 def get_config_file():
     # get dirs
@@ -87,13 +93,16 @@ def evaluate(config, **kwargs):
     model_eval.model_evaluate() 
 
 # delete existing connectivity files
-delete_conn_files()
+# delete_conn_files()
 
 # get config files for training and evaluating connectivity data
 config_obj = get_config_file()
 
 # train model
-train(config=config_obj, model_name='l2_regress', lambdas=[1, 2])
+lambda_list = [[1, 10, 15, 20, 25, 30, 35, 40, 45, 50, 100, 250]]
+for lambdas in lambda_list:
+    train(config=config_obj, model_name='l2_regress', lambdas=lambdas)
 
-# evaluate model
-evaluate(config=config_obj, model_name='l2_regress', eval_splitby='cond', lambdas=[1, 2])
+    # evaluate model
+    evaluate(config=config_obj, model_name='l2_regress', eval_splitby=None, lambdas=lambdas)
+
