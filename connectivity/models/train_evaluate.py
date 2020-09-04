@@ -10,7 +10,7 @@ from connectivity.constants import Defaults, Dirs
 
 np.seterr(divide='ignore', invalid='ignore')
 
-def delete_conn_files():
+def _delete_conn_files():
     # delete any pre-existing connectivity files
     for exp in ['sc1', 'sc2']:
         dirs = Dirs(study_name=exp, glm=7)
@@ -20,14 +20,14 @@ def delete_conn_files():
                 os.remove(f)
     print('deleting training and evaluation data')
 
-def get_config_file():
+def _get_config_file():
     # get dirs
     dirs = Dirs()
 
     # load config files for train and eval parameters
     return io.read_json(os.path.join(dirs.BASE_DIR, 'config.json'))
 
-def train(config, **kwargs):
+def _train_model(config, **kwargs):
     """ This routine does model training and model evaluation
         Args: 
             config (dict): dictionary loaded from `config.json`
@@ -54,7 +54,7 @@ def train(config, **kwargs):
     model = TrainModel(config, **kwargs)
     model.model_train() 
 
-def evaluate(config, **kwargs):
+def _evaluate_model(config, **kwargs):
     """ This routine does model evaluation
         Args: 
             config (dict): dictionary loaded from `config.json`
@@ -95,11 +95,13 @@ def evaluate(config, **kwargs):
 def run_connect(train=True, evaluate=True, **kwargs):
 
     # get config files for training and evaluating connectivity data
-    config_obj = get_config_file()
+    config_obj = _get_config_file()
 
     # train model
-    train(config=config_obj, **kwargs)
+    if train:
+        _train_model(config=config_obj, **kwargs)
 
     # evaluate model
-    evaluate(config=config_obj,**kwargs)
+    if evaluate:
+        _evaluate_model(config=config_obj, **kwargs)
 
