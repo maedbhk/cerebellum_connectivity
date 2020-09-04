@@ -92,7 +92,7 @@ def evaluate(config, **kwargs):
     model_eval = EvaluateModel(config=config, **kwargs) 
     model_eval.model_evaluate() 
 
-def run_connect(**kwargs, train=True, evaluate=True):
+def run_connect(train=True, evaluate=True, **kwargs):
 
     # get config files for training and evaluating connectivity data
     config_obj = get_config_file()
