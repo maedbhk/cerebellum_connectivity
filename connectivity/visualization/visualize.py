@@ -9,7 +9,9 @@ import matplotlib.pyplot as plt
 from collections import MutableMapping
 from collections import defaultdict
 
-from connectivity.constants import Dirs
+# import plotly.graph_objects as go
+
+from connectivity.constants import Dirs, Defaults
 from connectivity import io
 from connectivity.data.prep_data import DataManager
 
@@ -149,11 +151,13 @@ class Betas(DataManager):
         self.inputs = {'X': {'roi': 'tesselsWB162', 'file_dir': 'encoding', 'structure': 'cortex'},
                        'Y': {'roi': 'grey_nan', 'file_dir': 'encoding', 'structure': 'cerebellum'}}
         self.scale = True
+        self.defaults = Defaults()
+        self.subjects = self.defaults.return_subjs
 
     def load_dataframe(self):
         data ={}
         for roi in self.inputs:
-
+            
             self.data_type = self.inputs[roi]
             data[roi] = self.get_conn_data()
 
@@ -165,7 +169,14 @@ class Betas(DataManager):
         Y = pd.DataFrame.from_dict(roi_dict['Y'])
         dataframe = pd.concat([X, Y], axis=1)
 
-        return dataframe.loc[:, ~dataframe.columns.duplicated()] # drop duplicate cols
+        # drop duplicates
+        dataframe = dataframe.loc[:, ~dataframe.columns.duplicated()] # drop duplicate cols
+
+        # save avg betas to disk
+        dirs = Dirs()
+        dataframe.to_csv(os.path.join(dirs.BASE_DIR, 'task_betas.csv'), index=False)
+
+        return dataframe
 
     def _get_avg_betas(self, data_dict):
 
@@ -218,10 +229,10 @@ class Betas(DataManager):
 
     def task_scatter(self, dataframe):
 
-        cmap = sns.cubehelix_palette(dark=.3, light=.8, as_cmap=True)
+        dataframe = dataframe[['stim_name', 'cortex_beta', 'cerebellum_beta']].groupby('stim_name').agg('mean').reset_index()
 
         sns.set(rc={'figure.figsize':(10,10)})
-        sns.scatterplot(x="cortex_beta", y="cerebellum_beta", hue="stim_name", data=dataframe)
+        sns.scatterplot(x="cortex_beta", y="cerebellum_beta", hue=dataframe['stim_name'].tolist(), data=dataframe)
 
         # plot regression line
         m, b = np.polyfit(dataframe['cortex_beta'], dataframe['cerebellum_beta'], 1)
@@ -234,4 +245,48 @@ class Betas(DataManager):
         # plt.ylim(bottom=.7, top=1.0)
 
         plt.show()
-    
+
+    def task_scatter_interactive(self, dataframe):
+        dataframe = dataframe[['stim_name', 'cortex_beta', 'cerebellum_beta']].groupby('stim_name').agg('mean').reset_index()
+
+        fig = go.Figure(data=go.Scatter(x=dataframe['cerebellum_beta'],
+                        y=dataframe['cortex_beta'],
+                        mode='markers',
+                        marker=dict(
+                        color='LightSkyBlue',
+                        size=20,
+                        line=dict(
+                        color='MediumPurple',
+                        width=2
+                        )),
+                        text=dataframe['stim_name'], 
+                        textfont=dict(
+                        family="sans serif",
+                        size=18,
+                        color="LightSeaGreen")))
+
+        # plot regression line
+        m, b = np.polyfit(dataframe['cortex_beta'], dataframe['cerebellum_beta'], 1)
+
+        fig.add_trace(go.Scatter(
+                x=dataframe['cortex_beta'], y=m*dataframe['cortex_beta']+ b,
+                name='regression line',
+                marker_color='black'
+                ))
+
+        fig.update_layout(
+            height=800,
+            title_text='Avg. betas: Cortex and Cerebellum'
+            )
+
+        fig.update_xaxes(
+            title_font=dict(size=18),
+            title='Cerebellum',
+            )
+
+        fig.update_yaxes(
+            title_font=dict(size=18),
+            title='Cortex',
+            )
+
+        fig.show()
