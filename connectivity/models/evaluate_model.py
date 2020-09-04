@@ -150,7 +150,6 @@ class EvaluateModel(DataManager):
                     # calculate reliabilities
                     data_dict = self._calculate_reliabilities(ssq=ssq_all)
 
-                    keyboard
                     # calculate sparseness measure
                     # sort(abs(M.W{m}));
                     data_dict.update({'eval_splits': split, param_name: param_values[i], 'eval_subjects': subj})
