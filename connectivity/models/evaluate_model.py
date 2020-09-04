@@ -147,9 +147,12 @@ class EvaluateModel(DataManager):
                                                 Y_pred_crossed=Y_pred_crossed,
                                                 Y_pred_uncrossed=Y_pred_uncrossed)
                     
-                    # calculate sparseness measure
-                    # GINNI INDEX
+                    # calculate reliabilities
                     data_dict = self._calculate_reliabilities(ssq=ssq_all)
+
+                    keyboard
+                    # calculate sparseness measure
+                    # sort(abs(M.W{m}));
                     data_dict.update({'eval_splits': split, param_name: param_values[i], 'eval_subjects': subj})
 
                     for k,v in data_dict.items():
