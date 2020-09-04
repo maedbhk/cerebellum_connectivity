@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from collections import MutableMapping
 from collections import defaultdict
 
-import plotly.graph_objects as go
+# import plotly.graph_objects as go
 
 from connectivity.constants import Dirs
 from connectivity import io
