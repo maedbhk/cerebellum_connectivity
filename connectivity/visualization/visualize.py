@@ -11,7 +11,7 @@ from collections import defaultdict
 
 # import plotly.graph_objects as go
 
-from connectivity.constants import Dirs
+from connectivity.constants import Dirs, Defaults
 from connectivity import io
 from connectivity.data.prep_data import DataManager
 
@@ -151,11 +151,13 @@ class Betas(DataManager):
         self.inputs = {'X': {'roi': 'tesselsWB162', 'file_dir': 'encoding', 'structure': 'cortex'},
                        'Y': {'roi': 'grey_nan', 'file_dir': 'encoding', 'structure': 'cerebellum'}}
         self.scale = True
+        self.defaults = Defaults()
+        self.subjects = self.defaults.return_subjs
 
     def load_dataframe(self):
         data ={}
         for roi in self.inputs:
-
+            
             self.data_type = self.inputs[roi]
             data[roi] = self.get_conn_data()
 
