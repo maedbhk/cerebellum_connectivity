@@ -80,6 +80,8 @@ class Utils:
             
             # load data file
             data_dict = self._load_data_file(data_fname=file.replace('json', 'h5'))
+            # remove any vox cols
+            data_dict = {k:v for k,v in data_dict.items() if 'vox' not in k} 
 
             # load param file
             param_dict = self._load_param_file(param_fname=file)
@@ -87,44 +89,67 @@ class Utils:
             # flatten nested json dict
             param_dict = self._flatten_nested_dict(data_dict=param_dict)
 
-            # convert json and hdf5 to dataframes
-            df_param = self._convert_to_dataframe(data_dict=param_dict)
-            df_data = pd.DataFrame.from_dict(data_dict)
-
-            # merge param and data 
-            df_merged = df_param.merge(df_data)
+            try: 
+                df_param = self._convert_to_dataframe(data_dict=param_dict)
+                df_data = pd.DataFrame.from_dict(data_dict)
+                # merge param and data 
+                df_merged = df_param.merge(df_data)
+            except: 
+                # add data dict to param_dict
+                param_dict.update(data_dict)
+                # convert json and hdf5 to dataframes
+                df_merged = self._convert_to_dataframe(data_dict=param_dict)
 
             # concat repated models
             df_all = pd.concat([df_all, df_merged], axis=0)
 
         # tidy up dataframe
         cols_to_stack = [col for col in df_all.columns if 'R_' in col]
+        cols_to_stack.extend([col for col in df_all.columns if 'S_' in col])
         df1 = pd.concat([df_all]*len(cols_to_stack)).reset_index(drop=True)
-        df2 = pd.melt(df_all[cols_to_stack]).rename({'variable': 'R_type', 'value': 'R'}, axis=1)
+        df2 = pd.melt(df_all[cols_to_stack]).rename({'variable': 'eval_type', 'value': 'eval'}, axis=1)
         df_all = pd.concat([df1, df2], axis=1)
 
         return df_all
 
-class Predictions(Utils):
+class PlotPred(Utils):
 
-    def __init__(self, model_name = 'tesselsWB162_grey_nan_l2_regress', eval_on = 'sc2', glm = 7):
+    def __init__(self, model_name='tesselsWB162_grey_nan_l2_regress', eval_on=['sc1', 'sc2'], glm=7):
         self.model_name = model_name
         self.eval_on = eval_on
         self.glm = glm
 
-        self.dirs = Dirs(study_name = self.eval_on, glm = self.glm)
-
     def load_dataframe(self):
-        fnames = self.get_all_files(file=self.model_name)
 
-        dataframe = self.read_to_dataframe(files=fnames)
+        # loop over exp
+        dataframes = pd.DataFrame()
+        for exp in self.eval_on:
 
-        return dataframe
+            self.dirs = Dirs(study_name = exp, glm = self.glm)
 
-    def plot_prediction_group(self, dataframe):
+            # get filenames for `model_name` and for `exp`
+            fnames = self.get_all_files(file=self.model_name)
+
+            # read data to dataframe
+            dataframes = pd.concat([dataframes, self.read_to_dataframe(files=fnames)])
+
+        return dataframes
+
+    def plot_prediction_all(self, dataframe):
         
         sns.set(rc={'figure.figsize':(20,10)})
-        sns.factorplot(x='lambdas', y='R', hue='R_type', data=dataframe)
+        sns.factorplot(x='lambdas', y='eval', hue='eval_type', data=dataframe)
+        plt.xlabel('lambdas', fontsize=20),
+        plt.ylabel('R', fontsize=20)
+        plt.title('', fontsize=20);
+        plt.tick_params(axis = 'both', which = 'major', labelsize = 20)
+        # plt.ylim(bottom=.7, top=1.0)
+
+        plt.show()
+
+    def plot_prediction_study(self, dataframe, y='R_pred'):
+        sns.set(rc={'figure.figsize':(20,10)})
+        sns.factorplot(x='lambdas', y=y, hue='eval_on', data=dataframe)
         plt.xlabel('lambdas', fontsize=20),
         plt.ylabel('R', fontsize=20)
         plt.title('', fontsize=20);
@@ -144,7 +169,10 @@ class Predictions(Utils):
 
         plt.show()
 
-class Betas(DataManager):
+class MapPreds(Utils):
+    pass
+
+class PlotBetas(DataManager):
     
     def __init__(self):
         super().__init__()

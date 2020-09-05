@@ -146,7 +146,7 @@ class TrainModel(DataManager):
 
         return np.array(X_indices), np.array(Y_indices)
         
-    def _get_outpath(self, file_type):
+    def _get_outpath(self, file_type, **kwargs):
         """ sets outpath for connectivity training model outputs
             Args: 
                 file_type (str): 'json' or 'h5' 
@@ -157,12 +157,17 @@ class TrainModel(DataManager):
         # fname     = 'mb4_%s_%s'% (rois['cortex'], model)
         X_roi = self.config['train_inputs']['train_X']['roi']
         Y_roi = self.config['train_inputs']['train_Y']['roi']
-        timestamp = f'{strftime("%Y-%m-%d_%H:%M:%S", gmtime())}'
+
+        if kwargs.get('timestamp'):
+            timestamp = kwargs['timestamp']
+        else:
+            timestamp = f'{strftime("%Y-%m-%d_%H:%M:%S", gmtime())}'
+
         model_name = self.config['model_name']
         fname = f'{X_roi}_{Y_roi}_{model_name}_{timestamp}{file_type}'
         fpath = os.path.join(self.dirs.CONN_TRAIN_DIR, fname)
         
-        return fpath
+        return fpath, timestamp
     
     def _save_model_output(self, json_file, hdf5_file):
         """ saves model params to json and model data to hdf5
@@ -170,11 +175,11 @@ class TrainModel(DataManager):
                 json_file (str): json file name
                 hdf5_file (str): hdf5 file name
         """
-        out_path = self._get_outpath(file_type = '.json')
+        out_path, timestamp = self._get_outpath(file_type='.json')
         io.save_dict_as_JSON(fpath=out_path, data_dict=json_file)
 
-        # save model data to HDF5
-        out_path = self._get_outpath(file_type = '.h5')
+        # save model data to HDF5, pass in JSON timestamp (these should be the exact same)
+        out_path, _ = self._get_outpath(file_type='.h5', timestamp=timestamp)
         io.save_dict_as_hdf5(fpath=out_path, data_dict=hdf5_file)
         
 

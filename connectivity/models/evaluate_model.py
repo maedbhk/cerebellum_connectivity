@@ -83,7 +83,7 @@ class EvaluateModel(DataManager):
 
         # fit model for each `subj`
         R_all_subjs = {}
-        reliabilities = defaultdict(list)
+        data_dict = defaultdict(list)
         for subj in self.config['eval_subjects']:
 
             print(f'evaluating model for s{subj:02} ...')
@@ -147,22 +147,31 @@ class EvaluateModel(DataManager):
                                                 Y_pred_crossed=Y_pred_crossed,
                                                 Y_pred_uncrossed=Y_pred_uncrossed)
                     
+                    # add predictions to data dict
+                    # data_dict = {}
+                    if self.config['eval_save_maps']:
+                        data_dict.update({'Y_pred_uncrossed_vox': np.nanmean(Y_pred_uncrossed, axis=0),
+                                         'Y_pred_crossed_vox': np.nanmean(Y_pred_crossed, axis=0)})
+            
                     # calculate reliabilities
-                    data_dict = self._calculate_reliabilities(ssq=ssq_all)
+                    data_dict.update(self._calculate_reliabilities(ssq=ssq_all))
 
-                    # calculate sparseness measure
-                    # sort(abs(M.W{m}));
+                    # calculate sparsity
+                    data_dict.update(self._calculate_sparsity(W=model_weight.T))
+
+                    # add splits to data dict
                     data_dict.update({'eval_splits': split, param_name: param_values[i], 'eval_subjects': subj})
 
                     for k,v in data_dict.items():
-                        reliabilities[k].append(v)
+                        # data_dict[k].append(v)
+                        np.append(data_dict[k], v)
 
         # get eval params
         eval_params = copy.deepcopy(self.config)
         eval_params.update({'model_fname': model_fname, 'eval_splits': list(splits.keys())})
 
         # save eval parames to JSON and save eval predictions and reliabilities to HDF5
-        self._save_eval_output(json_file = eval_params, hdf5_file = reliabilities)
+        self._save_eval_output(json_file=eval_params, hdf5_file=data_dict)
     
     def _get_model_data(self):
         """ Returns model training data based on requested model parameters from config file
@@ -322,7 +331,27 @@ class EvaluateModel(DataManager):
 
         return data_dict
     
-    def _get_outpath(self, file_type):
+    def _calculate_sparsity(self, W):
+
+        sparsity_dict = {}
+
+        # calculate total % of sum weights
+        W_sort = np.sort(abs(W), axis=0)
+        W_sort_standarized = np.divide(W_sort, sum(W_sort))   
+        sparsity_vox = np.nanmax(W_sort_standarized, axis=0)
+
+        num_feat, _ = W_sort_standarized.shape
+        weight = (num_feat - (np.arange(0,num_feat)).T + 0.5) / num_feat 
+        ginni_vox = 1 - 2*(np.matmul(W_sort_standarized.T, weight) ); 
+
+        # save to dict
+        sparsity_dict = {'S_best_weight': np.nanmean(sparsity_vox), 'S_ginni': np.nanmean(ginni_vox)}
+        if self.config['eval_save_maps']:
+            sparsity_dict.update({'S_best_weight_vox': sparsity_vox, 'S_ginni_vox': ginni_vox})
+
+        return sparsity_dict
+    
+    def _get_outpath(self, file_type, **kwargs):
         """ sets outpath for connectivity evaluation output
             Args: 
                 file_type (str): 'json' or 'h5' 
@@ -334,18 +363,23 @@ class EvaluateModel(DataManager):
         # define eval name
         X_roi = self.config['eval_inputs']['eval_X']['roi']
         Y_roi = self.config['eval_inputs']['eval_Y']['roi']
-        timestamp = f'{strftime("%Y-%m-%d_%H:%M:%S", gmtime())}'
+
+        if kwargs.get('timestamp'):
+            timestamp = kwargs['timestamp']
+        else:
+            timestamp = f'{strftime("%Y-%m-%d_%H:%M:%S", gmtime())}'
+
         model_name = self.config['model_name']
         fname = f'{X_roi}_{Y_roi}_{model_name}_{timestamp}{file_type}'
         fpath = os.path.join(dirs.CONN_EVAL_DIR, fname)
         
-        return fpath
+        return fpath, timestamp
     
     def _save_eval_output(self, json_file, hdf5_file):
-        out_path = self._get_outpath(file_type='.json')
+        out_path, timestamp = self._get_outpath(file_type='.json')
         io.save_dict_as_JSON(fpath=out_path, data_dict=json_file)
 
         # save model data to HDF5
-        out_path = self._get_outpath(file_type='.h5')
+        out_path, _ = self._get_outpath(file_type='.h5', timestamp=timestamp)
         io.save_dict_as_hdf5(fpath=out_path, data_dict=hdf5_file)
     
