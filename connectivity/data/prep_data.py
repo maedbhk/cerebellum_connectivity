@@ -5,6 +5,7 @@ import numpy as np
 import re
 import deepdish as dd
 import copy
+from collections import defaultdict
 
 from sklearn.preprocessing import StandardScaler
 
@@ -150,7 +151,7 @@ class DataManager:
             B_exp[self.exp]['betas'] = B_subjs
         
             # save dict as HDF5 file for each `exp`
-            io.save_dict_as_hdf5(fpath = self._get_path_to_betas(), data_dict = B_exp)
+            io.save_dict_as_hdf5(fpath=self._get_path_to_betas(), data_dict=B_exp)
         
     def _scale_data(self, X):
         """ standardize features by removing the mean and scaling to unit variance
@@ -204,10 +205,19 @@ class DataManager:
         """
         file_dir = self.data_type['file_dir']  
         roi = self.data_type['roi']
+        
         if file_dir == 'encoding':
-            fpath = os.path.join(self.dirs.ENCODE_DIR, f's{self.subj:02}', f'Y_info_glm{self.glm}_{roi}.mat')
+            self.roi_dir = self.dirs.ENCODE_DIR
         elif file_dir == 'beta_roi':
-            fpath = os.path.join(self.dirs.BETA_REG_DIR, f's{self.subj:02}', f'Y_info_glm{self.glm}_{roi}.mat')
+            self.roi_dir = self.dirs.BETA_REG_DIR
+        
+        # get fpath to Y data
+        fpath = os.path.join(self.roi_dir, f's{self.subj:02}', f'Y_info_glm{self.glm}_{roi}.mat')
+
+        # save out indices for grey_nan voxels
+        if roi == 'grey_nan':
+            self._save_grey_nan_indx()
+
         return io.read_mat_as_hdf5(fpath)['Y']
     
     def _add_task_conds(self):
@@ -328,6 +338,27 @@ class DataManager:
             dataframes_all = pd.concat([dataframes_all, dataframe_concat])
 
         return pd.DataFrame.to_dict(dataframes_all, orient = 'list')       
+
+    def _save_grey_nan_indx(self):
+        """ saves non-zero indices for `grey_nan` ROI (cerebellum)
+        """
+        # loop over subjects
+        vox_dict_all = defaultdict(list)
+        for subj in self.subjects:
+            fpath = os.path.join(self.roi_dir, f's{subj:02}', f'Y_info_glm{self.glm}_grey_nan.mat')
+
+            # load in vox indices
+            vox_indx = io.read_mat_as_hdf5(fpath)['Y']['nonZeroInd']
+
+            # create dict with grey nan indices
+            vox_dict = {'subjects': subj, 'nonZeroInd': vox_indx[:,0].tolist()} # just take first row (there are n repeats)
+
+            # append subj grey_nan indices
+            for k,v in vox_dict.items():
+                vox_dict_all[k].append(v)
+
+        # save to file
+        io.save_dict_as_JSON(os.path.join(self.roi_dir, 'grey_nan_nonZeroInd.json'), dict(vox_dict_all))
 
 # run the following to return data
 # prep = DataManager()

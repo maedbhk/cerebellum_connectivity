@@ -6,10 +6,13 @@ import h5py
 import deepdish as dd 
 import shutil
 import json
+import nibabel as nib
 
 """
 Created on Wed Aug 05 11:10:12 2020
 General purpose utils for loading and saving data
+including reading in .mat files to .hdf5, saving out numpy arrays
+to nifti files, saving dicts to .json etc
 
 @author: Maedbh King
 """
@@ -99,6 +102,12 @@ def convert_to_dataframe(file_obj, cols):
     dataframe = pd.DataFrame.from_records(dict_all)
 
     return dataframe
+
+def save_to_nifti():
+    # img = nifti obj
+    
+    img.set_filename(fpath)
+    nib.save(img, fpath) # save to file
 
 def _convertobj(file_obj, key):
     """ converts object reference for `key` in `file_obj`
