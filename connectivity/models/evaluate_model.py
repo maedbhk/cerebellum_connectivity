@@ -6,8 +6,10 @@ import copy
 from dictdiffer import diff, patch, swap, revert 
 
 from collections import defaultdict
+from functools import partial
 
 from connectivity import io
+from connectivity.helper_functions import AutoVivification
 from connectivity.data.prep_data import DataManager
 from connectivity.constants import Defaults, Dirs
 from connectivity.models.model_functions import MODEL_MAP
@@ -83,26 +85,30 @@ class EvaluateModel(DataManager):
 
         # fit model for each `subj`
         R_all_subjs = {}
-        reliabilities = defaultdict(list)
-        for subj in self.config['eval_subjects']:
 
-            print(f'evaluating model for s{subj:02} ...')
+        # initialise data dict
+        data_dict_all = self._init_data_dict()
+
+        # loop over subjects
+        for self.subj in self.config['eval_subjects']:
+
+            print(f'evaluating model for s{self.subj:02} ...')
 
             # get betas for Y evaluation
-            Y_eval_subj = Y_eval['betas'][f's{subj:02}']
-            X_eval_subj = X_eval['betas'][f's{subj:02}']
+            Y_eval_subj = Y_eval['betas'][f's{self.subj:02}']
+            X_eval_subj = X_eval['betas'][f's{self.subj:02}']
                 
             # get model weights
-            model_weights = model_data[f's{subj:02}']['weights']
+            model_weights = model_data[f's{self.subj:02}']['weights']
 
             if type(model_weights) != list:
                 model_weights = [model_weights]
 
             # get model params (if they exist)
-            param_name, param_values=self._get_model_params(model_inputs)
+            self.param_name, self.param_values=self._get_model_params(model_inputs)
 
             # loop over model weights
-            for i, model_weight in enumerate(model_weights):
+            for self.i, model_weight in enumerate(model_weights):
 
                 if self.config['eval_good_vox']:
                     # get "good voxels"
@@ -112,7 +118,7 @@ class EvaluateModel(DataManager):
                     vox_idx = [True for i in np.arange(len(model_weight))]
 
                 # loop over splits
-                for split in splits:
+                for self.split in splits:
 
                     Y_preds = {}
                     eval_idx = {}
@@ -122,7 +128,7 @@ class EvaluateModel(DataManager):
                         eval_idx[eval_mode] = self._get_eval_idx(eval_mode=eval_mode, X=X_eval)
                     
                         # calculate prediction between model weights and X evaluation data
-                        X =  X_eval_subj[eval_idx[eval_mode]][splits[split]]
+                        X =  X_eval_subj[eval_idx[eval_mode]][splits[self.split]]
 
                         if self.config['eval_scale']:
                             Y_preds[eval_mode] = self._predict(X=self._scale_data(X), W=model_weight.T)
@@ -130,8 +136,8 @@ class EvaluateModel(DataManager):
                             Y_preds[eval_mode] = self._predict(X=X, W=model_weight.T)
 
                     # get `crossed` and `uncrossed` eval and pred data
-                    eval_Y_crossed = Y_eval_subj[eval_idx['crossed']][splits[split]][:, vox_idx]
-                    eval_Y_uncrossed = Y_eval_subj[eval_idx['uncrossed']][splits[split]][:, vox_idx]
+                    eval_Y_crossed = Y_eval_subj[eval_idx['crossed']][splits[self.split]][:, vox_idx]
+                    eval_Y_uncrossed = Y_eval_subj[eval_idx['uncrossed']][splits[self.split]][:, vox_idx]
 
                     # scale the eval data
                     if self.config['eval_scale']:
@@ -146,23 +152,25 @@ class EvaluateModel(DataManager):
                                                 eval_Y_uncrossed=eval_Y_uncrossed,
                                                 Y_pred_crossed=Y_pred_crossed,
                                                 Y_pred_uncrossed=Y_pred_uncrossed)
-                    
+
                     # calculate reliabilities
                     data_dict = self._calculate_reliabilities(ssq=ssq_all)
 
-                    # calculate sparseness measure
-                    # sort(abs(M.W{m}));
-                    data_dict.update({'eval_splits': split, param_name: param_values[i], 'eval_subjects': subj})
+                    # calculate sparsity
+                    data_dict.update(self._calculate_sparsity(W=model_weight.T))
 
-                    for k,v in data_dict.items():
-                        reliabilities[k].append(v)
+                    # update data dict with/without voxel data
+                    data_dict = self._update_data_dict(data_dict, Y_pred_uncrossed, Y_pred_crossed)
+
+                    # append data dict
+                    data_dict_all = self._append_data_dict(data_dict, data_dict_all)
 
         # get eval params
         eval_params = copy.deepcopy(self.config)
         eval_params.update({'model_fname': model_fname, 'eval_splits': list(splits.keys())})
 
         # save eval parames to JSON and save eval predictions and reliabilities to HDF5
-        self._save_eval_output(json_file = eval_params, hdf5_file = reliabilities)
+        self._save_eval_output(json_file=eval_params, hdf5_file=data_dict_all)
     
     def _get_model_data(self):
         """ Returns model training data based on requested model parameters from config file
@@ -292,13 +300,13 @@ class EvaluateModel(DataManager):
 
     def _calculate_ssq(self, eval_Y_crossed, eval_Y_uncrossed, Y_pred_crossed, Y_pred_uncrossed):
         # evaluation output
-        ssq_pred = np.nansum(Y_pred_crossed ** 2, axis = 0) # sum-of-squares of predictions
-        ssq_y = np.nansum(eval_Y_crossed ** 2, axis = 0) # sum-of-squares of Y evaluation data
-        ssc_pred = np.nansum(Y_pred_crossed * Y_pred_uncrossed, axis = 0) # covariance of predictions
-        ssc_y = np.nansum(eval_Y_uncrossed * eval_Y_crossed, axis = 0) # covariance of Y evaluation data
-        ssc_uncrossed = np.nansum(Y_pred_uncrossed * eval_Y_crossed, axis = 0) # covariance of uncrossed prediction and Y evaluation data
-        ssc_crossed = np.nansum(Y_pred_crossed * eval_Y_crossed, axis = 0) # covariance of crossed prediction and Y evaluation data
-
+        ssq_pred = np.nansum(Y_pred_crossed**2, axis=0) # sum-of-squares of predictions
+        ssq_y = np.nansum(eval_Y_crossed**2, axis=0) # sum-of-squares of Y evaluation data
+        ssc_pred = np.nansum(Y_pred_crossed * Y_pred_uncrossed, axis=0) # covariance of predictions
+        ssc_y = np.nansum(eval_Y_uncrossed * eval_Y_crossed, axis=0) # covariance of Y evaluation data
+        ssc_uncrossed = np.nansum(Y_pred_uncrossed * eval_Y_crossed, axis=0) # covariance of uncrossed prediction and Y evaluation data
+        ssc_crossed = np.nansum(Y_pred_crossed * eval_Y_crossed, axis=0) # covariance of crossed prediction and Y evaluation data
+        
         return {'ssq_pred': ssq_pred, 'ssq_y': ssq_y, 'ssc_pred': ssc_pred,
                 'ssc_y': ssc_y, 'ssc_uncrossed': ssc_uncrossed, 'ssc_crossed': ssc_crossed
                 }
@@ -322,7 +330,60 @@ class EvaluateModel(DataManager):
 
         return data_dict
     
-    def _get_outpath(self, file_type):
+    def _calculate_sparsity(self, W):
+
+        sparsity_dict = {}
+
+        # calculate total % of sum weights
+        W_sort = np.sort(abs(W), axis=0)
+        W_sort_standarized = np.divide(W_sort, sum(W_sort))   
+        sparsity_vox = np.nanmax(W_sort_standarized, axis=0)
+
+        num_feat, _ = W_sort_standarized.shape
+        weight = (num_feat - (np.arange(0,num_feat)).T + 0.5) / num_feat 
+        ginni_vox = 1 - 2*(np.matmul(W_sort_standarized.T, weight) ); 
+
+        # save to dict
+        sparsity_dict = {'S_best_weight': np.nanmean(sparsity_vox), 'S_ginni': np.nanmean(ginni_vox)}
+        if self.config['eval_save_maps']:
+            sparsity_dict.update({'S_best_weight_vox': sparsity_vox, 'S_ginni_vox': ginni_vox})
+
+        return sparsity_dict
+    
+    def _update_data_dict(self, data_dict, Y_pred_uncrossed, Y_pred_crossed):
+        # add predictions to data dict
+        if self.config['eval_save_maps']:
+            data_dict.update({'Y_pred_uncrossed_vox': np.nanmean(Y_pred_uncrossed, axis=0),
+                            'Y_pred_crossed_vox': np.nanmean(Y_pred_crossed, axis=0)})
+        else:
+            # add subjects, splits, lambdas
+            data_dict.update({'eval_splits': self.split, self.param_name: self.param_values[self.i], 'eval_subjects': self.subj})
+
+        return data_dict
+    
+    def _init_data_dict(self):
+        data_dict_all = defaultdict(partial(np.ndarray, 0))
+        
+        if self.config['eval_save_maps']:
+            data_dict_all = AutoVivification()
+
+        return data_dict_all
+    
+    def _append_data_dict(self, data_dict, data_dict_all):
+        # append data dict with/without voxel data
+        if not self.config['eval_save_maps']:
+            for k,v in data_dict.items():
+                # data_dict[k].append(v)
+                data_dict_all[k] = np.append(data_dict_all[k], v)
+        else:
+            param_value = self.param_values[self.i]
+            model_key = f'{self.param_name}_{param_value}'
+            data_dict = {k:v for k,v in data_dict.items() if 'vox' in k} 
+            data_dict_all[f's{self.subj:02}'][model_key][self.split] = data_dict
+
+        return data_dict_all
+    
+    def _get_outpath(self, file_type, **kwargs):
         """ sets outpath for connectivity evaluation output
             Args: 
                 file_type (str): 'json' or 'h5' 
@@ -334,18 +395,24 @@ class EvaluateModel(DataManager):
         # define eval name
         X_roi = self.config['eval_inputs']['eval_X']['roi']
         Y_roi = self.config['eval_inputs']['eval_Y']['roi']
-        timestamp = f'{strftime("%Y-%m-%d_%H:%M:%S", gmtime())}'
+
+        if kwargs.get('timestamp'):
+            timestamp = kwargs['timestamp']
+        else:
+            timestamp = f'{strftime("%Y-%m-%d_%H:%M:%S", gmtime())}'
+
         model_name = self.config['model_name']
         fname = f'{X_roi}_{Y_roi}_{model_name}_{timestamp}{file_type}'
         fpath = os.path.join(dirs.CONN_EVAL_DIR, fname)
         
-        return fpath
+        return fpath, timestamp
     
     def _save_eval_output(self, json_file, hdf5_file):
-        out_path = self._get_outpath(file_type='.json')
+        out_path, timestamp = self._get_outpath(file_type='.json')
         io.save_dict_as_JSON(fpath=out_path, data_dict=json_file)
 
         # save model data to HDF5
-        out_path = self._get_outpath(file_type='.h5')
+        out_path, _ = self._get_outpath(file_type='.h5', timestamp=timestamp)
         io.save_dict_as_hdf5(fpath=out_path, data_dict=hdf5_file)
+
     

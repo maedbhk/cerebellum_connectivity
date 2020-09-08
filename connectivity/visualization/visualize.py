@@ -3,17 +3,22 @@ import pandas as pd
 import numpy as np
 import re
 import glob
+from pathlib import Path
 
 import seaborn as sns
 import matplotlib.pyplot as plt
 from collections import MutableMapping
 from collections import defaultdict
+from functools import partial
 
-import plotly.graph_objects as go
+import nibabel as nib
+
+# import plotly.graph_objects as go
 
 from connectivity.constants import Dirs, Defaults
 from connectivity import io
 from connectivity.data.prep_data import DataManager
+from connectivity import image_utils
 
 """
 Created on Wed 26 13:31:34 2020
@@ -69,6 +74,20 @@ class Utils:
 
         return default_dict
     
+    def _get_cerebellar_mask(self, mask, glm):
+        """ converts cerebellar mask to nifti obj
+            Args: 
+                mask (str): make name
+            Returns: 
+                nifti obj of mask
+        """
+        dirs = Dirs(study_name='sc1', glm=glm)
+        return nib.load(os.path.join(dirs.SUIT_ANAT_DIR, mask))
+
+    def _make_dir(self, fpath)
+        if not os.path.exists(fpath):
+            os.makedirs(fpath)
+    
     def get_all_files(self, file):
         return glob.glob(os.path.join(self.dirs.CONN_EVAL_DIR, f'*{file}*.json'))
     
@@ -81,51 +100,66 @@ class Utils:
             # load data file
             data_dict = self._load_data_file(data_fname=file.replace('json', 'h5'))
 
+            # remove any vox cols
+            data_dict = {k:v for k,v in data_dict.items() if 'vox' not in k} 
+
             # load param file
             param_dict = self._load_param_file(param_fname=file)
 
             # flatten nested json dict
             param_dict = self._flatten_nested_dict(data_dict=param_dict)
 
-            # convert json and hdf5 to dataframes
-            df_param = self._convert_to_dataframe(data_dict=param_dict)
-            df_data = pd.DataFrame.from_dict(data_dict)
-
-            # merge param and data 
-            df_merged = df_param.merge(df_data)
+            try: 
+                df_param = self._convert_to_dataframe(data_dict=param_dict)
+                df_data = pd.DataFrame.from_dict(data_dict)
+                # merge param and data 
+                df_merged = df_param.merge(df_data)
+            except: 
+                # add data dict to param_dict
+                param_dict.update(data_dict)
+                # convert json and hdf5 to dataframes
+                df_merged = self._convert_to_dataframe(data_dict=param_dict)
 
             # concat repated models
             df_all = pd.concat([df_all, df_merged], axis=0)
 
         # tidy up dataframe
         cols_to_stack = [col for col in df_all.columns if 'R_' in col]
+        cols_to_stack.extend([col for col in df_all.columns if 'S_' in col])
         df1 = pd.concat([df_all]*len(cols_to_stack)).reset_index(drop=True)
-        df2 = pd.melt(df_all[cols_to_stack]).rename({'variable': 'R_type', 'value': 'R'}, axis=1)
+        df2 = pd.melt(df_all[cols_to_stack]).rename({'variable': 'eval_type', 'value': 'eval'}, axis=1)
         df_all = pd.concat([df1, df2], axis=1)
 
         return df_all
 
-class Predictions(Utils):
+class PlotPred(Utils):
 
-    def __init__(self, model_name = 'tesselsWB162_grey_nan_l2_regress', eval_on = 'sc2', glm = 7):
+    def __init__(self, model_name='tesselsWB162_grey_nan_l2_regress', eval_on=['sc1', 'sc2'], glm=7):
         self.model_name = model_name
         self.eval_on = eval_on
         self.glm = glm
 
-        self.dirs = Dirs(study_name = self.eval_on, glm = self.glm)
-
     def load_dataframe(self):
-        fnames = self.get_all_files(file=self.model_name)
 
-        dataframe = self.read_to_dataframe(files=fnames)
+        # loop over exp
+        dataframes = pd.DataFrame()
+        for exp in self.eval_on:
 
-        return dataframe
+            self.dirs = Dirs(study_name = exp, glm = self.glm)
 
-    def plot_prediction_group(self, dataframe):
+            # get filenames for `model_name` and for `exp`
+            fnames = self.get_all_files(file=self.model_name)
+
+            # read data to dataframe
+            dataframes = pd.concat([dataframes, self.read_to_dataframe(files=fnames)])
+
+        return dataframes
+
+    def plot_prediction_all(self, dataframe, x='lambdas', y='eval', hue='eval_type'):
         
         sns.set(rc={'figure.figsize':(20,10)})
-        sns.factorplot(x='lambdas', y='R', hue='R_type', data=dataframe)
-        plt.xlabel('lambdas', fontsize=20),
+        sns.factorplot(x=x, y=y, hue=hue, data=dataframe)
+        plt.xlabel(x, fontsize=20),
         plt.ylabel('R', fontsize=20)
         plt.title('', fontsize=20);
         plt.tick_params(axis = 'both', which = 'major', labelsize = 20)
@@ -133,18 +167,134 @@ class Predictions(Utils):
 
         plt.show()
 
-    def plot_prediction_tasks(self, dataframe):
-        sns.set(rc={'figure.figsize':(20,10)})
-        sns.factorplot(x='lambdas', y='R_pred', hue='eval_splits', data=dataframe)
-        plt.xlabel('lambdas', fontsize=20),
-        plt.ylabel('R', fontsize=20)
-        plt.title('', fontsize=20);
-        plt.tick_params(axis = 'both', which = 'major', labelsize = 20)
-        # plt.ylim(bottom=.7, top=1.0)
+class MapPreds(Utils):
 
-        plt.show()
+    def __init__(self, model_name='tesselsWB162_grey_nan_l2_regress', eval_on=['sc1', 'sc2'], glm=7):
+        self.model_name = model_name
+        self.mask_name = 'cerebellarGreySUIT.nii'
+        self.eval_on = eval_on
+        self.glm = glm
+        self.surface_threshold = 1
+        self.vmax = 10
 
-class Betas(DataManager):
+    def save_predictions_to_nifti(self):
+
+        # loop over exp
+        # dataframes = pd.DataFrame()
+        for exp in self.eval_on:
+
+            self.dirs = Dirs(study_name=exp, glm=self.glm)
+
+            # get filenames for `model_name` and for `exp`
+            fnames = self.get_all_files(file=self.model_name)
+
+            # save voxel predictions to nifti files
+            self._convert_to_nifti(files=fnames)
+
+    def _convert_to_nifti(self, files):
+        """ converts outputs from `files` to nifti
+        """
+        # loop over file names for `model_name`
+        for self.file in files:
+
+            prediction_dict = self._load_predictions(fname=self.file)
+
+            # loop over all prediction data
+            for self.pred_name in prediction_dict:
+
+                # only convert voxel files
+                if 'vox' in self.pred_name:
+
+                    # get outpath to niftis
+                    nifti_dir, nifti_fpath = self._get_nifti_outpath()
+
+                    # get input data for nifti obj
+                    Y, non_zero_ind, mask = self._get_nifti_input_data(data_dict=prediction_dict)
+
+                    # get vol data as nib obj
+                    nib_obj = image_utils.make_nifti_obj(Y=Y, vox_indx=non_zero_ind, mask=mask)
+
+                    # save nifti obj to disk
+                    image_utils.save_to_nifti(nib_obj, nifti_fpath)
+
+                    print(f'saving {self.pred_name} to nifti')
+
+    def _get_nifti_outpath(self):
+        # extract subj name
+        self.subj_name = re.findall('(s\d+)', self.pred_name)[0]
+        eval_name = Path(self.file).stem
+
+        # get dir where niftis will be stored and make dir if 
+        # it doesn't exist
+        nifti_dir = os.path.join(self.dirs.SUIT_DIR, self.subj_name, eval_name)
+        self._make_dir(nifti_dir)
+
+        # get fpath to nifti
+        nifti_fpath = os.path.join(nifti_dir, f'{self.pred_name}.nii')
+
+        return nifti_dir, nifti_fpath
+
+    def _get_nifti_input_data(self, data_dict):
+        """ get mask, voxel_data, and vox indices to
+            be used as input for `make_nifti_obj`
+            Args: 
+                data_dict (dict): data dict containing voxel data (numpy array)
+            Returns:
+                mask (nib obj), Y (numpy array), non_zero_ind (numpy array)
+        """
+        # get prediction data for `pred_name`
+        Y = prediction_dict[self.pred_name][0]
+
+        # load in `grey_nan` indices
+        non_zero_ind_dict = io.read_json(os.path.join(self.dirs.ENCODE_DIR, 'grey_nan_nonZeroInd.json'))
+        non_zero_ind = [int(vox) for vox in non_zero_ind_dict[self.subj_name]] 
+
+        # get cerebellar mask
+        mask = self._get_cerebellar_mask(mask=self.mask_name, glm=self.glm)
+
+        return Y, non_zero_ind, mask
+    
+    def _load_predictions(self, fname):
+        data_dict_all = {}
+        data_dict_all['all-keys'] = self._load_data_file(data_fname=file.replace('json', 'h5'))
+
+        # conjoin nested keys (will form nifti filenames)
+        return self._flatten_nested_dict(data_dict_all) 
+
+    def _plot_surface_cerebellum(self):
+        view = plotting.view_surf(surf_mesh=self.surf_mesh, 
+                                surf_map=self.surf_map, 
+                                colorbar=True,
+                                threshold=self.surface_threshold,
+                                vmax=self.vmax,
+                                title=self.title) 
+        # view.resize(500,500)
+
+        view.open_in_browser()
+   
+    def visualize_group_surface_cerebellum(self):
+        # example code to visualize group contrast(s) on flat map
+
+        # get functional group dir
+        SUIT_FUNCTIONAL_GROUP_DIR = os.path.join(Defaults.SUIT_FUNCTIONAL_DIR, self.glm, "group")
+
+        os.chdir(SUIT_FUNCTIONAL_GROUP_DIR)
+
+        # get all contrast images in gifti format
+        fpaths = glob.glob(f'*{self.contrast_type}-{self.glm}.gii')
+
+        # get surface mesh for SUIT
+        self.surf_mesh = os.path.join(Defaults.SUIT_ANATOMICAL_DIR, "FLAT.surf.gii")
+
+        # loop over all gifti files
+        for fpath in fpaths:
+
+            self.surf_map = surface.load_surf_data(fpath).astype(int)
+            self.title = Path(fpath).stem
+
+            self._plot_surface() 
+
+class PlotBetas(DataManager):
     
     def __init__(self):
         super().__init__()
