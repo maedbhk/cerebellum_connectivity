@@ -7,7 +7,7 @@ from connectivity.constants import Defaults, Dirs
 Created on Mon Aug  3 17:40:09 2020
 includes functions for visualizations
 ​
-@authors: Ladan Shahshahani and Maedbh King
+@authors: Maedbh King and Ladan Shahshahani
 """
 
 def make_nifti_obj(Y, vox_indx, mask):
@@ -42,7 +42,7 @@ def make_nifti_obj(Y, vox_indx, mask):
         
     return nib_obj
 
-def save_to_nifti(nib_obj, fpath):
+def save_nifti_obj(nib_obj, fpath):
     """ saves nib obj to nifti file
         Args: 
             nib_obj: contains vol data in nib obj
@@ -51,3 +51,4 @@ def save_to_nifti(nib_obj, fpath):
     """
 
     nib.save(nib_obj, fpath)
+

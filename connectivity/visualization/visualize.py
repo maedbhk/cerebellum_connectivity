@@ -11,7 +11,9 @@ from collections import MutableMapping
 from collections import defaultdict
 from functools import partial
 
+from nilearn import plotting
 import nibabel as nib
+from nilearn import surface
 
 # import plotly.graph_objects as go
 
@@ -84,12 +86,12 @@ class Utils:
         dirs = Dirs(study_name='sc1', glm=glm)
         return nib.load(os.path.join(dirs.SUIT_ANAT_DIR, mask))
 
-    def _make_dir(self, fpath)
+    def _make_dir(self, fpath):
         if not os.path.exists(fpath):
             os.makedirs(fpath)
     
-    def get_all_files(self, file):
-        return glob.glob(os.path.join(self.dirs.CONN_EVAL_DIR, f'*{file}*.json'))
+    def get_all_files(self, fullpath, wildcard):
+        return glob.glob(os.path.join(fullpath, wildcard))
     
     def read_to_dataframe(self, files):
 
@@ -148,7 +150,8 @@ class PlotPred(Utils):
             self.dirs = Dirs(study_name = exp, glm = self.glm)
 
             # get filenames for `model_name` and for `exp`
-            fnames = self.get_all_files(file=self.model_name)
+            file = self.model_name
+            fnames = self.get_all_files(fullpath=self.dirs.CONN_EVAL_DIR, wildcard=f'*{file}*.json')
 
             # read data to dataframe
             dataframes = pd.concat([dataframes, self.read_to_dataframe(files=fnames)])
@@ -169,24 +172,60 @@ class PlotPred(Utils):
 
 class MapPreds(Utils):
 
-    def __init__(self, model_name='tesselsWB162_grey_nan_l2_regress', eval_on=['sc1', 'sc2'], glm=7):
+    def __init__(self, model_name='tesselsWB162_grey_nan_l2_regress', pred_type='S_best_weight', eval_on=['sc1', 'sc2'], glm=7):
         self.model_name = model_name
+        self.subjects = [3]
+        self.pred_type = pred_type
         self.mask_name = 'cerebellarGreySUIT.nii'
+        self.surf_mesh = 'FLAT.surf.gii'
         self.eval_on = eval_on
         self.glm = glm
-        self.surface_threshold = 1
-        self.vmax = 10
+        self.surface_threshold = None
+        self.colorbar = True
+        self.vmax = None
+        self.vmin = None
 
-    def save_predictions_to_nifti(self):
-
+    def visualize_predictions(self):
         # loop over exp
-        # dataframes = pd.DataFrame()
+        for exp in self.eval_on:
+            
+            # set directories for exp
+            self.dirs = Dirs(study_name=exp, glm=self.glm)
+
+            # get all model dirs for `model_name`
+            model_dirs = self.get_all_files(fullpath=self.dirs.SUIT_GLM_DIR, wildcard=f'*{self.model_name}*')
+
+            # loop over models and subjects
+            for model_dir, subj in zip(model_dirs, self.subjects):
+
+                # get gifti files for `model_name`, `subj`, `exp`, `pred_type`
+                gifti_fnames = self.get_all_files(fullpath=os.path.join(model_dir, f's{subj:02}'), wildcard=f'*{self.pred_type}_vox.gii*')
+
+                # create gifti files if they do not exist
+                if not gifti_fnames:
+                    self._save_predictions_to_nifti()
+                    raise Exception(f'gifti files do not exist for {subj}:{model_dir} \n, creating niftis but they need to be mapped to surface using suit in matlab ... ')
+
+                # loop over gifti files
+                for gifti_fname in gifti_fnames:
+
+                    # plot map on surface
+                    map_data = surface.load_surf_data(gifti_fname)
+                    self.vmax = max(map_data)
+                    self.vmin = min(map_data)
+                    self._plot_surface_cerebellum(surf_map=map_data,
+                                    surf_mesh=os.path.join(self.dirs.ATLAS_SUIT_FLATMAP, self.surf_mesh),
+                                    title=Path(gifti_fname).stem) 
+    
+    def _save_predictions_to_nifti(self):
+        # loop over exp
         for exp in self.eval_on:
 
             self.dirs = Dirs(study_name=exp, glm=self.glm)
 
-            # get filenames for `model_name` and for `exp`
-            fnames = self.get_all_files(file=self.model_name)
+            # get fnames for eval data for `model_name` and for `exp`
+            file = self.model_name
+            fnames = self.get_all_files(fullpath=self.dirs.CONN_EVAL_DIR, wildcard=f'*{file}*.h5')
 
             # save voxel predictions to nifti files
             self._convert_to_nifti(files=fnames)
@@ -197,7 +236,7 @@ class MapPreds(Utils):
         # loop over file names for `model_name`
         for self.file in files:
 
-            prediction_dict = self._load_predictions(fname=self.file)
+            prediction_dict = self._load_predictions()
 
             # loop over all prediction data
             for self.pred_name in prediction_dict:
@@ -215,7 +254,7 @@ class MapPreds(Utils):
                     nib_obj = image_utils.make_nifti_obj(Y=Y, vox_indx=non_zero_ind, mask=mask)
 
                     # save nifti obj to disk
-                    image_utils.save_to_nifti(nib_obj, nifti_fpath)
+                    image_utils.save_nifti_obj(nib_obj, nifti_fpath)
 
                     print(f'saving {self.pred_name} to nifti')
 
@@ -226,7 +265,7 @@ class MapPreds(Utils):
 
         # get dir where niftis will be stored and make dir if 
         # it doesn't exist
-        nifti_dir = os.path.join(self.dirs.SUIT_DIR, self.subj_name, eval_name)
+        nifti_dir = os.path.join(self.dirs.SUIT_GLM_DIR, eval_name, self.subj_name)
         self._make_dir(nifti_dir)
 
         # get fpath to nifti
@@ -243,7 +282,7 @@ class MapPreds(Utils):
                 mask (nib obj), Y (numpy array), non_zero_ind (numpy array)
         """
         # get prediction data for `pred_name`
-        Y = prediction_dict[self.pred_name][0]
+        Y = data_dict[self.pred_name][0]
 
         # load in `grey_nan` indices
         non_zero_ind_dict = io.read_json(os.path.join(self.dirs.ENCODE_DIR, 'grey_nan_nonZeroInd.json'))
@@ -254,45 +293,24 @@ class MapPreds(Utils):
 
         return Y, non_zero_ind, mask
     
-    def _load_predictions(self, fname):
+    def _load_predictions(self):
         data_dict_all = {}
-        data_dict_all['all-keys'] = self._load_data_file(data_fname=file.replace('json', 'h5'))
+        data_dict_all['all-keys'] = self._load_data_file(data_fname=self.file)
 
         # conjoin nested keys (will form nifti filenames)
         return self._flatten_nested_dict(data_dict_all) 
 
-    def _plot_surface_cerebellum(self):
-        view = plotting.view_surf(surf_mesh=self.surf_mesh, 
-                                surf_map=self.surf_map, 
-                                colorbar=True,
+    def _plot_surface_cerebellum(self, surf_map, surf_mesh, title):
+        view = plotting.view_surf(surf_mesh=surf_mesh, 
+                                surf_map=surf_map, 
+                                colorbar=self.colorbar,
                                 threshold=self.surface_threshold,
                                 vmax=self.vmax,
-                                title=self.title) 
+                                vmin=self.vmin,
+                                title=title) 
         # view.resize(500,500)
 
         view.open_in_browser()
-   
-    def visualize_group_surface_cerebellum(self):
-        # example code to visualize group contrast(s) on flat map
-
-        # get functional group dir
-        SUIT_FUNCTIONAL_GROUP_DIR = os.path.join(Defaults.SUIT_FUNCTIONAL_DIR, self.glm, "group")
-
-        os.chdir(SUIT_FUNCTIONAL_GROUP_DIR)
-
-        # get all contrast images in gifti format
-        fpaths = glob.glob(f'*{self.contrast_type}-{self.glm}.gii')
-
-        # get surface mesh for SUIT
-        self.surf_mesh = os.path.join(Defaults.SUIT_ANATOMICAL_DIR, "FLAT.surf.gii")
-
-        # loop over all gifti files
-        for fpath in fpaths:
-
-            self.surf_map = surface.load_surf_data(fpath).astype(int)
-            self.title = Path(fpath).stem
-
-            self._plot_surface() 
 
 class PlotBetas(DataManager):
     
