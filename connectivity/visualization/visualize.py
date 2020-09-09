@@ -170,11 +170,11 @@ class PlotPred(Utils):
 
         plt.show()
 
-class MapPreds(Utils):
+class MapPred(Utils):
 
     def __init__(self, model_name='tesselsWB162_grey_nan_l2_regress', pred_type='S_best_weight', eval_on=['sc1', 'sc2'], glm=7):
         self.model_name = model_name
-        self.subjects = [3]
+        self.subjects = [2,3,4,6,8,9,10,12,14,15,17,18,19,20,21,22,24,25,26,27,28,29,30,31]
         self.pred_type = pred_type
         self.mask_name = 'cerebellarGreySUIT.nii'
         self.surf_mesh = 'FLAT.surf.gii'
@@ -201,21 +201,21 @@ class MapPreds(Utils):
                 # get gifti files for `model_name`, `subj`, `exp`, `pred_type`
                 gifti_fnames = self.get_all_files(fullpath=os.path.join(model_dir, f's{subj:02}'), wildcard=f'*{self.pred_type}_vox.gii*')
 
-                # create gifti files if they do not exist
+                # create nifti files if they do not exist and raise exception
+                # if giftis exist, plot them!
                 if not gifti_fnames:
                     self._save_predictions_to_nifti()
                     raise Exception(f'gifti files do not exist for {subj}:{model_dir} \n, creating niftis but they need to be mapped to surface using suit in matlab ... ')
-
-                # loop over gifti files
-                for gifti_fname in gifti_fnames:
-
-                    # plot map on surface
-                    map_data = surface.load_surf_data(gifti_fname)
-                    self.vmax = max(map_data)
-                    self.vmin = min(map_data)
-                    self._plot_surface_cerebellum(surf_map=map_data,
-                                    surf_mesh=os.path.join(self.dirs.ATLAS_SUIT_FLATMAP, self.surf_mesh),
-                                    title=Path(gifti_fname).stem) 
+                else:
+                    # loop over gifti files
+                    for gifti_fname in gifti_fnames:
+                        # plot map on surface
+                        map_data = surface.load_surf_data(gifti_fname)
+                        self.vmax = max(map_data)
+                        self.vmin = min(map_data)
+                        self._plot_surface_cerebellum(surf_map=map_data,
+                                        surf_mesh=os.path.join(self.dirs.ATLAS_SUIT_FLATMAP, self.surf_mesh),
+                                        title=Path(gifti_fname).stem) 
     
     def _save_predictions_to_nifti(self):
         # loop over exp

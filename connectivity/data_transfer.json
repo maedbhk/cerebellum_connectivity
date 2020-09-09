@@ -1,0 +1,3 @@
+rsync -a maedbhking@dtn.brc.berkeley.edu:/global/scratch/maedbhking/projects/cerebellum_connectivity/data/sc2/conn_models/glm7/eval/ /Users/maedbhking/Documents/cerebellum_connectivity/data/sc2/conn_models/glm7/
+
+rsync -a maedbhking@dtn.brc.berkeley.edu:/global/scratch/maedbhking/projects/cerebellum_connectivity/data/sc1/conn_models/glm7/eval/ /Users/maedbhking/Documents/cerebellum_connectivity/data/sc1/conn_models/glm7/
