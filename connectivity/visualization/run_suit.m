@@ -129,17 +129,20 @@ switch(what)
             
             for nd=3:length(nifti_dirs)
                 
-                nifti_files = dir(fullfile(SUIT_DIR_FUNC, model_dirs(m).name, nifti_dirs(nd).name)); 
+                nifti_files = dir(fullfile(SUIT_DIR_FUNC, model_dirs(m).name, nifti_dirs(nd).name, '*.nii')); 
                 
-                for n=3:length(nifti_files), 
-                    C=suit_map2surf(fullfile(SUIT_DIR_FUNC, model_dirs(m).name, nifti_dirs(nd).name, nifti_files(n).name),'stats','nanmean');
-
-                    % make gifti structure and save out
-                    g = gifti(C);
+                for n=1:length(nifti_files), 
+                    
+                    % define gifti name
                     out_name = strrep(nifti_files(n).name,'.nii','');
                     out_path = fullfile(SUIT_DIR_FUNC, model_dirs(m).name, nifti_dirs(nd).name, strcat(out_name, '.gii'));
+                    
                     if ~isfile(out_path)
-                       save(g,out_path,'Base64Binary');
+                        % map vol 2 surf
+                        C=suit_map2surf(fullfile(SUIT_DIR_FUNC, model_dirs(m).name, nifti_dirs(nd).name, nifti_files(n).name),'stats','nanmean');
+                        % make gifti structure and save out
+                        g = gifti(C);
+                        save(g,out_path,'Base64Binary');
                     end
                 end 
             end

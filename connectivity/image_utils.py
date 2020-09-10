@@ -73,8 +73,6 @@ def calc_nifti_average(imgs, fpath):
     """
     mean_img = image.mean_img(imgs) # get average of images from `filenames` list
 
-    keyboard
-    
     # save nifti to disk
     save_nifti_obj(nib_obj=mean_img, fpath=fpath)
 

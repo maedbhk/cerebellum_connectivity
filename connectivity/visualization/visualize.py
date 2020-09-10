@@ -97,30 +97,31 @@ class Utils:
 
         # get data for repeat models
         df_all = pd.DataFrame()
+        df_merged = pd.DataFrame()
         for file in files:
-            
-            # load data file
-            data_dict = self._load_data_file(data_fname=file.replace('json', 'h5'))
-
-            # remove any vox cols
-            data_dict = {k:v for k,v in data_dict.items() if 'vox' not in k} 
 
             # load param file
             param_dict = self._load_param_file(param_fname=file)
 
-            # flatten nested json dict
-            param_dict = self._flatten_nested_dict(data_dict=param_dict)
+            # only read summary data to dataframe
+            if not param_dict['eval_save_maps']:
+            
+                # load data file
+                data_dict = self._load_data_file(data_fname=file.replace('json', 'h5'))
 
-            try: 
-                df_param = self._convert_to_dataframe(data_dict=param_dict)
-                df_data = pd.DataFrame.from_dict(data_dict)
-                # merge param and data 
-                df_merged = df_param.merge(df_data)
-            except: 
-                # add data dict to param_dict
-                param_dict.update(data_dict)
-                # convert json and hdf5 to dataframes
-                df_merged = self._convert_to_dataframe(data_dict=param_dict)
+                # flatten nested json dict
+                param_dict = self._flatten_nested_dict(data_dict=param_dict)
+
+                try: 
+                    df_param = self._convert_to_dataframe(data_dict=param_dict)
+                    df_data = pd.DataFrame.from_dict(data_dict)
+                    # merge param and data 
+                    df_merged = df_param.merge(df_data)
+                except: 
+                    # add data dict to param_dict
+                    param_dict.update(data_dict)
+                    # convert json and hdf5 to dataframes
+                    df_merged = self._convert_to_dataframe(data_dict=param_dict)
 
             # concat repated models
             df_all = pd.concat([df_all, df_merged], axis=0)
@@ -150,18 +151,17 @@ class PlotPred(Utils):
             self.dirs = Dirs(study_name = exp, glm = self.glm)
 
             # get filenames for `model_name` and for `exp`
-            file = self.model_name
-            fnames = self.get_all_files(fullpath=self.dirs.CONN_EVAL_DIR, wildcard=f'*{file}*.json')
+            fnames = self.get_all_files(fullpath=self.dirs.CONN_EVAL_DIR, wildcard=f'*{self.model_name}*.json')
 
             # read data to dataframe
             dataframes = pd.concat([dataframes, self.read_to_dataframe(files=fnames)])
 
         return dataframes
 
-    def plot_prediction_all(self, dataframe, x='lambdas', y='eval', hue='eval_type'):
+    def plot_prediction_all(self, dataframe, x='lambdas', y='eval', hue='eval_type', filter_data=["R_pred", "R_y"]):
         
         sns.set(rc={'figure.figsize':(20,10)})
-        sns.factorplot(x=x, y=y, hue=hue, data=dataframe)
+        sns.factorplot(x=x, y=y, hue=hue, data=dataframe.query(f'eval_type=={filter_data}'))
         plt.xlabel(x, fontsize=20),
         plt.ylabel('R', fontsize=20)
         plt.title('', fontsize=20);
@@ -175,13 +175,13 @@ class MapPred(Utils):
     def __init__(self, model_name='tesselsWB162_grey_nan_l2_regress', pred_type='S_best_weight', eval_on=['sc1', 'sc2'], glm=7, subjects=[2,3,4]):
         self.model_name = model_name
         self.subjects = subjects
-        self.group = True
         self.pred_type = pred_type
         self.mask_name = 'cerebellarGreySUIT.nii'
         self.surf_mesh = 'FLAT.surf.gii'
         self.eval_on = eval_on
         self.glm = glm
         self.surface_threshold = None
+        self.symmetric_cmap = False
         self.colorbar = True
         self.vmax = None
         self.vmin = None
@@ -232,7 +232,7 @@ class MapPred(Utils):
                                         surf_mesh=os.path.join(self.dirs.ATLAS_SUIT_FLATMAP, self.surf_mesh),
                                         title=Path(gifti_fpath).stem) 
 
-    def _save_predictions_to_nifti(self):
+    def save_predictions_to_nifti(self):
         # loop over exp
         for exp in self.eval_on:
 
@@ -337,6 +337,7 @@ class MapPred(Utils):
                                 threshold=self.surface_threshold,
                                 vmax=self.vmax,
                                 vmin=self.vmin,
+                                symmetric_cmap=self.symmetric_cmap,
                                 title=title) 
         # view.resize(500,500)
 
