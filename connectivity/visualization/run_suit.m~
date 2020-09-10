@@ -137,7 +137,7 @@ switch(what)
                     % make gifti structure and save out
                     g = gifti(C);
                     out_name = strrep(nifti_files(n).name,'.nii','');
-                    out_path = fullfile(SUIT_DIR_FUNC, model_dirs(m).name, nifti_dirs(nd).name, strcat(out_name, '.gii'));
+                    out_path = fullfile(SUIT_DIR_FUNC, model_dirs(m).name, nifti_dirs(m).name, strcat(out_name, '.gii'));
                     if ~isfile(out_path)
                        save(g,out_path,'Base64Binary');
                     end

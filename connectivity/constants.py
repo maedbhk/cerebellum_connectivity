@@ -5,9 +5,7 @@ import os
 class Defaults:
 
     def __init__(self):
-        self.return_subjs = [3, 4]
-        # self.return_subjs = [2,3,4,6,8,9,10,12,14,15,17,18,19,20,21,22,24,25,26,27,28,29,30,31]
-        # self.conn_file = 'sc1_sc2_taskConds_conn.txt'
+        self.return_subjs = [2,3,4,6,8,9,10,12,14,15,17,18,19,20,21,22,24,25,26,27,28,29,30,31]
         self.conn_file = 'tasks.json'
         self.config_file = 'config.json'
 

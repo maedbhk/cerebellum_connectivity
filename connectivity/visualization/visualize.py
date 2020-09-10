@@ -172,9 +172,10 @@ class PlotPred(Utils):
 
 class MapPred(Utils):
 
-    def __init__(self, model_name='tesselsWB162_grey_nan_l2_regress', pred_type='S_best_weight', eval_on=['sc1', 'sc2'], glm=7):
+    def __init__(self, model_name='tesselsWB162_grey_nan_l2_regress', pred_type='S_best_weight', eval_on=['sc1', 'sc2'], glm=7, subjects=[2,3,4]):
         self.model_name = model_name
-        self.subjects = [2,3,4,6,8,9,10,12,14,15,17,18,19,20,21,22,24,25,26,27,28,29,30,31]
+        self.subjects = subjects
+        self.group = True
         self.pred_type = pred_type
         self.mask_name = 'cerebellarGreySUIT.nii'
         self.surf_mesh = 'FLAT.surf.gii'
@@ -185,38 +186,52 @@ class MapPred(Utils):
         self.vmax = None
         self.vmin = None
 
-    def visualize_predictions(self):
-        # loop over exp
+    def visualize_prediction_subj(self):
         for exp in self.eval_on:
-            
+
             # set directories for exp
             self.dirs = Dirs(study_name=exp, glm=self.glm)
 
             # get all model dirs for `model_name`
             model_dirs = self.get_all_files(fullpath=self.dirs.SUIT_GLM_DIR, wildcard=f'*{self.model_name}*')
 
-            # loop over models and subjects
-            for model_dir, subj in zip(model_dirs, self.subjects):
+            # loop over models
+            for model_dir in model_dirs:
+                
+                # loop over subjects
+                for subj in self.subjects:
 
-                # get gifti files for `model_name`, `subj`, `exp`, `pred_type`
-                gifti_fnames = self.get_all_files(fullpath=os.path.join(model_dir, f's{subj:02}'), wildcard=f'*{self.pred_type}_vox.gii*')
-
-                # create nifti files if they do not exist and raise exception
-                # if giftis exist, plot them!
-                if not gifti_fnames:
-                    self._save_predictions_to_nifti()
-                    raise Exception(f'gifti files do not exist for {subj}:{model_dir} \n, creating niftis but they need to be mapped to surface using suit in matlab ... ')
-                else:
+                    # get gifti files for `model_name`, `subj`, `exp`, `pred_type`
+                    gifti_fnames = self.get_all_files(fullpath=os.path.join(model_dir, f's{subj:02}'), wildcard=f'*{self.pred_type}_vox.gii*')
+            
                     # loop over gifti files
                     for gifti_fname in gifti_fnames:
+
                         # plot map on surface
-                        map_data = surface.load_surf_data(gifti_fname)
-                        self.vmax = max(map_data)
-                        self.vmin = min(map_data)
-                        self._plot_surface_cerebellum(surf_map=map_data,
+                        self._plot_surface_cerebellum(surf_map=surface.load_surf_data(gifti_fname),
+                                                surf_mesh=os.path.join(self.dirs.ATLAS_SUIT_FLATMAP, self.surf_mesh),
+                                                title=f'{exp}:{Path(gifti_fname).stem}') 
+
+    def visualize_prediction_group(self):
+        for exp in self.eval_on:
+
+            # set directories for exp
+            self.dirs = Dirs(study_name=exp, glm=self.glm)
+
+            # get all model dirs for `model_name`
+            model_dirs = self.get_all_files(fullpath=self.dirs.SUIT_GLM_DIR, wildcard=f'*{self.model_name}*')
+
+            # loop over models and visualize group
+            for model_dir in model_dirs:
+
+                # get gifti files for `model_name`, `subj`, `exp`, `pred_type`
+                gifti_fpath = self.get_all_files(fullpath=os.path.join(model_dir, 'group'), wildcard=f'*{self.pred_type}_vox.gii*')[0]
+   
+                # plot group map on surface
+                self._plot_surface_cerebellum(surf_map=surface.load_surf_data(gifti_fpath),
                                         surf_mesh=os.path.join(self.dirs.ATLAS_SUIT_FLATMAP, self.surf_mesh),
-                                        title=Path(gifti_fname).stem) 
-    
+                                        title=Path(gifti_fpath).stem) 
+
     def _save_predictions_to_nifti(self):
         # loop over exp
         for exp in self.eval_on:
@@ -224,10 +239,10 @@ class MapPred(Utils):
             self.dirs = Dirs(study_name=exp, glm=self.glm)
 
             # get fnames for eval data for `model_name` and for `exp`
-            file = self.model_name
-            fnames = self.get_all_files(fullpath=self.dirs.CONN_EVAL_DIR, wildcard=f'*{file}*.h5')
+            fnames = self.get_all_files(fullpath=self.dirs.CONN_EVAL_DIR, wildcard=f'*{self.model_name}*.h5')
 
-            # save voxel predictions to nifti files
+            # save individual subj voxel predictions
+            # and group avg. to nifti files
             self._convert_to_nifti(files=fnames)
 
     def _convert_to_nifti(self, files):
@@ -236,42 +251,54 @@ class MapPred(Utils):
         # loop over file names for `model_name`
         for self.file in files:
 
+            # load prediction dict for `model_name` and `pred_type`
             prediction_dict = self._load_predictions()
+            prediction_dict = {k:v for k,v in prediction_dict.items() if f'{self.pred_type}_vox' in k} 
 
-            # loop over all prediction data
-            for self.pred_name in prediction_dict:
+            # only convert vox data to nifti
+            if prediction_dict:
 
-                # only convert voxel files
-                if 'vox' in self.pred_name:
+                # loop over all prediction data
+                nib_objs = []
+                for self.pred_name in prediction_dict:
 
                     # get outpath to niftis
-                    nifti_dir, nifti_fpath = self._get_nifti_outpath()
+                    nifti_subj_fpath, nifti_group_fpath = self._get_nifti_outpath()
 
                     # get input data for nifti obj
                     Y, non_zero_ind, mask = self._get_nifti_input_data(data_dict=prediction_dict)
 
-                    # get vol data as nib obj
-                    nib_obj = image_utils.make_nifti_obj(Y=Y, vox_indx=non_zero_ind, mask=mask)
+                    # get vox data as nib obj
+                    nib_obj = image_utils.convert_to_vol(Y=Y, vox_indx=non_zero_ind, mask=mask)
+                    nib_objs.append(nib_obj)
 
                     # save nifti obj to disk
-                    image_utils.save_nifti_obj(nib_obj, nifti_fpath)
+                    image_utils.save_nifti_obj(nib_obj, nifti_subj_fpath)
 
-                    print(f'saving {self.pred_name} to nifti')
+                # calculate group avg nifti of `pred_type` for `model_name` 
+                image_utils.calc_nifti_average(imgs=nib_objs, fpath=nifti_group_fpath)
 
     def _get_nifti_outpath(self):
-        # extract subj name
-        self.subj_name = re.findall('(s\d+)', self.pred_name)[0]
-        eval_name = Path(self.file).stem
+        """ returns nifti fpath for subj and group prediction maps
+        """
+        self.subj_name = re.findall('(s\d+)', self.pred_name)[0] # extract subj name
+        nifti_fname = f'{self.pred_name}.nii' # set nifti fname
 
-        # get dir where niftis will be stored and make dir if 
-        # it doesn't exist
-        nifti_dir = os.path.join(self.dirs.SUIT_GLM_DIR, eval_name, self.subj_name)
-        self._make_dir(nifti_dir)
+        # get model, subj, group dirs in suit
+        SUIT_MODEL_DIR = os.path.join(self.dirs.SUIT_GLM_DIR, Path(self.file).stem )
+        SUBJ_DIR = os.path.join(SUIT_MODEL_DIR, self.subj_name) # get nifti dir for subj
+        GROUP_DIR = os.path.join(SUIT_MODEL_DIR, 'group') # get nifti dir for group
 
-        # get fpath to nifti
-        nifti_fpath = os.path.join(nifti_dir, f'{self.pred_name}.nii')
+        # make subj and group dirs in suit if they don't already exist
+        for _dir in [SUBJ_DIR, GROUP_DIR]:
+            self._make_dir(_dir)
 
-        return nifti_dir, nifti_fpath
+        # get full path to nifti fname for subj and group
+        subj_fpath = os.path.join(SUBJ_DIR, nifti_fname)
+        group_fpath = os.path.join(GROUP_DIR, re.sub('(s\d+)', 'group', nifti_fname))
+
+        # return fpath to subj and group nifti
+        return subj_fpath, group_fpath
 
     def _get_nifti_input_data(self, data_dict):
         """ get mask, voxel_data, and vox indices to
@@ -301,6 +328,9 @@ class MapPred(Utils):
         return self._flatten_nested_dict(data_dict_all) 
 
     def _plot_surface_cerebellum(self, surf_map, surf_mesh, title):
+        self.vmax = max(surf_map)
+        self.vmin = min(surf_map)
+        
         view = plotting.view_surf(surf_mesh=surf_mesh, 
                                 surf_map=surf_map, 
                                 colorbar=self.colorbar,
