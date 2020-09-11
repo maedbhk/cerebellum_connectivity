@@ -21,11 +21,14 @@ def _delete_conn_files():
     print('deleting training and evaluation data')
 
 def _get_config_file():
-    # get dirs
+    # define dirs class
     dirs = Dirs()
 
+    # define constants class
+    constants = Defaults()
+
     # load config files for train and eval parameters
-    return io.read_json(os.path.join(dirs.BASE_DIR, 'config.json'))
+    return io.read_json(os.path.join(dirs.BASE_DIR, constants.config_file))
 
 def _train_model(config, **kwargs):
     """ This routine does model training and model evaluation

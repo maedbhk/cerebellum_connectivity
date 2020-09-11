@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import re
 import glob
+import copy
 from pathlib import Path
 
 import seaborn as sns
@@ -20,7 +21,7 @@ from nilearn import surface
 from connectivity.constants import Dirs, Defaults
 from connectivity import io
 from connectivity.data.prep_data import DataManager
-from connectivity import image_utils
+from connectivity.visualization import image_utils
 
 """
 Created on Wed 26 13:31:34 2020
@@ -171,75 +172,92 @@ class PlotPred(Utils):
         plt.show()
 
 class MapPred(Utils):
+    """ Map Visualization Class: converts voxel numpy arrays
+        from model evaluation to nifti and gifti format
+        visualizes gifti files on flatmap surface of the cerebellum
+    """
 
-    def __init__(self, model_name='tesselsWB162_grey_nan_l2_regress', pred_type='S_best_weight', eval_on=['sc1', 'sc2'], glm=7, subjects=[2,3,4]):
-        self.model_name = model_name
-        self.subjects = subjects
-        self.pred_type = pred_type
-        self.mask_name = 'cerebellarGreySUIT.nii'
-        self.surf_mesh = 'FLAT.surf.gii'
-        self.eval_on = eval_on
-        self.glm = glm
-        self.surface_threshold = None
-        self.symmetric_cmap = False
-        self.colorbar = True
-        self.vmax = None
-        self.vmin = None
+    def __init__(self, config, **kwargs):
+        """ 
+            Args: 
+                config (dict): dictionary loaded from `visualize_config.json` containing 
+                parameters for visualizing cerebellar surface maps
+
+            Kwargs:
+                model_name (str): model name default is "l2_regress"
+                subjects (list of int): list of subjects. see constants.py for subject list
+                pred_type (str): default is "S_best_weight". other options are "R_pred", "R_y", "R_pred_crossed", 'R_pred_uncrossed", "S_ginni"
+                mask_name (str): default is "cerebellarGreySUIT.nii"
+                surf_mesh (str): default is "FLAT.surf.gii"
+                eval_on (list of str): study(s) to be used for training. default is ['sc1', 'sc2']
+                glm (int):  default is 7. options are 7 and 8
+                surface_threshold (int): default is null
+                symmetric_cmap (bool): default is False
+                colorbar (bool): default is True
+                view (str): option for viewing surface data. default is 'resize'. other option is 'browser'
+        """
+        self.config = copy.deepcopy(config)
+        self.config.update(**kwargs)
 
     def visualize_prediction_subj(self):
-        for exp in self.eval_on:
+        for exp in self.config['eval_on']:
 
             # set directories for exp
-            self.dirs = Dirs(study_name=exp, glm=self.glm)
+            self.dirs = Dirs(study_name=exp, glm=self.config['glm'])
 
             # get all model dirs for `model_name`
-            model_dirs = self.get_all_files(fullpath=self.dirs.SUIT_GLM_DIR, wildcard=f'*{self.model_name}*')
+            model_name = self.config['model_name']
+            model_dirs = self.get_all_files(fullpath=self.dirs.SUIT_GLM_DIR, wildcard=f'*{model_name}*')
 
             # loop over models
             for model_dir in model_dirs:
                 
                 # loop over subjects
-                for subj in self.subjects:
+                for subj in self.config['subjects']:
 
                     # get gifti files for `model_name`, `subj`, `exp`, `pred_type`
-                    gifti_fnames = self.get_all_files(fullpath=os.path.join(model_dir, f's{subj:02}'), wildcard=f'*{self.pred_type}_vox.gii*')
+                    pred_type = self.config['pred_type']
+                    gifti_fnames = self.get_all_files(fullpath=os.path.join(model_dir, f's{subj:02}'), wildcard=f'*{pred_type}_vox.gii*')
             
                     # loop over gifti files
                     for gifti_fname in gifti_fnames:
 
                         # plot map on surface
                         self._plot_surface_cerebellum(surf_map=surface.load_surf_data(gifti_fname),
-                                                surf_mesh=os.path.join(self.dirs.ATLAS_SUIT_FLATMAP, self.surf_mesh),
+                                                surf_mesh=os.path.join(self.dirs.ATLAS_SUIT_FLATMAP, self.config['surf_mesh']),
                                                 title=f'{exp}:{Path(gifti_fname).stem}') 
 
     def visualize_prediction_group(self):
-        for exp in self.eval_on:
+        for exp in self.config['eval_on']:
 
             # set directories for exp
-            self.dirs = Dirs(study_name=exp, glm=self.glm)
+            self.dirs = Dirs(study_name=exp, glm=self.config['glm'])
 
             # get all model dirs for `model_name`
-            model_dirs = self.get_all_files(fullpath=self.dirs.SUIT_GLM_DIR, wildcard=f'*{self.model_name}*')
+            model_name = self.config['model_name']
+            model_dirs = self.get_all_files(fullpath=self.dirs.SUIT_GLM_DIR, wildcard=f'*{model_name}*')
 
             # loop over models and visualize group
             for model_dir in model_dirs:
 
                 # get gifti files for `model_name`, `subj`, `exp`, `pred_type`
-                gifti_fpath = self.get_all_files(fullpath=os.path.join(model_dir, 'group'), wildcard=f'*{self.pred_type}_vox.gii*')[0]
+                pred_type = self.config['pred_type']
+                gifti_fpath = self.get_all_files(fullpath=os.path.join(model_dir, 'group'), wildcard=f'*{pred_type}_vox.gii*')[0]
    
                 # plot group map on surface
                 self._plot_surface_cerebellum(surf_map=surface.load_surf_data(gifti_fpath),
-                                        surf_mesh=os.path.join(self.dirs.ATLAS_SUIT_FLATMAP, self.surf_mesh),
-                                        title=Path(gifti_fpath).stem) 
+                                        surf_mesh=os.path.join(self.dirs.ATLAS_SUIT_FLATMAP, self.config['surf_mesh']),
+                                        title=f'{exp}:{Path(gifti_fpath).stem}') 
 
     def save_predictions_to_nifti(self):
         # loop over exp
-        for exp in self.eval_on:
+        for exp in self.config['eval_on']:
 
-            self.dirs = Dirs(study_name=exp, glm=self.glm)
+            self.dirs = Dirs(study_name=exp, glm=self.config['glm'])
 
             # get fnames for eval data for `model_name` and for `exp`
-            fnames = self.get_all_files(fullpath=self.dirs.CONN_EVAL_DIR, wildcard=f'*{self.model_name}*.h5')
+            model_name = self.config['model_name']
+            fnames = self.get_all_files(fullpath=self.dirs.CONN_EVAL_DIR, wildcard=f'*{model_name}*.h5')
 
             # save individual subj voxel predictions
             # and group avg. to nifti files
@@ -253,7 +271,9 @@ class MapPred(Utils):
 
             # load prediction dict for `model_name` and `pred_type`
             prediction_dict = self._load_predictions()
-            prediction_dict = {k:v for k,v in prediction_dict.items() if f'{self.pred_type}_vox' in k} 
+
+            pred_type = self.config['pred_type']
+            prediction_dict = {k:v for k,v in prediction_dict.items() if f'{pred_type}_vox' in k} 
 
             # only convert vox data to nifti
             if prediction_dict:
@@ -316,7 +336,7 @@ class MapPred(Utils):
         non_zero_ind = [int(vox) for vox in non_zero_ind_dict[self.subj_name]] 
 
         # get cerebellar mask
-        mask = self._get_cerebellar_mask(mask=self.mask_name, glm=self.glm)
+        mask = self._get_cerebellar_mask(mask=self.config['mask_name'], glm=self.config['glm'])
 
         return Y, non_zero_ind, mask
     
@@ -328,20 +348,19 @@ class MapPred(Utils):
         return self._flatten_nested_dict(data_dict_all) 
 
     def _plot_surface_cerebellum(self, surf_map, surf_mesh, title):
-        self.vmax = max(surf_map)
-        self.vmin = min(surf_map)
-        
         view = plotting.view_surf(surf_mesh=surf_mesh, 
                                 surf_map=surf_map, 
-                                colorbar=self.colorbar,
-                                threshold=self.surface_threshold,
-                                vmax=self.vmax,
-                                vmin=self.vmin,
-                                symmetric_cmap=self.symmetric_cmap,
+                                colorbar=self.config['colorbar'],
+                                threshold=self.config['surface_threshold'],
+                                vmax=max(surf_map),
+                                vmin=min(surf_map),
+                                symmetric_cmap=self.config['symmetric_cmap'],
                                 title=title) 
-        # view.resize(500,500)
 
-        view.open_in_browser()
+        if self.config['view'] == 'browser':
+            view.open_in_browser()
+        else: 
+            view.resize(500, 500)
 
 class PlotBetas(DataManager):
     
