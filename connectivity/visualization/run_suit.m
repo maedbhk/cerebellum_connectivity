@@ -3,14 +3,14 @@ function varargout=run_suit(what,varargin)
 %========================================================================================================================
 %% (1) Directories
 % BASE_DIR          = '/global/scratch/maedbhking/projects/cerebellum_language'; 
-BASE_DIR            = '/Users/maedbhking/Documents/cerebellum_language_run'; 
+BASE_DIR            = '/Users/maedbhking/Documents/cerebellum_connectivity/data'; 
+% STUDY_DIR{1}        = fullfile(BASE_DIR,'sc1');
+% STUDY_DIR{2}        = fullfile(BASE_DIR,'sc2');
 
-DATA_DIR          = fullfile(BASE_DIR, 'data'); 
-GLM_DIR           = fullfile(DATA_DIR, 'glm_firstlevel');  
-SUIT_DIR          = fullfile(DATA_DIR, 'suit');
-ANAT_DIR          = fullfile(DATA_DIR, 'anat'); 
-
-subj_names = {'sub-01', 'sub-02', 'sub-03'}; % 'sub-01', 'sub-02','sub-03'
+DATA_DIR          = 'data';
+GLM_DIR           = 'glm_firstlevel'; 
+SUIT_DIR          = 'suit';
+ANAT_DIR          = 'anat';
 
 %% add software to search path
 % addpath(genpath('/global/home/users/maedbhking/spm12'))
@@ -20,9 +20,7 @@ subj_names = {'sub-01', 'sub-02', 'sub-03'}; % 'sub-01', 'sub-02','sub-03'
 switch(what)
 
     case 'SUIT:run_all'                      % STEP 9.1-8.5
-        %spm fmri
-        space_label = "space-MNI152NLin2009cAsym_desc-preproc";  
-        glm='glm2'; 
+        %spm fmri  
          
         for s=1:length(subj_names),
 %             run_suit('SUIT:isolate_segment',s ,space_label)
@@ -31,10 +29,9 @@ switch(what)
 %             run_suit('SUIT:reslice',s,'contrast', space_label, glm);clc
         end
         
-        % map vol 2 surf for `folders`
-        folders = dir(fullfile(GLM_DIR, glm)); 
-        for i=3:length(folders),
-            run_suit('SUIT:vol2surf', glm,folders(i).name)
+        % map vol 2 surf for nifti files in suit/<subj_name>/
+        for s=1:length(subj_names),
+            run_suit('SUIT:vol2surf', 'sc1', 'glm7', subj_names{s})
         end
 
     case 'SUIT:isolate_segment'              % STEP 9.2:Segment cerebellum into grey and white matter
@@ -119,22 +116,37 @@ switch(what)
         fprintf('%s have been resliced into suit space for %s \n\n',type,subj_names{sn})
 
     case 'SUIT:vol2surf'                     % STEP 9.9: Make gifti files
-        glm=varargin{1}; % 'glm1' etc
-        suit_folder=varargin{2}; % 'group' or 'sub-01', 'sub-02' etc
+        study=varargin{1}; % 'sc1' or 'sc2'
+        glm=varargin{2}; % 'glm7' etc
         
         % map volume to surface and save out as gifti
-        SUIT_SUBJ_DIR_FUNC = fullfile(SUIT_DIR, 'functional', glm, suit_folder);
-        source=dir(fullfile(SUIT_SUBJ_DIR_FUNC,'*.nii*'));
-        
-        for m=1:length(source), 
-            C=suit_map2surf(fullfile(SUIT_SUBJ_DIR_FUNC, source(m).name),'stats','nanmean');
-        
-            % make gifti structure and save out
-            g = gifti(C);
-            out_name = strrep(source(m).name,'.nii','');
-            out_path = fullfile(SUIT_SUBJ_DIR_FUNC, strcat(out_name, '.gii'));
-            save(g,out_path,'Base64Binary');
-        end   
+        SUIT_DIR_FUNC = fullfile(BASE_DIR, study, 'suit', glm);
+        model_dirs = dir(fullfile(SUIT_DIR_FUNC));
+
+        for m=3:length(model_dirs)
+            
+            nifti_dirs = dir(fullfile(SUIT_DIR_FUNC, model_dirs(m).name));
+            
+            for nd=3:length(nifti_dirs)
+                
+                nifti_files = dir(fullfile(SUIT_DIR_FUNC, model_dirs(m).name, nifti_dirs(nd).name, '*.nii')); 
+                
+                for n=1:length(nifti_files), 
+                    
+                    % define gifti name
+                    out_name = strrep(nifti_files(n).name,'.nii','');
+                    out_path = fullfile(SUIT_DIR_FUNC, model_dirs(m).name, nifti_dirs(nd).name, strcat(out_name, '.gii'));
+                    
+                    if ~isfile(out_path)
+                        % map vol 2 surf
+                        C=suit_map2surf(fullfile(SUIT_DIR_FUNC, model_dirs(m).name, nifti_dirs(nd).name, nifti_files(n).name),'stats','nanmean');
+                        % make gifti structure and save out
+                        g = gifti(C);
+                        save(g,out_path,'Base64Binary');
+                    end
+                end 
+            end
+        end
 end
 
 %% Local functions

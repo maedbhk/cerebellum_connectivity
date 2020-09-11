@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import re
 import glob
+import copy
 from pathlib import Path
 
 import seaborn as sns
@@ -11,20 +12,22 @@ from collections import MutableMapping
 from collections import defaultdict
 from functools import partial
 
+from nilearn import plotting
 import nibabel as nib
+from nilearn import surface
 
 # import plotly.graph_objects as go
 
 from connectivity.constants import Dirs, Defaults
 from connectivity import io
 from connectivity.data.prep_data import DataManager
-from connectivity import image_utils
+from connectivity.visualization import image_utils
 
 """
-Created on Wed 26 13:31:34 2020
+Created on Sep 05 07:03:32 2020
 Visualization routine for connectivity models
 
-@author: Maedbh King and Ladan Shahshahani
+@author: Maedbh King
 """
 
 class Utils:
@@ -84,41 +87,42 @@ class Utils:
         dirs = Dirs(study_name='sc1', glm=glm)
         return nib.load(os.path.join(dirs.SUIT_ANAT_DIR, mask))
 
-    def _make_dir(self, fpath)
+    def _make_dir(self, fpath):
         if not os.path.exists(fpath):
             os.makedirs(fpath)
     
-    def get_all_files(self, file):
-        return glob.glob(os.path.join(self.dirs.CONN_EVAL_DIR, f'*{file}*.json'))
+    def get_all_files(self, fullpath, wildcard):
+        return glob.glob(os.path.join(fullpath, wildcard))
     
     def read_to_dataframe(self, files):
 
         # get data for repeat models
         df_all = pd.DataFrame()
+        df_merged = pd.DataFrame()
         for file in files:
-            
-            # load data file
-            data_dict = self._load_data_file(data_fname=file.replace('json', 'h5'))
-
-            # remove any vox cols
-            data_dict = {k:v for k,v in data_dict.items() if 'vox' not in k} 
 
             # load param file
             param_dict = self._load_param_file(param_fname=file)
 
-            # flatten nested json dict
-            param_dict = self._flatten_nested_dict(data_dict=param_dict)
+            # only read summary data to dataframe
+            if not param_dict['eval_save_maps']:
+            
+                # load data file
+                data_dict = self._load_data_file(data_fname=file.replace('json', 'h5'))
 
-            try: 
-                df_param = self._convert_to_dataframe(data_dict=param_dict)
-                df_data = pd.DataFrame.from_dict(data_dict)
-                # merge param and data 
-                df_merged = df_param.merge(df_data)
-            except: 
-                # add data dict to param_dict
-                param_dict.update(data_dict)
-                # convert json and hdf5 to dataframes
-                df_merged = self._convert_to_dataframe(data_dict=param_dict)
+                # flatten nested json dict
+                param_dict = self._flatten_nested_dict(data_dict=param_dict)
+
+                try: 
+                    df_param = self._convert_to_dataframe(data_dict=param_dict)
+                    df_data = pd.DataFrame.from_dict(data_dict)
+                    # merge param and data 
+                    df_merged = df_param.merge(df_data)
+                except: 
+                    # add data dict to param_dict
+                    param_dict.update(data_dict)
+                    # convert json and hdf5 to dataframes
+                    df_merged = self._convert_to_dataframe(data_dict=param_dict)
 
             # concat repated models
             df_all = pd.concat([df_all, df_merged], axis=0)
@@ -148,17 +152,17 @@ class PlotPred(Utils):
             self.dirs = Dirs(study_name = exp, glm = self.glm)
 
             # get filenames for `model_name` and for `exp`
-            fnames = self.get_all_files(file=self.model_name)
+            fnames = self.get_all_files(fullpath=self.dirs.CONN_EVAL_DIR, wildcard=f'*{self.model_name}*.json')
 
             # read data to dataframe
             dataframes = pd.concat([dataframes, self.read_to_dataframe(files=fnames)])
 
         return dataframes
 
-    def plot_prediction_all(self, dataframe, x='lambdas', y='eval', hue='eval_type'):
+    def plot_prediction_all(self, dataframe, x='lambdas', y='eval', hue='eval_type', filter_data=["R_pred", "R_y"]):
         
         sns.set(rc={'figure.figsize':(20,10)})
-        sns.factorplot(x=x, y=y, hue=hue, data=dataframe)
+        sns.factorplot(x=x, y=y, hue=hue, data=dataframe.query(f'eval_type=={filter_data}'))
         plt.xlabel(x, fontsize=20),
         plt.ylabel('R', fontsize=20)
         plt.title('', fontsize=20);
@@ -167,28 +171,96 @@ class PlotPred(Utils):
 
         plt.show()
 
-class MapPreds(Utils):
+class MapPred(Utils):
+    """ Map Visualization Class: converts voxel numpy arrays
+        from model evaluation to nifti and gifti format
+        visualizes gifti files on flatmap surface of the cerebellum
+    """
 
-    def __init__(self, model_name='tesselsWB162_grey_nan_l2_regress', eval_on=['sc1', 'sc2'], glm=7):
-        self.model_name = model_name
-        self.mask_name = 'cerebellarGreySUIT.nii'
-        self.eval_on = eval_on
-        self.glm = glm
-        self.surface_threshold = 1
-        self.vmax = 10
+    def __init__(self, config, **kwargs):
+        """ 
+            Args: 
+                config (dict): dictionary loaded from `visualize_config.json` containing 
+                parameters for visualizing cerebellar surface maps
+
+            Kwargs:
+                model_name (str): model name default is "l2_regress"
+                subjects (list of int): list of subjects. see constants.py for subject list
+                pred_type (str): default is "S_best_weight". other options are "R_pred", "R_y", "R_pred_crossed", 'R_pred_uncrossed", "S_ginni"
+                mask_name (str): default is "cerebellarGreySUIT.nii"
+                surf_mesh (str): default is "FLAT.surf.gii"
+                eval_on (list of str): study(s) to be used for training. default is ['sc1', 'sc2']
+                glm (int):  default is 7. options are 7 and 8
+                surface_threshold (int): default is null
+                symmetric_cmap (bool): default is False
+                colorbar (bool): default is True
+                view (str): option for viewing surface data. default is 'resize'. other option is 'browser'
+        """
+        self.config = copy.deepcopy(config)
+        self.config.update(**kwargs)
+
+    def visualize_prediction_subj(self):
+        for exp in self.config['eval_on']:
+
+            # set directories for exp
+            self.dirs = Dirs(study_name=exp, glm=self.config['glm'])
+
+            # get all model dirs for `model_name`
+            model_name = self.config['model_name']
+            model_dirs = self.get_all_files(fullpath=self.dirs.SUIT_GLM_DIR, wildcard=f'*{model_name}*')
+
+            # loop over models
+            for model_dir in model_dirs:
+                
+                # loop over subjects
+                for subj in self.config['subjects']:
+
+                    # get gifti files for `model_name`, `subj`, `exp`, `pred_type`
+                    pred_type = self.config['pred_type']
+                    gifti_fnames = self.get_all_files(fullpath=os.path.join(model_dir, f's{subj:02}'), wildcard=f'*{pred_type}_vox.gii*')
+            
+                    # loop over gifti files
+                    for gifti_fname in gifti_fnames:
+
+                        # plot map on surface
+                        self._plot_surface_cerebellum(surf_map=surface.load_surf_data(gifti_fname),
+                                                surf_mesh=os.path.join(self.dirs.ATLAS_SUIT_FLATMAP, self.config['surf_mesh']),
+                                                title=f'{exp}:{Path(gifti_fname).stem}') 
+
+    def visualize_prediction_group(self):
+        for exp in self.config['eval_on']:
+
+            # set directories for exp
+            self.dirs = Dirs(study_name=exp, glm=self.config['glm'])
+
+            # get all model dirs for `model_name`
+            model_name = self.config['model_name']
+            model_dirs = self.get_all_files(fullpath=self.dirs.SUIT_GLM_DIR, wildcard=f'*{model_name}*')
+
+            # loop over models and visualize group
+            for model_dir in model_dirs:
+
+                # get gifti files for `model_name`, `subj`, `exp`, `pred_type`
+                pred_type = self.config['pred_type']
+                gifti_fpath = self.get_all_files(fullpath=os.path.join(model_dir, 'group'), wildcard=f'*{pred_type}_vox.gii*')[0]
+   
+                # plot group map on surface
+                self._plot_surface_cerebellum(surf_map=surface.load_surf_data(gifti_fpath),
+                                        surf_mesh=os.path.join(self.dirs.ATLAS_SUIT_FLATMAP, self.config['surf_mesh']),
+                                        title=f'{exp}:{Path(gifti_fpath).stem}') 
 
     def save_predictions_to_nifti(self):
-
         # loop over exp
-        # dataframes = pd.DataFrame()
-        for exp in self.eval_on:
+        for exp in self.config['eval_on']:
 
-            self.dirs = Dirs(study_name=exp, glm=self.glm)
+            self.dirs = Dirs(study_name=exp, glm=self.config['glm'])
 
-            # get filenames for `model_name` and for `exp`
-            fnames = self.get_all_files(file=self.model_name)
+            # get fnames for eval data for `model_name` and for `exp`
+            model_name = self.config['model_name']
+            fnames = self.get_all_files(fullpath=self.dirs.CONN_EVAL_DIR, wildcard=f'*{model_name}*.h5')
 
-            # save voxel predictions to nifti files
+            # save individual subj voxel predictions
+            # and group avg. to nifti files
             self._convert_to_nifti(files=fnames)
 
     def _convert_to_nifti(self, files):
@@ -197,42 +269,56 @@ class MapPreds(Utils):
         # loop over file names for `model_name`
         for self.file in files:
 
-            prediction_dict = self._load_predictions(fname=self.file)
+            # load prediction dict for `model_name` and `pred_type`
+            prediction_dict = self._load_predictions()
 
-            # loop over all prediction data
-            for self.pred_name in prediction_dict:
+            pred_type = self.config['pred_type']
+            prediction_dict = {k:v for k,v in prediction_dict.items() if f'{pred_type}_vox' in k} 
 
-                # only convert voxel files
-                if 'vox' in self.pred_name:
+            # only convert vox data to nifti
+            if prediction_dict:
+
+                # loop over all prediction data
+                nib_objs = []
+                for self.pred_name in prediction_dict:
 
                     # get outpath to niftis
-                    nifti_dir, nifti_fpath = self._get_nifti_outpath()
+                    nifti_subj_fpath, nifti_group_fpath = self._get_nifti_outpath()
 
                     # get input data for nifti obj
                     Y, non_zero_ind, mask = self._get_nifti_input_data(data_dict=prediction_dict)
 
-                    # get vol data as nib obj
-                    nib_obj = image_utils.make_nifti_obj(Y=Y, vox_indx=non_zero_ind, mask=mask)
+                    # get vox data as nib obj
+                    nib_obj = image_utils.convert_to_vol(Y=Y, vox_indx=non_zero_ind, mask=mask)
+                    nib_objs.append(nib_obj)
 
                     # save nifti obj to disk
-                    image_utils.save_to_nifti(nib_obj, nifti_fpath)
+                    image_utils.save_nifti_obj(nib_obj, nifti_subj_fpath)
 
-                    print(f'saving {self.pred_name} to nifti')
+                # calculate group avg nifti of `pred_type` for `model_name` 
+                image_utils.calc_nifti_average(imgs=nib_objs, fpath=nifti_group_fpath)
 
     def _get_nifti_outpath(self):
-        # extract subj name
-        self.subj_name = re.findall('(s\d+)', self.pred_name)[0]
-        eval_name = Path(self.file).stem
+        """ returns nifti fpath for subj and group prediction maps
+        """
+        self.subj_name = re.findall('(s\d+)', self.pred_name)[0] # extract subj name
+        nifti_fname = f'{self.pred_name}.nii' # set nifti fname
 
-        # get dir where niftis will be stored and make dir if 
-        # it doesn't exist
-        nifti_dir = os.path.join(self.dirs.SUIT_DIR, self.subj_name, eval_name)
-        self._make_dir(nifti_dir)
+        # get model, subj, group dirs in suit
+        SUIT_MODEL_DIR = os.path.join(self.dirs.SUIT_GLM_DIR, Path(self.file).stem )
+        SUBJ_DIR = os.path.join(SUIT_MODEL_DIR, self.subj_name) # get nifti dir for subj
+        GROUP_DIR = os.path.join(SUIT_MODEL_DIR, 'group') # get nifti dir for group
 
-        # get fpath to nifti
-        nifti_fpath = os.path.join(nifti_dir, f'{self.pred_name}.nii')
+        # make subj and group dirs in suit if they don't already exist
+        for _dir in [SUBJ_DIR, GROUP_DIR]:
+            self._make_dir(_dir)
 
-        return nifti_dir, nifti_fpath
+        # get full path to nifti fname for subj and group
+        subj_fpath = os.path.join(SUBJ_DIR, nifti_fname)
+        group_fpath = os.path.join(GROUP_DIR, re.sub('(s\d+)', 'group', nifti_fname))
+
+        # return fpath to subj and group nifti
+        return subj_fpath, group_fpath
 
     def _get_nifti_input_data(self, data_dict):
         """ get mask, voxel_data, and vox indices to
@@ -243,56 +329,38 @@ class MapPreds(Utils):
                 mask (nib obj), Y (numpy array), non_zero_ind (numpy array)
         """
         # get prediction data for `pred_name`
-        Y = prediction_dict[self.pred_name][0]
+        Y = data_dict[self.pred_name][0]
 
         # load in `grey_nan` indices
         non_zero_ind_dict = io.read_json(os.path.join(self.dirs.ENCODE_DIR, 'grey_nan_nonZeroInd.json'))
         non_zero_ind = [int(vox) for vox in non_zero_ind_dict[self.subj_name]] 
 
         # get cerebellar mask
-        mask = self._get_cerebellar_mask(mask=self.mask_name, glm=self.glm)
+        mask = self._get_cerebellar_mask(mask=self.config['mask_name'], glm=self.config['glm'])
 
         return Y, non_zero_ind, mask
     
-    def _load_predictions(self, fname):
+    def _load_predictions(self):
         data_dict_all = {}
-        data_dict_all['all-keys'] = self._load_data_file(data_fname=file.replace('json', 'h5'))
+        data_dict_all['all-keys'] = self._load_data_file(data_fname=self.file)
 
         # conjoin nested keys (will form nifti filenames)
         return self._flatten_nested_dict(data_dict_all) 
 
-    def _plot_surface_cerebellum(self):
-        view = plotting.view_surf(surf_mesh=self.surf_mesh, 
-                                surf_map=self.surf_map, 
-                                colorbar=True,
-                                threshold=self.surface_threshold,
-                                vmax=self.vmax,
-                                title=self.title) 
-        # view.resize(500,500)
+    def _plot_surface_cerebellum(self, surf_map, surf_mesh, title):
+        view = plotting.view_surf(surf_mesh=surf_mesh, 
+                                surf_map=surf_map, 
+                                colorbar=self.config['colorbar'],
+                                threshold=self.config['surface_threshold'],
+                                vmax=max(surf_map),
+                                vmin=min(surf_map),
+                                symmetric_cmap=self.config['symmetric_cmap'],
+                                title=title) 
 
-        view.open_in_browser()
-   
-    def visualize_group_surface_cerebellum(self):
-        # example code to visualize group contrast(s) on flat map
-
-        # get functional group dir
-        SUIT_FUNCTIONAL_GROUP_DIR = os.path.join(Defaults.SUIT_FUNCTIONAL_DIR, self.glm, "group")
-
-        os.chdir(SUIT_FUNCTIONAL_GROUP_DIR)
-
-        # get all contrast images in gifti format
-        fpaths = glob.glob(f'*{self.contrast_type}-{self.glm}.gii')
-
-        # get surface mesh for SUIT
-        self.surf_mesh = os.path.join(Defaults.SUIT_ANATOMICAL_DIR, "FLAT.surf.gii")
-
-        # loop over all gifti files
-        for fpath in fpaths:
-
-            self.surf_map = surface.load_surf_data(fpath).astype(int)
-            self.title = Path(fpath).stem
-
-            self._plot_surface() 
+        if self.config['view'] == 'browser':
+            view.open_in_browser()
+        else: 
+            view.resize(500, 500)
 
 class PlotBetas(DataManager):
     

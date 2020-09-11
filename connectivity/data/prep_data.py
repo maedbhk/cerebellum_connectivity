@@ -343,26 +343,20 @@ class DataManager:
     def _save_grey_nan_indx(self):
         """ saves non-zero indices for `grey_nan` ROI (cerebellum)
         """
-        self.dirs = Dirs(study_name='sc2', glm=7)
         # loop over subjects
         # vox_dict_all = defaultdict(list)
         vox_dict_all = AutoVivification()
         for subj in self.subjects:
-            fpath = os.path.join(self.dirs.ENCODE_DIR, f's{subj:02}', f'Y_info_glm{self.glm}_grey_nan.mat') # self.roi_dir
+            fpath = os.path.join(self.roi_dir, f's{subj:02}', f'Y_info_glm{self.glm}_grey_nan.mat') # self.roi_dir
 
             # load in vox indices
             vox_indx = io.read_mat_as_hdf5(fpath)['Y']['nonZeroInd']
 
-            # create dict with grey nan indices
-            # vox_dict = {'subjects': subj, 'nonZeroInd': vox_indx[:,0].tolist()} # just take first row (there are n repeats)
-
             # append subj grey_nan indices
-            # for k,v in vox_dict.items():
-            #     vox_dict_all[k].append(v)
             vox_dict_all[f's{subj:02}'] = vox_indx[:,0].tolist()
 
         # save to file
-        io.save_dict_as_JSON(os.path.join(self.dirs.ENCODE_DIR, 'grey_nan_nonZeroInd.json'), dict(vox_dict_all)) # self.roi_dir
+        io.save_dict_as_JSON(os.path.join(self.roi_dir, 'grey_nan_nonZeroInd.json'), dict(vox_dict_all))
 
 # run the following to return data
 # prep = DataManager()

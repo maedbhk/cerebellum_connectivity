@@ -1,15 +1,20 @@
 from pathlib import Path
 import os
 
+"""
+Created on Aug 10 09:10:51 2020
+Constants and defaults for running and visualizing connectivity models
+
+@author: Maedbh King
+"""
 
 class Defaults:
 
     def __init__(self):
-        self.return_subjs = [3, 4]
-        # self.return_subjs = [2,3,4,6,8,9,10,12,14,15,17,18,19,20,21,22,24,25,26,27,28,29,30,31]
-        # self.conn_file = 'sc1_sc2_taskConds_conn.txt'
+        self.return_subjs = [2,3,4,6,8,9,10,12,14,15,17,18,19,20,21,22,24,25,26,27,28,29,30,31]
         self.conn_file = 'tasks.json'
-        self.config_file = 'config.json'
+        self.config_file = 'model_config.json'
+        self.visualize_file = 'visualize_config.json'
 
 class Dirs: 
 
@@ -19,6 +24,7 @@ class Dirs:
         self.BEHAV_DIR = self.DATA_DIR / 'data'
         self.IMAGING_DIR = self.DATA_DIR / 'imaging_data'
         self.SUIT_DIR = self.DATA_DIR / 'suit'
+        self.SUIT_GLM_DIR = self.SUIT_DIR / f'glm{glm}'
         self.SUIT_ANAT_DIR = self.SUIT_DIR / 'anatomicals'
         self.REG_DIR = self.DATA_DIR / 'RegionOfInterest'
         self.GLM_DIR = self.DATA_DIR / f'GLM_firstlevel_{glm}'
@@ -27,9 +33,11 @@ class Dirs:
         self.CONN_DIR = self.DATA_DIR / 'conn_models' / f'glm{glm}'
         self.CONN_TRAIN_DIR = self.CONN_DIR / 'train'
         self.CONN_EVAL_DIR = self.CONN_DIR / 'eval'
+        self.ATLAS = self.BASE_DIR / 'atlases'
+        self.ATLAS_SUIT_FLATMAP = self.ATLAS / 'suit_flatmap'
 
         # create folders if they don't already exist
-        fpaths = [self.BETA_REG_DIR, self.CONN_TRAIN_DIR, self.CONN_EVAL_DIR]
+        fpaths = [self.BETA_REG_DIR, self.CONN_TRAIN_DIR, self.CONN_EVAL_DIR, self.ATLAS]
         for fpath in fpaths:
             if not os.path.exists(fpath):
                 print(f'creating {fpath} although this dir should already exist, check your folder transfer!')

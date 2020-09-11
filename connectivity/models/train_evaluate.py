@@ -10,6 +10,13 @@ from connectivity.constants import Defaults, Dirs
 
 np.seterr(divide='ignore', invalid='ignore')
 
+"""
+Created on Aug 31 11:14:19 2020
+Main script for training and evaluating connectivity models
+
+@authors: Maedbh King
+"""
+
 def _delete_conn_files():
     # delete any pre-existing connectivity files
     for exp in ['sc1', 'sc2']:
@@ -21,11 +28,14 @@ def _delete_conn_files():
     print('deleting training and evaluation data')
 
 def _get_config_file():
-    # get dirs
+    # define dirs class
     dirs = Dirs()
 
+    # define constants class
+    constants = Defaults()
+
     # load config files for train and eval parameters
-    return io.read_json(os.path.join(dirs.BASE_DIR, 'config.json'))
+    return io.read_json(os.path.join(dirs.BASE_DIR, constants.config_file))
 
 def _train_model(config, **kwargs):
     """ This routine does model training and model evaluation
