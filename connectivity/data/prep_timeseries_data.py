@@ -4,7 +4,7 @@ import re
 import deepdish as dd
 import copy
 from collections import defaultdict
-
+import nibabel as nib
 from connectivity.constants import Defaults, Dirs
 from connectivity import io
 from connectivity.helper_functions import AutoVivification
@@ -23,7 +23,7 @@ class DataManager:
     modelling. Initialises inputs for DataManager Class:
         experiment (list): default is ['sc1', and 'sc2']
         sessions (list): default is [1, 2]
-        data_type (dict): default is {'roi': 'grey_nan', 'file_dir': 'encoding'}
+        data_type (dict): default is {'roi': 'voxelwise', 'file_dir': 'imaging_data'}
 
         number_of_delays(int): default is 3. Value must be positive. 
         
@@ -32,7 +32,7 @@ class DataManager:
     def __init__(self):
         self.experiment = ['sc1', 'sc2']
         self.sessions = [1, 2]
-        self.data_type = {'roi': 'grey_nan', 'file_dir': 'encoding'}
+        self.data_type = {'roi': 'voxelwise', 'file_dir': 'imaging_data'}
         self.number_of_delays = 3
         
     def get_conn_data(self):
@@ -60,6 +60,7 @@ class DataManager:
                 dstim = arr.copy()
             dstims.append(dstim)
         return np.hstack(dstims)
+    
     def _get_path_to_data(self):
         """ Set path to data based on 'roi' and and 'data_type'
         returns:
@@ -85,8 +86,23 @@ class DataManager:
             # Get directories for 'exp'
             self.dirs = Dirs(study_name=exp, glm=self.glm)
             
+            # load data filepaths for 'exp'
             fpath = self._get_path_to_data()
             
-
-
+            # get runs for data
+            if exp == 'sc1':
+                runs = list(range(1, 16, 1))
+            elif exp == 'sc2':
+                runs = list(range(16, 33, 1))
+            for run in runs:
+                
+                        
+            # load imaging data from nii
+            
+        return T_concat
+    
+    def _get_masks(self):
+        pass
+    
+    
         
