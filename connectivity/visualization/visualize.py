@@ -24,10 +24,10 @@ from connectivity.data.prep_data import DataManager
 from connectivity.visualization import image_utils
 
 """
-Created on Wed 26 13:31:34 2020
+Created on Sep 05 07:03:32 2020
 Visualization routine for connectivity models
 
-@author: Maedbh King and Ladan Shahshahani
+@author: Maedbh King
 """
 
 class Utils:

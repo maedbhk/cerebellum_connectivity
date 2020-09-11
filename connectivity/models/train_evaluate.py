@@ -10,6 +10,13 @@ from connectivity.constants import Defaults, Dirs
 
 np.seterr(divide='ignore', invalid='ignore')
 
+"""
+Created on Aug 31 11:14:19 2020
+Main script for training and evaluating connectivity models
+
+@authors: Maedbh King
+"""
+
 def _delete_conn_files():
     # delete any pre-existing connectivity files
     for exp in ['sc1', 'sc2']:

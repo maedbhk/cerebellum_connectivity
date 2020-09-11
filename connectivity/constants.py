@@ -1,6 +1,12 @@
 from pathlib import Path
 import os
 
+"""
+Created on Aug 10 09:10:51 2020
+Constants and defaults for running and visualizing connectivity models
+
+@author: Maedbh King
+"""
 
 class Defaults:
 
