@@ -1,4 +1,5 @@
 import os
+import sys
 import glob
 import numpy as np
 
@@ -114,4 +115,13 @@ def run_connect(train=True, evaluate=True, **kwargs):
     # evaluate model
     if evaluate:
         _evaluate_model(config=config_obj, **kwargs)
+
+# main 
+def main(*args):
+    run_connect(sys.argv[1:]) # pass args from command line to run_connect function
+
+if __name__ == '__main__':
+    if len(sys.argv) > 0:
+        # If there are keyword arguments
+        main(*sys.argv[1:])
 

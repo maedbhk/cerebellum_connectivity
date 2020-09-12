@@ -78,6 +78,9 @@ target/
 # exclude data from source control by default
 /data/
 
+# exclude data transfer script
+data_transfer.py
+
 # Mac OS-specific storage files
 .DS_Store
 
