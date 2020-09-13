@@ -33,6 +33,10 @@ This will automatically create a new virtual environment for you and install all
 
 > NOTE: To deactivate the virtual environment when you are done working, simply type `exit`
 
+## Running connectivity models:
+
+    $ python3 train_evaluate.py
+
 Project Organization
 ------------
 
@@ -45,7 +49,7 @@ Project Organization
     │       └── GLM_firstlevel_7
     │       └── GLM_firstlevel_8
     │       └── imaging_data
-    │       └── connectivity
+    │       └── conn_models
     │       └── encoding
     │       └── suit
     │       └── surfaceFreesurfer
@@ -54,51 +58,55 @@ Project Organization
     │   └── sc2            <- Data from study 2         
     │       └── GLM_firstlevel_7
     │       └── GLM_firstlevel_8
-    │       └── connectivity
+    │       └── conn_models
     │       └── encoding
     │       └── suit
     │       └── beta_roi  
-    │   └── config.json    <- config file for training and evaluating models         
-    │   └── tasks.json     <- contains information about tasks across studies
+    │   └── model_config.json    <- config file for training and evaluating models         
+    │   └── tasks.json           <- contains information about tasks across studies
     │
-    ├── docs               <- A default Sphinx project; see sphinx-doc.org for details
+    ├── docs                     <- A default Sphinx project; see sphinx-doc.org for details
     │
     │
-    ├── notebooks          <- Jupyter notebooks. Naming convention is a number (for ordering),
-    │                         the creator's initials, and a short `-` delimited description, e.g.
-    │                         `1.0-mk-initial-data-exploration`.
+    ├── notebooks                <- Jupyter notebooks. Naming convention is a number (for ordering),
+    │                               the creator's initials, and a short `-` delimited description, e.g.
+    │                               `1.0-mk-visualize_maps`.
     │
-    ├── references         <- Data dictionaries, manuals, and all other explanatory materials.
+    ├── references               <- Data dictionaries, manuals, and all other explanatory materials.
     │
-    ├── reports            <- Generated analysis as HTML, PDF, LaTeX, etc.
-    │   └── figures        <- Generated graphics and figures to be used in reporting
+    ├── reports                  <- Generated analysis as HTML, PDF, LaTeX, etc.
+    │   └── figures              <- Generated graphics and figures to be used in reporting
     │
-    ├── Pipfile            <- The Pipfile for reproducing the analysis environment, e.g.
-    │                         install all packages with `pipenv install` and check existing packages with `pipenv graph`
+    ├── Pipfile                  <- The Pipfile for reproducing the analysis environment, e.g.
+    │                               install all packages with `pipenv install` and check existing packages with `pipenv graph`
     │
-    ├── setup.py           <- makes project pip installable (pip install -e .) so connectivity package can be imported
-    ├── connectivity       <- Source code for use in this project.
-    │   ├── __init__.py    <- Makes connectivity a Python module
-    │   ├── constants.py   <- Default directories   
-    │   ├── io.py          <- Import/Output .mat, .h5, .json files
+    ├── setup.py                 <- makes project pip installable (pip install -e .) so connectivity package can be imported
+    ├── connectivity             <- Source code for use in this project.
+    │   ├── __init__.py          <- Makes connectivity a Python module
+    │   ├── constants.py         <- Default directories   
+    │   ├── io.py                <- Import/Output .mat, .h5, .json files
     │   │
-    │   ├── data           <- Scripts to generate data for modelling
-    │   │   └── prep_betas.py
+    │   ├── data                 <- Scripts to generate data for modelling, currently implemented for betas only
+    │   │   └── prep_data.py
     │   │
-    │   ├── features       <- Scripts to turn raw data into features for modeling
+    │   ├── features             <- Scripts to turn raw data into features for modeling
     │   │   └── build_features.py
     │   │
-    │   ├── models         <- Scripts to train models and then use trained models to make
-    │   │   │                 predictions
+    │   ├── models               <- Scripts to train models and then use trained models to make
+    │   │   │                       predictions
     │   │   ├── train_evaluate.py
     │   │   └── train_model.py
     │   │   └── evaluate_model.py
     │   │   └── model_functions.py
+    │   │   
+    │   ├── scripts              <- Example bash scripts for running models
+    │   │   ├── run_connectivity.py
     │   │
-    │   └── visualization  <- Scripts to create exploratory and results oriented visualizations
+    │   └── visualization        <- Scripts to create exploratory and results oriented visualizations
     │       └── visualize.py
+    |       └── image_utils.py
     │
-    └── tox.ini            <- tox file with settings for running tox; see tox.testrun.org
+    └── tox.ini                 <- tox file with settings for running tox; see tox.testrun.org
 
 
 --------

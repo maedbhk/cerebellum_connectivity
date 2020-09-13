@@ -41,7 +41,7 @@ def _get_config_file():
 def _train_model(config, **kwargs):
     """ This routine does model training and model evaluation
         Args: 
-            config (dict): dictionary loaded from `config.json`
+            config (dict): dictionary loaded from `model_config.json`
             
             Kwargs:
                 model_name (str): model name default is "l2_regress"
@@ -68,7 +68,7 @@ def _train_model(config, **kwargs):
 def _evaluate_model(config, **kwargs):
     """ This routine does model evaluation
         Args: 
-            config (dict): dictionary loaded from `config.json`
+            config (dict): dictionary loaded from `model_config.json`
             
             Kwargs:
                 model (str): model name default is 'l2_regress'
@@ -104,6 +104,39 @@ def _evaluate_model(config, **kwargs):
     model_eval.model_evaluate() 
 
 def run_connect(train=True, evaluate=True, **kwargs):
+    """ This routine does model training and evaluation
+        Args: 
+            config (dict): dictionary loaded from `model_config.json`
+            
+            Kwargs:
+                model (str): model name default is 'l2_regress'
+                train_sessions (list): Default is [1, 2]. Options are [1, 2]
+                train_glm (int):  Default is 7. Options are 7 and 8
+                train_stim (str): Default is 'cond'. Options are 'cond' and 'task' (depends on glm)
+                train_avg (str): average over 'run' or 'sess'. Default is 'run'
+                train_incl_inst (bool): Default is True. 
+                train_subtract_sess_mean (bool): Default is True.
+                train_subtract_exp_mean (bool): Default is True.
+                train_subjects (list of int): list of subjects. see constants.py for subject list. 
+                train_on (str): study to be used for training. Default is 'sc1'. Options are 'sc1' or 'sc2'.
+                train_inputs (nested dict): primary keys are `X` and `Y`. secondary keys are 'roi', 'file_dir', 'structure'
+                train_mode (str): training mode: 'crossed' or 'uncrossed'. If 'crossed': sessions are flipped between `X` and `Y`. Default is 'crossed'
+                train_scale (bool): normalize `X` and `Y` data. Default is True.
+
+                eval_sessions (list): Default is [1, 2]. Options are [1, 2]
+                eval_glm (int):  Default is 7. Options are 7 and 8
+                eval_stim (str): Default is 'cond'. Options are 'cond' and 'task' (depends on glm)
+                eval_avg (str): average over 'run' or 'sess'. Default is 'run'
+                eval_incl_inst (bool): Default is True. 
+                eval_subtract_sess_mean (bool): Default is True.
+                eval_subtract_exp_mean (bool): Default is True.
+                eval_subjects(list of int): list of subjects. see constants.py for subject list. 
+                eval_on (str): study to be used for training. Default is 'sc2'. Options are 'sc1' or 'sc2'.
+                eval_inputs (nested dict): primary keys are `X` and `Y`. secondary keys are 'roi', 'file_dir', 'structure'
+                eval_scale (bool): normalize `X` and `Y` data. Default is True.
+                eval_splitby (str): split evaluation by 'cond' or 'task' or None. Default is None.
+                eval_save_maps (bool): save out predictions and reliabilities of voxel maps. Default is False.
+    """
 
     # get config files for training and evaluating connectivity data
     config_obj = _get_config_file()
