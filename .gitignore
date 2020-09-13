@@ -81,6 +81,9 @@ target/
 # exclude data transfer script
 data_transfer.py
 
+# exclude bash scripts
+run_savio_jobs.sh
+
 # Mac OS-specific storage files
 .DS_Store
 
