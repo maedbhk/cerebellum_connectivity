@@ -12,7 +12,7 @@ class Defaults:
 
     def __init__(self):
         self.return_subjs = [2,3,4,6,8,9,10,12,14,15,17,18,19,20,21,22,24,25,26,27,28,29,30,31]
-        self.conn_file = 'tasks.json'
+        self.task_config = Path(__file__).absolute().parent / 'data' / 'task_config.json'
         self.model_config = Path(__file__).absolute().parent / 'models' / 'model_config.json'
         self.visualize_config = Path(__file__).absolute().parent / 'visualization' / 'visualize_config.json'
 

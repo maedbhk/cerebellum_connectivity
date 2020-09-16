@@ -228,7 +228,7 @@ class DataManager:
                 pandas dataframe
         """
         constants = Defaults()
-        json_dict = io.read_json(os.path.join(self.dirs.BASE_DIR, constants.conn_file))
+        json_dict = io.read_json(str(constants.task_config))
         dataframe = pd.DataFrame.from_dict(json_dict) 
                 
         exp_num = int((re.findall('\d+', self.exp))[0])  
