@@ -114,7 +114,7 @@ Project Organization
     │   └── visualization        <- Scripts to create exploratory and results-oriented visualizations. Parameters are set in `visualize_config.json`
     │       └── visualize.py
     |       └── image_utils.py
-            └── visualize_config.py
+    |       └── visualize_config.py
     │
     └── tox.ini                 <- tox file with settings for running tox; see tox.testrun.org (not implemented)
 
