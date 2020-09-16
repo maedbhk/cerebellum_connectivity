@@ -71,7 +71,6 @@ Project Organization
     │       └── encoding
     │       └── suit
     │       └── beta_roi    
-    │   └── tasks.json           <- contains information about tasks across studies
     │
     ├── docs                     <- A default Sphinx project; see sphinx-doc.org for details (not yet implemented)
     │
@@ -94,8 +93,9 @@ Project Organization
     │   ├── constants.py         <- Default directories   
     │   ├── io.py                <- Import/Output .mat, .h5, .json files
     │   │
-    │   ├── data                 <- Scripts to generate data for modelling, currently implemented for betas only
+    │   ├── data                 <- Scripts to generate data for modelling, currently implemented for betas only. Task info is set in `task_config.json`
     │   │   └── prep_data.py
+    │   │   └── task_config.json
     │   │
     │   ├── features             <- Scripts to turn raw data into features for modeling (not yet implemented)
     │   │   └── build_features.py
