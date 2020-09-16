@@ -1,5 +1,6 @@
 cerebellum_connectivity 
 ==============================
+
 Install `pyenv` using Homebrew:
 
     $ brew update
@@ -35,13 +36,22 @@ This will automatically create a new virtual environment for you and install all
 
 ## Running connectivity models:
 
-    $ python3 train_evaluate.py
+    $ from connectivity.models.run_connectivity import train_evaluate
+    $ train_evaluate()
+
+> NOTE: this command does model training and evaluating with the parameters set in `model_config.json`
+
+To provide different arguments to the training and/or evaluation routines, pass in parameters from `model_config.json` as Kwargs. Parameters for the training routine are prefixed with `train` and parameters for the evaluation routine are prefixed with `eval`. See below for an example. 
+
+    $ from connectivity.models.run_connectivity import train_evaluate
+    $ train_evaluate(lambdas=[10, 100, 1000], train_subjects=[3, 4], eval_subjects=[3, 4])
+
 
 Project Organization
 ------------
 
     ├── LICENSE
-    ├── Makefile           <- Makefile with commands like `make data` or `make train`
+    ├── Makefile           <- Makefile with commands like `make data` (not implemented)
     ├── README.md          <- The top-level README for developers using this project.
     ├── data
     │   └── sc1            <- Data from study 1
@@ -61,24 +71,23 @@ Project Organization
     │       └── conn_models
     │       └── encoding
     │       └── suit
-    │       └── beta_roi  
-    │   └── model_config.json    <- config file for training and evaluating models         
+    │       └── beta_roi    
     │   └── tasks.json           <- contains information about tasks across studies
     │
-    ├── docs                     <- A default Sphinx project; see sphinx-doc.org for details
+    ├── docs                     <- A default Sphinx project; see sphinx-doc.org for details (not yet implemented)
     │
     │
     ├── notebooks                <- Jupyter notebooks. Naming convention is a number (for ordering),
     │                               the creator's initials, and a short `-` delimited description, e.g.
     │                               `1.0-mk-visualize_maps`.
     │
-    ├── references               <- Data dictionaries, manuals, and all other explanatory materials.
+    ├── references               <- Manuals, and all other explanatory materials (not yet implemented)
     │
     ├── reports                  <- Generated analysis as HTML, PDF, LaTeX, etc.
     │   └── figures              <- Generated graphics and figures to be used in reporting
     │
     ├── Pipfile                  <- The Pipfile for reproducing the analysis environment, e.g.
-    │                               install all packages with `pipenv install` and check existing packages with `pipenv graph`
+    │                               install all packages with `pipenv install`, check existing packages `pipenv graph`
     │
     ├── setup.py                 <- makes project pip installable (pip install -e .) so connectivity package can be imported
     ├── connectivity             <- Source code for use in this project.
@@ -89,24 +98,26 @@ Project Organization
     │   ├── data                 <- Scripts to generate data for modelling, currently implemented for betas only
     │   │   └── prep_data.py
     │   │
-    │   ├── features             <- Scripts to turn raw data into features for modeling
+    │   ├── features             <- Scripts to turn raw data into features for modeling (not yet implemented)
     │   │   └── build_features.py
     │   │
     │   ├── models               <- Scripts to train models and then use trained models to make
-    │   │   │                       predictions
-    │   │   ├── train_evaluate.py
+    │   │   │                       predictions. Parameters are set in `model_config.json`
+    │   │   ├── run_connectivity.py
     │   │   └── train_model.py
     │   │   └── evaluate_model.py
     │   │   └── model_functions.py
+    │   │   └── model_config.json
     │   │   
-    │   ├── scripts              <- Example bash scripts for running models
-    │   │   ├── run_connectivity.py
+    │   ├── scripts              <- Example bash script for training and evaluating models
+    │   │   ├── run_connectivity.sh
     │   │
-    │   └── visualization        <- Scripts to create exploratory and results oriented visualizations
+    │   └── visualization        <- Scripts to create exploratory and results-oriented visualizations. Parameters are set in `visualize_config.json`
     │       └── visualize.py
     |       └── image_utils.py
+            └── visualize_config.py
     │
-    └── tox.ini                 <- tox file with settings for running tox; see tox.testrun.org
+    └── tox.ini                 <- tox file with settings for running tox; see tox.testrun.org (not implemented)
 
 
 --------

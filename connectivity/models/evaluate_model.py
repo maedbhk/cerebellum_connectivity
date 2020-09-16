@@ -14,6 +14,9 @@ from connectivity.data.prep_data import DataManager
 from connectivity.constants import Defaults, Dirs
 from connectivity.models.model_functions import MODEL_MAP
 
+import warnings
+warnings.filterwarnings('ignore')
+
 np.seterr(divide='ignore', invalid='ignore')
 
 """

@@ -1,0 +1,51 @@
+{
+    "model_name": "l2_regress",
+    "train_sessions": [1, 2],
+    "train_glm": 7,
+    "train_stim": "cond",
+    "train_avg": "run",
+    "train_incl_inst": true,
+    "train_subtract_sess_mean": true,
+    "train_subtract_exp_mean": true,
+    "train_subjects": [2,3,4,6,8,9,10,12,14,15,17,18,19,20,21,22,24,25,26,27,28,29,30,31],
+    "train_on": "sc1",
+    "train_inputs": {
+        "train_X": {
+            "roi": "tesselsWB162",
+            "file_dir": "encoding",
+            "structure": "cortex"
+        },
+        "train_Y": {
+            "roi": "grey_nan",
+            "file_dir": "encoding",
+            "structure": "cerebellum"
+        }
+    },
+    "train_mode": "crossed",
+    "train_scale": true,
+    "eval_sessions": [1, 2],
+    "eval_glm": 7,
+    "eval_stim": "cond",
+    "eval_avg": "run",
+    "eval_incl_inst": true,
+    "eval_subtract_sess_mean": true,
+    "eval_subtract_exp_mean": true,
+    "eval_subjects": [2,3,4,6,8,9,10,12,14,15,17,18,19,20,21,22,24,25,26,27,28,29,30,31],
+    "eval_on": "sc2",
+    "eval_inputs": {
+        "eval_X": {
+            "roi": "tesselsWB162",
+            "file_dir": "encoding",
+            "structure": "cortex"
+        },
+        "eval_Y": {
+            "roi": "grey_nan",
+            "file_dir": "encoding",
+            "structure": "cerebellum"
+        }
+    },
+    "eval_scale": true,
+    "eval_splitby": null,
+    "eval_save_maps": false,
+    "eval_good_vox": false
+}

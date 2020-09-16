@@ -9,6 +9,9 @@ from connectivity.models.train_model import TrainModel
 
 from connectivity.constants import Defaults, Dirs
 
+import warnings
+warnings.filterwarnings('ignore')
+
 np.seterr(divide='ignore', invalid='ignore')
 
 """
@@ -30,13 +33,10 @@ def _delete_conn_files():
 
 def _get_config_file():
     # define dirs class
-    dirs = Dirs()
-
-    # define constants class
-    constants = Defaults()
+    defaults = Defaults()
 
     # load config files for train and eval parameters
-    return io.read_json(os.path.join(dirs.BASE_DIR, constants.config_file))
+    return io.read_json(str(defaults.model_config))
 
 def _train_model(config, **kwargs):
     """ This routine does model training and model evaluation
@@ -103,10 +103,12 @@ def _evaluate_model(config, **kwargs):
     model_eval = EvaluateModel(config=config, **kwargs) 
     model_eval.model_evaluate() 
 
-def run_connect(train=True, evaluate=True, **kwargs):
+def train_evaluate(train=True, evaluate=True, **kwargs):
     """ This routine does model training and evaluation
         Args: 
             config (dict): dictionary loaded from `model_config.json`
+            train (bool): default is True
+            evaluate (bool): default is True
             
             Kwargs:
                 model (str): model name default is 'l2_regress'
@@ -151,7 +153,7 @@ def run_connect(train=True, evaluate=True, **kwargs):
 
 # main 
 def main(*args):
-    run_connect(sys.argv[1:]) # pass args from command line to run_connect function
+    train_evaluate(sys.argv[1:]) # pass args from command line to train_evaluate function
 
 if __name__ == '__main__':
     if len(sys.argv) > 0:

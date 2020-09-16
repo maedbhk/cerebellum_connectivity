@@ -1,0 +1,13 @@
+{
+    "model_name": "l2_regress",
+    "subjects": [2,3,4,6,8,9,10,12,14,15,17,18,19,20,21,22,24,25,26,27,28,29,30,31],
+    "pred_type": "S_best_weight",
+    "mask_name": "cerebellarGreySUIT.nii",
+    "surf_mesh": "FLAT.surf.gii",
+    "eval_on": ["sc1", "sc2"],
+    "glm": 7,
+    "surface_threshold": null,
+    "symmetric_cmap": false, 
+    "colorbar": true,
+    "view": "resize"
+}

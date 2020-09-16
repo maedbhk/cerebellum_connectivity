@@ -5,12 +5,14 @@ import re
 import glob
 import copy
 from pathlib import Path
+from dictdiffer import diff
 
 import seaborn as sns
 import matplotlib.pyplot as plt
 from collections import MutableMapping
 from collections import defaultdict
 from functools import partial
+import pprint
 
 from nilearn import plotting
 import nibabel as nib
@@ -22,6 +24,9 @@ from connectivity.constants import Dirs, Defaults
 from connectivity import io
 from connectivity.data.prep_data import DataManager
 from connectivity.visualization import image_utils
+
+import warnings
+warnings.filterwarnings('ignore')
 
 """
 Created on Sep 05 07:03:32 2020
@@ -104,7 +109,7 @@ class Utils:
             # load param file
             param_dict = self._load_param_file(param_fname=file)
 
-            # only read summary data to dataframe
+            # only read summary data to dataframe (not voxel data)
             if not param_dict['eval_save_maps']:
             
                 # load data file
@@ -139,37 +144,70 @@ class Utils:
 class PlotPred(Utils):
 
     def __init__(self, model_name='tesselsWB162_grey_nan_l2_regress', eval_on=['sc1', 'sc2'], glm=7):
+        """ Initialises PlotPred class. Inherits functionality from Utils class
+            Args: 
+                model_name (str): <roi1>_<roi2>_<model_name>. default is 'tesselsWB162_grey_nan_l2_regress'
+                eval_on (list of str): study name(s). default is ['sc1', 'sc2']
+                glm (int): glm name. default is 7. 
+        """
         self.model_name = model_name
         self.eval_on = eval_on
         self.glm = glm
 
     def load_dataframe(self):
-
+        """ loads dataframe containing data and model and eval params for `model_name` and `eval_on`
+            loads in data for all repeats of `model_name`
+        """
         # loop over exp
-        dataframes = pd.DataFrame()
+        dataframe_concat = pd.DataFrame()
         for exp in self.eval_on:
 
-            self.dirs = Dirs(study_name = exp, glm = self.glm)
+            self.dirs = Dirs(study_name=exp, glm=self.glm)
 
             # get filenames for `model_name` and for `exp`
             fnames = self.get_all_files(fullpath=self.dirs.CONN_EVAL_DIR, wildcard=f'*{self.model_name}*.json')
 
             # read data to dataframe
-            dataframes = pd.concat([dataframes, self.read_to_dataframe(files=fnames)])
+            dataframe_concat = pd.concat([dataframe_concat, self.read_to_dataframe(files=fnames)])
 
-        return dataframes
+        return dataframe_concat
 
-    def plot_prediction_all(self, dataframe, x='lambdas', y='eval', hue='eval_type', filter_data=["R_pred", "R_y"]):
-        
-        sns.set(rc={'figure.figsize':(20,10)})
-        sns.factorplot(x=x, y=y, hue=hue, data=dataframe.query(f'eval_type=={filter_data}'))
-        plt.xlabel(x, fontsize=20),
-        plt.ylabel('R', fontsize=20)
-        plt.title('', fontsize=20);
-        plt.tick_params(axis = 'both', which = 'major', labelsize = 20)
-        # plt.ylim(bottom=.7, top=1.0)
+    def plot_predictions(self, dataframe,
+                        x='lambdas', 
+                        y='eval', 
+                        hue='eval_type', 
+                        filter_eval=['R_y', 'R_pred_crossed', 'R_pred_uncrossed'], 
+                        plot_params=True):
+        """ plots predictions for `model_name`
+            Args: 
+                dataframe (pandas dataframe): output from `load_dataframe`
+                x (str): data to plot on x axis. default is 'lambdas'
+                y (str): data to plot on y axis. default is 'eval'
+                hue (str): option to split data. default is 'eval_type'
+                filter_eval (list of str): filter evals. default is ['R_y', 'R_pred_crossed', 'R_pred_uncrossed']
+                plot_params (bool): plot the model and eval params
+        """
+        for model in np.unique(dataframe['model_fname']):
 
-        plt.show()
+            # filter dataframe for model
+            dataframe_filter = dataframe.query(f'model_fname=="{model}" and eval_type=={filter_eval}')
+            eval_on = np.unique(dataframe_filter['eval_on'])[0]
+            train_on = np.unique(dataframe_filter['train_on'])[0]
+
+            sns.factorplot(x=x, y=y, hue=hue, data=dataframe_filter, size=4, aspect=2)
+            plt.xlabel(x, fontsize=20),
+            plt.ylabel('R', fontsize=20)
+            plt.title(f'train on {train_on}, eval on {eval_on}: {self.model_name}', fontsize=20);
+            plt.tick_params(axis = 'both', which = 'major', labelsize = 20)
+            # plt.ylim(bottom=.7, top=1.0)
+
+            plt.show()
+
+            # optionally plot model and eval params
+            # THIS IS NOT CORRECT, SHOULD BE EVAL JSON, NOT MODEL JSON
+            if plot_params:
+                dirs = Dirs(study_name=eval_on, glm=self.glm)
+                pprint.pprint(io.read_json(fpath=os.path.join(self.dirs.CONN_EVAL_DIR, model)))
 
 class MapPred(Utils):
     """ Map Visualization Class: converts voxel numpy arrays
@@ -200,6 +238,10 @@ class MapPred(Utils):
         self.config.update(**kwargs)
 
     def visualize_prediction_subj(self):
+
+        # save files to nifti first
+        self.save_predictions_to_nifti()
+
         for exp in self.config['eval_on']:
 
             # set directories for exp
@@ -220,14 +262,25 @@ class MapPred(Utils):
                     gifti_fnames = self.get_all_files(fullpath=os.path.join(model_dir, f's{subj:02}'), wildcard=f'*{pred_type}_vox.gii*')
             
                     # loop over gifti files
-                    for gifti_fname in gifti_fnames:
+                    for gifti_fpath in gifti_fnames:
 
-                        # plot map on surface
-                        self._plot_surface_cerebellum(surf_map=surface.load_surf_data(gifti_fname),
-                                                surf_mesh=os.path.join(self.dirs.ATLAS_SUIT_FLATMAP, self.config['surf_mesh']),
-                                                title=f'{exp}:{Path(gifti_fname).stem}') 
+                        # plot gifti if it exists
+                        if os.path.exists(gifti_fpath):
+
+                            # print(io.read_json(fpath=os.path.join(self.dirs.CONN_EVAL_DIR, Path(model_dir).name + '.json')))
+
+                            # plot map on surface
+                            self._plot_surface_cerebellum(surf_map=surface.load_surf_data(gifti_fpath),
+                                                    surf_mesh=os.path.join(self.dirs.ATLAS_SUIT_FLATMAP, self.config['surf_mesh']),
+                                                    title=f'{exp}:{Path(gifti_fpath).stem}') 
+                        else:
+                            print(f'no gifti file for {pred_type} for {exp}')
 
     def visualize_prediction_group(self):
+
+        # save files to nifti first
+        self.save_predictions_to_nifti()
+
         for exp in self.config['eval_on']:
 
             # set directories for exp
@@ -243,13 +296,25 @@ class MapPred(Utils):
                 # get gifti files for `model_name`, `subj`, `exp`, `pred_type`
                 pred_type = self.config['pred_type']
                 gifti_fpath = self.get_all_files(fullpath=os.path.join(model_dir, 'group'), wildcard=f'*{pred_type}_vox.gii*')[0]
-   
-                # plot group map on surface
-                self._plot_surface_cerebellum(surf_map=surface.load_surf_data(gifti_fpath),
-                                        surf_mesh=os.path.join(self.dirs.ATLAS_SUIT_FLATMAP, self.config['surf_mesh']),
-                                        title=f'{exp}:{Path(gifti_fpath).stem}') 
+
+                if os.path.exists(gifti_fpath):
+
+                    # print out param file to accompany gifti file
+                    pprint.pprint(io.read_json(fpath=os.path.join(self.dirs.CONN_EVAL_DIR, Path(model_dir).name + '.json')))
+
+                    # plot group map on surface
+                    self._plot_surface_cerebellum(surf_map=surface.load_surf_data(gifti_fpath),
+                                            surf_mesh=os.path.join(self.dirs.ATLAS_SUIT_FLATMAP, self.config['surf_mesh']),
+                                            title=f'{exp}:{Path(gifti_fpath).stem}') 
+                else:
+                    print(f'no gifti file for {pred_type} for {exp}')
 
     def save_predictions_to_nifti(self):
+        """ saves predictions to nifti files
+            niftis need to be mapped to surf, this is done in matlab (using suit)
+            matlab engine will eventually be called from python to bypass this step
+            *** not yet implemented ***
+        """
         # loop over exp
         for exp in self.config['eval_on']:
 
@@ -278,6 +343,8 @@ class MapPred(Utils):
             # only convert vox data to nifti
             if prediction_dict:
 
+                # print(f'{self.file} contains vox data')
+
                 # loop over all prediction data
                 nib_objs = []
                 for self.pred_name in prediction_dict:
@@ -285,18 +352,29 @@ class MapPred(Utils):
                     # get outpath to niftis
                     nifti_subj_fpath, nifti_group_fpath = self._get_nifti_outpath()
 
-                    # get input data for nifti obj
-                    Y, non_zero_ind, mask = self._get_nifti_input_data(data_dict=prediction_dict)
+                    # convert subj to nifti if it doesn't already exist
+                    if not os.path.exists(nifti_subj_fpath):
 
-                    # get vox data as nib obj
-                    nib_obj = image_utils.convert_to_vol(Y=Y, vox_indx=non_zero_ind, mask=mask)
-                    nib_objs.append(nib_obj)
+                        # get input data for nifti obj
+                        Y, non_zero_ind, mask = self._get_nifti_input_data(data_dict=prediction_dict)
 
-                    # save nifti obj to disk
-                    image_utils.save_nifti_obj(nib_obj, nifti_subj_fpath)
+                        # get vox data as nib obj
+                        nib_obj = image_utils.convert_to_vol(Y=Y, vox_indx=non_zero_ind, mask=mask)
+                        nib_objs.append(nib_obj)
 
-                # calculate group avg nifti of `pred_type` for `model_name` 
-                image_utils.calc_nifti_average(imgs=nib_objs, fpath=nifti_group_fpath)
+                        # save nifti obj to disk
+                        image_utils.save_nifti_obj(nib_obj, nifti_subj_fpath)
+                        print(f'saved {nifti_subj_fpath} to nifti, please map this file surf in matlab')
+
+                # convert group to nifti if it doesn't already exist
+                if not os.path.exists(nifti_group_fpath):
+                    # calculate group avg nifti of `pred_type` for `model_name` 
+                    image_utils.calc_nifti_average(imgs=nib_objs, fpath=nifti_group_fpath)
+                    print(f'saved {nifti_group_fpath} to nifti, please map this file surf in matlab')
+            
+            else:
+                pass
+                # print(f'{self.file} does not have vox data')
 
     def _get_nifti_outpath(self):
         """ returns nifti fpath for subj and group prediction maps
@@ -348,6 +426,12 @@ class MapPred(Utils):
         return self._flatten_nested_dict(data_dict_all) 
 
     def _plot_surface_cerebellum(self, surf_map, surf_mesh, title):
+        """ plots data to flatmap, opens in browser (default)
+            Args: 
+                surf_map (numpy array): data to plot
+                surf_mesh (numpy array): mesh surface. default is "FLAT_SURF"
+                title (str): title of plot
+        """
         view = plotting.view_surf(surf_mesh=surf_mesh, 
                                 surf_map=surf_map, 
                                 colorbar=self.config['colorbar'],
