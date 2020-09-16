@@ -23,7 +23,7 @@ Ensure pipenv is installed globally:
 
     $ brew install pipenv
 
-Navigate to the top-level directory in 'cerebellum_connectivity' and install the packages from the `Pipfile.lock`.
+Navigate to the top-level directory in `cerebellum_connectivity` and install the packages from the `Pipfile.lock`.
 This will automatically create a new virtual environment for you and install all requirements using the correct version of python.
 
     $ pipenv install
