@@ -39,8 +39,9 @@ This will automatically create a new virtual environment for you and install all
     $ from connectivity.models.run_connectivity import train_evaluate
     $ train_evaluate()
 
-> NOTE: this command does model training and evaluation with the default parameters set in `model_config.json`
-> to provide different arguments to the training and/or evaluation routines, pass in parameters from `model_config.json` as key-word args
+> NOTE: this command does model training and evaluation using the default parameters set in `model_config.json`
+
+> To provide different arguments to the training and/or evaluation routines, pass in parameters from `model_config.json` as key-word args
 
     $ from connectivity.models.run_connectivity import train_evaluate
     $ train_evaluate(lambdas=[10, 100, 1000], train_subjects=[3, 4], eval_subjects=[3, 4])
