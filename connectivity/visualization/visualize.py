@@ -131,6 +131,7 @@ class Utils:
 
             # concat repated models
             df_all = pd.concat([df_all, df_merged], axis=0)
+            df_all['eval_fname'] = file
 
         # tidy up dataframe
         cols_to_stack = [col for col in df_all.columns if 'R_' in col]
@@ -176,7 +177,7 @@ class PlotPred(Utils):
                         x='lambdas', 
                         y='eval', 
                         hue='eval_type', 
-                        filter_eval=['R_y', 'R_pred_crossed', 'R_pred_uncrossed'], 
+                        filter_eval=['R_y', 'R_pred_cv', 'R_pred_ncv'], 
                         plot_params=True):
         """ plots predictions for `model_name`
             Args: 
@@ -187,10 +188,10 @@ class PlotPred(Utils):
                 filter_eval (list of str): filter evals. default is ['R_y', 'R_pred_crossed', 'R_pred_uncrossed']
                 plot_params (bool): plot the model and eval params
         """
-        for model in np.unique(dataframe['model_fname']):
+        for eval_name in np.unique(dataframe['eval_fname']):
 
-            # filter dataframe for model
-            dataframe_filter = dataframe.query(f'model_fname=="{model}" and eval_type=={filter_eval}')
+            # filter dataframe for eval
+            dataframe_filter = dataframe.query(f'eval_fname=="{eval_name}" and eval_type=={filter_eval}')
             eval_on = np.unique(dataframe_filter['eval_on'])[0]
             train_on = np.unique(dataframe_filter['train_on'])[0]
 
@@ -204,10 +205,9 @@ class PlotPred(Utils):
             plt.show()
 
             # optionally plot model and eval params
-            # THIS IS NOT CORRECT, SHOULD BE EVAL JSON, NOT MODEL JSON
             if plot_params:
                 dirs = Dirs(study_name=eval_on, glm=self.glm)
-                pprint.pprint(io.read_json(fpath=os.path.join(self.dirs.CONN_EVAL_DIR, model)))
+                pprint.pprint(io.read_json(fpath=os.path.join(self.dirs.CONN_EVAL_DIR, eval_name)))
 
 class MapPred(Utils):
     """ Map Visualization Class: converts voxel numpy arrays

@@ -42,7 +42,12 @@ class TrainModel(DataManager):
                 train_subtract_exp_mean (bool): default is True.
                 train_subjects (list of int): list of subjects. see constants.py for subject list. 
                 train_on (str): study to be used for training. default is 'sc1'. options are 'sc1' or 'sc2'.
-                train_inputs (nested dict): primary keys are `X` and `Y`. secondary keys are 'roi', 'file_dir', 'structure'
+                train_X_roi: 'tesselsWB362'
+                train_X_file_dir: 'encoding''
+                train_X_structure: 'cortex'
+                train_Y_roi: 'grey_nan'
+                train_Y_file_dir: 'encoding'
+                train_Y_structure: 'cerebellum'
                 train_mode (str): training mode: 'crossed' or 'uncrossed'. If 'crossed': sessions are flipped between `X` and `Y`. default is 'crossed'
                 train_scale (bool): normalize `X` and `Y` data. default is True.
                 lambdas (list of int): list of lambdas if `model_name` = 'l2_regress'
@@ -97,13 +102,15 @@ class TrainModel(DataManager):
             Returns: 
                 model_data (dict): keys are `train_inputs` keys ('X' and 'Y')
         """
-        # get model data: `X` and `Y` based on `train_inputs`
+        # get model data: `X` and `Y`
         model_data = {}
-        for model_input in self.config['train_inputs']:
+        for model_input in ['X', 'Y']:
             
             # prepare variables for `prep_data`
             # this is ugly code -- clean
-            self.data_type = self.config['train_inputs'][model_input]
+            self.data_type = {}
+            self.data_type['roi'] = self.config[f'train_{model_input}_roi']
+            self.data_type['file_dir'] = self.config[f'train_{model_input}_file_dir']
             self.experiment = [self.config['train_on']]
             self.glm = self.config['train_glm']
             self.stim = self.config['train_stim']
@@ -114,7 +121,7 @@ class TrainModel(DataManager):
             self.subjects = self.config['train_subjects']
             self.sessions = self.config['train_sessions']
            
-            model_data[model_input] = self.get_conn_data()
+            model_data[f'train_{model_input}'] = self.get_conn_data()
 
         return model_data
     
@@ -154,9 +161,8 @@ class TrainModel(DataManager):
                 fpath (str): full path to connectivity output for model training
         """
         # define model name
-        # fname     = 'mb4_%s_%s'% (rois['cortex'], model)
-        X_roi = self.config['train_inputs']['train_X']['roi']
-        Y_roi = self.config['train_inputs']['train_Y']['roi']
+        X_roi = self.config['train_X_roi']
+        Y_roi = self.config['train_Y_roi']
 
         if kwargs.get('timestamp'):
             timestamp = kwargs['timestamp']
