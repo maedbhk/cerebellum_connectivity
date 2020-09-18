@@ -41,7 +41,19 @@ class DataManager:
         Returns:
             T_all (nested dict):
         """"
+        # check that we're setting the correct parameters
         self._check_init()
+        
+        # return `exp` data
+        data_dict = self._concat_exps()
+        
+        # mask data
+        
+        # delay data
+        
+        # return concatenated info 
+        
+       
     
     def make_delayed(self, arr, delays):
         """Creates non-interpolated concatenated delayed versions of [stim] with the given [delays] 
