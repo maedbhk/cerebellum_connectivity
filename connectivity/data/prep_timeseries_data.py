@@ -36,7 +36,12 @@ class DataManager:
         self.number_of_delays = 3
         
     def get_conn_data(self):
-        pass
+        """ prepares data for modelling and evaluation
+        pulls data from imaging data directly for use in time series modelling.
+        Returns:
+            T_all (nested dict):
+        """"
+        self._check_init()
     
     def make_delayed(self, arr, delays):
         """Creates non-interpolated concatenated delayed versions of [stim] with the given [delays] 
@@ -68,7 +73,7 @@ class DataManager:
         """
         roi = self.data_dtype['roi']
         if roi == 'voxelwise':
-            fname = f's{sub}rrun_%s.nii'
+            fname = 's%s/rrun_%s.nii'
         if self.data_type['file_dir'] == 'imaging_data':
             fpath = os.path.join(self.dirs.IMAGING_DIR, fname)
         return fpath
@@ -80,25 +85,29 @@ class DataManager:
             T_concat(dict): keys are exp - values are data in shape (time, x,y,z (48, 84, 84))
         """
         
-        T_concat = {}
-        for exp in self.experiment:
-            
-            # Get directories for 'exp'
-            self.dirs = Dirs(study_name=exp, glm=self.glm)
-            
-            # load data filepaths for 'exp'
-            fpath = self._get_path_to_data()
-            
-            # get runs for data
-            if exp == 'sc1':
-                runs = list(range(1, 16, 1))
-            elif exp == 'sc2':
-                runs = list(range(16, 33, 1))
-            # load imaging data from nii
-            data_runs = []
-            for run in runs:
-                data_runs.append(nib.load(fpath%(run)).get_data().T)
-            T_concat[exp] = np.concatenate
+        T_concat = dict()
+        
+        for self.subj in self.subjects:
+            sub_concat = dict()
+            for exp in self.experiment:
+
+                # Get directories for 'exp'
+                self.dirs = Dirs(study_name=exp, glm=self.glm)
+
+                # load data filepaths for 'exp'
+                fpath = self._get_path_to_data()
+
+                # get runs for data
+                if exp == 'sc1':
+                    runs = list(range(1, 16, 1))
+                elif exp == 'sc2':
+                    runs = list(range(16, 33, 1))
+                # load imaging data from nii
+                data_runs = []
+                for run in runs:
+                    data_runs.append(nib.load(fpath%(self.subj, run)).get_data().T)
+                self_concat[exp] = np.concatenate(data_runs)
+            T_concat[self.subj] = self_concat
             
         return T_concat
     
@@ -139,6 +148,27 @@ class DataManager:
          
         
         return masks
+    
+    def _check_init(self):
+        """ validates inputs for 'data_type' and 'glm'
+        """
+        
+        if self.glm == 7:
+            self.stim = 'cond'
+        elif self.glm ==8:
+            self.stim='task'
+        elif self.glm == 'none':
+            self.stim = 'timeseries'
+        else:
+            print('choose a valid glm')
+        
+        roi = self.data_type['roi']
+        if roi == 'cerebellum_grey':
+            self.data_type['file_dir'] = 'beta_roi'
+        elif roi == 'grey_nan':
+            self.data_type['file_dir'] = 'encoding'
+        elif roi == 'voxelwise':
+            self.data_type['file_dir'] = 'imaging_data'
         
             
     
