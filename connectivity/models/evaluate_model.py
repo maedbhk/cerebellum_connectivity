@@ -14,6 +14,9 @@ from connectivity.data.prep_data import DataManager
 from connectivity.constants import Defaults, Dirs
 from connectivity.models.model_functions import MODEL_MAP
 
+import warnings
+warnings.filterwarnings('ignore')
+
 np.seterr(divide='ignore', invalid='ignore')
 
 """
@@ -42,7 +45,12 @@ class EvaluateModel(DataManager):
                 train_subtract_exp_mean (bool): Default is True.
                 train_subjects (list of int): list of subjects. see constants.py for subject list. 
                 train_on (str): study to be used for training. Default is 'sc1'. Options are 'sc1' or 'sc2'.
-                train_inputs (nested dict): primary keys are `X` and `Y`. secondary keys are 'roi', 'file_dir', 'structure'
+                train_X_roi (str): 'tesselsWB362'
+                train_X_file_dir (str): 'encoding''
+                train_X_structure (str): 'cortex'
+                train_Y_roi (str): 'grey_nan'
+                train_Y_file_dir (str): 'encoding'
+                train_Y_structure (str): 'cerebellum'
                 train_mode (str): training mode: 'crossed' or 'uncrossed'. If 'crossed': sessions are flipped between `X` and `Y`. Default is 'crossed'
                 train_scale (bool): normalize `X` and `Y` data. Default is True.
 
@@ -55,7 +63,12 @@ class EvaluateModel(DataManager):
                 eval_subtract_exp_mean (bool): Default is True.
                 eval_subjects(list of int): list of subjects. see constants.py for subject list. 
                 eval_on (str): study to be used for training. Default is 'sc2'. Options are 'sc1' or 'sc2'.
-                eval_inputs (nested dict): primary keys are `X` and `Y`. secondary keys are 'roi', 'file_dir', 'structure'
+                eval_X_roi (str): 'tesselsWB362'
+                eval_X_file_dir (str): 'encoding''
+                eval_X_structure (str): 'cortex'
+                eval_Y_roi (str): 'grey_nan'
+                eval_Y_file_dir (str): 'encoding'
+                eval_Y_structure (str): 'cerebellum'
                 eval_scale (bool): normalize `X` and `Y` data. Default is True.
                 eval_splitby (str): split evaluation by 'cond' or 'task' or None. Default is None.
                 eval_save_maps (bool): save out predictions and reliabilities of voxel maps. Default is False.
@@ -138,15 +151,14 @@ class EvaluateModel(DataManager):
                     # get `crossed` and `uncrossed` eval and pred data
                     eval_Y_crossed = Y_eval_subj[eval_idx['crossed']][splits[self.split]][:, vox_idx]
                     eval_Y_uncrossed = Y_eval_subj[eval_idx['uncrossed']][splits[self.split]][:, vox_idx]
+                    Y_pred_crossed = Y_preds['crossed'][:, vox_idx]
+                    Y_pred_uncrossed = Y_preds['uncrossed'][:, vox_idx]
 
                     # scale the eval data
                     if self.config['eval_scale']:
                         eval_Y_crossed = self._scale_data(eval_Y_crossed)
                         eval_Y_uncrossed = self._scale_data(eval_Y_uncrossed)
 
-                    Y_pred_crossed = Y_preds['crossed'][:, vox_idx]
-                    Y_pred_uncrossed = Y_preds['uncrossed'][:, vox_idx]
- 
                     # calculate sum-of-squares
                     ssq_all = self._calculate_ssq(eval_Y_crossed=eval_Y_crossed,
                                                 eval_Y_uncrossed=eval_Y_uncrossed,
@@ -179,9 +191,9 @@ class EvaluateModel(DataManager):
         in accordance with the requested parameters
         """
         dirs = Dirs(study_name=self.config['train_on'], glm=self.config['train_glm'])
+        X_roi = self.config['train_X_roi']
+        Y_roi = self.config['train_Y_roi']
 
-        X_roi = self.config['train_inputs']['train_X']['roi']
-        Y_roi = self.config['train_inputs']['train_Y']['roi']
         model_name = self.config['model_name']
         fname = f'{X_roi}_{Y_roi}_{model_name}_*.json'
 
@@ -230,13 +242,15 @@ class EvaluateModel(DataManager):
         """
         dirs = Dirs(study_name=self.config['eval_on'], glm=self.config['eval_glm'])
 
-        # get eval data: `X` and `Y` based on `eval_inputs`
+        # get eval data: `X` and `Y`
         eval_data = {}
-        for eval_input in self.config['eval_inputs']:
+        for eval_input in ['X', 'Y']:
             
             # make sure you're setting correct eval params
             # don't love this code ...
-            self.data_type = self.config['eval_inputs'][eval_input]
+            self.data_type = {}
+            self.data_type['roi'] = self.config[f'eval_{eval_input}_roi']
+            self.data_type['file_dir'] = self.config[f'eval_{eval_input}_file_dir']
             self.sessions = self.config['eval_sessions']
             self.experiment = [self.config['eval_on']]
             self.subjects = self.config['eval_subjects']
@@ -248,7 +262,7 @@ class EvaluateModel(DataManager):
             self.subtract_sess_mean = self.config['eval_subtract_sess_mean']
             self.subtract_exp_mean = self.config['eval_subtract_exp_mean']
 
-            eval_data[eval_input] = self.get_conn_data()
+            eval_data[f'eval_{eval_input}'] = self.get_conn_data()
 
         return eval_data
     
@@ -300,38 +314,37 @@ class EvaluateModel(DataManager):
 
     def _calculate_ssq(self, eval_Y_crossed, eval_Y_uncrossed, Y_pred_crossed, Y_pred_uncrossed):
         # evaluation output
-        ssq_pred = np.nansum(Y_pred_crossed**2, axis=0) # sum-of-squares of predictions
+        ssq_pred = np.nansum(Y_pred_uncrossed**2, axis=0) # sum-of-squares of predictions
         ssq_y = np.nansum(eval_Y_crossed**2, axis=0) # sum-of-squares of Y evaluation data
-        ssc_pred = np.nansum(Y_pred_crossed * Y_pred_uncrossed, axis=0) # covariance of predictions
+        ssc_pred = np.nansum(Y_pred_uncrossed * Y_pred_crossed, axis=0) # covariance of predictions
         ssc_y = np.nansum(eval_Y_uncrossed * eval_Y_crossed, axis=0) # covariance of Y evaluation data
-        ssc_uncrossed = np.nansum(Y_pred_uncrossed * eval_Y_crossed, axis=0) # covariance of uncrossed prediction and Y evaluation data
-        ssc_crossed = np.nansum(Y_pred_crossed * eval_Y_crossed, axis=0) # covariance of crossed prediction and Y evaluation data
+        ssc_ncv = np.nansum(Y_pred_crossed * eval_Y_crossed, axis=0) # covariance of uncrossed prediction and Y evaluation data
+        ssc_cv = np.nansum(Y_pred_uncrossed * eval_Y_crossed, axis=0) # covariance of crossed prediction and Y evaluation data
         
         return {'ssq_pred': ssq_pred, 'ssq_y': ssq_y, 'ssc_pred': ssc_pred,
-                'ssc_y': ssc_y, 'ssc_uncrossed': ssc_uncrossed, 'ssc_crossed': ssc_crossed
+                'ssc_y': ssc_y, 'ssc_ncv': ssc_ncv, 'ssc_cv': ssc_cv
                 }
     
     def _calculate_reliabilities(self, ssq): 
         # calculate reliabilities
-        R_pred_crossed_vox = ssq['ssc_crossed'] / np.sqrt(ssq['ssq_y'] * ssq['ssq_pred']) # crossed predictive correlation
-        R_pred_uncrossed_vox = ssq['ssc_uncrossed'] / np.sqrt(ssq['ssq_y'] * ssq['ssq_pred']) # uncrossed predictive correlation
+        R_pred_cv_vox = ssq['ssc_cv'] / np.sqrt(ssq['ssq_y'] * ssq['ssq_pred']) # crossed predictive correlation
+        R_pred_ncv_vox = ssq['ssc_ncv'] / np.sqrt(ssq['ssq_y'] * ssq['ssq_pred']) # uncrossed predictive correlation
         R_y_vox = ssq['ssc_y'] / ssq['ssq_y'] # reliability of Y evaluation data
         R_pred_vox = ssq['ssc_pred'] / ssq['ssq_pred'] # reliability of prediction
 
         data_dict = {}
         if self.config['eval_save_maps']:
-            data_dict = {'R_pred_crossed_vox': R_pred_crossed_vox, 'R_pred_uncrossed_vox': R_pred_uncrossed_vox,
+            data_dict = {'R_pred_cv_vox': R_pred_cv_vox, 'R_pred_ncv_vox': R_pred_uncrossed_vox,
                         'R_y_vox': R_y_vox, 'R_pred_vox': R_pred_vox}
 
-        data_dict.update({'R_pred_crossed': np.nanmean(R_pred_crossed_vox, axis=0),
-                        'R_pred_uncrossed': np.nanmean(R_pred_uncrossed_vox, axis=0),
+        data_dict.update({'R_pred_cv': np.nanmean(R_pred_cv_vox, axis=0),
+                        'R_pred_ncv': np.nanmean(R_pred_ncv_vox, axis=0),
                         'R_y': np.nanmean(R_y_vox, axis=0),
                         'R_pred': np.nanmean(R_pred_vox, axis=0)})
 
         return data_dict
     
     def _calculate_sparsity(self, W):
-
         sparsity_dict = {}
 
         # calculate total % of sum weights
@@ -393,8 +406,8 @@ class EvaluateModel(DataManager):
         dirs = Dirs(study_name=self.config['eval_on'], glm=self.config['eval_glm'])
 
         # define eval name
-        X_roi = self.config['eval_inputs']['eval_X']['roi']
-        Y_roi = self.config['eval_inputs']['eval_Y']['roi']
+        X_roi = self.config['eval_X_roi']
+        Y_roi = self.config['eval_Y_roi']
 
         if kwargs.get('timestamp'):
             timestamp = kwargs['timestamp']
