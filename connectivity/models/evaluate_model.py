@@ -334,7 +334,7 @@ class EvaluateModel(DataManager):
 
         data_dict = {}
         if self.config['eval_save_maps']:
-            data_dict = {'R_pred_cv_vox': R_pred_cv_vox, 'R_pred_ncv_vox': R_pred_uncrossed_vox,
+            data_dict = {'R_pred_cv_vox': R_pred_cv_vox, 'R_pred_ncv_vox': R_pred_ncv_vox,
                         'R_y_vox': R_y_vox, 'R_pred_vox': R_pred_vox}
 
         data_dict.update({'R_pred_cv': np.nanmean(R_pred_cv_vox, axis=0),

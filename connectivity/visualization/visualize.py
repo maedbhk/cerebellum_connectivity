@@ -343,7 +343,7 @@ class MapPred(Utils):
             # only convert vox data to nifti
             if prediction_dict:
 
-                # print(f'{self.file} contains vox data')
+                print(f'{self.file} contains vox data')
 
                 # loop over all prediction data
                 nib_objs = []
@@ -374,7 +374,7 @@ class MapPred(Utils):
             
             else:
                 pass
-                # print(f'{self.file} does not have vox data')
+                print(f'{self.file} does not have vox data')
 
     def _get_nifti_outpath(self):
         """ returns nifti fpath for subj and group prediction maps
