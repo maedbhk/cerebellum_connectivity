@@ -131,7 +131,7 @@ class Utils:
 
             # concat repated models
             df_all = pd.concat([df_all, df_merged], axis=0)
-            df_all['eval_fname'] = file
+            df_all['eval_fname'] = Path(file).name
 
         # tidy up dataframe
         cols_to_stack = [col for col in df_all.columns if 'R_' in col]
@@ -144,32 +144,34 @@ class Utils:
 
 class PlotPred(Utils):
 
-    def __init__(self, model_name='tesselsWB162_grey_nan_l2_regress', eval_on=['sc1', 'sc2'], glm=7):
+    def __init__(self, eval_name=['tesselsWB162_grey_nan_l2_regress'], eval_on=['sc1', 'sc2'], glm=7):
         """ Initialises PlotPred class. Inherits functionality from Utils class
             Args: 
-                model_name (str): <roi1>_<roi2>_<model_name>. default is 'tesselsWB162_grey_nan_l2_regress'
+                eval_name (list of str): <roi1>_<roi2>_<model>. default is ['tesselsWB162_grey_nan_l2_regress']
                 eval_on (list of str): study name(s). default is ['sc1', 'sc2']
                 glm (int): glm name. default is 7. 
         """
-        self.model_name = model_name
+        self.eval_name = eval_name
         self.eval_on = eval_on
         self.glm = glm
 
     def load_dataframe(self):
-        """ loads dataframe containing data and model and eval params for `model_name` and `eval_on`
-            loads in data for all repeats of `model_name`
+        """ loads dataframe containing data and model and eval params for `eval_name` and `eval_on`
+            loads in data for all repeats of `eval_name`
         """
         # loop over exp
         dataframe_concat = pd.DataFrame()
         for exp in self.eval_on:
 
-            self.dirs = Dirs(study_name=exp, glm=self.glm)
+            for eval_name in self.eval_name:
 
-            # get filenames for `model_name` and for `exp`
-            fnames = self.get_all_files(fullpath=self.dirs.CONN_EVAL_DIR, wildcard=f'*{self.model_name}*.json')
+                self.dirs = Dirs(study_name=exp, glm=self.glm)
 
-            # read data to dataframe
-            dataframe_concat = pd.concat([dataframe_concat, self.read_to_dataframe(files=fnames)])
+                # get filenames for `eval_name` and for `exp`
+                fnames = self.get_all_files(fullpath=self.dirs.CONN_EVAL_DIR, wildcard=f'*{eval_name}*.json')
+
+                # read data to dataframe
+                dataframe_concat = pd.concat([dataframe_concat, self.read_to_dataframe(files=fnames)])
 
         return dataframe_concat
 
@@ -178,36 +180,50 @@ class PlotPred(Utils):
                         y='eval', 
                         hue='eval_type', 
                         filter_eval=['R_y', 'R_pred_cv', 'R_pred_ncv'], 
+                        forloop='eval_X_roi',
                         plot_params=True):
-        """ plots predictions for `model_name`
+        """ plots predictions for `eval_name`
             Args: 
                 dataframe (pandas dataframe): output from `load_dataframe`
                 x (str): data to plot on x axis. default is 'lambdas'
                 y (str): data to plot on y axis. default is 'eval'
                 hue (str): option to split data. default is 'eval_type'
+                forloop (str): produce multiple plots, default is 'eval_X_roi'
                 filter_eval (list of str): filter evals. default is ['R_y', 'R_pred_crossed', 'R_pred_uncrossed']
                 plot_params (bool): plot the model and eval params
         """
-        for eval_name in np.unique(dataframe['eval_fname']):
+        if forloop:
+            for eval_name in np.unique(dataframe[forloop]):
 
+                # filter dataframe for eval
+                dataframe_filter = dataframe.query(f'eval_X_roi=="{eval_name}" and eval_type=={filter_eval}')
+                # train_on = np.unique(dataframe_filter['train_on'])[0]
+
+                sns.factorplot(x=x, y=y, hue=hue, data=dataframe_filter, size=4, aspect=2)
+                plt.xlabel(x, fontsize=20),
+                plt.ylabel('R', fontsize=20)
+                plt.title(f'{eval_name}', fontsize=20);
+                plt.tick_params(axis = 'both', which = 'major', labelsize = 20)
+                # plt.ylim(bottom=.7, top=1.0)
+
+                plt.show()
+        else:
             # filter dataframe for eval
-            dataframe_filter = dataframe.query(f'eval_fname=="{eval_name}" and eval_type=={filter_eval}')
-            eval_on = np.unique(dataframe_filter['eval_on'])[0]
-            train_on = np.unique(dataframe_filter['train_on'])[0]
+            dataframe_filter = dataframe.query(f'eval_type=={filter_eval}')
 
             sns.factorplot(x=x, y=y, hue=hue, data=dataframe_filter, size=4, aspect=2)
             plt.xlabel(x, fontsize=20),
             plt.ylabel('R', fontsize=20)
-            plt.title(f'train on {train_on}, eval on {eval_on}: {self.model_name}', fontsize=20);
+            # plt.title(f'{eval_name}', fontsize=20);
             plt.tick_params(axis = 'both', which = 'major', labelsize = 20)
             # plt.ylim(bottom=.7, top=1.0)
 
             plt.show()
 
-            # optionally plot model and eval params
-            if plot_params:
-                dirs = Dirs(study_name=eval_on, glm=self.glm)
-                pprint.pprint(io.read_json(fpath=os.path.join(self.dirs.CONN_EVAL_DIR, eval_name)))
+            # # optionally plot model and eval params
+            # if plot_params:
+            #     dirs = Dirs(study_name=eval_on, glm=self.glm)
+            #     pprint.pprint(io.read_json(fpath=os.path.join(self.dirs.CONN_EVAL_DIR, eval_name)))
 
 class MapPred(Utils):
     """ Map Visualization Class: converts voxel numpy arrays
@@ -222,7 +238,7 @@ class MapPred(Utils):
                 parameters for visualizing cerebellar surface maps
 
             Kwargs:
-                model_name (str): model name default is "l2_regress"
+                eval_name (str): model name default is "l2_regress"
                 subjects (list of int): list of subjects. see constants.py for subject list
                 pred_type (str): default is "S_best_weight". other options are "R_pred", "R_y", "R_pred_crossed", 'R_pred_uncrossed", "S_ginni"
                 mask_name (str): default is "cerebellarGreySUIT.nii"
@@ -247,19 +263,19 @@ class MapPred(Utils):
             # set directories for exp
             self.dirs = Dirs(study_name=exp, glm=self.config['glm'])
 
-            # get all model dirs for `model_name`
-            model_name = self.config['model_name']
-            model_dirs = self.get_all_files(fullpath=self.dirs.SUIT_GLM_DIR, wildcard=f'*{model_name}*')
+            # get all model dirs for `eval_name`
+            eval_name = self.config['eval_name']
+            eval_dirs = self.get_all_files(fullpath=self.dirs.SUIT_GLM_DIR, wildcard=f'*{eval_name}*')
 
             # loop over models
-            for model_dir in model_dirs:
+            for eval_dir in eval_dirs:
                 
                 # loop over subjects
                 for subj in self.config['subjects']:
 
-                    # get gifti files for `model_name`, `subj`, `exp`, `pred_type`
+                    # get gifti files for `eval_name`, `subj`, `exp`, `pred_type`
                     pred_type = self.config['pred_type']
-                    gifti_fnames = self.get_all_files(fullpath=os.path.join(model_dir, f's{subj:02}'), wildcard=f'*{pred_type}_vox.gii*')
+                    gifti_fnames = self.get_all_files(fullpath=os.path.join(eval_dir, f's{subj:02}'), wildcard=f'*{pred_type}_vox.gii*')
             
                     # loop over gifti files
                     for gifti_fpath in gifti_fnames:
@@ -267,7 +283,7 @@ class MapPred(Utils):
                         # plot gifti if it exists
                         if os.path.exists(gifti_fpath):
 
-                            # print(io.read_json(fpath=os.path.join(self.dirs.CONN_EVAL_DIR, Path(model_dir).name + '.json')))
+                            # print(io.read_json(fpath=os.path.join(self.dirs.CONN_EVAL_DIR, Path(eval_dir).name + '.json')))
 
                             # plot map on surface
                             self._plot_surface_cerebellum(surf_map=surface.load_surf_data(gifti_fpath),
@@ -286,26 +302,26 @@ class MapPred(Utils):
             # set directories for exp
             self.dirs = Dirs(study_name=exp, glm=self.config['glm'])
 
-            # get all model dirs for `model_name`
-            model_name = self.config['model_name']
-            model_dirs = self.get_all_files(fullpath=self.dirs.SUIT_GLM_DIR, wildcard=f'*{model_name}*')
+            # get all model dirs for `eval_name`
+            eval_name = self.config['eval_name']
+            eval_dirs = self.get_all_files(fullpath=self.dirs.SUIT_GLM_DIR, wildcard=f'*{eval_name}*')
 
             # loop over models and visualize group
-            for model_dir in model_dirs:
+            for eval_dir in eval_dirs:
 
-                # get gifti files for `model_name`, `subj`, `exp`, `pred_type`
+                # get gifti files for `eval_name`, `subj`, `exp`, `pred_type`
                 pred_type = self.config['pred_type']
-                gifti_fpath = self.get_all_files(fullpath=os.path.join(model_dir, 'group'), wildcard=f'*{pred_type}_vox.gii*')[0]
+                gifti_fpath = self.get_all_files(fullpath=os.path.join(eval_dir, 'group'), wildcard=f'*{pred_type}_vox.gii*')[0]
 
                 if os.path.exists(gifti_fpath):
 
                     # print out param file to accompany gifti file
-                    pprint.pprint(io.read_json(fpath=os.path.join(self.dirs.CONN_EVAL_DIR, Path(model_dir).name + '.json')))
+                    pprint.pprint(io.read_json(fpath=os.path.join(self.dirs.CONN_EVAL_DIR, Path(eval_dir).name + '.json')))
 
                     # plot group map on surface
                     self._plot_surface_cerebellum(surf_map=surface.load_surf_data(gifti_fpath),
                                             surf_mesh=os.path.join(self.dirs.ATLAS_SUIT_FLATMAP, self.config['surf_mesh']),
-                                            title=f'{exp}:{Path(gifti_fpath).stem}') 
+                                            title=f'{pred_type} : eval on {exp} : {Path(eval_dir).name}') 
                 else:
                     print(f'no gifti file for {pred_type} for {exp}')
 
@@ -320,9 +336,9 @@ class MapPred(Utils):
 
             self.dirs = Dirs(study_name=exp, glm=self.config['glm'])
 
-            # get fnames for eval data for `model_name` and for `exp`
-            model_name = self.config['model_name']
-            fnames = self.get_all_files(fullpath=self.dirs.CONN_EVAL_DIR, wildcard=f'*{model_name}*.h5')
+            # get fnames for eval data for `eval_name` and for `exp`
+            eval_name = self.config['eval_name']
+            fnames = self.get_all_files(fullpath=self.dirs.CONN_EVAL_DIR, wildcard=f'*{eval_name}*.h5')
 
             # save individual subj voxel predictions
             # and group avg. to nifti files
@@ -331,10 +347,10 @@ class MapPred(Utils):
     def _convert_to_nifti(self, files):
         """ converts outputs from `files` to nifti
         """
-        # loop over file names for `model_name`
+        # loop over file names for `eval_name`
         for self.file in files:
 
-            # load prediction dict for `model_name` and `pred_type`
+            # load prediction dict for `eval_name` and `pred_type`
             prediction_dict = self._load_predictions()
 
             pred_type = self.config['pred_type']
@@ -368,7 +384,7 @@ class MapPred(Utils):
 
                 # convert group to nifti if it doesn't already exist
                 if not os.path.exists(nifti_group_fpath):
-                    # calculate group avg nifti of `pred_type` for `model_name` 
+                    # calculate group avg nifti of `pred_type` for `eval_name` 
                     image_utils.calc_nifti_average(imgs=nib_objs, fpath=nifti_group_fpath)
                     print(f'saved {nifti_group_fpath} to nifti, please map this file surf in matlab')
             
