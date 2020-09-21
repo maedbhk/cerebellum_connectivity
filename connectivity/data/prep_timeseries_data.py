@@ -34,6 +34,7 @@ class DataManager:
         self.sessions = [1, 2]
         self.data_type = {'roi': 'voxelwise', 'file_dir': 'imaging_data'}
         self.number_of_delays = 3
+        self.subjects = [6, 4]
         
     def get_conn_data(self):
         """ prepares data for modelling and evaluation
@@ -48,11 +49,28 @@ class DataManager:
         data_dict = self._concat_exps()
         
         # mask data
-        
-        # delay data
+        masks = self._get_masks()
+        for self.subj in self.subjects:
+            tempdata = data_dict[f's{self.subj}']
+            tempdata = tempdata[:, masks[f's{self.subj}']]
+            print(f'shape of s{self.subj} masked data is {tempdata.shape}')
+            data_dict[f's{self.subj}'] = tempdata
+          
+        # delay data (to account for hemodynamic response variation)
+        if self.number_of_delays !=0:
+            delays = range(-1, self.number_of_delays-1)
+            for self.subj in self.subjects:
+                tempdata = data_dict[f's{self.subj}']
+                delayed_data = self.make_delayed(tempdata, delays)
+                print(f'shape of s{self.subj} delayed data is {delayed_data.shape}')
+                data_dict[f's{self.subj}'] = delayed_data
+                
+                
         
         # return concatenated info 
-        
+        T_all = dict()
+        T_all['betas'] = data_dict
+        return T_all
        
     
     def make_delayed(self, arr, delays):
@@ -90,6 +108,43 @@ class DataManager:
             fpath = os.path.join(self.dirs.IMAGING_DIR, fname)
         return fpath
             
+    def _get_masks(self):
+        """ return cerebellar and cortical masks for each subject minus the buffer voxels.
+
+        Returns:
+        masks (nested dict): keys are subjects followed by keys as "cerebellum" and "cortex"
+        """
+
+        masks = dict()
+        self.dirs = Dirs(study_name=self.exp, glm=self.glm)
+        for self.subj in self.subjects:
+            individ_masks = dict()
+            fname = f'{self.subj}/maskbrainSUITGrey.nii
+            fpath = os.path.join(self.dirs.SUIT_ANAT_DIR, fname)
+
+            cerebellar = nib.load(fpath).get_data().T
+
+            fname = f'{self.subj}/rmask_gray.nii'
+            fpath = os.path.join(self.dirs.IMAGING_DIR, fname)
+            cortex = nib.load(fpath).get_data().T
+
+            fname = f'{self.subj}/buffer_voxels.nii'
+            fpath = os.path.join(self.dirs.SUIT_ANAT_DIR, fname)
+            buffer = nib.load(fpath).get_data().T
+
+            cerebellar[buffer!=0]=0
+            cerebellar[cerebellar!=0]=1
+            cortex[buffer!=0]=0
+            cortex[cerebellar!=0]=0
+            cortex[cortex!=0]=1
+
+            individ_masks['cerebellum'] = cerebellar.astype('bool')
+            individ_masks['cortex'] = cortex,astype('bool')
+
+        masks[f's{self.subj}'] = individ_masks
+
+
+        return masks
     
     def _concat_exps(self):
         """ retrieves data:
@@ -102,7 +157,7 @@ class DataManager:
         for self.subj in self.subjects:
             sub_concat = dict()
             for exp in self.experiment:
-
+                print(f'retrieving data for s{self.subj} ...')
                 # Get directories for 'exp'
                 self.dirs = Dirs(study_name=exp, glm=self.glm)
 
@@ -119,47 +174,11 @@ class DataManager:
                 for run in runs:
                     data_runs.append(nib.load(fpath%(self.subj, run)).get_data().T)
                 self_concat[exp] = np.concatenate(data_runs)
-            T_concat[self.subj] = self_concat
+            T_concat[f's{self.subj}'] = self_concat
             
         return T_concat
     
-    def _get_masks(self):
-        """ return cerebellar and cortical masks for each subject minus the buffer voxels.
-        
-        Returns:
-           masks (nested dict): keys are subjects followed by keys as "cerebellum" and "cortex"
-        """
-        
-        masks = dict()
-        self.dirs = Dirs(study_name=self.exp, glm=self.glm)
-        for self.subj in self.subjects:
-            individ_masks = dict()
-            fname = f'{self.subj}/maskbrainSUITGrey.nii
-            fpath = os.path.join(self.dirs.SUIT_ANAT_DIR, fname)
-            
-            cerebellar = nib.load(fpath).get_data().T
-            
-            fname = f'{self.subj}/rmask_gray.nii'
-            fpath = os.path.join(self.dirs.IMAGING_DIR, fname)
-            cortex = nib.load(fpath).get_data().T
-            
-            fname = f'{self.subj}/buffer_voxels.nii'
-            fpath = os.path.join(self.dirs.SUIT_ANAT_DIR, fname)
-            buffer = nib.load(fpath).get_data().T
-            
-            cerebellar[buffer!=0]=0
-            cerebellar[cerebellar!=0]=1
-            cortex[buffer!=0]=0
-            cortex[cerebellar!=0]=0
-            cortex[cortex!=0]=1
-            
-            individ_masks['cerebellum'] = cerebellar.astype('bool')
-            individ_masks['cortex'] = cortex,astype('bool')
-            
-            masks[f'{self.subj}'] = individ_masks
-         
-        
-        return masks
+  
     
     def _check_init(self):
         """ validates inputs for 'data_type' and 'glm'
@@ -184,5 +203,6 @@ class DataManager:
         
             
     
-    
-        
+# run the following to return data
+# prep = DataManager()
+# model_data = prep.get_conn_data()  
