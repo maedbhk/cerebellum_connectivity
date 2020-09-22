@@ -104,7 +104,7 @@ class DataManager:
         """
         roi = self.data_type['roi']
         if roi == 'voxelwise':
-            fname = 's0%s/rrun_%s.nii'
+            fname = 's%02d/rrun_%02d.nii'
         if self.data_type['file_dir'] == 'imaging_data':
             fpath = os.path.join(self.dirs.IMAGING_DIR, fname)
         return fpath
