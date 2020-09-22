@@ -32,6 +32,7 @@ class DataManager:
     def __init__(self):
         self.experiment = ['sc1', 'sc2']
         self.sessions = [1, 2]
+        self.glm = 'none'
         self.data_type = {'roi': 'voxelwise', 'file_dir': 'imaging_data'}
         self.number_of_delays = 3
         self.subjects = [6, 4]
@@ -119,7 +120,7 @@ class DataManager:
         self.dirs = Dirs(study_name=self.exp, glm=self.glm)
         for self.subj in self.subjects:
             individ_masks = dict()
-            fname = f'{self.subj}/maskbrainSUITGrey.nii
+            fname = f'{self.subj}/maskbrainSUITGrey.nii'
             fpath = os.path.join(self.dirs.SUIT_ANAT_DIR, fname)
 
             cerebellar = nib.load(fpath).get_data().T
