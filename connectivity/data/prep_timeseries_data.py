@@ -41,7 +41,7 @@ class DataManager:
         pulls data from imaging data directly for use in time series modelling.
         Returns:
             T_all (nested dict):
-        """"
+        """
         # check that we're setting the correct parameters
         self._check_init()
         
