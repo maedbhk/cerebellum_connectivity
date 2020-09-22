@@ -102,9 +102,9 @@ class DataManager:
         returns:
         fpath(dir): full path to data file
         """
-        roi = self.data_dtype['roi']
+        roi = self.data_type['roi']
         if roi == 'voxelwise':
-            fname = 's%s/rrun_%s.nii'
+            fname = 's0%s/rrun_%s.nii'
         if self.data_type['file_dir'] == 'imaging_data':
             fpath = os.path.join(self.dirs.IMAGING_DIR, fname)
         return fpath
@@ -120,16 +120,16 @@ class DataManager:
         self.dirs = Dirs(study_name=self.exp, glm=self.glm)
         for self.subj in self.subjects:
             individ_masks = dict()
-            fname = f'{self.subj}/maskbrainSUITGrey.nii'
+            fname = f'{self.subj:02}/maskbrainSUITGrey.nii'
             fpath = os.path.join(self.dirs.SUIT_ANAT_DIR, fname)
 
             cerebellar = nib.load(fpath).get_data().T
 
-            fname = f'{self.subj}/rmask_gray.nii'
+            fname = f'{self.subj:02}/rmask_gray.nii'
             fpath = os.path.join(self.dirs.IMAGING_DIR, fname)
             cortex = nib.load(fpath).get_data().T
 
-            fname = f'{self.subj}/buffer_voxels.nii'
+            fname = f'{self.subj:02}/buffer_voxels.nii'
             fpath = os.path.join(self.dirs.SUIT_ANAT_DIR, fname)
             buffer = nib.load(fpath).get_data().T
 
@@ -142,7 +142,7 @@ class DataManager:
             individ_masks['cerebellum'] = cerebellar.astype('bool')
             individ_masks['cortex'] = cortex,astype('bool')
 
-        masks[f's{self.subj}'] = individ_masks
+        masks[f's{self.subj:02}'] = individ_masks
 
 
         return masks
@@ -158,7 +158,7 @@ class DataManager:
         for self.subj in self.subjects:
             sub_concat = dict()
             for exp in self.experiment:
-                print(f'retrieving data for s{self.subj} ...')
+                print(f'retrieving data for s{self.subj:02} ...')
                 # Get directories for 'exp'
                 self.dirs = Dirs(study_name=exp, glm=self.glm)
 
@@ -175,7 +175,7 @@ class DataManager:
                 for run in runs:
                     data_runs.append(nib.load(fpath%(self.subj, run)).get_data().T)
                 self_concat[exp] = np.concatenate(data_runs)
-            T_concat[f's{self.subj}'] = self_concat
+            T_concat[f's{self.subj:02}'] = self_concat
             
         return T_concat
     
