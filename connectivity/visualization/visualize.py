@@ -144,23 +144,44 @@ class Utils:
 
 class PlotPred(Utils):
 
-    def __init__(self, eval_name=['tesselsWB162_grey_nan_l2_regress'], eval_on=['sc1', 'sc2'], glm=7):
+    def __init__(self, eval_name=['tesselsWB162_grey_nan_l2_regress'], eval_on=['sc1', 'sc2'], glm=7, 
+                eval_sparse_matrix=False, train_X_file_dir='encoding', eval_X_file_dir='encoding', train_avg='run',
+                eval_avg='run', train_incl_inst=True, eval_incl_inst=True):
         """ Initialises PlotPred class. Inherits functionality from Utils class
             Args: 
                 eval_name (list of str): <roi1>_<roi2>_<model>. default is ['tesselsWB162_grey_nan_l2_regress']
                 eval_on (list of str): study name(s). default is ['sc1', 'sc2']
-                glm (int): glm name. default is 7. 
+                glm (int): glm name. default is 7
+                eval_sparse_matrix (bool): default is false
+                train_X_file_dir (str): default is 'encoding', another option is 'beta_roi'
+                eval_X_file_dir (str): default is 'encoding', another option is 'beta_roi'
+                train_avg (str): default is 'run', another option is 'sess'
+                eval_avg (str): default is 'run', another option is 'sess'
+                train_incl_inst (bool): default is True
+                eval_incl_inst (bool): default is True
         """
         self.eval_name = eval_name
         self.eval_on = eval_on
         self.glm = glm
+        self.eval_sparse_matrix = eval_sparse_matrix
+        self.train_X_file_dir = train_X_file_dir
+        self.eval_X_file_dir = eval_X_file_dir
+        self.train_avg = train_avg
+        self.eval_avg = eval_avg
+        self.train_incl_inst = train_incl_inst
+        self.eval_incl_inst = eval_incl_inst
+        self.config = {'eval_name': eval_name, 'eval_on': eval_on, 'glm': glm,
+                       'eval_sparse_matrix': eval_sparse_matrix, 'train_X_file_dir': train_X_file_dir,
+                       'eval_X_file_dir': eval_X_file_dir, 'train_avg': train_avg,
+                       'eval_avg': eval_avg, 'train_incl_inst': train_incl_inst,
+                       'eval_incl_inst': eval_incl_inst}
 
     def load_dataframe(self):
         """ loads dataframe containing data and model and eval params for `eval_name` and `eval_on`
             loads in data for all repeats of `eval_name`
         """
         # loop over exp
-        dataframe_concat = pd.DataFrame()
+        df_all = pd.DataFrame()
         for exp in self.eval_on:
 
             for eval_name in self.eval_name:
@@ -171,9 +192,14 @@ class PlotPred(Utils):
                 fnames = self.get_all_files(fullpath=self.dirs.CONN_EVAL_DIR, wildcard=f'*{eval_name}*.json')
 
                 # read data to dataframe
-                dataframe_concat = pd.concat([dataframe_concat, self.read_to_dataframe(files=fnames)])
+                df_all = pd.concat([df_all, self.read_to_dataframe(files=fnames)])
 
-        return dataframe_concat
+        # filter dataframe with based on args
+        df_all = df_all.loc[(df_all['eval_sparse_matrix']==self.eval_sparse_matrix) & (df_all['train_X_file_dir']==self.train_X_file_dir) &
+                (df_all['eval_X_file_dir']==self.eval_X_file_dir) & (df_all['train_avg']==self.train_avg) & (df_all['eval_avg']==self.eval_avg) & 
+                (df_all['train_incl_inst']==self.train_incl_inst) & (df_all['eval_incl_inst']==self.eval_incl_inst)]
+
+        return df_all
 
     def plot_predictions(self, dataframe,
                         x='lambdas', 
@@ -194,22 +220,22 @@ class PlotPred(Utils):
                 plot_params (bool): plot the model and eval params
         """
         if forloop:
-            for eval_name in np.unique(dataframe[forloop]):
+            for loop_name in np.unique(dataframe[forloop]):
 
                 # filter dataframe for eval
-                dataframe_filter = dataframe.query(f'eval_X_roi=="{eval_name}" and eval_type=={filter_eval}')
+                dataframe_filter = dataframe.query(f'{forloop}=="{loop_name}" and eval_type=={filter_eval}')
                 # train_on = np.unique(dataframe_filter['train_on'])[0]
 
                 sns_plot = sns.factorplot(x=x, y=y, hue=hue, data=dataframe_filter, size=4, aspect=2)
                 plt.xlabel(x, fontsize=20),
                 plt.ylabel('R', fontsize=20)
-                plt.title(f'{eval_name}', fontsize=20);
+                plt.title(f'{loop_name}', fontsize=20);
                 plt.tick_params(axis = 'both', which = 'major', labelsize = 20)
                 # plt.ylim(bottom=.7, top=1.0)
 
                 plt.show()
                 # save plot
-                sns_plot.savefig(os.path.join(self.dirs.FIGURES, f'{eval_name}.png'))
+                sns_plot.savefig(os.path.join(self.dirs.FIGURES, f'{loop_name}.png'))
         else:
             # filter dataframe for eval
             dataframe_filter = dataframe.query(f'eval_type=={filter_eval}')
@@ -223,12 +249,23 @@ class PlotPred(Utils):
 
             plt.show()
         
-        sns_plot.savefig(os.path.join(self.dirs.FIGURES, f'{x}-{filter_eval}-{hue}.png'))
+            sns_plot.savefig(os.path.join(self.dirs.FIGURES, f'{x}-{filter_eval}-{hue}.png'))
 
-            # # optionally plot model and eval params
-            # if plot_params:
-            #     dirs = Dirs(study_name=eval_on, glm=self.glm)
-            #     pprint.pprint(io.read_json(fpath=os.path.join(self.dirs.CONN_EVAL_DIR, eval_name)))
+        # optionally plot model and eval params
+        if plot_params:
+            pprint.pprint(self._print_config_params())
+
+    def _print_config_params(self):
+        # load params from trained models
+        defaults = Defaults()
+
+        # read in config file
+        config = io.read_json(str(defaults.model_config))
+        
+        # update config file with inputs
+        config.update(self.config)
+
+        return config
 
 class MapCerebellum(Utils):
     """ Map Visualization Class for Cerebellum: converts voxel numpy arrays
