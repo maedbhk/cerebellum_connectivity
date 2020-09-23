@@ -78,6 +78,10 @@ target/
 # exclude data from source control by default
 /data/
 
+
+# exclude reports and figures
+/reports/
+
 # exclude data transfer script
 data_transfer.py
 

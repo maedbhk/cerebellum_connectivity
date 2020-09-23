@@ -14,7 +14,8 @@ class Defaults:
         self.return_subjs = [2,3,4,6,8,9,10,12,14,15,17,18,19,20,21,22,24,25,26,27,28,29,30,31]
         self.task_config = Path(__file__).absolute().parent / 'data' / 'task_config.json'
         self.model_config = Path(__file__).absolute().parent / 'models' / 'model_config.json'
-        self.visualize_config = Path(__file__).absolute().parent / 'visualization' / 'visualize_config.json'
+        self.visualize_cerebellum_config = Path(__file__).absolute().parent / 'visualization' / 'visualize_cerebellum_config.json'
+        self.visualize_cortex_config = Path(__file__).absolute().parent / 'visualization' / 'visualize_cortex_config.json'
 
 class Dirs: 
 
@@ -35,6 +36,7 @@ class Dirs:
         self.CONN_EVAL_DIR = self.CONN_DIR / 'eval'
         self.ATLAS = self.BASE_DIR / 'atlases'
         self.ATLAS_SUIT_FLATMAP = self.ATLAS / 'suit_flatmap'
+        self.FIGURES = Path(__file__).absolute().parent.parent / 'reports' / 'figures'
 
         # create folders if they don't already exist
         fpaths = [self.BETA_REG_DIR, self.CONN_TRAIN_DIR, self.CONN_EVAL_DIR, self.ATLAS]

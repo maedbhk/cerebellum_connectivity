@@ -95,12 +95,12 @@ class EvaluateModel(DataManager):
         # split evaluation by `splitby` 
         # (conditions or tasks, depending on glm)
         splits = self._get_split_idx(X=X_eval)
-
-        # fit model for each `subj`
-        R_all_subjs = {}
-
+        
         # initialise data dict
         data_dict_all = self._init_data_dict()
+
+        # initialize weight dict for calculating noise ceilings
+        weights_dict = AutoVivification()
 
         # loop over subjects
         for self.subj in self.config['eval_subjects']:
@@ -143,10 +143,21 @@ class EvaluateModel(DataManager):
                         # calculate prediction between model weights and X evaluation data
                         X =  X_eval_subj[eval_idx[eval_mode]][splits[self.split]]
 
+                        # calculate sparse matrix
+                        weights = model_weight.T
+                        if self.config['eval_sparse_matrix']:
+                            weights = self._compute_sparse_matrix(W=model_weight.T)
+
+                        # append weight dict    
+                        param_value = self.param_values[self.i]
+                        key = f'{self.param_name}_{param_value}'
+                        weights_dict[key][f's{self.subj:02}']= weights
+
+                        # scale eval data
                         if self.config['eval_scale']:
-                            Y_preds[eval_mode] = self._predict(X=self._scale_data(X), W=model_weight.T)
+                            Y_preds[eval_mode] = self._predict(X=self._scale_data(X), W=weights)
                         else:
-                            Y_preds[eval_mode] = self._predict(X=X, W=model_weight.T)
+                            Y_preds[eval_mode] = self._predict(X=X, W=weights)
 
                     # get `crossed` and `uncrossed` eval and pred data
                     eval_Y_crossed = Y_eval_subj[eval_idx['crossed']][splits[self.split]][:, vox_idx]
@@ -169,13 +180,19 @@ class EvaluateModel(DataManager):
                     data_dict = self._calculate_reliabilities(ssq=ssq_all)
 
                     # calculate sparsity
-                    data_dict.update(self._calculate_sparsity(W=model_weight.T))
+                    data_dict.update(self._calculate_sparsity(W=weights))
 
                     # update data dict with/without voxel data
-                    data_dict = self._update_data_dict(data_dict, Y_pred_uncrossed, Y_pred_crossed)
+                    data_dict = self._update_data_dict(data_dict, Y_pred_uncrossed, Y_pred_crossed, weights)
 
                     # append data dict
                     data_dict_all = self._append_data_dict(data_dict, data_dict_all)
+
+        # calculate noise ceilings
+        noise_ceiling_dict = self._calculate_noise_ceiling(data_dict=weights_dict)
+
+        # update data dict
+        data_dict_all.update(noise_ceiling_dict)
 
         # get eval params
         eval_params = copy.deepcopy(self.config)
@@ -312,6 +329,12 @@ class EvaluateModel(DataManager):
     
         return split_dict
 
+    def _compute_sparse_matrix(self, W):
+        n_max = 1
+        sparse_mat = W * (W >= np.sort(abs(W), axis=0)[[-n_max],:]).astype(int)
+
+        return sparse_mat
+    
     def _calculate_ssq(self, eval_Y_crossed, eval_Y_uncrossed, Y_pred_crossed, Y_pred_uncrossed):
         # evaluation output
         ssq_pred = np.nansum(Y_pred_uncrossed**2, axis=0) # sum-of-squares of predictions
@@ -351,7 +374,9 @@ class EvaluateModel(DataManager):
         W_sort = np.sort(abs(W), axis=0)
         W_sort_standarized = np.divide(W_sort, sum(W_sort))   
         sparsity_vox = np.nanmax(W_sort_standarized, axis=0)
+        wta_vox = np.nanargmax(abs(W), axis=0) + 1
 
+        # calculate ginni
         num_feat, _ = W_sort_standarized.shape
         weight = (num_feat - (np.arange(0,num_feat)).T + 0.5) / num_feat 
         ginni_vox = 1 - 2*(np.matmul(W_sort_standarized.T, weight) ); 
@@ -359,15 +384,88 @@ class EvaluateModel(DataManager):
         # save to dict
         sparsity_dict = {'S_best_weight': np.nanmean(sparsity_vox), 'S_ginni': np.nanmean(ginni_vox)}
         if self.config['eval_save_maps']:
-            sparsity_dict.update({'S_best_weight_vox': sparsity_vox, 'S_ginni_vox': ginni_vox})
+            sparsity_dict.update({'S_best_weight_vox': sparsity_vox, 'S_ginni_vox': ginni_vox, 'wta_vox': wta_vox})
 
         return sparsity_dict
     
-    def _update_data_dict(self, data_dict, Y_pred_uncrossed, Y_pred_crossed):
+    def _calculate_noise_ceiling(self, data_dict):
+        
+        # initialize weight dict
+        weight_dict_all = self._init_data_dict()
+
+        # loop over model param
+        for key in data_dict:
+
+            # loop over subj
+            weights_all = []
+            for subj in data_dict[key]:
+                weights_all.append(data_dict[key][subj])
+            weights_all = np.array(weights_all)
+
+            # calculate noise ceilings for each subj
+            subj_list = np.arange(0,len(weights_all))
+            for subj in subj_list:
+                
+                # get idx of all other subjects
+                other_subjs = subj_list[subj_list!=subj]
+
+                # get average of all other subjects
+                avg_other_subjs = np.nanmean(weights_all[other_subjs], axis=0)
+
+                # calculate high noise ceiling
+                R_high, R_high_vox = self._calculate_R(X=weights_all[subj], Y=avg_other_subjs)
+
+                # calculate low noise ceiling
+                low_noise_dict = defaultdict(partial(np.ndarray, 0))
+                for other_subj in other_subjs:
+                    R_low, R_low_vox = self._calculate_R(X=weights_all[subj], Y=weights_all[other_subj])
+                    tmp_dict = {'R_noise_low': R_low, 'R_noise_low_vox': R_low_vox}
+                    for k,v in tmp_dict.items():
+                        low_noise_dict[k] = np.append(low_noise_dict[k], v)
+
+                # append noise ceilings to dict
+                weight_dict = {'R_noise_high': R_high, 
+                               'R_noise_high_vox': R_high_vox, 
+                               'R_noise_low': np.nanmean(low_noise_dict['R_low']), 
+                               'R_noise_low_vox': np.nanmean(low_noise_dict['R_low_vox'])}
+                weight_dict_all = self._append_data_dict(weight_dict, weight_dict_all)
+
+        return weight_dict_all
+
+    def _calculate_R(self, X, Y):
+        # Calculating R between `X` and `Y`
+
+        SYP = np.nansum(X*Y, axis=0)
+        SPP = np.nansum(Y*Y, axis=0)
+        # SST = np.sum((X - X.mean()) ** 2, axis=0) # use np.nanmean(Y) here?
+        tmp = X - np.nanmean(X, axis=0)
+        SST = np.nansum(tmp**2, axis=0)
+
+        R = np.nansum(SYP)/np.sqrt(np.nansum(SST)*np.nansum(SPP))
+        R_vox = SYP/np.sqrt(SST*SPP) # per voxel
+
+        return R, R_vox
+
+    def _calculate_R2(self, X, Y):
+        # Calculating R2
+        res = X - Y
+
+        SSR = np.nansum(res **2, axis = 0) # remember: without setting the axis, it just "flats" out the whole array and sum over all
+        # SST = np.sum((X - X.mean()) ** 2, axis = 0) # use np.nanmean(Y) here??
+        tmp = X - np.nanmean(X, axis=0)
+        SST = np.nansum(tmp**2, axis=0)
+
+        R2 = 1 - (np.nansum(SSR)/np.nansum(SST))
+        R2_vox = 1 - (SSR/SST)
+
+        return R2, R2_vox
+    
+    def _update_data_dict(self, data_dict, Y_pred_uncrossed, Y_pred_crossed, weights):
         # add predictions to data dict
         if self.config['eval_save_maps']:
-            data_dict.update({'Y_pred_uncrossed_vox': np.nanmean(Y_pred_uncrossed, axis=0),
-                            'Y_pred_crossed_vox': np.nanmean(Y_pred_crossed, axis=0)})
+            data_dict.update({'Y_pred_ncv_vox': np.nanmean(Y_pred_uncrossed, axis=0),
+                            'Y_pred_cv_vox': np.nanmean(Y_pred_crossed, axis=0),
+                            'weights': weights})
         else:
             # add subjects, splits, lambdas
             data_dict.update({'eval_splits': self.split, self.param_name: self.param_values[self.i], 'eval_subjects': self.subj})
@@ -385,6 +483,7 @@ class EvaluateModel(DataManager):
     def _append_data_dict(self, data_dict, data_dict_all):
         # append data dict with/without voxel data
         if not self.config['eval_save_maps']:
+            data_dict = {k:v for k,v in data_dict.items() if 'vox' not in k} 
             for k,v in data_dict.items():
                 # data_dict[k].append(v)
                 data_dict_all[k] = np.append(data_dict_all[k], v)
