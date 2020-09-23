@@ -164,7 +164,7 @@ class L2Regress(ModelUtils):
             model_fit, weights = self.fit(model = model)
 
             # get model prediction
-            Y_pred = self.predict(model = model_fit)
+            Y_pred = self.predict(model=model_fit)
 
             # calculate R and R^2 scores
             # R2_py = self.score(model = model_fit)

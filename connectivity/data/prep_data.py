@@ -202,18 +202,20 @@ class DataManager:
 
     def _read_Y_data(self):
         """ Returns:
-                Y_info (dict): Y info data dict from either `encoding` or `beta_roi` dirs
+                Y (dict): Y data dict from either `encoding` or `beta_roi` dirs
         """
         file_dir = self.data_type['file_dir']  
         roi = self.data_type['roi']
         
         if file_dir == 'encoding':
             self.roi_dir = self.dirs.ENCODE_DIR
+            fname = f'Y_info_glm{self.glm}_{roi}.mat'
         elif file_dir == 'beta_roi':
             self.roi_dir = self.dirs.BETA_REG_DIR
+            fname = f'beta_regions_{roi}.mat'
         
         # get fpath to Y data
-        fpath = os.path.join(self.roi_dir, f's{self.subj:02}', f'Y_info_glm{self.glm}_{roi}.mat')
+        fpath = os.path.join(self.roi_dir, f's{self.subj:02}', fname)
 
         # save out indices for grey_nan voxels
         if roi == 'grey_nan':
@@ -347,7 +349,7 @@ class DataManager:
         # vox_dict_all = defaultdict(list)
         vox_dict_all = AutoVivification()
         for subj in self.subjects:
-            fpath = os.path.join(self.roi_dir, f's{subj:02}', f'Y_info_glm{self.glm}_grey_nan.mat') # self.roi_dir
+            fpath = os.path.join(self.roi_dir, f's{subj:02}', f'Y_info_glm{self.glm}_grey_nan.mat')
 
             # load in vox indices
             vox_indx = io.read_mat_as_hdf5(fpath)['Y']['nonZeroInd']

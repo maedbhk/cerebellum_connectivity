@@ -144,23 +144,44 @@ class Utils:
 
 class PlotPred(Utils):
 
-    def __init__(self, eval_name=['tesselsWB162_grey_nan_l2_regress'], eval_on=['sc1', 'sc2'], glm=7):
+    def __init__(self, eval_name=['tesselsWB162_grey_nan_l2_regress'], eval_on=['sc1', 'sc2'], glm=7, 
+                eval_sparse_matrix=False, train_X_file_dir='encoding', eval_X_file_dir='encoding', train_avg='run',
+                eval_avg='run', train_incl_inst=True, eval_incl_inst=True):
         """ Initialises PlotPred class. Inherits functionality from Utils class
             Args: 
                 eval_name (list of str): <roi1>_<roi2>_<model>. default is ['tesselsWB162_grey_nan_l2_regress']
                 eval_on (list of str): study name(s). default is ['sc1', 'sc2']
-                glm (int): glm name. default is 7. 
+                glm (int): glm name. default is 7
+                eval_sparse_matrix (bool): default is false
+                train_X_file_dir (str): default is 'encoding', another option is 'beta_roi'
+                eval_X_file_dir (str): default is 'encoding', another option is 'beta_roi'
+                train_avg (str): default is 'run', another option is 'sess'
+                eval_avg (str): default is 'run', another option is 'sess'
+                train_incl_inst (bool): default is True
+                eval_incl_inst (bool): default is True
         """
         self.eval_name = eval_name
         self.eval_on = eval_on
         self.glm = glm
+        self.eval_sparse_matrix = eval_sparse_matrix
+        self.train_X_file_dir = train_X_file_dir
+        self.eval_X_file_dir = eval_X_file_dir
+        self.train_avg = train_avg
+        self.eval_avg = eval_avg
+        self.train_incl_inst = train_incl_inst
+        self.eval_incl_inst = eval_incl_inst
+        self.config = {'eval_name': eval_name, 'eval_on': eval_on, 'glm': glm,
+                       'eval_sparse_matrix': eval_sparse_matrix, 'train_X_file_dir': train_X_file_dir,
+                       'eval_X_file_dir': eval_X_file_dir, 'train_avg': train_avg,
+                       'eval_avg': eval_avg, 'train_incl_inst': train_incl_inst,
+                       'eval_incl_inst': eval_incl_inst}
 
     def load_dataframe(self):
         """ loads dataframe containing data and model and eval params for `eval_name` and `eval_on`
             loads in data for all repeats of `eval_name`
         """
         # loop over exp
-        dataframe_concat = pd.DataFrame()
+        df_all = pd.DataFrame()
         for exp in self.eval_on:
 
             for eval_name in self.eval_name:
@@ -171,9 +192,14 @@ class PlotPred(Utils):
                 fnames = self.get_all_files(fullpath=self.dirs.CONN_EVAL_DIR, wildcard=f'*{eval_name}*.json')
 
                 # read data to dataframe
-                dataframe_concat = pd.concat([dataframe_concat, self.read_to_dataframe(files=fnames)])
+                df_all = pd.concat([df_all, self.read_to_dataframe(files=fnames)])
 
-        return dataframe_concat
+        # filter dataframe with based on args
+        df_all = df_all.loc[(df_all['eval_sparse_matrix']==self.eval_sparse_matrix) & (df_all['train_X_file_dir']==self.train_X_file_dir) &
+                (df_all['eval_X_file_dir']==self.eval_X_file_dir) & (df_all['train_avg']==self.train_avg) & (df_all['eval_avg']==self.eval_avg) & 
+                (df_all['train_incl_inst']==self.train_incl_inst) & (df_all['eval_incl_inst']==self.eval_incl_inst)]
+
+        return df_all
 
     def plot_predictions(self, dataframe,
                         x='lambdas', 
@@ -181,7 +207,8 @@ class PlotPred(Utils):
                         hue='eval_type', 
                         filter_eval=['R_y', 'R_pred_cv', 'R_pred_ncv'], 
                         forloop='eval_X_roi',
-                        plot_params=True):
+                        plot_params=True,
+                        save_plot=True):
         """ plots predictions for `eval_name`
             Args: 
                 dataframe (pandas dataframe): output from `load_dataframe`
@@ -193,25 +220,27 @@ class PlotPred(Utils):
                 plot_params (bool): plot the model and eval params
         """
         if forloop:
-            for eval_name in np.unique(dataframe[forloop]):
+            for loop_name in np.unique(dataframe[forloop]):
 
                 # filter dataframe for eval
-                dataframe_filter = dataframe.query(f'eval_X_roi=="{eval_name}" and eval_type=={filter_eval}')
+                dataframe_filter = dataframe.query(f'{forloop}=="{loop_name}" and eval_type=={filter_eval}')
                 # train_on = np.unique(dataframe_filter['train_on'])[0]
 
-                sns.factorplot(x=x, y=y, hue=hue, data=dataframe_filter, size=4, aspect=2)
+                sns_plot = sns.factorplot(x=x, y=y, hue=hue, data=dataframe_filter, size=4, aspect=2)
                 plt.xlabel(x, fontsize=20),
                 plt.ylabel('R', fontsize=20)
-                plt.title(f'{eval_name}', fontsize=20);
+                plt.title(f'{loop_name}', fontsize=20);
                 plt.tick_params(axis = 'both', which = 'major', labelsize = 20)
                 # plt.ylim(bottom=.7, top=1.0)
 
                 plt.show()
+                # save plot
+                sns_plot.savefig(os.path.join(self.dirs.FIGURES, f'{loop_name}.png'))
         else:
             # filter dataframe for eval
             dataframe_filter = dataframe.query(f'eval_type=={filter_eval}')
 
-            sns.factorplot(x=x, y=y, hue=hue, data=dataframe_filter, size=4, aspect=2)
+            sns_plot = sns.factorplot(x=x, y=y, hue=hue, data=dataframe_filter, size=4, aspect=2)
             plt.xlabel(x, fontsize=20),
             plt.ylabel('R', fontsize=20)
             # plt.title(f'{eval_name}', fontsize=20);
@@ -219,14 +248,27 @@ class PlotPred(Utils):
             # plt.ylim(bottom=.7, top=1.0)
 
             plt.show()
+        
+            sns_plot.savefig(os.path.join(self.dirs.FIGURES, f'{x}-{filter_eval}-{hue}.png'))
 
-            # # optionally plot model and eval params
-            # if plot_params:
-            #     dirs = Dirs(study_name=eval_on, glm=self.glm)
-            #     pprint.pprint(io.read_json(fpath=os.path.join(self.dirs.CONN_EVAL_DIR, eval_name)))
+        # optionally plot model and eval params
+        if plot_params:
+            pprint.pprint(self._print_config_params())
 
-class MapPred(Utils):
-    """ Map Visualization Class: converts voxel numpy arrays
+    def _print_config_params(self):
+        # load params from trained models
+        defaults = Defaults()
+
+        # read in config file
+        config = io.read_json(str(defaults.model_config))
+        
+        # update config file with inputs
+        config.update(self.config)
+
+        return config
+
+class MapCerebellum(Utils):
+    """ Map Visualization Class for Cerebellum: converts voxel numpy arrays
         from model evaluation to nifti and gifti format
         visualizes gifti files on flatmap surface of the cerebellum
     """
@@ -234,16 +276,16 @@ class MapPred(Utils):
     def __init__(self, config, **kwargs):
         """ 
             Args: 
-                config (dict): dictionary loaded from `visualize_config.json` containing 
+                config (dict): dictionary loaded from `visualize_cerebellum_config.json` containing 
                 parameters for visualizing cerebellar surface maps
 
             Kwargs:
-                eval_name (str): model name default is "l2_regress"
+                eval_name (str): eval name default is 'tesselsWB642_grey_nan_l2_regress'
                 subjects (list of int): list of subjects. see constants.py for subject list
-                pred_type (str): default is "S_best_weight". other options are "R_pred", "R_y", "R_pred_crossed", 'R_pred_uncrossed", "S_ginni"
+                data_type (str): default is "S_best_weight". other options are "R_pred", "R_y", "R_pred_crossed", 'R_pred_uncrossed", "S_ginni"
                 mask_name (str): default is "cerebellarGreySUIT.nii"
                 surf_mesh (str): default is "FLAT.surf.gii"
-                eval_on (list of str): study(s) to be used for training. default is ['sc1', 'sc2']
+                eval_on (list of str): study(s) to be used for evaluation. default is ['sc1', 'sc2']
                 glm (int):  default is 7. options are 7 and 8
                 surface_threshold (int): default is null
                 symmetric_cmap (bool): default is False
@@ -253,10 +295,10 @@ class MapPred(Utils):
         self.config = copy.deepcopy(config)
         self.config.update(**kwargs)
 
-    def visualize_prediction_subj(self):
+    def visualize_subj(self):
 
         # save files to nifti first
-        self.save_predictions_to_nifti()
+        self.save_data_to_nifti()
 
         for exp in self.config['eval_on']:
 
@@ -273,9 +315,9 @@ class MapPred(Utils):
                 # loop over subjects
                 for subj in self.config['subjects']:
 
-                    # get gifti files for `eval_name`, `subj`, `exp`, `pred_type`
-                    pred_type = self.config['pred_type']
-                    gifti_fnames = self.get_all_files(fullpath=os.path.join(eval_dir, f's{subj:02}'), wildcard=f'*{pred_type}_vox.gii*')
+                    # get gifti files for `eval_name`, `subj`, `exp`, `data_type`
+                    data_type = self.config['data_type']
+                    gifti_fnames = self.get_all_files(fullpath=os.path.join(eval_dir, f's{subj:02}'), wildcard=f'*{data_type}_vox.gii*')
             
                     # loop over gifti files
                     for gifti_fpath in gifti_fnames:
@@ -290,12 +332,12 @@ class MapPred(Utils):
                                                     surf_mesh=os.path.join(self.dirs.ATLAS_SUIT_FLATMAP, self.config['surf_mesh']),
                                                     title=f'{exp}:{Path(gifti_fpath).stem}') 
                         else:
-                            print(f'no gifti file for {pred_type} for {exp}')
+                            print(f'no gifti file for {data_type} for {exp}')
 
-    def visualize_prediction_group(self):
+    def visualize_group(self):
 
         # save files to nifti first
-        self.save_predictions_to_nifti()
+        self.save_data_to_nifti()
 
         for exp in self.config['eval_on']:
 
@@ -309,9 +351,9 @@ class MapPred(Utils):
             # loop over models and visualize group
             for eval_dir in eval_dirs:
 
-                # get gifti files for `eval_name`, `subj`, `exp`, `pred_type`
-                pred_type = self.config['pred_type']
-                gifti_fpath = self.get_all_files(fullpath=os.path.join(eval_dir, 'group'), wildcard=f'*{pred_type}_vox.gii*')[0]
+                # get gifti files for `eval_name`, `subj`, `exp`, `data_type`
+                data_type = self.config['data_type']
+                gifti_fpath = self.get_all_files(fullpath=os.path.join(eval_dir, 'group'), wildcard=f'*{data_type}_vox.gii*')[0]
 
                 if os.path.exists(gifti_fpath):
 
@@ -321,11 +363,11 @@ class MapPred(Utils):
                     # plot group map on surface
                     self._plot_surface_cerebellum(surf_map=surface.load_surf_data(gifti_fpath),
                                             surf_mesh=os.path.join(self.dirs.ATLAS_SUIT_FLATMAP, self.config['surf_mesh']),
-                                            title=f'{pred_type} : eval on {exp} : {Path(eval_dir).name}') 
+                                            title=f'{data_type} : eval on {exp} : {Path(eval_dir).name}') 
                 else:
-                    print(f'no gifti file for {pred_type} for {exp}')
+                    print(f'no gifti file for {data_type} for {exp}')
 
-    def save_predictions_to_nifti(self):
+    def save_data_to_nifti(self):
         """ saves predictions to nifti files
             niftis need to be mapped to surf, this is done in matlab (using suit)
             matlab engine will eventually be called from python to bypass this step
@@ -350,20 +392,20 @@ class MapPred(Utils):
         # loop over file names for `eval_name`
         for self.file in files:
 
-            # load prediction dict for `eval_name` and `pred_type`
-            prediction_dict = self._load_predictions()
+            # load prediction dict for `eval_name` and `data_type`
+            data_dict = self._load_data()
 
-            pred_type = self.config['pred_type']
-            prediction_dict = {k:v for k,v in prediction_dict.items() if f'{pred_type}_vox' in k} 
+            data_type = self.config['data_type']
+            data_dict = {k:v for k,v in data_dict.items() if f'{data_type}_vox' in k} 
 
             # only convert vox data to nifti
-            if prediction_dict:
+            if data_dict:
 
                 print(f'{self.file} contains vox data')
 
                 # loop over all prediction data
                 nib_objs = []
-                for self.pred_name in prediction_dict:
+                for self.name in data_dict:
 
                     # get outpath to niftis
                     nifti_subj_fpath, nifti_group_fpath = self._get_nifti_outpath()
@@ -372,7 +414,7 @@ class MapPred(Utils):
                     if not os.path.exists(nifti_subj_fpath):
 
                         # get input data for nifti obj
-                        Y, non_zero_ind, mask = self._get_nifti_input_data(data_dict=prediction_dict)
+                        Y, non_zero_ind, mask = self._get_nifti_input_data(data_dict=data_dict)
 
                         # get vox data as nib obj
                         nib_obj = image_utils.convert_to_vol(Y=Y, vox_indx=non_zero_ind, mask=mask)
@@ -384,19 +426,18 @@ class MapPred(Utils):
 
                 # convert group to nifti if it doesn't already exist
                 if not os.path.exists(nifti_group_fpath):
-                    # calculate group avg nifti of `pred_type` for `eval_name` 
+                    # calculate group avg nifti of `data_type` for `eval_name` 
                     image_utils.calc_nifti_average(imgs=nib_objs, fpath=nifti_group_fpath)
                     print(f'saved {nifti_group_fpath} to nifti, please map this file surf in matlab')
             
             else:
-                pass
                 print(f'{self.file} does not have vox data')
 
     def _get_nifti_outpath(self):
         """ returns nifti fpath for subj and group prediction maps
         """
-        self.subj_name = re.findall('(s\d+)', self.pred_name)[0] # extract subj name
-        nifti_fname = f'{self.pred_name}.nii' # set nifti fname
+        self.subj_name = re.findall('(s\d+)', self.name)[0] # extract subj name
+        nifti_fname = f'{self.name}.nii' # set nifti fname
 
         # get model, subj, group dirs in suit
         SUIT_MODEL_DIR = os.path.join(self.dirs.SUIT_GLM_DIR, Path(self.file).stem )
@@ -422,8 +463,8 @@ class MapPred(Utils):
             Returns:
                 mask (nib obj), Y (numpy array), non_zero_ind (numpy array)
         """
-        # get prediction data for `pred_name`
-        Y = data_dict[self.pred_name][0]
+        # get prediction data for `name`
+        Y = data_dict[self.name][0]
 
         # load in `grey_nan` indices
         non_zero_ind_dict = io.read_json(os.path.join(self.dirs.ENCODE_DIR, 'grey_nan_nonZeroInd.json'))
@@ -434,7 +475,7 @@ class MapPred(Utils):
 
         return Y, non_zero_ind, mask
     
-    def _load_predictions(self):
+    def _load_data(self):
         data_dict_all = {}
         data_dict_all['all-keys'] = self._load_data_file(data_fname=self.file)
 
@@ -461,6 +502,127 @@ class MapPred(Utils):
             view.open_in_browser()
         else: 
             view.resize(500, 500)
+
+class MapCortex(Utils):
+    """ Map Visualization Class for Cortex:
+        visualizes gifti files on the cortex
+    """
+
+    def __init__(self, config, **kwargs):
+        """ 
+            Args: 
+                config (dict): dictionary loaded from `visualize_cortex_config.json` containing 
+                parameters for visualizing cerebellar surface maps
+
+            Kwargs:
+                model_name (str): model name default is 'tesselsWB642_grey_nan_l2_regress'
+                subjects (list of int): list of subjects. see constants.py for subject list
+                data_type (str): default is "weights". other options are ....
+                mask_name (str): default is "cerebellarGreySUIT.nii"
+                surf_mesh (str): default is "FLAT.surf.gii"
+                train_on (list of str): study(s) to be used for training. default is ['sc1', 'sc2']
+                glm (int):  default is 7. options are 7 and 8
+                surface_threshold (int): default is null
+                colorbar (bool): default is True
+                view (str): option for viewing surface data. default is 'resize'. other option is 'browser'
+                vmax (int): default is 30
+                interactive_threshold (str): default is '10%'
+                display_mode (str): default is 'ortho'
+                plot_abs (bool): default is False
+                interactive (bool): False
+                hemi (list of str): default is ['right', 'left']
+        """
+        self.config = copy.deepcopy(config)
+        self.config.update(**kwargs)
+
+    def plot_glass_brain(self):
+        plotting.plot_glass_brain(self.img, colorbar=self.config['colorbar'], 
+                                threshold=self.config['surface_threshold'],
+                                title=self.title, plot_abs=self.config['plot_abs'], 
+                                display_mode=self.config['display_mode'])
+        plt.show()
+
+    def plot_surface(self): 
+        plotting.plot_surf_stat_map(self.inflated, self.texture,
+                                    hemi=self.hem, threshold=self.config['surface_threshold'],
+                                    title=self.config['title'], colorbar=self.config['colorbar'], 
+                                    bg_map=self.config['bg_map'], vmax=self.config['vmax'])
+        
+        plt.show()
+
+    def plot_interactive_surface(self):
+        view = plotting.view_surf(self.inflated, self.texture, 
+                                threshold=self.interactive_threshold, 
+                                bg_map=self.bg_map)
+
+        view.open_in_browser()
+
+    def _get_surfaces(self):
+        if self.hem=="right":
+            inflated = self.fsaverage.infl_right
+            bg_map = self.fsaverage.sulc_right
+            texture = surface.vol_to_surf(self.img, self.fsaverage.pial_right)
+        elif self.hem=="left":
+            inflated = self.fsaverage.infl_left
+            bg_map = self.fsaverage.sulc_left
+            texture = surface.vol_to_surf(self.img, self.fsaverage.pial_left)
+        else:
+            print('hemisphere not provided')
+
+        return inflated, bg_map, texture
+    
+    def visualize_subj_glass_brain(self):
+
+        # loop over subjects
+        for subj in Defaults.subjs:
+
+            # GLM_SUBJ_DIR = os.path.join(Defaults.GLM_DIR, self.config['glm'], subj)
+            os.chdir(GLM_SUBJ_DIR)
+            # fpaths = glob.glob(f'*{self.contrast_type}-{self.glm}.nii')
+            
+            for fpath in fpaths: 
+                self.img = nib.load(os.path.join(GLM_SUBJ_DIR, fpath))
+                self.title = f'{Path(fpath).stem})'
+                self.plot_glass_brain()
+
+    def visualize_group_glass_brain(self):
+
+        # GLM_GROUP_DIR = os.path.join(Defaults.GLM_DIR, self.glm, "group")
+        os.chdir(GLM_GROUP_DIR)
+        fpaths = glob.glob(f'*{self.contrast_type}-{self.glm}.nii')
+
+        for fpath in fpaths:
+            # define contrast names
+            self.img = nib.load(os.path.join(GLM_GROUP_DIR, fpath))
+            self.title = f'{Path(fpath).stem})'
+            self.plot_glass_brain()
+
+    def visualize_group_surface(self):
+        self.fsaverage = datasets.fetch_surf_fsaverage()
+
+        # GLM_GROUP_DIR = os.path.join(Defaults.GLM_DIR, self.glm, "group")
+        os.chdir(GLM_GROUP_DIR)
+        # fpaths = glob.glob(f'*{self.contrast_type}-{self.glm}.nii')
+
+        for fpath in fpaths:
+            self.img = nib.load(os.path.join(GLM_GROUP_DIR, fpath))
+
+            # loop over hemispheres and visualize
+            for self.hem in self.hemi:
+
+                # set plot title
+                self.title = f'{Path(fpath).stem}-{self.hem}'
+
+                # return surfaces and texture
+                self.inflated, self.bg_map, self.texture = self._get_surfaces()
+
+                # plot interactive or static surface(s)
+                if self.interactive:  
+                    self.plot_interactive_surface()
+                else:
+                    self.plot_surface()
+
+        return self.fsaverage
 
 class PlotBetas(DataManager):
     
