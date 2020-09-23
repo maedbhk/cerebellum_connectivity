@@ -171,11 +171,10 @@ class DataManager:
                 elif exp == 'sc2':
                     runs = list(range(16, 33, 1))
                 # load imaging data from nii
-                data_runs = []
-                for run in runs:
-                    data_runs.append(nib.load(fpath%(self.subj, run)).get_data().T)
-                self_concat[exp] = np.concatenate(data_runs)
-            T_concat[f's{self.subj:02}'] = self_concat
+                filenames= [fpath%(self.subj, run) for run in runs]
+                data_runs = nib.concat_images(filenames).get_data().T
+                sub_concat[exp] = np.concatenate(data_runs, axis=0)
+            T_concat[f's{self.subj:02}'] = sub_concat
             
         return T_concat
     
