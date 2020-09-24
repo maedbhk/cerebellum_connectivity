@@ -188,11 +188,11 @@ class EvaluateModel(DataManager):
                     # append data dict
                     data_dict_all = self._append_data_dict(data_dict, data_dict_all)
 
-        # calculate noise ceilings
-        noise_ceiling_dict = self._calculate_noise_ceiling(data_dict=weights_dict)
-
-        # update data dict
-        data_dict_all.update(noise_ceiling_dict)
+        if self.config['eval_noise_ceiling']:
+            # calculate noise ceilings
+            noise_ceiling_dict = self._calculate_noise_ceiling(data_dict=weights_dict)
+            # update data dict
+            data_dict_all.update(noise_ceiling_dict)
 
         # get eval params
         eval_params = copy.deepcopy(self.config)
