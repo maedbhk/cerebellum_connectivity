@@ -53,13 +53,22 @@ class ModelUtils:
         return R2, R2_vox
 
     def fit(self, model):
-        model_fit = model.fit(self.X, self.Y)
+        try: 
+            model_fit = model.fit(self.X, self.Y)
+        except:
+            model_fit = model.fit(np.nan_to_num(self.X), self.Y)
+
         weights = model_fit.coef_
 
         return model_fit, weights
     
     def predict(self, model):
-        return model.predict(self.X)
+        try:
+            pred = model.predict(self.X)
+        except:
+            pred = model.predict(np.nan_to_num(self.X))
+
+        return pred
 
     def model_params(self, model):
         model_params = {'fit_intercept': model.fit_intercept,
