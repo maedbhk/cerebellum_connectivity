@@ -188,11 +188,11 @@ class EvaluateModel(DataManager):
                     # append data dict
                     data_dict_all = self._append_data_dict(data_dict, data_dict_all)
 
-        # calculate noise ceilings
-        noise_ceiling_dict = self._calculate_noise_ceiling(data_dict=weights_dict)
-
-        # update data dict
-        data_dict_all.update(noise_ceiling_dict)
+        if self.config['eval_noise_ceiling']:
+            # calculate noise ceilings
+            noise_ceiling_dict = self._calculate_noise_ceiling(data_dict=weights_dict)
+            # update data dict
+            data_dict_all.update(noise_ceiling_dict)
 
         # get eval params
         eval_params = copy.deepcopy(self.config)
@@ -396,11 +396,14 @@ class EvaluateModel(DataManager):
         # loop over model param
         for key in data_dict:
 
-            # loop over subj
-            weights_all = []
-            for subj in data_dict[key]:
-                weights_all.append(data_dict[key][subj])
-            weights_all = np.array(weights_all)
+            def _append_weights(data_dict, key):
+                # loop over subj
+                weights_all = []
+                for subj in data_dict[key]:
+                    weights_all.append(data_dict[key][subj])
+                return np.array(weights_all)
+
+            weights_all = _append_weights(data_dict, key)
 
             # calculate noise ceilings for each subj
             subj_list = np.arange(0,len(weights_all))
@@ -416,18 +419,20 @@ class EvaluateModel(DataManager):
                 R_high, R_high_vox = self._calculate_R(X=weights_all[subj], Y=avg_other_subjs)
 
                 # calculate low noise ceiling
-                low_noise_dict = defaultdict(partial(np.ndarray, 0))
+                # low_noise_dict = defaultdict(partial(np.ndarray, 0))
+                R_noise_low = []
+                R_noise_low_vox = []
                 for other_subj in other_subjs:
                     R_low, R_low_vox = self._calculate_R(X=weights_all[subj], Y=weights_all[other_subj])
-                    tmp_dict = {'R_noise_low': R_low, 'R_noise_low_vox': R_low_vox}
-                    for k,v in tmp_dict.items():
-                        low_noise_dict[k] = np.append(low_noise_dict[k], v)
+                    R_noise_low.append(R_low)
+                    R_noise_low_vox.append(R_low_vox)
 
                 # append noise ceilings to dict
                 weight_dict = {'R_noise_high': R_high, 
                                'R_noise_high_vox': R_high_vox, 
-                               'R_noise_low': np.nanmean(low_noise_dict['R_low']), 
-                               'R_noise_low_vox': np.nanmean(low_noise_dict['R_low_vox'])}
+                               'R_noise_low': np.nanmean(R_noise_low, axis=0), 
+                               'R_noise_low_vox': np.nanmean(R_noise_low_vox, axis=0)}
+
                 weight_dict_all = self._append_data_dict(weight_dict, weight_dict_all)
 
         return weight_dict_all

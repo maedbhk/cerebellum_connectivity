@@ -49,10 +49,7 @@ This will automatically create a new virtual environment for you and install all
 
 Project Organization
 ------------
-
-    ├── LICENSE
-    ├── Makefile           <- Makefile with commands like `make data` (not implemented)
-    ├── README.md          <- The top-level README for developers using this project.
+Data Organisation: 
     ├── data
     │   └── sc1            <- Data from study 1
     │       └── anatomicals          
@@ -72,6 +69,11 @@ Project Organization
     │       └── encoding
     │       └── suit
     │       └── beta_roi    
+
+Repository structure: 
+    ├── LICENSE
+    ├── Makefile           <- Makefile with commands like `make data` (not implemented)
+    ├── README.md          <- The top-level README for developers using this project.
     │
     ├── docs                     <- A default Sphinx project; see sphinx-doc.org for details (not yet implemented)
     │

@@ -146,7 +146,8 @@ class PlotPred(Utils):
 
     def __init__(self, eval_name=['tesselsWB162_grey_nan_l2_regress'], eval_on=['sc1', 'sc2'], glm=7, 
                 eval_sparse_matrix=False, train_X_file_dir='encoding', eval_X_file_dir='encoding', train_avg='run',
-                eval_avg='run', train_incl_inst=True, eval_incl_inst=True):
+                eval_avg='run', train_incl_inst=True, eval_incl_inst=True, lambdas=[1,2,6,15,36,88,215,527,1292,3162],
+                eval_good_vox=True, train_scale=True, eval_scale=True, train_stim='cond', eval_stim='cond'):
         """ Initialises PlotPred class. Inherits functionality from Utils class
             Args: 
                 eval_name (list of str): <roi1>_<roi2>_<model>. default is ['tesselsWB162_grey_nan_l2_regress']
@@ -170,11 +171,20 @@ class PlotPred(Utils):
         self.eval_avg = eval_avg
         self.train_incl_inst = train_incl_inst
         self.eval_incl_inst = eval_incl_inst
-        self.config = {'eval_name': eval_name, 'eval_on': eval_on, 'glm': glm,
-                       'eval_sparse_matrix': eval_sparse_matrix, 'train_X_file_dir': train_X_file_dir,
-                       'eval_X_file_dir': eval_X_file_dir, 'train_avg': train_avg,
-                       'eval_avg': eval_avg, 'train_incl_inst': train_incl_inst,
-                       'eval_incl_inst': eval_incl_inst}
+        self.lambdas = lambdas
+        self.train_scale = train_scale
+        self.eval_scale = eval_scale
+        self.eval_good_vox = eval_good_vox
+        self.train_stim = train_stim
+        self.eval_stim = eval_stim
+        self.config = {'train_incl_inst': train_incl_inst, 'glm': glm, 'eval_name': eval_name,
+                       'train_X_file_dir': train_X_file_dir, 'train_avg': train_avg,
+                       'train_scale': train_scale, 'train_stim': train_stim, 'eval_scale': eval_scale,
+                       'eval_sparse_matrix': eval_sparse_matrix, 'eval_stim': eval_stim,
+                       'eval_X_file_dir': eval_X_file_dir, 
+                       'eval_avg': eval_avg, 'eval_on': eval_on, 
+                       'eval_incl_inst': eval_incl_inst, 'eval_good_vox': eval_good_vox,
+                       'lambdas': lambdas}
 
     def load_dataframe(self):
         """ loads dataframe containing data and model and eval params for `eval_name` and `eval_on`
@@ -198,6 +208,9 @@ class PlotPred(Utils):
         df_all = df_all.loc[(df_all['eval_sparse_matrix']==self.eval_sparse_matrix) & (df_all['train_X_file_dir']==self.train_X_file_dir) &
                 (df_all['eval_X_file_dir']==self.eval_X_file_dir) & (df_all['train_avg']==self.train_avg) & (df_all['eval_avg']==self.eval_avg) & 
                 (df_all['train_incl_inst']==self.train_incl_inst) & (df_all['eval_incl_inst']==self.eval_incl_inst)]
+
+        # filter lambdas
+        df_all = df_all[df_all['lambdas'].isin(self.lambdas)]
 
         return df_all
 
@@ -230,7 +243,7 @@ class PlotPred(Utils):
                 plt.xlabel(x, fontsize=20),
                 plt.ylabel('R', fontsize=20)
                 plt.title(f'{loop_name}', fontsize=20);
-                plt.tick_params(axis = 'both', which = 'major', labelsize = 20)
+                plt.tick_params(axis = 'both', which = 'major', labelsize = 15)
                 # plt.ylim(bottom=.7, top=1.0)
 
                 plt.show()
@@ -243,24 +256,26 @@ class PlotPred(Utils):
             sns_plot = sns.factorplot(x=x, y=y, hue=hue, data=dataframe_filter, size=4, aspect=2)
             plt.xlabel(x, fontsize=20),
             plt.ylabel('R', fontsize=20)
-            # plt.title(f'{eval_name}', fontsize=20);
-            plt.tick_params(axis = 'both', which = 'major', labelsize = 20)
+            plt.title(f'{self.eval_name[0]}', fontsize=20);
+            plt.tick_params(axis = 'both', which = 'major', labelsize = 15)
             # plt.ylim(bottom=.7, top=1.0)
 
             plt.show()
-        
-            sns_plot.savefig(os.path.join(self.dirs.FIGURES, f'{x}-{filter_eval}-{hue}.png'))
+
+            eval_name = self.eval_name[0]
+            sns_plot.savefig(os.path.join(self.dirs.FIGURES, f'{eval_name}-{x}-{filter_eval}-{hue}.png'))
 
         # optionally plot model and eval params
         if plot_params:
-            pprint.pprint(self._print_config_params())
+            # pprint.pprint(self._get_config_params(), compact=True)
+            pprint.pprint(self.config, compact=True)
 
-    def _print_config_params(self):
+    def _get_config_params(self):
         # load params from trained models
         defaults = Defaults()
 
         # read in config file
-        config = io.read_json(str(defaults.model_config))
+        # config = io.read_json(str(defaults.model_config))
         
         # update config file with inputs
         config.update(self.config)
@@ -358,7 +373,7 @@ class MapCerebellum(Utils):
                 if os.path.exists(gifti_fpath):
 
                     # print out param file to accompany gifti file
-                    pprint.pprint(io.read_json(fpath=os.path.join(self.dirs.CONN_EVAL_DIR, Path(eval_dir).name + '.json')))
+                    pprint.pprint(io.read_json(fpath=os.path.join(self.dirs.CONN_EVAL_DIR, Path(eval_dir).name + '.json')), compact=True)
 
                     # plot group map on surface
                     self._plot_surface_cerebellum(surf_map=surface.load_surf_data(gifti_fpath),
