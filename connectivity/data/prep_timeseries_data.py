@@ -36,6 +36,7 @@ class DataManager:
         self.data_type = {'roi': 'voxelwise', 'file_dir': 'imaging_data'}
         self.number_of_delays = 3
         self.subjects = [6, 4]
+        self.detrend = 'sg' #options are 'sg' and 'lin'
         
     def get_conn_data(self):
         """ prepares data for modelling and evaluation
@@ -48,6 +49,8 @@ class DataManager:
         
         # return `exp` data
         data_dict = self._concat_exps()
+        
+        # temporally detrend data
         
         # mask data
         masks = self._get_masks()
@@ -200,6 +203,9 @@ class DataManager:
             self.data_type['file_dir'] = 'encoding'
         elif roi == 'voxelwise':
             self.data_type['file_dir'] = 'imaging_data'
+      
+    
+    def _detrend_data
         
             
     
