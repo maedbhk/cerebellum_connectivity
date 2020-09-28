@@ -9,6 +9,7 @@ from connectivity.constants import Defaults, Dirs
 from connectivity import io
 from connectivity.helper_functions import AutoVivification
 from connectivity.indicatormatrix import indicatorMatrix
+import connectivity.data.detrend as detrend
 
 """
 Created on Fri September 11 9:19:00 2020
@@ -50,26 +51,33 @@ class DataManager:
         # return `exp` data
         data_dict = self._concat_exps()
         
-        # temporally detrend data
+        # return mask information
+        masks = self.get_masks()
         
-        # mask data
-        masks = self._get_masks()
+        # temporally detrend data
         for self.subj in self.subjects:
-            tempdata = data_dict[f's{self.subj}']
-            tempdata = tempdata[:, masks[f's{self.subj}']]
-            print(f'shape of s{self.subj} masked data is {tempdata.shape}')
-            data_dict[f's{self.subj}'] = tempdata
-          
-        # delay data (to account for hemodynamic response variation)
-        if self.number_of_delays !=0:
-            delays = range(-1, self.number_of_delays-1)
-            for self.subj in self.subjects:
-                tempdata = data_dict[f's{self.subj}']
-                delayed_data = self.make_delayed(tempdata, delays)
-                print(f'shape of s{self.subj} delayed data is {delayed_data.shape}')
-                data_dict[f's{self.subj}'] = delayed_data
+            for self.exp in self.experiment:
+                raw_data = data_dict[f's{self.subj:02}'][f'{self.exp}']
+                detrend_data = [self._detrend_data(d) for d in raw_data]
+                concat_detrend_data = np.concatenate(detrend_data, axis=0)
+                print(f'Detrended data for sub: {self.subj} and exp: {self.exp} is shape {np.concatenate(detrend_data, axis=0).shape}')
                 
+                # mask data
+                masked_data = concat_detrend_data[:, masks[f's{self.subj:02}']]
+                print(f'masked data is of shape:{masked_data.shape}')
                 
+                # delay data (to account for hemodynamic response variation
+                if self.number_of_delays !=0:
+                    delays = range(-1, self.number_of_delays-1)
+                    delayed_data = self.make_delayed(masked_data, delays)
+                else:
+                    print('Data is not being delayed. This is not recommended for best performance.')
+                    delayed_data = masked_data
+                print(f'Delayed data is of shape: {delayed_data.shape}')
+                
+                data_dict[f's{self.subj:02}'][f'{self.exp}'] = delayed_data
+                
+               
         
         # return concatenated info 
         T_all = dict()
@@ -106,6 +114,7 @@ class DataManager:
         fpath(dir): full path to data file
         """
         roi = self.data_type['roi']
+        
         if roi == 'voxelwise':
             fname = 's%02d/rrun_%02d.nii'
         if self.data_type['file_dir'] == 'imaging_data':
@@ -153,38 +162,58 @@ class DataManager:
     def _concat_exps(self):
         """ retrieves data:
         Returns:
-            T_concat(dict): keys are exp - values are data in shape (time, x,y,z (48, 84, 84))
+            T_concat(dict): keys are exp - values are data in shape (scan, time, x,y,z (48, 84, 84))
         """
         
         T_concat = dict()
         
         for self.subj in self.subjects:
             sub_concat = dict()
-            
-            try:
+                
                 
             for exp in self.experiment:
                 print(f'retrieving data for s{self.subj:02} ...')
                 # Get directories for 'exp'
                 self.dirs = Dirs(study_name=exp, glm=self.glm)
+             
+                try:
+                    assert self.data_type['file_dir'] == 'imaging_data'
+                    assert self.data_type['roi'] == 'voxelwise'
+                    sub_concat[exp] = dd.io.load(os.path.join(self.dirs.IMAGING_DIR, f'rrun_{exp}.hf5'))
+                except:
+                    print('Data not found in HDF5, loading form nifti...')
+                    # load data filepaths for 'exp'
+                    fpath = self._get_path_to_data()
 
-                # load data filepaths for 'exp'
-                fpath = self._get_path_to_data()
-
-                # get runs for data
-                if exp == 'sc1':
-                    runs = list(range(1, 16, 1))
-                elif exp == 'sc2':
-                    runs = list(range(16, 33, 1))
-                # load imaging data from nii
-                filenames= [fpath%(self.subj, run) for run in runs]
-                data_runs = nib.concat_images(filenames).get_data().T
-                sub_concat[exp] = np.concatenate(data_runs, axis=0)
+                    # get runs for data
+                    if exp == 'sc1':
+                        runs = list(range(1, 16, 1))
+                    elif exp == 'sc2':
+                        runs = list(range(16, 33, 1))
+                    # load imaging data from nii
+                    filenames= [fpath%(self.subj, run) for run in runs]
+                    data_runs = nib.concat_images(filenames).get_data().T
+                    sub_concat[exp] = data_runs
             T_concat[f's{self.subj:02}'] = sub_concat
             
         return T_concat
     
   
+    def _detrend_data(self, arr):
+        """ 
+        temporaly detrends data. Input should be from single scan for sg detrending
+        
+        Parameters:
+            arr (array): 4d array with first dimension of time(TR) and last three dimensions are x,y,z
+            
+        Returns:
+            arr(array): 4d array; same as input parameter
+        """
+        if self.detrend == 'sg':
+            detrend_data = detrend.sgolay_filter_volume(arr, filtlen=121, degree=3)
+            return = detrend_data
+        else:
+            raise ValueError('This method of detrending is not yet supported')
     
     def _check_init(self):
         """ validates inputs for 'data_type' and 'glm'
