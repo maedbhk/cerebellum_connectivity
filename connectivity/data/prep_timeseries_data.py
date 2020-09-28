@@ -52,7 +52,7 @@ class DataManager:
         data_dict = self._concat_exps()
         
         # return mask information
-        masks = self.get_masks()
+        masks = self._get_masks()
         
         # temporally detrend data
         for self.subj in self.subjects:
@@ -129,19 +129,19 @@ class DataManager:
         """
 
         masks = dict()
-        self.dirs = Dirs(study_name=self.exp, glm=self.glm)
+        self.dirs = Dirs(study_name='sc1', glm=7)
         for self.subj in self.subjects:
             individ_masks = dict()
-            fname = f'{self.subj:02}/maskbrainSUITGrey.nii'
+            fname = f's{self.subj:02}/maskbrainSUITGrey.nii'
             fpath = os.path.join(self.dirs.SUIT_ANAT_DIR, fname)
 
             cerebellar = nib.load(fpath).get_data().T
 
-            fname = f'{self.subj:02}/rmask_gray.nii'
+            fname = f's{self.subj:02}/rmask_gray.nii'
             fpath = os.path.join(self.dirs.IMAGING_DIR, fname)
             cortex = nib.load(fpath).get_data().T
 
-            fname = f'{self.subj:02}/buffer_voxels.nii'
+            fname = f's{self.subj:02}/buffer_voxels.nii'
             fpath = os.path.join(self.dirs.SUIT_ANAT_DIR, fname)
             buffer = nib.load(fpath).get_data().T
 
@@ -174,7 +174,7 @@ class DataManager:
             for exp in self.experiment:
                 print(f'retrieving data for s{self.subj:02} ...')
                 # Get directories for 'exp'
-                self.dirs = Dirs(study_name=exp, glm=self.glm)
+                self.dirs = Dirs(study_name='sc1', glm=7)
              
                 try:
                     assert self.data_type['file_dir'] == 'imaging_data'
