@@ -35,7 +35,7 @@ class DataManager:
         self.glm = 'none'
         self.data_type = {'roi': 'voxelwise', 'file_dir': 'imaging_data'}
         self.number_of_delays = 3
-        self.subjects = [6, 4]
+        self.subjects = [6]
         self.detrend = 'sg' #options are 'sg' and 'lin'
         
     def get_conn_data(self):
@@ -160,6 +160,9 @@ class DataManager:
         
         for self.subj in self.subjects:
             sub_concat = dict()
+            
+            try:
+                
             for exp in self.experiment:
                 print(f'retrieving data for s{self.subj:02} ...')
                 # Get directories for 'exp'
@@ -205,7 +208,7 @@ class DataManager:
             self.data_type['file_dir'] = 'imaging_data'
       
     
-    def _detrend_data
+
         
             
     

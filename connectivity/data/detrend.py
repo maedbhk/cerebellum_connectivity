@@ -12,7 +12,9 @@ polynomial degree and filter len are the default recommended. Additionally, it i
 import numpy as np
 
 def sgolay_filter_volume(vol, filtlen=121, degree=3):
-    """Median filters the given volume [vol].  Pre-subtracts the mean, then adds it back.
+    """
+    Median filters the given volume [vol].  Pre-subtracts the mean, then adds it back.
+   
     Paramaters:
         vol (arr): should be a 4d array. extracted from the nifti file in imaging data folder.
             see prep_timeseries_data for more. 
