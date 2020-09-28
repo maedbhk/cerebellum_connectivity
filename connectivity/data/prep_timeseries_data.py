@@ -116,7 +116,7 @@ class DataManager:
         roi = self.data_type['roi']
         
         if roi == 'voxelwise':
-            fname = 's%02d/rrun_%02d.nii'
+            fname = f's{self.subj:02}/rrun_%02d.nii'
         if self.data_type['file_dir'] == 'imaging_data':
             fpath = os.path.join(self.dirs.IMAGING_DIR, fname)
         return fpath
@@ -179,7 +179,7 @@ class DataManager:
                 try:
                     assert self.data_type['file_dir'] == 'imaging_data'
                     assert self.data_type['roi'] == 'voxelwise'
-                    sub_concat[exp] = dd.io.load(os.path.join(self.dirs.IMAGING_DIR, f'rrun_{exp}.hf5'))
+                    sub_concat[exp] = dd.io.load(os.path.join(self.dirs.IMAGING_DIR, f's{self.subj:02}/rrun_{exp}.hf5'))
                 except:
                     print('Data not found in HDF5, loading form nifti...')
                     # load data filepaths for 'exp'
@@ -211,7 +211,7 @@ class DataManager:
         """
         if self.detrend == 'sg':
             detrend_data = detrend.sgolay_filter_volume(arr, filtlen=121, degree=3)
-            return = detrend_data
+            return detrend_data
         else:
             raise ValueError('This method of detrending is not yet supported')
     
