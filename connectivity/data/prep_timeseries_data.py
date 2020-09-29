@@ -38,6 +38,7 @@ class DataManager:
         self.number_of_delays = 3
         self.subjects = [6]
         self.detrend = 'sg' #options are 'sg' and 'lin'
+  
         
     def get_conn_data(self):
         """ prepares data for modelling and evaluation
@@ -63,19 +64,22 @@ class DataManager:
                 print(f'Detrended data for sub: {self.subj} and exp: {self.exp} is shape {np.concatenate(detrend_data, axis=0).shape}')
                 
                 # mask data
-                masked_data = concat_detrend_data[:, masks[f's{self.subj:02}']]
-                print(f'masked data is of shape:{masked_data.shape}')
+                all_data = dict()
+                for struct in ['cerebellum', 'cortex']:
+                    masked_data = concat_detrend_data[:, masks[f's{self.subj:02}'][struct]]
+                    print(f'masked data is of shape:{masked_data.shape}')
+                    # delay data (to account for hemodynamic response variation
+                    if self.number_of_delays !=0:
+                        delays = range(-1, self.number_of_delays-1)
+                        delayed_data = self.make_delayed(masked_data, delays)
+                    else:
+                        print('Data is not being delayed. This is not recommended for best performance.')
+                        delayed_data = masked_data
+                    print(f'Delayed data is of shape: {delayed_data.shape}')
+                    all_data[struct] = delayed_data
+               
                 
-                # delay data (to account for hemodynamic response variation
-                if self.number_of_delays !=0:
-                    delays = range(-1, self.number_of_delays-1)
-                    delayed_data = self.make_delayed(masked_data, delays)
-                else:
-                    print('Data is not being delayed. This is not recommended for best performance.')
-                    delayed_data = masked_data
-                print(f'Delayed data is of shape: {delayed_data.shape}')
-                
-                data_dict[f's{self.subj:02}'][f'{self.exp}'] = delayed_data
+                data_dict[f's{self.subj:02}'][f'{self.exp}'] = all_data
                 
                
         
@@ -152,7 +156,7 @@ class DataManager:
             cortex[cortex!=0]=1
 
             individ_masks['cerebellum'] = cerebellar.astype('bool')
-            individ_masks['cortex'] = cortex,astype('bool')
+            individ_masks['cortex'] = cortex.astype('bool')
 
         masks[f's{self.subj:02}'] = individ_masks
 
