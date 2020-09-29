@@ -179,7 +179,11 @@ class DataManager:
                 try:
                     assert self.data_type['file_dir'] == 'imaging_data'
                     assert self.data_type['roi'] == 'voxelwise'
-                    sub_concat[exp] = dd.io.load(os.path.join(self.dirs.IMAGING_DIR, f's{self.subj:02}/rrun_{exp}.hf5'))
+                    if exp == 'sc1':
+                        d = 'exp1'
+                    elif exp == 'sc2':
+                        d = 'exp2'
+                    sub_concat[exp] = dd.io.load(os.path.join(self.dirs.IMAGING_DIR, f's{self.subj:02}/rrun_{exp}.hf5'))[d]
                 except:
                     print('Data not found in HDF5, loading form nifti...')
                     # load data filepaths for 'exp'
@@ -191,7 +195,7 @@ class DataManager:
                     elif exp == 'sc2':
                         runs = list(range(16, 33, 1))
                     # load imaging data from nii
-                    filenames= [fpath%(self.subj, run) for run in runs]
+                    filenames= [fpath%(run) for run in runs]
                     data_runs = nib.concat_images(filenames).get_data().T
                     sub_concat[exp] = data_runs
             T_concat[f's{self.subj:02}'] = sub_concat
