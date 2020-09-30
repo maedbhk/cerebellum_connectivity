@@ -38,6 +38,7 @@ class DataManager:
         self.number_of_delays = 3
         self.subjects = [6]
         self.detrend = 'sg' #options are 'sg' and 'lin'
+        self.structure = ['cerebellum', 'cortex']
   
         
     def get_conn_data(self):
@@ -65,7 +66,7 @@ class DataManager:
                 
                 # mask data
                 all_data = dict()
-                for struct in ['cerebellum', 'cortex']:
+                for struct in self.structure:
                     masked_data = concat_detrend_data[:, masks[f's{self.subj:02}'][struct]]
                     print(f'masked data is of shape:{masked_data.shape}')
                     # delay data (to account for hemodynamic response variation
@@ -76,7 +77,8 @@ class DataManager:
                         print('Data is not being delayed. This is not recommended for best performance.')
                         delayed_data = masked_data
                     print(f'Delayed data is of shape: {delayed_data.shape}')
-                    all_data[struct] = delayed_data
+                    all_data[f'{struct}_delayed'] = delayed_data
+                    all_data[f'{struct}_undelayed'] = masked_data
                
                 
                 data_dict[f's{self.subj:02}'][f'{self.exp}'] = all_data
@@ -86,6 +88,7 @@ class DataManager:
         # return concatenated info 
         T_all = dict()
         T_all['betas'] = data_dict
+        T_all['masks'] = masks
         return T_all
        
     
