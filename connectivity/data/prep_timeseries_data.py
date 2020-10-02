@@ -46,7 +46,46 @@ class DataManager:
         """ prepares data for modelling and evaluation
         pulls data from imaging data directly for use in time series modelling.
         Returns:
-            T_all (nested dict):
+            T_all (nested dict): structure of dict below
+                +--cerebellum
+                |   +--betas
+                |      +--Subj
+                |         +--sc1
+                |         |   +--ses1
+                |         |   |   +--delayed
+                |         |   |   +--undelayed
+                |         |   +--ses2
+                |         |   |   +--delayed
+                |         |   |   +--undelayed
+                |         +-sc2
+                |             +--ses1
+                |         |   |   +--delayed
+                |         |   |   +--undelayed
+                |             +--ses2
+                |         |   |   +--delayed
+                |         |   |   +--undelayed
+                +--cortex
+                |   +--betas
+                |      +--Subj
+                |         +--sc1
+                |         |   +--ses1
+                |         |   |   +--delayed
+                |         |   |   +--undelayed
+                |         |   +--ses2
+                |         |   |   +--delayed
+                |         |   |   +--undelayed
+                |         +-sc2
+                |             +--ses1
+                |         |   |   +--delayed
+                |         |   |   +--undelayed
+                |             +--ses2
+                |         |   |   +--delayed
+                |         |   |   +--undelayed
+                +--masks
+                   +--Subj
+                      +--cortical mask
+                      +-- cerebellar mask
+                   
         """
         # check that we're setting the correct parameters
         self._check_init()
@@ -63,30 +102,36 @@ class DataManager:
             for self.exp in self.experiment:
                 raw_data = data_dict[f's{self.subj:02}'][f'{self.exp}']
                 detrend_data = [self._detrend_data(d) for d in raw_data]
-                concat_detrend_data = np.concatenate(detrend_data, axis=0)
-                print(f'Detrended data for sub: {self.subj} and exp: {self.exp} is shape {np.concatenate(detrend_data, axis=0).shape}')
-                
-                # mask data
-                all_data = dict()
-                for struct in self.structure:
-                    masked_data = concat_detrend_data[:, masks[f's{self.subj:02}'][struct]]
-                    print(f'masked data is of shape:{masked_data.shape}')
-                    # delay data (to account for hemodynamic response variation
-                    if self.number_of_delays !=0:
-                        delays = range(-1, self.number_of_delays-1)
-                        delayed_data = self.make_delayed(masked_data, delays)
-                    else:
-                        print('Data is not being delayed. This is not recommended for best performance.')
-                        delayed_data = masked_data
-                    print(f'Delayed data is of shape: {delayed_data.shape}')
-                    all_data[f'{struct}_delayed'] = delayed_data
-                    all_data[f'{struct}_undelayed'] = masked_data
+                for self.sess in self.sessions:
+                    if self.sess == 1:
+                        r = list(range(0, 7))
+                    elif self.sess ==2:
+                        r = = list(range(7,14))  
+                                 
+                    concat_detrend_data = np.concatenate(detrend_data[r[0]:r[-1]], axis=0)
+                    print(f'Detrended data for sub: {self.subj} and exp: {self.exp} is shape {np.concatenate(detrend_data, axis=0).shape}')
+
+                    # mask data
+                    all_data = dict()
+                    for struct in self.structure:
+                        masked_data = concat_detrend_data[:, masks[f's{self.subj:02}'][struct]]
+                        print(f'masked data is of shape:{masked_data.shape}')
+                        # delay data (to account for hemodynamic response variation
+                        if self.number_of_delays !=0:
+                            delays = range(-1, self.number_of_delays-1)
+                            delayed_data = self.make_delayed(masked_data, delays)
+                        else:
+                            print('Data is not being delayed. This is not recommended for best performance.')
+                            delayed_data = masked_data
+                        print(f'Delayed data is of shape: {delayed_data.shape}')
+                        all_data[f'{struct}_delayed'] = delayed_data
+                        all_data[f'{struct}_undelayed'] = masked_data
                
                 
-                data_dict[f's{self.subj:02}'][f'{self.exp}'] = all_data
-                for k in all_data.keys():
-                    temp_dict[f'{k}']['betas'][f's{self.subj:02}'][f'{self.exp}'] = all_data[f'{k}']
-                
+                    data_dict[f's{self.subj:02}'][f'{self.exp}'] = all_data
+                    for k in all_data.keys():
+                        temp_dict[f'{k}']['betas'][f's{self.subj:02}'][f'{self.exp}'][f'{self.sess}'] = all_data[f'{k}']
+
                
       
         # return concatenated info 
@@ -194,8 +239,6 @@ class DataManager:
                         d = 'exp1'
                     elif exp == 'sc2':
                         d = 'exp2'
-                    if self.sessions == [1]:
-                        r = 
                     sub_concat[exp] = dd.io.load(os.path.join(self.dirs.IMAGING_DIR, f's{self.subj:02}/rrun_{exp}.hf5'))[d]
                 except:
                     print('Data not found in HDF5, loading form nifti...')

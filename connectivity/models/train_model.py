@@ -122,8 +122,8 @@ class TrainModel(DataManagerTS if self.config['train_stim'] == 'timeseries' else
             tempdata = self.get_conn_data()
             
                               
-            model_data[f'train_X'] = tempdata[f'{train_X_structure}']
-            model_data[f'train_Y'] = tempdata[f'{train_Y_structure}']
+            model_data[f'train_X'] = tempdata[f'{train_X_structure}_undelayed']
+            model_data[f'train_Y'] = tempdata[f'{train_Y_structure}_delayed']
         else:
             for model_input in ['X', 'Y']:
 
@@ -158,21 +158,30 @@ class TrainModel(DataManagerTS if self.config['train_stim'] == 'timeseries' else
         sessions = model_data['train_X']['sess'].astype(int)
         train_stim = self.config['train_stim']
         stims = model_data['train_X'][f'{train_stim}Num']
-
-        X_indices = []
-        for stim, sess in zip(stims, sessions):
-            if sess == 1:
-                X_indices.append(stim)
-            elif sess == 2:
-                X_indices.append(stim + max(stims) + 1)
-
-        # get indices if eval_mode is `crossed`
-        if self.config['train_mode'] == 'crossed':
-            Y_indices = [*X_indices[-sessions.tolist().count(2):], *X_indices[:sessions.tolist().count(1)]] 
+        
+        if train_stim=='timeseries':
+            X_indices = str(1)
+            if self.config['train_mode'] == 'crossed':
+                Y_indices = str(2)
+            else:
+                Y_indices = str(1)
+            return X_indices, Y_indices
         else:
-            Y_indices = X_indices
 
-        return np.array(X_indices), np.array(Y_indices)
+            X_indices = []
+            for stim, sess in zip(stims, sessions):
+                if sess == 1:
+                    X_indices.append(stim)
+                elif sess == 2:
+                    X_indices.append(stim + max(stims) + 1)
+
+            # get indices if eval_mode is `crossed`
+            if self.config['train_mode'] == 'crossed':
+                Y_indices = [*X_indices[-sessions.tolist().count(2):], *X_indices[:sessions.tolist().count(1)]] 
+            else:
+                Y_indices = X_indices
+
+            return np.array(X_indices), np.array(Y_indices)
         
     def _get_outpath(self, file_type, **kwargs):
         """ sets outpath for connectivity training model outputs
