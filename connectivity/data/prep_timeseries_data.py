@@ -85,13 +85,13 @@ class DataManager:
                 
                 data_dict[f's{self.subj:02}'][f'{self.exp}'] = all_data
                 for k in all_data.keys():
-                    temp_dict[f'{k}']['betas'][f'{self.exp}'][f's{self.subj:02}'] = all_data[f'{k}']
+                    temp_dict[f'{k}']['betas'][f's{self.subj:02}'][f'{self.exp}'] = all_data[f'{k}']
                 
                
       
         # return concatenated info 
         T_all = dict()
-        T_all['betas'] = data_dict
+        T_all['betas'] = temp_dict
         T_all['masks'] = masks
         return T_all
        
@@ -194,6 +194,8 @@ class DataManager:
                         d = 'exp1'
                     elif exp == 'sc2':
                         d = 'exp2'
+                    if self.sessions == [1]:
+                        r = 
                     sub_concat[exp] = dd.io.load(os.path.join(self.dirs.IMAGING_DIR, f's{self.subj:02}/rrun_{exp}.hf5'))[d]
                 except:
                     print('Data not found in HDF5, loading form nifti...')
