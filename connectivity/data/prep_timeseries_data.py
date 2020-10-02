@@ -32,6 +32,7 @@ class DataManager:
     
     def __init__(self):
         self.experiment = ['sc1', 'sc2']
+        self.stim = 'timeseries'
         self.sessions = [1, 2]
         self.glm = 'none'
         self.data_type = {'roi': 'voxelwise', 'file_dir': 'imaging_data'}
@@ -52,7 +53,8 @@ class DataManager:
         
         # return `exp` data
         data_dict = self._concat_exps()
-        
+        # initializes temporary dict for holding reorganized data
+        temp_dict = dict()
         # return mask information
         masks = self._get_masks()
         
@@ -82,9 +84,11 @@ class DataManager:
                
                 
                 data_dict[f's{self.subj:02}'][f'{self.exp}'] = all_data
+                for k in all_data.keys():
+                    temp_dict[f'{k}']['betas'][f'{self.exp}'][f's{self.subj:02}'] = all_data[f'{k}']
                 
                
-        
+      
         # return concatenated info 
         T_all = dict()
         T_all['betas'] = data_dict
@@ -229,7 +233,7 @@ class DataManager:
     def _check_init(self):
         """ validates inputs for 'data_type' and 'glm'
         """
-        
+        assert self.stim == 'timeseries'
         if self.glm == 7:
             self.stim = 'cond'
         elif self.glm ==8:

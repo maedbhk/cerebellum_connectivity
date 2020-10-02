@@ -13,6 +13,7 @@ from sklearn.cross_decomposition import PLSRegression
 
 from connectivity import io
 from connectivity.data.prep_data import DataManager
+from connectivity.data.prep_timeseries_data import DataManager as DataManagerTS
 from connectivity.constants import Defaults, Dirs
 from connectivity.models.model_functions import MODEL_MAP
 
@@ -20,13 +21,15 @@ from connectivity.models.model_functions import MODEL_MAP
 Created on Tue Jun 23 20:08:47 2020
 Model fitting routine for connectivity models
 
-@authors: Ladan Shahshahani and Maedbh King
+@authors: Ladan Shahshahani, Maedbh King, and Amanda LeBel
 """
 
-class TrainModel(DataManager):
+class TrainModel(DataManagerTS if self.config['train_stim'] == 'timeseries' else DataManager): #not sure if the self.config would work here but a conditionel would
 
     def __init__(self, config, **kwargs):
         """ Model training Class, inherits methods from DataManager Class
+            Model inherits method from DataManager class in prep_timeseries_data if specified'
+            
             Args: 
                 config (dict): dictionary loaded from `config.json` containing 
                 training parameters for running connectivity models
@@ -104,24 +107,42 @@ class TrainModel(DataManager):
         """
         # get model data: `X` and `Y`
         model_data = {}
-        for model_input in ['X', 'Y']:
-            
-            # prepare variables for `prep_data`
-            # this is ugly code -- clean
+        if self.config['train_stim'] == 'timeseries': #timeseries automatically returns all data; only needs to be called once
             self.data_type = {}
             self.data_type['roi'] = self.config[f'train_{model_input}_roi']
             self.data_type['file_dir'] = self.config[f'train_{model_input}_file_dir']
             self.experiment = [self.config['train_on']]
             self.glm = self.config['train_glm']
             self.stim = self.config['train_stim']
-            self.avg = self.config['train_avg']
-            self.incl_inst = self.config['train_incl_inst']
-            self.subtract_sess_mean = self.config['train_subtract_sess_mean']
-            self.subtract_exp_mean = self.config['train_subtract_exp_mean']
             self.subjects = self.config['train_subjects']
             self.sessions = self.config['train_sessions']
-           
-            model_data[f'train_{model_input}'] = self.get_conn_data()
+            self.number_of_delays = self.config['number_of_delays']
+            self.detrend = self.config['detrend']
+            self.structure = [self.config['train_X_structure'], self.config['train_Y_structure']]
+            tempdata = self.get_conn_data()
+            
+                              
+            model_data[f'train_X'] = tempdata[f'{train_X_structure}']
+            model_data[f'train_Y'] = tempdata[f'{train_Y_structure}']
+        else:
+            for model_input in ['X', 'Y']:
+
+                # prepare variables for `prep_data`
+                # this is ugly code -- clean
+                self.data_type = {}
+                self.data_type['roi'] = self.config[f'train_{model_input}_roi']
+                self.data_type['file_dir'] = self.config[f'train_{model_input}_file_dir']
+                self.experiment = [self.config['train_on']]
+                self.glm = self.config['train_glm']
+                self.stim = self.config['train_stim']
+                self.avg = self.config['train_avg']
+                self.incl_inst = self.config['train_incl_inst']
+                self.subtract_sess_mean = self.config['train_subtract_sess_mean']
+                self.subtract_exp_mean = self.config['train_subtract_exp_mean']
+                self.subjects = self.config['train_subjects']
+                self.sessions = self.config['train_sessions']
+
+                model_data[f'train_{model_input}'] = self.get_conn_data()
 
         return model_data
     
