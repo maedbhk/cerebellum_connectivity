@@ -49,7 +49,9 @@ This will automatically create a new virtual environment for you and install all
 
 Project Organization
 ------------
-Data Organisation: 
+
+Data Organization: 
+------------
     ├── data
     │   └── sc1            <- Data from study 1
     │       └── anatomicals          
@@ -70,10 +72,11 @@ Data Organisation:
     │       └── suit
     │       └── beta_roi    
 
-Repository structure: 
+Repository structure:
+------------ 
     ├── LICENSE
-    ├── Makefile           <- Makefile with commands like `make data` (not implemented)
-    ├── README.md          <- The top-level README for developers using this project.
+    ├── Makefile                 <- Makefile with commands like `make data` (not implemented)
+    ├── README.md                <- The top-level README for developers using this project.
     │
     ├── docs                     <- A default Sphinx project; see sphinx-doc.org for details (not yet implemented)
     │
@@ -96,7 +99,7 @@ Repository structure:
     │   ├── constants.py         <- Default directories   
     │   ├── io.py                <- Import/Output .mat, .h5, .json files
     │   │
-    │   ├── data                 <- Scripts to generate data for modelling, currently implemented for betas only. Task info is set in `task_config.json`
+    │   ├── data                 <- Scripts to generate data for modelling, currently implemented for betas only. Task info is set in `task_config json`
     │   │   └── prep_data.py
     │   │   └── task_config.json
     │   │

@@ -145,9 +145,10 @@ class Utils:
 class PlotPred(Utils):
 
     def __init__(self, eval_name=['tesselsWB162_grey_nan_l2_regress'], eval_on=['sc1', 'sc2'], glm=7, 
-                eval_sparse_matrix=False, train_X_file_dir='encoding', eval_X_file_dir='encoding', train_avg='run',
+                eval_sparse_matrix=[False], train_X_file_dir='encoding', eval_X_file_dir='encoding', train_avg='run',
                 eval_avg='run', train_incl_inst=True, eval_incl_inst=True, lambdas=[1,2,6,15,36,88,215,527,1292,3162],
-                eval_good_vox=True, train_scale=True, eval_scale=True, train_stim='cond', eval_stim='cond'):
+                eval_good_vox=True, train_scale=True, eval_scale=True, train_stim='cond', train_mode=['crossed'],
+                eval_stim='cond'):
         """ Initialises PlotPred class. Inherits functionality from Utils class
             Args: 
                 eval_name (list of str): <roi1>_<roi2>_<model>. default is ['tesselsWB162_grey_nan_l2_regress']
@@ -173,15 +174,15 @@ class PlotPred(Utils):
         self.eval_incl_inst = eval_incl_inst
         self.lambdas = lambdas
         self.train_scale = train_scale
+        self.train_mode = train_mode
         self.eval_scale = eval_scale
         self.eval_good_vox = eval_good_vox
         self.train_stim = train_stim
         self.eval_stim = eval_stim
         self.config = {'train_incl_inst': train_incl_inst, 'glm': glm, 'eval_name': eval_name,
                        'train_X_file_dir': train_X_file_dir, 'train_avg': train_avg,
-                       'train_scale': train_scale, 'train_stim': train_stim, 'eval_scale': eval_scale,
-                       'eval_sparse_matrix': eval_sparse_matrix, 'eval_stim': eval_stim,
-                       'eval_X_file_dir': eval_X_file_dir, 
+                       'train_scale': train_scale, 'train_stim': train_stim, 'train_mode': train_mode,
+                       'eval_scale': eval_scale, 'eval_sparse_matrix': eval_sparse_matrix, 'eval_stim': eval_stim, 'eval_X_file_dir': eval_X_file_dir, 
                        'eval_avg': eval_avg, 'eval_on': eval_on, 
                        'eval_incl_inst': eval_incl_inst, 'eval_good_vox': eval_good_vox,
                        'lambdas': lambdas}
@@ -203,18 +204,28 @@ class PlotPred(Utils):
 
                 # read data to dataframe
                 df_all = pd.concat([df_all, self.read_to_dataframe(files=fnames)])
+                df_all['eval_name'] = eval_name
 
         # filter dataframe with based on args
-        df_all = df_all.loc[(df_all['eval_sparse_matrix']==self.eval_sparse_matrix) & (df_all['train_X_file_dir']==self.train_X_file_dir) &
-                (df_all['eval_X_file_dir']==self.eval_X_file_dir) & (df_all['train_avg']==self.train_avg) & (df_all['eval_avg']==self.eval_avg) & 
-                (df_all['train_incl_inst']==self.train_incl_inst) & (df_all['eval_incl_inst']==self.eval_incl_inst)]
+        df_all = df_all.loc[(df_all['train_X_file_dir']==self.train_X_file_dir) & (df_all['train_avg']==self.train_avg) & 
+                (df_all['eval_avg']==self.eval_avg) & (df_all['train_incl_inst']==self.train_incl_inst) & 
+                (df_all['eval_incl_inst']==self.eval_incl_inst)]
 
         # filter lambdas
         df_all = df_all[df_all['lambdas'].isin(self.lambdas)]
 
+        # filter sparse matrix
+        df_all = df_all[df_all['eval_sparse_matrix'].isin(self.eval_sparse_matrix)]
+
+        # filter eval_X_file_dir
+        df_all = df_all[df_all['eval_name'].isin(self.eval_name)]
+
+        # filter train_mode
+        df_all = df_all[df_all['train_mode'].isin(self.train_mode)]
+
         return df_all
 
-    def plot_predictions(self, dataframe,
+    def plot_lineplot(self, dataframe,
                         x='lambdas', 
                         y='eval', 
                         hue='eval_type', 
@@ -248,7 +259,7 @@ class PlotPred(Utils):
 
                 plt.show()
                 # save plot
-                sns_plot.savefig(os.path.join(self.dirs.FIGURES, f'{loop_name}.png'))
+                sns_plot.savefig(os.path.join(self.dirs.FIGURES, f'line-{loop_name}.png'))
         else:
             # filter dataframe for eval
             dataframe_filter = dataframe.query(f'eval_type=={filter_eval}')
@@ -263,13 +274,73 @@ class PlotPred(Utils):
             plt.show()
 
             eval_name = self.eval_name[0]
-            sns_plot.savefig(os.path.join(self.dirs.FIGURES, f'{eval_name}-{x}-{filter_eval}-{hue}.png'))
+            sns_plot.savefig(os.path.join(self.dirs.FIGURES, f'line-{eval_name}-{x}-{filter_eval}-{hue}.png'))
 
         # optionally plot model and eval params
         if plot_params:
             # pprint.pprint(self._get_config_params(), compact=True)
             pprint.pprint(self.config, compact=True)
 
+    def plot_barplot(self, dataframe,
+                        x='lambdas', 
+                        y='eval', 
+                        hue='eval_type', 
+                        filter_eval=['R_y', 'R_pred_cv', 'R_pred_ncv'], 
+                        forloop='eval_X_roi',
+                        plot_params=True,
+                        save_plot=True):
+        """ plots predictions for `eval_name`
+            Args: 
+                dataframe (pandas dataframe): output from `load_dataframe`
+                x (str): data to plot on x axis. default is 'lambdas'
+                y (str): data to plot on y axis. default is 'eval'
+                hue (str): option to split data. default is 'eval_type'
+                forloop (str): produce multiple plots, default is 'eval_X_roi'
+                filter_eval (list of str): filter evals. default is ['R_y', 'R_pred_crossed', 'R_pred_uncrossed']
+                plot_params (bool): plot the model and eval params
+        """
+        if forloop:
+            for loop_name in np.unique(dataframe[forloop]):
+
+                # filter dataframe for eval
+                dataframe_filter = dataframe.query(f'{forloop}=="{loop_name}" and eval_type=={filter_eval}')
+                # train_on = np.unique(dataframe_filter['train_on'])[0]
+
+                plt.figure(figsize=(12, 8))
+                sns_plot = sns.barplot(x=x, y=y, hue=hue, data=dataframe_filter)
+                plt.xlabel(x, fontsize=20),
+                plt.ylabel('R', fontsize=20)
+                plt.title(f'{loop_name}', fontsize=20);
+                plt.tick_params(axis = 'both', which = 'major', labelsize = 15)
+                # plt.ylim(bottom=.7, top=1.0)
+
+                plt.show()
+                # save plot
+                figure = sns_plot.get_figure()
+                figure.savefig(os.path.join(self.dirs.FIGURES, f'bar-{loop_name}.png'))
+        else:
+            # filter dataframe for eval
+            dataframe_filter = dataframe.query(f'eval_type=={filter_eval}')
+            
+            plt.figure(figsize=(12, 8))
+            sns_plot = sns.barplot(x=x, y=y, hue=hue, data=dataframe_filter)
+            plt.xlabel(x, fontsize=20),
+            plt.ylabel('R', fontsize=20)
+            plt.title(f'{self.eval_name[0]}', fontsize=20);
+            plt.tick_params(axis = 'both', which = 'major', labelsize = 15)
+            # plt.ylim(bottom=.7, top=1.0)
+
+            plt.show()
+
+            eval_name = self.eval_name[0]
+            figure = sns_plot.get_figure()
+            figure.savefig(os.path.join(self.dirs.FIGURES, f'bar-{eval_name}-{x}-{filter_eval}-{hue}.png'))
+
+        # optionally plot model and eval params
+        if plot_params:
+            # pprint.pprint(self._get_config_params(), compact=True)
+            pprint.pprint(self.config, compact=True)
+   
     def _get_config_params(self):
         # load params from trained models
         defaults = Defaults()
