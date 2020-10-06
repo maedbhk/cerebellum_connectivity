@@ -97,16 +97,20 @@ class DataManager:
         # return mask information
         masks = self._get_masks()
         
+                        
+        
         # temporally detrend data
         for self.subj in self.subjects:
             for self.exp in self.experiment:
                 raw_data = data_dict[f's{self.subj:02}'][f'{self.exp}']
+                
+          
                 detrend_data = [self._detrend_data(d) for d in raw_data]
                 for self.sess in self.sessions:
                     if self.sess == 1:
                         r = list(range(0, 7))
                     elif self.sess ==2:
-                        r = = list(range(7,14))  
+                        r = list(range(7,14))  
                                  
                     concat_detrend_data = np.concatenate(detrend_data[r[0]:r[-1]], axis=0)
                     print(f'Detrended data for sub: {self.subj} and exp: {self.exp} is shape {np.concatenate(detrend_data, axis=0).shape}')
@@ -129,9 +133,11 @@ class DataManager:
                
                 
                     data_dict[f's{self.subj:02}'][f'{self.exp}'] = all_data
+                    # change the nesting order of the dictionary
                     for k in all_data.keys():
-                        temp_dict[f'{k}']['betas'][f's{self.subj:02}'][f'{self.exp}'][f'{self.sess}'] = all_data[f'{k}']
-
+                        temp_dict[f'{k}'] = {'betas':{f's{self.subj:02}':{f'{self.exp}':{f'self.sess}':all_data[f'{k}']}}}}
+                        
+                      
                
       
         # return concatenated info 
