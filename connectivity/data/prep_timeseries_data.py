@@ -2,6 +2,7 @@ import os
 import numpy as np
 import re
 import deepdish as dd
+import h5py
 import copy
 from collections import defaultdict
 import nibabel as nib
@@ -47,40 +48,39 @@ class DataManager:
         pulls data from imaging data directly for use in time series modelling.
         Returns:
             T_all (nested dict): structure of dict below
-                +--cerebellum
-                |   +--betas
+                +--betas
+                |   +--cerebellum_undelayed
                 |      +--Subj
                 |         +--sc1
                 |         |   +--ses1
-                |         |   |   +--delayed
-                |         |   |   +--undelayed
                 |         |   +--ses2
-                |         |   |   +--delayed
-                |         |   |   +--undelayed
                 |         +-sc2
                 |             +--ses1
-                |         |   |   +--delayed
-                |         |   |   +--undelayed
                 |             +--ses2
-                |         |   |   +--delayed
-                |         |   |   +--undelayed
-                +--cortex
-                |   +--betas
+                |   +--cerebellum_delayed
                 |      +--Subj
                 |         +--sc1
                 |         |   +--ses1
-                |         |   |   +--delayed
-                |         |   |   +--undelayed
                 |         |   +--ses2
-                |         |   |   +--delayed
-                |         |   |   +--undelayed
                 |         +-sc2
                 |             +--ses1
-                |         |   |   +--delayed
-                |         |   |   +--undelayed
                 |             +--ses2
-                |         |   |   +--delayed
-                |         |   |   +--undelayed
+                |   +--cortex_delayed
+                |      +--Subj
+                |         +--sc1
+                |         |   +--ses1
+                |         |   +--ses2
+                |         +-sc2
+                |             +--ses1
+                |             +--ses2
+                |   +--cortex_undelayed
+                |      +--Subj
+                |         +--sc1
+                |         |   +--ses1
+                |         |   +--ses2
+                |         +-sc2
+                |             +--ses1
+                |             +--ses2
                 +--masks
                    +--Subj
                       +--cortical mask
@@ -132,11 +132,11 @@ class DataManager:
                         all_data[f'{struct}_undelayed'] = masked_data
                
                 
-                    data_dict[f's{self.subj:02}'][f'{self.exp}'] = all_data
-                    # change the nesting order of the dictionary
-                    for k in all_data.keys():
-                        temp_dict[f'{k}'] = {'betas':{f's{self.subj:02}':{f'{self.exp}':{f'self.sess}':all_data[f'{k}']}}}}
-                        
+                        # change the nesting order of the dictionary
+                        for k in all_data.keys():
+                            temp_dict[f'{k}'] = {'betas':{f's{self.subj:02}':{f'{self.exp}':{f'{self.sess}':all_data[f'{k}']}}}}
+
+
                       
                
       
