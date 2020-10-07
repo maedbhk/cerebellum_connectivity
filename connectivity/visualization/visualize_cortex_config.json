@@ -1,5 +1,5 @@
 {
-    "eval_name": "tesselsWB642_grey_nan_l2_regress",
+    "eval_name": "tesselsWB162_grey_nan_l2_regress",
     "subjects": [2,3,4,6,8,9,10,12,14,15,17,18,19,20,21,22,24,25,26,27,28,29,30,31],
     "pred_type": "S_best_weight",
     "mask_name": "cerebellarGreySUIT.nii",

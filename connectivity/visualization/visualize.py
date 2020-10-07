@@ -6,6 +6,7 @@ import glob
 import copy
 from pathlib import Path
 from dictdiffer import diff
+import math
 
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -61,7 +62,10 @@ class Utils:
         return dict(items)
 
     def _convert_to_dataframe(self, data_dict):
-        cols_to_explode =  ['eval_splits', 'lambdas', 'eval_subjects'] 
+        if 'lambdas' in data_dict:
+            cols_to_explode =  ['eval_splits', 'lambdas', 'eval_subjects'] 
+        else:
+            cols_to_explode = ['eval_splits', 'eval_subjects']
 
         dataframe = pd.DataFrame.from_dict(data_dict)                                                                                                                                       
         for col in cols_to_explode: 
@@ -144,17 +148,17 @@ class Utils:
 
 class PlotPred(Utils):
 
-    def __init__(self, eval_name=['tesselsWB162_grey_nan_l2_regress'], eval_on=['sc1', 'sc2'], glm=7, 
-                eval_sparse_matrix=[False], train_X_file_dir='encoding', eval_X_file_dir='encoding', train_avg='run',
-                eval_avg='run', train_incl_inst=True, eval_incl_inst=True, lambdas=[1,2,6,15,36,88,215,527,1292,3162],
-                eval_good_vox=True, train_scale=True, eval_scale=True, train_stim='cond', train_mode=['crossed'],
-                eval_stim='cond'):
+    def __init__(self, eval_name=['tesselsWB162_grey_nan_l2_regress'], eval_sparse_matrix=[False],
+                eval_on=['sc1', 'sc2'], glm=7, train_X_file_dir='encoding', eval_X_file_dir='encoding', 
+                train_avg='run', eval_avg='run', train_incl_inst=True, eval_incl_inst=True, 
+                eval_good_vox=True, train_scale=True, eval_scale=True, train_stim='cond', 
+                train_mode=['crossed'], eval_stim='cond', **kwargs):
         """ Initialises PlotPred class. Inherits functionality from Utils class
             Args: 
                 eval_name (list of str): <roi1>_<roi2>_<model>. default is ['tesselsWB162_grey_nan_l2_regress']
+                eval_sparse_matrix (bool): default is [False]. shape is same length as `eval_name`
                 eval_on (list of str): study name(s). default is ['sc1', 'sc2']
                 glm (int): glm name. default is 7
-                eval_sparse_matrix (bool): default is false
                 train_X_file_dir (str): default is 'encoding', another option is 'beta_roi'
                 eval_X_file_dir (str): default is 'encoding', another option is 'beta_roi'
                 train_avg (str): default is 'run', another option is 'sess'
@@ -172,20 +176,20 @@ class PlotPred(Utils):
         self.eval_avg = eval_avg
         self.train_incl_inst = train_incl_inst
         self.eval_incl_inst = eval_incl_inst
-        self.lambdas = lambdas
         self.train_scale = train_scale
         self.train_mode = train_mode
         self.eval_scale = eval_scale
         self.eval_good_vox = eval_good_vox
         self.train_stim = train_stim
         self.eval_stim = eval_stim
-        self.config = {'train_incl_inst': train_incl_inst, 'glm': glm, 'eval_name': eval_name,
-                       'train_X_file_dir': train_X_file_dir, 'train_avg': train_avg,
-                       'train_scale': train_scale, 'train_stim': train_stim, 'train_mode': train_mode,
-                       'eval_scale': eval_scale, 'eval_sparse_matrix': eval_sparse_matrix, 'eval_stim': eval_stim, 'eval_X_file_dir': eval_X_file_dir, 
-                       'eval_avg': eval_avg, 'eval_on': eval_on, 
-                       'eval_incl_inst': eval_incl_inst, 'eval_good_vox': eval_good_vox,
-                       'lambdas': lambdas}
+        self.kwargs = kwargs
+        # self.config = {'train_incl_inst': train_incl_inst, 'glm': glm, 'eval_name': eval_name,
+        #                'train_X_file_dir': train_X_file_dir, 'train_avg': train_avg,
+        #                'train_scale': train_scale, 'train_stim': train_stim, 'train_mode': train_mode,
+        #                'eval_scale': eval_scale, 'eval_sparse_matrix': eval_sparse_matrix, 'eval_stim': eval_stim, 'eval_X_file_dir': eval_X_file_dir, 
+        #                'eval_avg': eval_avg, 'eval_on': eval_on, 
+        #                'eval_incl_inst': eval_incl_inst, 'eval_good_vox': eval_good_vox,
+        #                'lambdas': lambdas}
 
     def load_dataframe(self):
         """ loads dataframe containing data and model and eval params for `eval_name` and `eval_on`
@@ -195,36 +199,53 @@ class PlotPred(Utils):
         df_all = pd.DataFrame()
         for exp in self.eval_on:
 
-            for eval_name in self.eval_name:
+            for idx, eval_name in enumerate(self.eval_name):
 
                 self.dirs = Dirs(study_name=exp, glm=self.glm)
 
                 # get filenames for `eval_name` and for `exp`
                 fnames = self.get_all_files(fullpath=self.dirs.CONN_EVAL_DIR, wildcard=f'*{eval_name}*.json')
 
+                # read in data
+                df = self.read_to_dataframe(files=fnames)
+
+                # filter sparse matrix
+                eval_sparse_matrix = self.eval_sparse_matrix[idx]
+                df = df.query(f'eval_sparse_matrix=={eval_sparse_matrix}')
+
+                df['eval_name'] = eval_name
+
                 # read data to dataframe
-                df_all = pd.concat([df_all, self.read_to_dataframe(files=fnames)])
-                df_all['eval_name'] = eval_name
+                df_all = pd.concat([df_all, df])
 
         # filter dataframe with based on args
-        df_all = df_all.loc[(df_all['train_X_file_dir']==self.train_X_file_dir) & (df_all['train_avg']==self.train_avg) & 
-                (df_all['eval_avg']==self.eval_avg) & (df_all['train_incl_inst']==self.train_incl_inst) & 
-                (df_all['eval_incl_inst']==self.eval_incl_inst)]
+        df_all = df_all.loc[
+            (df_all['train_X_file_dir']==self.train_X_file_dir) & 
+            (df_all['train_avg']==self.train_avg) & 
+            (df_all['eval_avg']==self.eval_avg) & 
+            (df_all['train_incl_inst']==self.train_incl_inst) & 
+            (df_all['eval_incl_inst']==self.eval_incl_inst)
+            ]
 
-        # filter lambdas
-        df_all = df_all[df_all['lambdas'].isin(self.lambdas)]
+        if self.kwargs.get('lambdas'):
+            self.lambdas = self.kwargs['lambdas']
+            # filter lambdas
+            df_all = df_all[df_all['lambdas'].isin(self.lambdas)]
 
-        # filter sparse matrix
-        df_all = df_all[df_all['eval_sparse_matrix'].isin(self.eval_sparse_matrix)]
-
-        # filter eval_X_file_dir
-        df_all = df_all[df_all['eval_name'].isin(self.eval_name)]
+        # 'correct' lambdas
+        if 'lambdas' in df_all.columns:
+            df_all = self._correct_lambda(dataframe=df_all)
 
         # filter train_mode
         df_all = df_all[df_all['train_mode'].isin(self.train_mode)]
 
         return df_all
 
+    def _correct_lambda(self, dataframe):
+        dataframe['lambdas'] = dataframe['lambdas'].apply(lambda x: 0 if math.isnan(x) else x)
+
+        return dataframe
+        
     def plot_lineplot(self, dataframe,
                         x='lambdas', 
                         y='eval', 
@@ -232,7 +253,8 @@ class PlotPred(Utils):
                         filter_eval=['R_y', 'R_pred_cv', 'R_pred_ncv'], 
                         forloop='eval_X_roi',
                         plot_params=True,
-                        save_plot=True):
+                        save_plot=True, 
+                        ci=None):
         """ plots predictions for `eval_name`
             Args: 
                 dataframe (pandas dataframe): output from `load_dataframe`
@@ -250,7 +272,9 @@ class PlotPred(Utils):
                 dataframe_filter = dataframe.query(f'{forloop}=="{loop_name}" and eval_type=={filter_eval}')
                 # train_on = np.unique(dataframe_filter['train_on'])[0]
 
-                sns_plot = sns.factorplot(x=x, y=y, hue=hue, data=dataframe_filter, size=4, aspect=2)
+                dataframe_grouped = dataframe_filter.groupby(['eval_subjects', 'lambdas', 'eval_type']).agg({'eval':'mean'}).reset_index()
+
+                sns_plot = sns.factorplot(x=x, y=y, hue=hue, data=dataframe_grouped, ci=ci, size=4, aspect=2)
                 plt.xlabel(x, fontsize=20),
                 plt.ylabel('R', fontsize=20)
                 plt.title(f'{loop_name}', fontsize=20);
@@ -264,7 +288,9 @@ class PlotPred(Utils):
             # filter dataframe for eval
             dataframe_filter = dataframe.query(f'eval_type=={filter_eval}')
 
-            sns_plot = sns.factorplot(x=x, y=y, hue=hue, data=dataframe_filter, size=4, aspect=2)
+            dataframe_grouped = dataframe_filter.groupby(['eval_subjects', 'lambdas', 'eval_type']).agg({'eval':'mean'}).reset_index()
+
+            sns_plot = sns.factorplot(x=x, y=y, hue=hue, data=dataframe_grouped, ci=ci, size=4, aspect=2)
             plt.xlabel(x, fontsize=20),
             plt.ylabel('R', fontsize=20)
             plt.title(f'{self.eval_name[0]}', fontsize=20);
@@ -497,7 +523,7 @@ class MapCerebellum(Utils):
                     nifti_subj_fpath, nifti_group_fpath = self._get_nifti_outpath()
 
                     # convert subj to nifti if it doesn't already exist
-                    if not os.path.exists(nifti_subj_fpath):
+                    if os.path.exists(nifti_subj_fpath):
 
                         # get input data for nifti obj
                         Y, non_zero_ind, mask = self._get_nifti_input_data(data_dict=data_dict)
@@ -512,8 +538,13 @@ class MapCerebellum(Utils):
 
                 # convert group to nifti if it doesn't already exist
                 if not os.path.exists(nifti_group_fpath):
-                    # calculate group avg nifti of `data_type` for `eval_name` 
-                    image_utils.calc_nifti_average(imgs=nib_objs, fpath=nifti_group_fpath)
+                    if self.config['data_type']=='wta':
+                        # calculate group mode nifti of wta data for `eval_name` 
+                        image_utils.calc_nifti_mode(imgs=nib_objs, fpath=nifti_group_fpath)
+                    else:
+                        # calculate group avg nifti of `data_type` for `eval_name` 
+                        image_utils.calc_nifti_average(imgs=nib_objs, fpath=nifti_group_fpath)
+                        
                     print(f'saved {nifti_group_fpath} to nifti, please map this file surf in matlab')
             
             else:

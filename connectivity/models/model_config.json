@@ -37,5 +37,5 @@
     "eval_save_maps": false,
     "eval_good_vox": false,
     "eval_sparse_matrix": false,
-    "eval_noise_ceiling": true
+    "eval_noise_ceiling": false
 }
