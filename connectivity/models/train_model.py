@@ -122,8 +122,8 @@ class TrainModel(DataManagerTS if config['train_stim'] == 'timeseries' else Data
             tempdata = self.get_conn_data()
             
                               
-            model_data[f'train_X'] = tempdata[f'{train_X_structure}_undelayed']
-            model_data[f'train_Y'] = tempdata[f'{train_Y_structure}_delayed']
+            model_data[f'train_X'] = tempdata['betas'][f'{self.config["train_X_structure"]}_undelayed']
+            model_data[f'train_Y'] = tempdata['betas'][f'{self.config["train_Y_structure"]}_delayed']
         else:
             for model_input in ['X', 'Y']:
 
