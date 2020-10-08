@@ -18,7 +18,7 @@
     "train_mode": "crossed",
     "train_scale": true,
     "train_number_of_delays": 3,
-    "train_detrend": 'sg',
+    "train_detrend": "sg",
     "eval_sessions": [1, 2],
     "eval_glm": 7,
     "eval_stim": "timeseries",

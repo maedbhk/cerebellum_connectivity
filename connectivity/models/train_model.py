@@ -24,7 +24,7 @@ Model fitting routine for connectivity models
 @authors: Ladan Shahshahani, Maedbh King, and Amanda LeBel
 """
 
-class TrainModel(DataManagerTS if self.config['train_stim'] == 'timeseries' else DataManager): #not sure if the self.config would work here but a conditionel would
+class TrainModel(DataManagerTS if config['train_stim'] == 'timeseries' else DataManager): #not sure if the self.config would work here but a conditionel would
 
     def __init__(self, config, **kwargs):
         """ Model training Class, inherits methods from DataManager Class
@@ -109,15 +109,15 @@ class TrainModel(DataManagerTS if self.config['train_stim'] == 'timeseries' else
         model_data = {}
         if self.config['train_stim'] == 'timeseries': #timeseries automatically returns all data; only needs to be called once
             self.data_type = {}
-            self.data_type['roi'] = self.config[f'train_{model_input}_roi']
-            self.data_type['file_dir'] = self.config[f'train_{model_input}_file_dir']
+            self.data_type['roi'] = self.config[f'train_X_roi']
+            self.data_type['file_dir'] = self.config[f'train_{model_X_file_dir']
             self.experiment = [self.config['train_on']]
             self.glm = self.config['train_glm']
             self.stim = self.config['train_stim']
             self.subjects = self.config['train_subjects']
             self.sessions = self.config['train_sessions']
-            self.number_of_delays = self.config['number_of_delays']
-            self.detrend = self.config['detrend']
+            self.number_of_delays = self.config['train_number_of_delays']
+            self.detrend = self.config['train_detrend']
             self.structure = [self.config['train_X_structure'], self.config['train_Y_structure']]
             tempdata = self.get_conn_data()
             
