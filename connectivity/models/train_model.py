@@ -24,7 +24,7 @@ Model fitting routine for connectivity models
 @authors: Ladan Shahshahani, Maedbh King, and Amanda LeBel
 """
 
-class TrainModel(DataManagerTS if config['train_stim'] == 'timeseries' else DataManager): #not sure if the self.config would work here but a conditionel would
+class TrainModel(DataManagerTS): #not sure if the self.config would work here but a conditionel would
 
     def __init__(self, config, **kwargs):
         """ Model training Class, inherits methods from DataManager Class
