@@ -116,7 +116,6 @@ class DataManager:
                     print(f'Detrended data for sub: {self.subj} and exp: {self.exp} and sess: {self.sess} is shape {np.concatenate(detrend_data, axis=0).shape}')
 
                     # mask data
-                    all_data = dict()
                     for struct in self.structure:
                         masked_data = concat_detrend_data[:, masks[f's{self.subj:02}'][struct]]
                         print(f'masked data is of shape:{masked_data.shape}')
@@ -130,11 +129,11 @@ class DataManager:
                         print(f'Delayed data is of shape: {delayed_data.shape}')
                         all_data[f'{struct}_delayed'] = delayed_data
                         all_data[f'{struct}_undelayed'] = masked_data
-               
-                
                         # change the nesting order of the dictionary
-                        for k in all_data.keys():
-                            temp_dict[f'{k}'] = {f's{self.exp}':{f'{self.subj:02}':{f'{self.sess}':all_data[f'{k}']}}}
+                        temp_dict[f'{struct}_delayed'] = {f'{self.exp}':{f's{self.subj:02}':{f'{self.sess}': delayed_data}}}
+                        temp_dict[f'{struct}_undelayed'] = {f'{self.exp}':{f's{self.subj:02}':{f'{self.sess}': masked_data}}}
+
+
 
 
                       
