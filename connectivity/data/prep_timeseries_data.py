@@ -134,7 +134,7 @@ class DataManager:
                 
                         # change the nesting order of the dictionary
                         for k in all_data.keys():
-                            temp_dict[f'{k}'] = {'betas':{f's{self.subj:02}':{f'{self.exp}':{f'{self.sess}':all_data[f'{k}']}}}}
+                            temp_dict[f'{k}'] = {f's{self.subj:02}':{f'{self.exp}':{f'{self.sess}':all_data[f'{k}']}}}
 
 
                       

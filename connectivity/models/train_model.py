@@ -110,7 +110,7 @@ class TrainModel(DataManagerTS if config['train_stim'] == 'timeseries' else Data
         if self.config['train_stim'] == 'timeseries': #timeseries automatically returns all data; only needs to be called once
             self.data_type = {}
             self.data_type['roi'] = self.config[f'train_X_roi']
-            self.data_type['file_dir'] = self.config[f'train_{model_X_file_dir']
+            self.data_type['file_dir'] = self.config[f'train_X_file_dir']
             self.experiment = [self.config['train_on']]
             self.glm = self.config['train_glm']
             self.stim = self.config['train_stim']
