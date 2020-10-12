@@ -122,8 +122,8 @@ class TrainModel(DataManagerTS): #not sure if the self.config would work here bu
             tempdata = self.get_conn_data()
             
                               
-            model_data[f'train_X'] = tempdata['betas'][f'{self.config["train_X_structure"]}_undelayed']
-            model_data[f'train_Y'] = tempdata['betas'][f'{self.config["train_Y_structure"]}_delayed']
+            model_data[f'train_X'] = tempdata['betas'][f'{self.config["train_X_structure"]}_undelayed'][f'{self.config["train_on"]}']
+            model_data[f'train_Y'] = tempdata['betas'][f'{self.config["train_Y_structure"]}_delayed'][f'{self.config["train_on"]}']
         else:
             for model_input in ['X', 'Y']:
 
