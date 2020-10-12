@@ -154,10 +154,7 @@ class TrainModel(DataManagerTS): #not sure if the self.config would work here bu
             Returns: 
                 X_indices (np array): Y_indices (np array)
         """
-        # get sess indices for X training data
-        sessions = model_data['train_X']['sess'].astype(int)
-        train_stim = self.config['train_stim']
-        stims = model_data['train_X'][f'{train_stim}Num']
+    
         
         if train_stim=='timeseries':
             X_indices = str(1)
@@ -167,6 +164,10 @@ class TrainModel(DataManagerTS): #not sure if the self.config would work here bu
                 Y_indices = str(1)
             return X_indices, Y_indices
         else:
+            # get sess indices for X training data
+            sessions = model_data['train_X']['sess'].astype(int)
+            train_stim = self.config['train_stim']
+            stims = model_data['train_X'][f'{train_stim}Num']
 
             X_indices = []
             for stim, sess in zip(stims, sessions):

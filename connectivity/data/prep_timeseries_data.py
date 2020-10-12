@@ -32,7 +32,7 @@ class DataManager:
         """
     
     def __init__(self):
-        self.experiment = ['sc1', 'sc2']
+        self.experiment = 'sc1'
         self.stim = 'timeseries'
         self.sessions = [1, 2]
         self.glm = 'none'
@@ -101,40 +101,40 @@ class DataManager:
         
         # temporally detrend data
         for self.subj in self.subjects:
-            for self.exp in self.experiment:
-                raw_data = data_dict[f's{self.subj:02}'][f'{self.exp}']
-                
-          
-                detrend_data = [self._detrend_data(d) for d in raw_data]
-                for self.sess in self.sessions:
-                    if self.sess == 1:
-                        r = list(range(0, 7))
-                    elif self.sess ==2:
-                        r = list(range(7,14))  
-                                 
-                    concat_detrend_data = np.concatenate(detrend_data[r[0]:r[-1]], axis=0)
-                    print(f'Detrended data for sub: {self.subj} and exp: {self.exp} is shape {np.concatenate(detrend_data, axis=0).shape}')
+            raw_data = data_dict[f's{self.subj:02}'][f'{self.exp}']
 
-                    # mask data
-                    all_data = dict()
-                    for struct in self.structure:
-                        masked_data = concat_detrend_data[:, masks[f's{self.subj:02}'][struct]]
-                        print(f'masked data is of shape:{masked_data.shape}')
-                        # delay data (to account for hemodynamic response variation
-                        if self.number_of_delays !=0:
-                            delays = range(-1, self.number_of_delays-1)
-                            delayed_data = self.make_delayed(masked_data, delays)
-                        else:
-                            print('Data is not being delayed. This is not recommended for best performance.')
-                            delayed_data = masked_data
-                        print(f'Delayed data is of shape: {delayed_data.shape}')
-                        all_data[f'{struct}_delayed'] = delayed_data
-                        all_data[f'{struct}_undelayed'] = masked_data
-               
-                
-                        # change the nesting order of the dictionary
-                        for k in all_data.keys():
-                            temp_dict[f'{k}'] = {f's{self.subj:02}':{f'{self.exp}':{f'{self.sess}':all_data[f'{k}']}}}
+
+            detrend_data = [self._detrend_data(d) for d in raw_data]
+            for self.sess in self.sessions:
+                print('current session is: {self.sess}')
+                if self.sess == 1:
+                    r = list(range(0, 7))
+                elif self.sess ==2:
+                    r = list(range(7,14))  
+
+                concat_detrend_data = np.concatenate(detrend_data[r[0]:r[-1]], axis=0)
+                print(f'Detrended data for sub: {self.subj} and exp: {self.experiment} and sess: {self.sess} is shape {np.concatenate(detrend_data, axis=0).shape}')
+
+                # mask data
+                all_data = dict()
+                for struct in self.structure:
+                    masked_data = concat_detrend_data[:, masks[f's{self.subj:02}'][struct]]
+                    print(f'masked data is of shape:{masked_data.shape}')
+                    # delay data (to account for hemodynamic response variation
+                    if self.number_of_delays !=0:
+                        delays = range(-1, self.number_of_delays-1)
+                        delayed_data = self.make_delayed(masked_data, delays)
+                    else:
+                        print('Data is not being delayed. This is not recommended for best performance.')
+                        delayed_data = masked_data
+                    print(f'Delayed data is of shape: {delayed_data.shape}')
+                    all_data[f'{struct}_delayed'] = delayed_data
+                    all_data[f'{struct}_undelayed'] = masked_data
+
+
+                    # change the nesting order of the dictionary
+                    for k in all_data.keys():
+                        temp_dict[f'{k}'] = {f's{self.subj:02}':{f'{self.sess}':all_data[f'{k}']}}
 
 
                       
