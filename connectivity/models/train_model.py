@@ -156,7 +156,7 @@ class TrainModel(DataManagerTS): #not sure if the self.config would work here bu
         """
     
         
-        if self.config['train_glm']=='timeseries':
+        if self.config['train_stim']=='timeseries':
             X_indices = str(1)
             if self.config['train_mode'] == 'crossed':
                 Y_indices = str(2)
