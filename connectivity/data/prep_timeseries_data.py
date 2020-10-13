@@ -128,8 +128,14 @@ class DataManager:
                             delayed_data = masked_data
                         print(f'Delayed data is of shape: {delayed_data.shape}')
                         # change the nesting order of the dictionary
-                        temp_dict[f'{struct}_delayed'] = {f'{self.exp}':{f's{self.subj:02}':{f'{self.sess}': delayed_data}}}
-                        temp_dict[f'{struct}_undelayed'] = {f'{self.exp}':{'betas':{f's{self.subj:02}':{f'{self.sess}': masked_data}}}}
+                        if f'{struct}_delayed' in temp_dict:
+                            temp_dict[f'{struct}_delayed'][f'{self.exp}']['betas'][f's{self.subj:02}'].update({str(self.sess):delayed_data})
+                        else:
+                            temp_dict[f'{struct}_delayed'] = {f'{self.exp}':{'betas':{f's{self.subj:02}':{f'{self.sess}': delayed_data}}}}
+                        if  f'{struct}_undelayed' in temp_dict:
+                            temp_dict[f'{struct}_undelayed']['f{self.exp}']['betas'][f's{self.subj:02}'].update({str(self.sess):masked_data})
+                        else:
+                            temp_dict[f'{struct}_undelayed'] = {f'{self.exp}':{'betas':{f's{self.subj:02}':{f'{self.sess}': masked_data}}}}
                         
       
         # return concatenated info 
