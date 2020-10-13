@@ -127,8 +127,6 @@ class DataManager:
                             print('Data is not being delayed. This is not recommended for best performance.')
                             delayed_data = masked_data
                         print(f'Delayed data is of shape: {delayed_data.shape}')
-                        all_data[f'{struct}_delayed'] = delayed_data
-                        all_data[f'{struct}_undelayed'] = masked_data
                         # change the nesting order of the dictionary
                         temp_dict[f'{struct}_delayed'] = {f'{self.exp}':{f's{self.subj:02}':{f'{self.sess}': delayed_data}}}
                         temp_dict[f'{struct}_undelayed'] = {f'{self.exp}':{f's{self.subj:02}':{f'{self.sess}': masked_data}}}
