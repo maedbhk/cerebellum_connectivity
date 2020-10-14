@@ -11,6 +11,7 @@ from functools import partial
 from connectivity import io
 from connectivity.helper_functions import AutoVivification
 from connectivity.data.prep_data import DataManager
+from connectivity.data.prep_timeseries_data import DataManager as DataManagerTS
 from connectivity.constants import Defaults, Dirs
 from connectivity.models.model_functions import MODEL_MAP
 
@@ -26,7 +27,7 @@ Model evaluation routine for connectivity models
 @authors: Ladan Shahshahani and Maedbh King
 """
 
-class EvaluateModel(DataManager):
+class EvaluateModel(DataManagerTS):
 
     def __init__(self, config, **kwargs):
         """ Model evaluation Class, inherits methods from DataManager Class
@@ -261,25 +262,43 @@ class EvaluateModel(DataManager):
 
         # get eval data: `X` and `Y`
         eval_data = {}
-        for eval_input in ['X', 'Y']:
-            
-            # make sure you're setting correct eval params
-            # don't love this code ...
+        if self.config['eval_stim'] == 'timeseries':
             self.data_type = {}
-            self.data_type['roi'] = self.config[f'eval_{eval_input}_roi']
-            self.data_type['file_dir'] = self.config[f'eval_{eval_input}_file_dir']
-            self.sessions = self.config['eval_sessions']
+            self.data_type['roi'] = self.config[f'eval_X_roi']
+            self.data_type['file_dir'] = self.config[f'eval_X_file_dir']
             self.experiment = [self.config['eval_on']]
-            self.subjects = self.config['eval_subjects']
-            self.incl_inst = self.config['eval_incl_inst']
             self.glm = self.config['eval_glm']
             self.stim = self.config['eval_stim']
-            self.scale = self.config['eval_scale']
-            self.avg = self.config['eval_avg']
-            self.subtract_sess_mean = self.config['eval_subtract_sess_mean']
-            self.subtract_exp_mean = self.config['eval_subtract_exp_mean']
+            self.subjects = self.config['eval_subjects']
+            self.sessions = self.config['eval_sessions']
+            self.number_of_delays = self.config['train_number_of_delays']
+            self.detrend = self.config['eval_detrend']
+            self.structure = [self.config['eval_X_structure'], self.config['eval_Y_structure']]
+            tempdata = self.get_conn_data()
+            
+                              
+            eval_data[f'eval_X'] = tempdata['betas'][f'{self.config["train_X_structure"]}_undelayed'][f'{self.config["eval_on"]}']
+            eval_data[f'eval_Y'] = tempdata['betas'][f'{self.config["eval_Y_structure"]}_delayed'][f'{self.config["eval_on"]}']
+        else:
+            for eval_input in ['X', 'Y']:
 
-            eval_data[f'eval_{eval_input}'] = self.get_conn_data()
+                # make sure you're setting correct eval params
+                # don't love this code ...
+                self.data_type = {}
+                self.data_type['roi'] = self.config[f'eval_{eval_input}_roi']
+                self.data_type['file_dir'] = self.config[f'eval_{eval_input}_file_dir']
+                self.sessions = self.config['eval_sessions']
+                self.experiment = [self.config['eval_on']]
+                self.subjects = self.config['eval_subjects']
+                self.incl_inst = self.config['eval_incl_inst']
+                self.glm = self.config['eval_glm']
+                self.stim = self.config['eval_stim']
+                self.scale = self.config['eval_scale']
+                self.avg = self.config['eval_avg']
+                self.subtract_sess_mean = self.config['eval_subtract_sess_mean']
+                self.subtract_exp_mean = self.config['eval_subtract_exp_mean']
+
+                eval_data[f'eval_{eval_input}'] = self.get_conn_data()
 
         return eval_data
     
@@ -294,23 +313,32 @@ class EvaluateModel(DataManager):
 
     def _get_eval_idx(self, eval_mode, X):
         # get indices for eval mode: `crossed` or `uncrossed`
+        
         eval_stim = self.config['eval_stim']
-        stims = X[f'{eval_stim}Num']
-        sessions = X['sess'].astype(int) 
+        
+        if eval_stim =='timeseries':
+            if eval_mode =='crossed':
+                indices = str(2)
+            else:
+                indices = str(1)
+            return indices
+        else:
+            stims = X[f'{eval_stim}Num']
+            sessions = X['sess'].astype(int) 
 
-        indices = []
-        for stim, sess in zip(stims, sessions):
+            indices = []
+            for stim, sess in zip(stims, sessions):
 
-            if sess == 1:
-                indices.append(stim)
-            elif sess == 2:
-                indices.append(stim + max(stims) + 1)
+                if sess == 1:
+                    indices.append(stim)
+                elif sess == 2:
+                    indices.append(stim + max(stims) + 1)
 
-        # get indices if eval_mode is `crossed`
-        if eval_mode == 'crossed':
-            indices = [*indices[-sessions.tolist().count(2):], *indices[:sessions.tolist().count(1)]] 
+            # get indices if eval_mode is `crossed`
+            if eval_mode == 'crossed':
+                indices = [*indices[-sessions.tolist().count(2):], *indices[:sessions.tolist().count(1)]] 
 
-        return np.array(indices)
+            return np.array(indices)
     
     def _get_split_idx(self, X):
         split_dict = {}
