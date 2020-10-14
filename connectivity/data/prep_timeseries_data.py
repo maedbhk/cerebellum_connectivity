@@ -133,7 +133,7 @@ class DataManager:
                         else:
                             temp_dict[f'{struct}_delayed'] = {f'{self.exp}':{'betas':{f's{self.subj:02}':{f'{self.sess}': delayed_data}}}}
                         if  f'{struct}_undelayed' in temp_dict:
-                            temp_dict[f'{struct}_undelayed']['f{self.exp}']['betas'][f's{self.subj:02}'].update({str(self.sess):masked_data})
+                            temp_dict[f'{struct}_undelayed'][f'{self.exp}']['betas'][f's{self.subj:02}'].update({str(self.sess):masked_data})
                         else:
                             temp_dict[f'{struct}_undelayed'] = {f'{self.exp}':{'betas':{f's{self.subj:02}':{f'{self.sess}': masked_data}}}}
                         
