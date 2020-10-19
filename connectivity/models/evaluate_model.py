@@ -351,9 +351,12 @@ class EvaluateModel(DataManagerTS):
                 # get split index
                 split_dict[name] = [True if x == num else False for x in splits]
         else: 
-            eval_stim = self.config['eval_stim']
-            splits = X[f'{eval_stim}Num']
-            split_dict = {f'all-{eval_stim}': [True for x in splits]}
+            if self.config['eval_stim'] =='timeseries':
+                split_dict = {f'all-{eval_stim}': [:]}
+            else:
+                eval_stim = self.config['eval_stim']
+                splits = X[f'{eval_stim}Num']
+                split_dict = {f'all-{eval_stim}': [True for x in splits]}
     
         return split_dict
 
