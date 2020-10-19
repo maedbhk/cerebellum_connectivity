@@ -97,6 +97,8 @@ class EvaluateModel(DataManagerTS):
         # (conditions or tasks, depending on glm)
         if self.config['eval_stim'] != 'timeseries':
             splits = self._get_split_idx(X=X_eval)
+        else:
+            splits = [1]
         
         # initialise data dict
         data_dict_all = self._init_data_dict()
