@@ -95,7 +95,8 @@ class EvaluateModel(DataManagerTS):
 
         # split evaluation by `splitby` 
         # (conditions or tasks, depending on glm)
-        splits = self._get_split_idx(X=X_eval)
+        if self.config['eval_stim'] != 'timeseries':
+            splits = self._get_split_idx(X=X_eval)
         
         # initialise data dict
         data_dict_all = self._init_data_dict()
@@ -142,7 +143,10 @@ class EvaluateModel(DataManagerTS):
                         eval_idx[eval_mode] = self._get_eval_idx(eval_mode=eval_mode, X=X_eval)
                     
                         # calculate prediction between model weights and X evaluation data
-                        X =  X_eval_subj[eval_idx[eval_mode]][splits[self.split]]
+                        if self.config['eval_stim']=='timeseries':
+                            X =  X_eval_subj[eval_idx[eval_mode]]
+                        else:
+                            X =  X_eval_subj[eval_idx[eval_mode]][splits[self.split]]
 
                         # calculate sparse matrix
                         weights = model_weight.T
@@ -161,8 +165,12 @@ class EvaluateModel(DataManagerTS):
                             Y_preds[eval_mode] = self._predict(X=X, W=weights)
 
                     # get `crossed` and `uncrossed` eval and pred data
-                    eval_Y_crossed = Y_eval_subj[eval_idx['crossed']][splits[self.split]][:, vox_idx]
-                    eval_Y_uncrossed = Y_eval_subj[eval_idx['uncrossed']][splits[self.split]][:, vox_idx]
+                    if self.config['eval_stim'] == 'timeseries':
+                        eval_Y_crossed = Y_eval_subj[eval_idx['crossed']][:, vox_idx]
+                        eval_Y_uncrossed = Y_eval_subj[eval_idx['uncrossed']][:, vox_idx]
+                    else:   
+                        eval_Y_crossed = Y_eval_subj[eval_idx['crossed']][splits[self.split]][:, vox_idx]
+                        eval_Y_uncrossed = Y_eval_subj[eval_idx['uncrossed']][splits[self.split]][:, vox_idx]
                     Y_pred_crossed = Y_preds['crossed'][:, vox_idx]
                     Y_pred_uncrossed = Y_preds['uncrossed'][:, vox_idx]
 
@@ -351,12 +359,10 @@ class EvaluateModel(DataManagerTS):
                 # get split index
                 split_dict[name] = [True if x == num else False for x in splits]
         else: 
-            if self.config['eval_stim'] =='timeseries':
-                split_dict = {f'all-{eval_stim}': [:]}
-            else:
-                eval_stim = self.config['eval_stim']
-                splits = X[f'{eval_stim}Num']
-                split_dict = {f'all-{eval_stim}': [True for x in splits]}
+            
+            eval_stim = self.config['eval_stim']
+            splits = X[f'{eval_stim}Num']
+            split_dict = {f'all-{eval_stim}': [True for x in splits]}
     
         return split_dict
 
