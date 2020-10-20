@@ -207,7 +207,10 @@ class EvaluateModel(DataManagerTS):
 
         # get eval params
         eval_params = copy.deepcopy(self.config)
-        eval_params.update({'model_fname': model_fname, 'eval_splits': list(splits.keys())})
+        if self.config['eval_stim'] == 'timeseries':
+            eval_params.update({'model_fname': model_fname, 'eval_splits': 'all_indexes'})
+        else:
+            eval_params.update({'model_fname': model_fname, 'eval_splits': list(splits.keys())})
 
         # save eval parames to JSON and save eval predictions and reliabilities to HDF5
         self._save_eval_output(json_file=eval_params, hdf5_file=data_dict_all)
