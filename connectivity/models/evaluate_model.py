@@ -168,13 +168,15 @@ class EvaluateModel(DataManagerTS):
 
                     # get `crossed` and `uncrossed` eval and pred data
                     if self.config['eval_stim'] == 'timeseries':
-                        eval_Y_crossed = Y_eval_subj[eval_idx['crossed']][:, vox_idx]
-                        eval_Y_uncrossed = Y_eval_subj[eval_idx['uncrossed']][:, vox_idx]
+                        eval_Y_crossed = Y_eval_subj[eval_idx['crossed']]
+                        eval_Y_uncrossed = Y_eval_subj[eval_idx['uncrossed']]
+                        Y_pred_crossed = Y_preds['crossed']
+                        Y_pred_uncrossed = Y_preds['uncrossed']
                     else:   
                         eval_Y_crossed = Y_eval_subj[eval_idx['crossed']][splits[self.split]][:, vox_idx]
                         eval_Y_uncrossed = Y_eval_subj[eval_idx['uncrossed']][splits[self.split]][:, vox_idx]
-                    Y_pred_crossed = Y_preds['crossed'][:, vox_idx]
-                    Y_pred_uncrossed = Y_preds['uncrossed'][:, vox_idx]
+                        Y_pred_crossed = Y_preds['crossed'][:, vox_idx]
+                        Y_pred_uncrossed = Y_preds['uncrossed'][:, vox_idx]
 
                     # scale the eval data
                     if self.config['eval_scale']:
