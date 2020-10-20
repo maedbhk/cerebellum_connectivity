@@ -290,7 +290,7 @@ class EvaluateModel(DataManagerTS):
             tempdata = self.get_conn_data()
             
                               
-            eval_data[f'eval_X'] = tempdata['betas'][f'{self.config["train_X_structure"]}_undelayed'][f'{self.config["eval_on"]}']
+            eval_data[f'eval_X'] = tempdata['betas'][f'{self.config["train_X_structure"]}_delayed'][f'{self.config["eval_on"]}']
             eval_data[f'eval_Y'] = tempdata['betas'][f'{self.config["eval_Y_structure"]}_delayed'][f'{self.config["eval_on"]}']
         else:
             for eval_input in ['X', 'Y']:
