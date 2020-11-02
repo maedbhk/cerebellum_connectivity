@@ -22,6 +22,7 @@ class Dirs:
     def __init__(self, study_name='sc1', glm=7):
         self.BASE_DIR = Path(__file__).absolute().parent.parent / 'data'
         self.DATA_DIR = self.BASE_DIR / study_name
+        self.TIME_DIR = self.DATA_DIR / 'behavior'
         self.BEHAV_DIR = self.DATA_DIR / 'data'
         self.IMAGING_DIR = self.DATA_DIR / 'imaging_data'
         self.SUIT_DIR = self.DATA_DIR / 'suit'

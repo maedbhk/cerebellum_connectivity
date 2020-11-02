@@ -119,6 +119,7 @@ class TrainModel(DataManagerTS): #not sure if the self.config would work here bu
             self.number_of_delays = self.config['train_number_of_delays']
             self.detrend = self.config['train_detrend']
             self.structure = [self.config['train_X_structure'], self.config['train_Y_structure']]
+            self.redundancy = self.config['train_redundancy']
             tempdata = self.get_conn_data()
             
                               

@@ -19,6 +19,7 @@
     "train_scale": false,
     "train_number_of_delays": 3,
     "train_detrend": "sg",
+    "train_redundancy":false,
     "eval_sessions": [1, 2],
     "eval_glm": 7,
     "eval_stim": "timeseries",
@@ -35,6 +36,7 @@
     "eval_Y_file_dir": "encoding",
     "eval_Y_structure": "cerebellum",
     "eval_detrend": "sg",
+    "eval_redundancy":true
     "eval_scale": false,
     "eval_splitby": null,
     "eval_save_maps": false,

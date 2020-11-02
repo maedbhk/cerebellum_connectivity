@@ -289,6 +289,7 @@ class EvaluateModel(DataManagerTS):
             self.number_of_delays = self.config['train_number_of_delays']
             self.detrend = self.config['eval_detrend']
             self.structure = [self.config['eval_X_structure'], self.config['eval_Y_structure']]
+            self.redundancy = self.config['eval_redundancy']
             tempdata = self.get_conn_data()
             
                               

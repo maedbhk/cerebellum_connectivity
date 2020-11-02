@@ -6,6 +6,7 @@ import h5py
 import copy
 from collections import defaultdict
 import nibabel as nib
+import csv
 from connectivity.constants import Defaults, Dirs
 from connectivity import io
 from connectivity.helper_functions import AutoVivification
@@ -41,6 +42,7 @@ class DataManager:
         self.subjects = [6]
         self.detrend = 'sg' #options are 'sg' and 'lin'
         self.structure = ['cerebellum', 'cortex']
+        self.redundancy = True
   
         
     def get_conn_data(self):
@@ -104,7 +106,9 @@ class DataManager:
             for self.exp in self.experiment:
                 raw_data = data_dict[f's{self.subj:02}'][f'{self.exp}']
                 
-          
+                if self.redundancy == True:
+                    raw_data = self._remove_redundant_tasks(raw_data, self.exp, self.subj)
+                    print(f'redundant tasks removed from data set. New shape of data is: {raw_data.shape}')
                 detrend_data = [self._detrend_data(d) for d in raw_data]
                 for self.sess in self.sessions:
                     if self.sess == 1:
@@ -262,6 +266,45 @@ class DataManager:
             
         return T_concat
     
+    def _remove_redundant_tasks(self, arr, exp, subj):
+        
+        """ remove tasks that are in both the train set and the evaluate set. This will help prevent excessive overfitting
+        
+        Parameters:
+            arr (array): 4d array with first dimension of time(TR) and last three dimensions are x,y,z
+        Returns:
+            arr (array): 4d array; same as input missing the TRs with the redundant tasks
+        """
+        #task names for tasks in both sc1 and sc2
+        redundant_tasks = ['visualSearch', 'actionObservation', 'motorSequence', 'motorSequence2', 
+                                       'spatialNavigation', 'spatialNavigation2','verbGeneration', 'verbGeneration2', 
+                                       'objectworkingmemory', 'rest', 'ToM','nBackPic', 'nBackPic2'
+                                      'visualSearch2', 'actionObservation2', 'rest2']
+        
+        self.dirs = Dirs(study_name=exp, glm=7)
+        new_data = []
+        for i in range(, np.shape(arr)[0]):
+            temp_data = arr[i]
+            if i < 8 and exp =='sc1':
+                fname = os.path.join(self.dirs.TIME_DIR, f's{subj:02}/ses-a1/run-{i+1}_events.tsv')
+            elif i <8  and exp =='sc2':
+                fname = os.path.join(self.dirs.TIME_DIR, f's(subj:02}/ses-b1/run-{i+1}_events.tsv')
+            elif i >7 and exp =='sc1':
+                fname = os.path.join(self.dirs.TIME_DIR, f's{subj:02}/ses-a2/run-{i-7}_events.tsv')
+            elif i >7 and exp =='sc2':
+                fname = os.path.join(self.dirs.TIME_DIR, f's{subj:02}/ses-b2/run-{i-7}_events.tsv')
+
+            with open(fname) as tsvfile:
+                reader = csv.DictReader(tsvfile, dialect='excel-tab')
+                for row in reader:
+                    if row['taskName'] in redundant_tasks:
+                        temp_data = np.delet(temp_data, np.s_[int(float(row['onset'])): int(float(row['onset'])+ float(row['duration']))], axis=0)
+
+
+            new_data.append(temp_data)
+        
+        return np.array(new_data)
+                            
   
     def _detrend_data(self, arr):
         """ 
