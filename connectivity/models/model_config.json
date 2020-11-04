@@ -36,7 +36,7 @@
     "eval_Y_file_dir": "encoding",
     "eval_Y_structure": "cerebellum",
     "eval_detrend": "sg",
-    "eval_redundancy":true
+    "eval_redundancy":true,
     "eval_scale": false,
     "eval_splitby": null,
     "eval_save_maps": false,

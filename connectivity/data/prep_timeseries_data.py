@@ -283,12 +283,12 @@ class DataManager:
         
         self.dirs = Dirs(study_name=exp, glm=7)
         new_data = []
-        for i in range(, np.shape(arr)[0]):
+        for i in range(0, np.shape(arr)[0]):
             temp_data = arr[i]
             if i < 8 and exp =='sc1':
                 fname = os.path.join(self.dirs.TIME_DIR, f's{subj:02}/ses-a1/run-{i+1}_events.tsv')
             elif i <8  and exp =='sc2':
-                fname = os.path.join(self.dirs.TIME_DIR, f's(subj:02}/ses-b1/run-{i+1}_events.tsv')
+                fname = os.path.join(self.dirs.TIME_DIR, f's{subj:02}/ses-b1/run-{i+1}_events.tsv')
             elif i >7 and exp =='sc1':
                 fname = os.path.join(self.dirs.TIME_DIR, f's{subj:02}/ses-a2/run-{i-7}_events.tsv')
             elif i >7 and exp =='sc2':
@@ -298,7 +298,7 @@ class DataManager:
                 reader = csv.DictReader(tsvfile, dialect='excel-tab')
                 for row in reader:
                     if row['taskName'] in redundant_tasks:
-                        temp_data = np.delet(temp_data, np.s_[int(float(row['onset'])): int(float(row['onset'])+ float(row['duration']))], axis=0)
+                        temp_data = np.delete(temp_data, np.s_[int(float(row['onset'])): int(float(row['onset'])+ float(row['duration']))], axis=0)
 
 
             new_data.append(temp_data)
