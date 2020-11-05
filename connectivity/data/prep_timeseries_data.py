@@ -106,10 +106,11 @@ class DataManager:
             for self.exp in self.experiment:
                 raw_data = data_dict[f's{self.subj:02}'][f'{self.exp}']
                 
-                if self.redundancy == True:
-                    raw_data = self._remove_redundant_tasks(raw_data, self.exp, self.subj)
-                    print(f'redundant tasks removed from data set. New shape of data is: {raw_data.shape}')
+                
                 detrend_data = [self._detrend_data(d) for d in raw_data]
+                if self.redundancy == True:
+                    raw_data = self._remove_redundant_tasks(detrend_data, self.exp, self.subj)
+                    print(f'redundant tasks removed from data set. New shape of data is: {raw_data.shape}')
                 for self.sess in self.sessions:
                     if self.sess == 1:
                         r = list(range(0, 7))
@@ -255,12 +256,12 @@ class DataManager:
 
                     # get runs for data
                     if exp == 'sc1':
-                        runs = list(range(1, 16, 1))
+                        runs = list(range(1, 17, 1))
                     elif exp == 'sc2':
-                        runs = list(range(16, 33, 1))
+                        runs = list(range(17, 33, 1))
                     # load imaging data from nii
                     filenames= [fpath%(run) for run in runs]
-                    data_runs = nib.concat_images(filenames).get_data().T
+                    data_runs = [nib.load(filename).get_data().T for filename in filenames]
                     sub_concat[exp] = data_runs
             T_concat[f's{self.subj:02}'] = sub_concat
             
