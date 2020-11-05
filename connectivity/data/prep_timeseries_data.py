@@ -113,9 +113,9 @@ class DataManager:
                     print(f'redundant tasks removed from data set. New shape of data is: {raw_data.shape}')
                 for self.sess in self.sessions:
                     if self.sess == 1:
-                        r = list(range(0, 7))
+                        r = list(range(0, 8))
                     elif self.sess ==2:
-                        r = list(range(7,14))  
+                        r = list(range(8,17))  
                                  
                     concat_detrend_data = np.concatenate(detrend_data[r[0]:r[-1]], axis=0)
                     print(f'Detrended data for sub: {self.subj} and exp: {self.exp} and sess: {self.sess} is shape {np.concatenate(detrend_data, axis=0).shape}')
