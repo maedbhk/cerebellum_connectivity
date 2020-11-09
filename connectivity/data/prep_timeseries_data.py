@@ -108,17 +108,18 @@ class DataManager:
                 
                 
                 detrend_data = [self._detrend_data(d) for d in raw_data]
-                if self.redundancy == True:
-                    raw_data = self._remove_redundant_tasks(detrend_data, self.exp, self.subj)
-                    print(f'redundant tasks removed from data set. New shape of data is: {raw_data.shape}')
+                
                 for self.sess in self.sessions:
                     if self.sess == 1:
                         r = list(range(0, 8))
                     elif self.sess ==2:
                         r = list(range(8,17))  
-                                 
-                    concat_detrend_data = np.concatenate(detrend_data[r[0]:r[-1]], axis=0)
-                    print(f'Detrended data for sub: {self.subj} and exp: {self.exp} and sess: {self.sess} is shape {np.concatenate(detrend_data, axis=0).shape}')
+                    if self.redundancy == True:
+                        concat_detrend_data = self._remove_redundant_tasks(detrend_data[r[0]:r[-1]], self.exp, self.subj, self.sess)
+                        print(f'redundant tasks removed from data set. New shape of data is: {raw_data.shape}') 
+                    else:
+                        concat_detrend_data = np.concatenate(detrend_data[r[0]:r[-1]], axis=0)
+                        print(f'Detrended data for sub: {self.subj} and exp: {self.exp} and sess: {self.sess} is shape {np.concatenate(detrend_data, axis=0).shape}')
 
                     # mask data
                     for struct in self.structure:
@@ -240,17 +241,17 @@ class DataManager:
                 print(f'retrieving data for s{self.subj:02} ...')
                 # Get directories for 'exp'
                 self.dirs = Dirs(study_name='sc1', glm=7)
-             
-                try:
-                    assert self.data_type['file_dir'] == 'imaging_data'
-                    assert self.data_type['roi'] == 'voxelwise'
-                    if exp == 'sc1':
+                if exp == 'sc1':
                         d = 'exp1'
                     elif exp == 'sc2':
                         d = 'exp2'
+                try:
+                    assert self.data_type['file_dir'] == 'imaging_data'
+                    assert self.data_type['roi'] == 'voxelwise'
+                    
                     sub_concat[exp] = dd.io.load(os.path.join(self.dirs.IMAGING_DIR, f's{self.subj:02}/rrun_{exp}.hf5'))[d]
                 except:
-                    print('Data not found in HDF5, loading form nifti...')
+                    print('Data not found in HDF5, loading from nifti...')
                     # load data filepaths for 'exp'
                     fpath = self._get_path_to_data()
 
@@ -262,12 +263,13 @@ class DataManager:
                     # load imaging data from nii
                     filenames= [fpath%(run) for run in runs]
                     data_runs = [nib.load(filename).get_data().T for filename in filenames]
+                    dd.io.save(os.path.join(self.dirs.IMAGING_DIR, f's{self.subj:02}/rrun_{exp}.hf5'), {d: data_runs})
                     sub_concat[exp] = data_runs
             T_concat[f's{self.subj:02}'] = sub_concat
             
         return T_concat
     
-    def _remove_redundant_tasks(self, arr, exp, subj):
+    def _remove_redundant_tasks(self, arr, exp, subj, sess):
         
         """ remove tasks that are in both the train set and the evaluate set. This will help prevent excessive overfitting
         
@@ -277,34 +279,46 @@ class DataManager:
             arr (array): 4d array; same as input missing the TRs with the redundant tasks
         """
         #task names for tasks in both sc1 and sc2
-        redundant_tasks = ['visualSearch', 'actionObservation', 'motorSequence', 'motorSequence2', 
-                                       'spatialNavigation', 'spatialNavigation2','verbGeneration', 'verbGeneration2', 
-                                       'objectworkingmemory', 'rest', 'ToM','nBackPic', 'nBackPic2'
-                                      'visualSearch2', 'actionObservation2', 'rest2']
+        tasks_A = ['GoNoGo', 'emotional', 'affective', 'arithmetic', 
+           'intervalTiming', 'nBack', 'stroop', 'motorImagery', 'checkerBoard']
         
+        tasks_B = ['spatialMap', 'mentalRotation', 'biologicalmotion', 'CPRO', 
+          'prediction', 'respAlt', 'natureMovie', 
+           'landscapeMovie', 'emotionProcess', 'romanceMovie']
         self.dirs = Dirs(study_name=exp, glm=7)
-        new_data = []
+        new_data = dict()
         for i in range(0, np.shape(arr)[0]):
             temp_data = arr[i]
-            if i < 8 and exp =='sc1':
+            if sess==1 and exp =='sc1':
                 fname = os.path.join(self.dirs.TIME_DIR, f's{subj:02}/ses-a1/run-{i+1}_events.tsv')
-            elif i <8  and exp =='sc2':
+            elif sess==1  and exp =='sc2':
                 fname = os.path.join(self.dirs.TIME_DIR, f's{subj:02}/ses-b1/run-{i+1}_events.tsv')
-            elif i >7 and exp =='sc1':
-                fname = os.path.join(self.dirs.TIME_DIR, f's{subj:02}/ses-a2/run-{i-7}_events.tsv')
-            elif i >7 and exp =='sc2':
-                fname = os.path.join(self.dirs.TIME_DIR, f's{subj:02}/ses-b2/run-{i-7}_events.tsv')
+            elif sess==2 and exp =='sc1':
+                fname = os.path.join(self.dirs.TIME_DIR, f's{subj:02}/ses-a2/run-{i+1}_events.tsv')
+            elif sess=2 and exp =='sc2':
+                fname = os.path.join(self.dirs.TIME_DIR, f's{subj:02}/ses-b2/run-{i+1}_events.tsv')
 
             with open(fname) as tsvfile:
                 reader = csv.DictReader(tsvfile, dialect='excel-tab')
                 for row in reader:
-                    if row['taskName'] in redundant_tasks:
-                        temp_data = np.delete(temp_data, np.s_[int(float(row['onset'])): int(float(row['onset'])+ float(row['duration']))], axis=0)
+                    if row['startTime'] != 'n/a':
+                        x = temp_data[int(float(row['startTime'])): int(float(row['startTime'])+ float(row['duration']))]
+                        if x.ndim == 4:
+                            if row['taskName'] not in new_data:
+                                new_data[row['taskName']] = x.tolist()
+                            new_data[row['taskName']].append(x.tolist())
+        for task in new_data.keys():
+            print(task)
+            temp = [np.array(i) for i in new_data[task] if np.array(i).ndim ==4]
+            temp = np.concatenate(temp)
+            new_data[task] = temp
+        if exp == 'sc1':
+            concat_data = np.concatenate([new_data[task] for task in tasks_A])
+        if exp == 'sc2':
+            concat_data = np.concatenate([new_data[task] for task in tasks_B])
 
-
-            new_data.append(temp_data)
         
-        return np.array(new_data)
+        return concat_data
                             
   
     def _detrend_data(self, arr):
