@@ -244,7 +244,7 @@ class DataManager:
                 self.dirs = Dirs(study_name='sc1', glm=7)
                 if exp == 'sc1':
                         d = 'exp1'
-                    elif exp == 'sc2':
+                elif exp == 'sc2':
                         d = 'exp2'
                 try:
                     assert self.data_type['file_dir'] == 'imaging_data'
