@@ -27,6 +27,7 @@ class DataManager:
         experiment (list): default is ['sc1', and 'sc2']
         sessions (list): default is [1, 2]
         data_type (dict): default is {'roi': 'voxelwise', 'file_dir': 'imaging_data'}
+        redundance (bool): default is true removes redundant tasks.
 
         number_of_delays(int): default is 3. Value must be positive. 
         
