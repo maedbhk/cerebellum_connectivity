@@ -283,7 +283,7 @@ class DataManager:
         tasks_A = ['GoNoGo', 'emotional', 'affective', 'arithmetic', 
            'intervalTiming', 'nBack', 'stroop', 'motorImagery', 'checkerBoard']
         
-        tasks_B = ['spatialMap', 'mentalRotation', 'biologicalmotion', 'CPRO', 
+        tasks_B = ['spatialMap', 'mentalRotation', 'biologicalMotion', 'CPRO', 
           'prediction', 'respAlt', 'natureMovie', 
            'landscapeMovie', 'emotionProcess', 'romanceMovie']
         self.dirs = Dirs(study_name=exp, glm=7)
