@@ -15,6 +15,7 @@
     "train_Y_roi": "voxelwise",
     "train_Y_file_dir": "encoding",
     "train_Y_structure": "cerebellum",
+    "train_mode": "crossed",
     "train_scale": false,
     "train_number_of_delays": 3,
     "train_detrend": "sg",

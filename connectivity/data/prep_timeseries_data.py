@@ -296,7 +296,7 @@ class DataManager:
                 fname = os.path.join(self.dirs.TIME_DIR, f's{subj:02}/ses-b1/run-{i+1}_events.tsv')
             elif sess==2 and exp =='sc1':
                 fname = os.path.join(self.dirs.TIME_DIR, f's{subj:02}/ses-a2/run-{i+1}_events.tsv')
-            elif sess=2 and exp =='sc2':
+            elif sess==2 and exp =='sc2':
                 fname = os.path.join(self.dirs.TIME_DIR, f's{subj:02}/ses-b2/run-{i+1}_events.tsv')
 
             with open(fname) as tsvfile:
