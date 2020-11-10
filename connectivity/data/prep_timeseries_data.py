@@ -112,9 +112,9 @@ class DataManager:
                 
                 for self.sess in self.sessions:
                     if self.sess == 1:
-                        r = list(range(0, 8))
+                        r = [0, 8]
                     elif self.sess ==2:
-                        r = list(range(8,17))  
+                        r = [8, 17]  
                     if self.redundancy == True:
                         concat_detrend_data = self._remove_redundant_tasks(detrend_data[r[0]:r[-1]], self.exp, self.subj, self.sess)
                         print(f'redundant tasks removed from data set. New shape of data is: {raw_data.shape}') 
@@ -304,10 +304,9 @@ class DataManager:
                 for row in reader:
                     if row['startTime'] != 'n/a':
                         x = temp_data[int(float(row['startTime'])): int(float(row['startTime'])+ float(row['duration']))]
-                        if x.ndim == 4:
-                            if row['taskName'] not in new_data:
-                                new_data[row['taskName']] = x.tolist()
-                            new_data[row['taskName']].append(x.tolist())
+                        if row['taskName'] not in new_data:
+                            new_data[row['taskName']] = x.tolist()
+                        new_data[row['taskName']].append(x.tolist())
         for task in new_data.keys():
             print(task)
             temp = [np.array(i) for i in new_data[task] if np.array(i).ndim ==4]
