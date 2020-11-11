@@ -39,8 +39,8 @@
     "eval_redundancy":true,
     "eval_scale": false,
     "eval_splitby": null,
-    "eval_save_maps": false,
+    "eval_save_maps": true,
     "eval_good_vox": false,
     "eval_sparse_matrix": false,
-    "eval_noise_ceiling": true
+    "eval_noise_ceiling": false
 }
