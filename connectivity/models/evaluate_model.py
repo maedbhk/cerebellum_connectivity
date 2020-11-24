@@ -191,9 +191,16 @@ class EvaluateModel(DataManagerTS):
 
                     # calculate reliabilities
                     data_dict = self._calculate_reliabilities(ssq=ssq_all)
-
+                    if self.config['eval_stim'] == 'timeseries':
+                        from functools import reduce
+                        import operator
+                        udwt = reduce(operator.add, np.split(weights/self.config['train_number_of_delays'], self.config['train_number_of_delays']))
+                        data_dict.update(self._calculate_sparsity(W=udwt))
+                        if self.config['eval_save_maps']:
+                            data_dict.update({'udwt_vox': udwt})
                     # calculate sparsity
-                    data_dict.update(self._calculate_sparsity(W=weights))
+                    else:
+                        data_dict.update(self._calculate_sparsity(W=weights))
 
                     # update data dict with/without voxel data
                     data_dict = self._update_data_dict(data_dict, Y_pred_uncrossed, Y_pred_crossed, weights)
