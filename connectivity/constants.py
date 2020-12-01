@@ -10,17 +10,20 @@ Constants and defaults for running and visualizing connectivity models
 
 class Defaults:
 
-    def __init__(self):
+    def __init__(self,baseDir = Path(__file__).absolute().parent):
         self.return_subjs = [2,3,4,6,8,9,10,12,14,15,17,18,19,20,21,22,24,25,26,27,28,29,30,31]
-        self.task_config = Path(__file__).absolute().parent / 'data' / 'task_config.json'
+        self.task_config =  / 'data' / 'task_config.json'
         self.model_config = Path(__file__).absolute().parent / 'models' / 'model_config.json'
         self.visualize_cerebellum_config = Path(__file__).absolute().parent / 'visualization' / 'visualize_cerebellum_config.json'
         self.visualize_cortex_config = Path(__file__).absolute().parent / 'visualization' / 'visualize_cortex_config.json'
 
 class Dirs: 
 
-    def __init__(self, study_name='sc1', glm=7):
-        self.BASE_DIR = Path(__file__).absolute().parent.parent / 'data'
+    def __init__(self, study_name='sc1', glm=7,baseDir=None):
+        if (baseDir is None):
+            self.BASE_DIR = Path(__file__).absolute().parent.parent / 'data'
+        else:
+            self.BASE_DIR = baseDir
         self.DATA_DIR = self.BASE_DIR / study_name
         self.BEHAV_DIR = self.DATA_DIR / 'data'
         self.IMAGING_DIR = self.DATA_DIR / 'imaging_data'
