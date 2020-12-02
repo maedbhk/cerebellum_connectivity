@@ -94,7 +94,7 @@ def convert_to_dataframe(file_obj, cols):
     dict_all = {}
     for col in cols:
         try: 
-            col_values = file_obj[col].value.flatten().astype(int)
+            col_values = file_obj[col][()].flatten().astype(int)
         except: 
             col_values = _convertobj(file_obj = file_obj, key = col)
         dict_all[col] = col_values
