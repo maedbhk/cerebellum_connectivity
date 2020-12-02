@@ -5,7 +5,8 @@ function [ varargout ] = sc1sc2_conn_model( what, varargin )
 %==========================================================================
 % setting directories
 % baseDir         = '/Volumes/MotorControl/data/super_cerebellum_new';
-baseDir         = '/Users/ladan/Documents/Project-Cerebellum/Cerebellum_Data';
+baseDir         = '/Users/ladan/Documents/Project-Cerebellum/Cerebellum_Data'; 
+baseDir         = '/srv/diedrichsen/data/super_cerebellum';
 wbDir           = fullfile(baseDir,'sc1','surfaceWB');
 behavDir        = 'data';
 imagingDir      = 'imaging_data';
@@ -434,7 +435,15 @@ switch what
             
             % load in SPM_info to get the info for the tasks and
             % condditions
-            T           = load(fullfile(glmDir, subj_name{s}, 'SPM_info.mat'));
+            T  = load(fullfile(glmDir, subj_name{s}, 'SPM_info.mat'));
+            
+            % calculate the inner product of design matrix for proper weighting
+            load(fullfile(glmDir, subj_name{s}, 'SPM_light.mat'));        
+            X= SPM.xX.xKXs.X;
+            for i = 1:length(SPM.Sess)
+                XB = X(SPM.Sess(i).row,SPM.Sess(i).col);
+                XX(:,:,i) = XB'*XB;
+            end;
             
             % load Beta file
             load(fullfile(betaDir, subj_name{s}, sprintf('beta_regions_%s', parcelType)));
@@ -451,11 +460,11 @@ switch what
                         
             % adding the extra fields from SPM_info
             Y = addstruct(Y, T);
-            
+            Y.XX = XX; 
                         
             % save the betas
-            dircheck(fullfile(betaDir, subj_name{s}));
-            save(fullfile(betaDir, subj_name{s}, sprintf('Y_info_glm%d_%s.mat', glm, parcelType)), 'Y', '-v7.3');
+            % dircheck(fullfile(betaDir, subj_name{s}));
+            save(fullfile(betaDir, subj_name{s}, sprintf('Y_info_glm%d_%s.mat', glm, parcelType)), '-struct', 'Y', '-v7.3');
             fprintf('\n');
         end % s (sn)
         
