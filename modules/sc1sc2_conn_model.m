@@ -464,7 +464,7 @@ switch what
                         
             % save the betas
             % dircheck(fullfile(betaDir, subj_name{s}));
-            save(fullfile(betaDir, subj_name{s}, sprintf('Y_info_glm%d_%s.mat', glm, parcelType)), '-struct', 'Y', '-v7.3');
+            save(fullfile(betaDir, subj_name{s}, sprintf('Y_glm%d_%s.mat', glm, parcelType)), '-struct', 'Y', '-v7.3');
             fprintf('\n');
         end % s (sn)
         
