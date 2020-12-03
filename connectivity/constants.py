@@ -23,7 +23,7 @@ class Dirs:
         # Set the local path here... 
         # When committing, leave other people's path in here. 
         # self.BASE_DIR = Path(__file__).absolute().parent.parent / 'data'
-        self.BASE_DIR = Path('/Volumes/diedrichsen_data$-1/data/super_cerebellum')
+        self.BASE_DIR = Path('/Volumes/diedrichsen_data$/data/super_cerebellum')
         self.DATA_DIR = self.BASE_DIR / study_name
         self.BEHAV_DIR = self.DATA_DIR / 'data'
         self.IMAGING_DIR = self.DATA_DIR / 'imaging_data'
@@ -34,9 +34,7 @@ class Dirs:
         self.GLM_DIR = self.DATA_DIR / f'GLM_firstlevel_{glm}'
         self.ENCODE_DIR = self.DATA_DIR / 'encoding' / f'glm{glm}'
         self.BETA_REG_DIR = self.DATA_DIR / 'beta_roi' / f'glm{glm}'
-        self.CONN_DIR = self.DATA_DIR / 'conn_models' / f'glm{glm}'
-        self.CONN_TRAIN_DIR = self.CONN_DIR / 'train'
-        self.CONN_EVAL_DIR = self.CONN_DIR / 'eval'
+        self.CONN_DIR = self.DATA_DIR / 'conn_models'
         self.ATLAS = self.BASE_DIR / 'atlases'
         self.ATLAS_SUIT_FLATMAP = self.ATLAS / 'suit_flatmap'
         self.FIGURES = Path(__file__).absolute().parent.parent / 'reports' / 'figures'

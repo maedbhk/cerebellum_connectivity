@@ -1,5 +1,5 @@
 {
-    "model_name": "l2_regress",
+    "model_name": "L2regression",
     "train_sessions": [1, 2],
     "train_glm": 7,
     "train_stim": "cond",
@@ -7,7 +7,7 @@
     "train_incl_inst": true,
     "train_subtract_sess_mean": true,
     "train_subtract_exp_mean": true,
-    "train_subjects": [2,3,4,6,8,9,10,12,14,15,17,18,19,20,21,22,24,25,26,27,28,29,30,31],
+    "subjects": [2,3,4,6,8,9,10,12,14,15,17,18,19,20,21,22,24,25,26,27,28,29,30,31],
     "train_on": "sc1",
     "train_X_roi": "tesselsWB362",
     "train_X_file_dir": "encoding",

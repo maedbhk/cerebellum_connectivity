@@ -114,5 +114,5 @@ def _convertobj(file_obj, key):
     """
     dataset = file_obj[key]
     tostring = lambda obj: ''.join(chr(i) for i in obj[:])
-    return [tostring(file_obj[val]) for val in dataset.value.flatten()]
+    return [tostring(file_obj[val]) for val in dataset[()].flatten()]
 
