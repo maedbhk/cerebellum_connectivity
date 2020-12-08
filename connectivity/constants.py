@@ -34,14 +34,15 @@ class Dirs:
         self.GLM_DIR = self.DATA_DIR / f'GLM_firstlevel_{glm}'
         self.ENCODE_DIR = self.DATA_DIR / 'encoding' / f'glm{glm}'
         self.BETA_REG_DIR = self.DATA_DIR / 'beta_roi' / f'glm{glm}'
-        self.CONN_DIR = self.DATA_DIR / 'conn_models'
+        self.CONN_TRAIN_DIR = self.DATA_DIR / 'conn_models' / 'train'
+        self.CONN_EVAL_DIR = self.DATA_DIR / 'conn_models' / 'eval'
         self.ATLAS = self.BASE_DIR / 'atlases'
         self.ATLAS_SUIT_FLATMAP = self.ATLAS / 'suit_flatmap'
         self.FIGURES = Path(__file__).absolute().parent.parent / 'reports' / 'figures'
 
         # create folders if they don't already exist
         fpaths = [self.BETA_REG_DIR, self.CONN_TRAIN_DIR, self.CONN_EVAL_DIR, self.ATLAS]
-        for fpath in fpaths:
-            if not os.path.exists(fpath):
-                print(f'{fpath} should already exist, check your folder transfer!')
-                # os.makedirs(fpath)
+        # for fpath in fpaths:
+        #     if not os.path.exists(fpath):
+        #         print(f'{fpath} should already exist, check your folder transfer!')
+        # os.makedirs(fpath)
