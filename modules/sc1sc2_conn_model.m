@@ -438,7 +438,12 @@ switch what
             T  = load(fullfile(glmDir, subj_name{s}, 'SPM_info.mat'));
             
             % calculate the inner product of design matrix for proper weighting
-            load(fullfile(glmDir, subj_name{s}, 'SPM_light.mat'));        
+            try 
+                load(fullfile(glmDir, subj_name{s}, 'SPM_light.mat')); 
+            catch
+                load(fullfile(glmDir, subj_name{s}, 'SPM.mat')); 
+            end
+            
             X= SPM.xX.xKXs.X;
             for i = 1:length(SPM.Sess)
                 XB = X(SPM.Sess(i).row,SPM.Sess(i).col);

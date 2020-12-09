@@ -16,10 +16,15 @@ def test_single_fit():
 
 def test_run_fit(): 
     config = run.get_default_train_config()
-    config['subjects']=[2,3]
+    config['subjects']=[2,3,4,5]
     Model = run.train_models(config, save=True)
     pass
 
+def test_run_eval():
+    config = run,get_default_eval_config()
+    config['subjects']=[3,4,5]
+    T = run.eval_models(config)
+    pass
 
 if __name__ == '__main__':
     test_run_fit()
