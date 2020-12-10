@@ -5,10 +5,10 @@ import numpy as np
 import re
 import deepdish as dd
 import copy
-from collections import defaultdict
+import scipy 
 import scipy.io as sio 
+from collections import defaultdict
 import h5py
-from sklearn.preprocessing import StandardScaler
 
 # Import module as such - no need to make them a class
 from connectivity.constants import Defaults, Dirs
@@ -47,8 +47,7 @@ class Dataset:
         self.data = np.array(file['data']).T
         # this is the row info 
         self.XX = np.array(file['XX'])
-        self.CN = cio._convertobj(file,'CN')
-        self.TN = cio._convertobj(file,'CN')
+        self.TN = cio._convertobj(file,'TN')
         self.cond = np.array(file['cond']).reshape(-1).astype(int)
         self.inst = np.array(file['inst']).reshape(-1).astype(int)
         self.task = np.array(file['task']).reshape(-1).astype(int)
@@ -77,7 +76,7 @@ class Dataset:
         dd.io.load(fdir / fname, self, compression = None)
 
     def get_info(self): 
-        d = {'CN':self.CN,'TN':self.TN,'sess':self.sess,'run':self.run,'inst':self.inst,'task':self.task,'cond':self.cond}
+        d = {'TN':self.TN,'sess':self.sess,'run':self.run,'inst':self.inst,'task':self.task,'cond':self.cond}
         return pd.DataFrame(d)
 
     def get_data(self, averaging = 'sess', weighting = True, instr = True):
@@ -102,28 +101,36 @@ class Dataset:
         num_reg = sum(self.run==1)
         N = self.sess.shape[0]
         T = self.get_info() 
-        # Regressor ID: this is assuming same structure across all runs! 
+
+        # Create unique ID for each regressor for averaging
         T['id'] = np.kron(np.ones((num_runs,)),np.arange(num_reg)).astype(int)
-        # Weighting all regressors by XX 
-        if weighting:
-            self.weight = np.zeros((N,))
-            for r in range(num_runs):
-                idx = (self.run ==r+1)
-                self.weight[idx,] = np.sqrt(np.diag(self.XX[r,:,:]))
-            Y = self.data * self.weight.reshape(-1,1)
-        else:
-            Y = self.data
+    
         # Different ways of averaging 
         if (averaging == 'sess'):
             X = matrix.indicator(T.id + (self.sess-1) * num_reg)
-            Y = np.linalg.solve(X.T @ X, X.T @ Y)
+            Y = np.linalg.solve(X.T @ X, X.T @ self.data)
             S = T[np.logical_or(T.run==1,T.run==9)]
         elif (averaging == 'exp'):
             X = matrix.indicator(T.id)
-            Y = np.linalg.solve(X.T @ X, X.T @ Y)
+            Y = np.linalg.solve(X.T @ X, X.T @ self.data)
             S = T[T.run==1]
         elif (averaging == 'none'):
             S = T 
+            Y = self.data
         else:
             raise(NameError('averaging needs to be sess, exp, or none'))
+        
+        # Now weight the different betas by the variance that they predict for the time series. THis also removes the mean of the time series implictly. Note that weighting is done always on the average regressor structure - so that regressors still remain exchangeable across sessions
+        if weighting > 0:
+            XXm = np.mean(self.XX,0)
+            if weighting == 1: # Weighting by individual regressors 
+                XXs = np.diag(np.sqrt(np.diag(XXm)))
+            elif weighting == 2: 
+                XXs = scipy.linalg.sqrtm(XXm) # Note that XXm = XXs @ XXs.T
+            else:
+                raise(NameError('weighting needs to be 0, 1 or 2'))
+            for r in np.unique(S['run']): # WEight each run/session seperately 
+                idx = (S.run == r)
+                Y[idx,:] = XXs @ Y[idx,:] 
+
         return Y,S
