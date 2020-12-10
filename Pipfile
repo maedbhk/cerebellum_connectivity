@@ -17,6 +17,8 @@ scikit-learn = "*"
 deepdish = "*"
 h5py = "*"
 dictdiffer = "*"
+matplotlib = "*"
+seaborn = "*"
 
 [requires]
 python_version = "3.7"
