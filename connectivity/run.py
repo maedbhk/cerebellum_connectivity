@@ -138,7 +138,7 @@ def eval_models(config):
                 Evaluation of different models on the data 
     """
 
-    texp = config['train_exp']
+    # texp = config['train_exp']
     eexp = config['eval_exp']
     # tdirs = Dirs(study_name=f'sc{texp}', glm=config['glm'])
     # edirs = Dirs(study_name=f'sc{eexp}', glm=config['glm'])
@@ -175,10 +175,13 @@ def eval_models(config):
                 D.loc[i,key]=value
 
         # Add the evaluation
-        D.loc[i,'R'], Rvox = ev.calculate_R(Y,Ypred)
-        D.loc[i,'R2'], R2vox = ev.calculate_R2(Y,Ypred)
-        D.loc[i,'noise_R'], NRvox, D.loc[i,'noise_R2'], NR2vox = ev.calculate_noiseceiling(Y,T)
+        D.loc[i,'R'], Rvox = ev.calculate_R(Y,Ypred)  # R between predicted and observed 
+        D.loc[i,'R2'], R2vox = ev.calculate_R2(Y,Ypred) # R2 between predicted and observed 
+        D.loc[i,'noise_Y_R'], _, D.loc[i,'noise_Y_R2'], _ = ev.calculate_noiseceiling(Y,T) # Noise ceiling for cerebellum (squared)
+        D.loc[i,'noise_X_R'], _, D.loc[i,'noise_X_R2'], _ = ev.calculate_noiseceiling(Ypred,T) # Noise ceiling for cortes (squared)
         pass
+
+
     # Return list of models
     return D
 
