@@ -50,4 +50,4 @@ def run_ridge():
 
 
 if __name__ == '__main__':
-    run_ridge()
+    test_run_fit()

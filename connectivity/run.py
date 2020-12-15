@@ -8,9 +8,9 @@ import pandas as pd
 import connectivity.model as model
 import connectivity.evaluation as ev
 
-from connectivity import io
+import connectivity.io as cio
 from connectivity.data import Dataset
-from connectivity.constants import Defaults, Dirs
+import connectivity.constants as const
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -24,12 +24,12 @@ Main script for training and evaluating connectivity models
 @authors: Maedbh King, Jörn Diedrichsen 
 """
 
-def _delete_conn_files():
+def delete_conn_files():
     """ delete any pre-existing connectivity output
     """
     for exp in ['sc1', 'sc2']:
-        dirs = Dirs(study_name=exp, glm=7)
-        filelists = [glob.glob(os.path.join(dirs.CONN_TRAIN_DIR, '*')), glob.glob(os.path.join(dirs.CONN_EVAL_DIR, '*'))]
+        dirs = const.Dirs(study_name=exp, glm=7)
+        filelists = [glob.glob(os.path.join(dirs.con_train_dir, '*')), glob.glob(os.path.join(dirs.conn_eval_dir, '*'))]
         for filelist in filelists:
             for f in filelist:
                 os.remove(f)
@@ -86,13 +86,13 @@ def train_models(config, save = False):
                 List of trained models for all subject 
     """
     exp = config['train_exp']
-    dirs = Dirs(study_name=f'sc{exp}', glm=config['glm'])
+    dirs = const.Dirs(study_name=f'sc{exp}', glm=config['glm'])
     models = []
 
     # Store the training configuration in model directory
     if save:
         fname = [config['name']]
-        fpath = dirs.CONN_TRAIN_DIR / config['name']
+        fpath = dirs.conn_train_dir / config['name']
         if not os.path.exists(fpath):
             print(f'creating {fpath}')
             os.makedirs(fpath)
@@ -138,10 +138,7 @@ def eval_models(config):
                 Evaluation of different models on the data 
     """
 
-    # texp = config['train_exp']
     eexp = config['eval_exp']
-    # tdirs = Dirs(study_name=f'sc{texp}', glm=config['glm'])
-    # edirs = Dirs(study_name=f'sc{eexp}', glm=config['glm'])
     D = pd.DataFrame()
 
     for i,s in enumerate(config['subjects']):
@@ -198,8 +195,8 @@ def _get_model_name(train_name, exp, subject):
             fpath (str)
                 full path and name to connectivity output for model training
     """
-    dirs = Dirs(study_name=f'sc{exp}')
+    dirs = const.Dirs(study_name=f'sc{exp}')
     fname = f'{train_name}_s{subject:02d}.h5'
-    fpath = os.path.join(dirs.CONN_TRAIN_DIR, train_name, fname)
+    fpath = os.path.join(dirs.conn_train_dir, train_name, fname)
     return fpath
     

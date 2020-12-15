@@ -11,7 +11,7 @@ from collections import defaultdict
 import h5py
 
 # Import module as such - no need to make them a class
-from connectivity.constants import Defaults, Dirs
+import connectivity.constants as const
 import connectivity.io as cio  
 from connectivity.helper_functions import AutoVivification
 import connectivity.matrix as matrix
@@ -39,9 +39,9 @@ class Dataset:
     def load_mat(self): 
         """ Reads a data set from the Y_info file and corresponding GLM file from matlab 
         """
-        dirs = Dirs(study_name = self.exp, glm = self.glm)
+        dirs = const.Dirs(study_name = self.exp, glm = self.glm)
         fname =  'Y_' + f'glm{self.glm}' + '_' + self.roi + '.mat'
-        fdir = dirs.BETA_REG_DIR / dirs.BETA_REG_DIR / f's{self.sn:02}'
+        fdir = dirs.beta_reg_dir / f's{self.sn:02}'
         file = h5py.File(fdir / fname,'r')
         # Store the data in betas x voxel/rois format 
         self.data = np.array(file['data']).T
@@ -56,17 +56,19 @@ class Dataset:
         return self
 
     def save(self,filename = None): 
-        """ Save the content of the data set in a dict as a hpf5 file
+        """ 
+            Save the content of the data set in a dict as a hpf5 file
         """
         if filename is None: 
-            dirs = Dirs(study_name = self.exp, glm = self.glm)
+            dirs = const.Dirs(study_name = self.exp, glm = self.glm)
             fname =  'Y_' + f'glm{self.glm}' + '_' + self.roi + '.h5'
-            fdir = dirs.BETA_REG_DIR / dirs.BETA_REG_DIR / f's{self.sn:02}'
+            fdir = dirs.beta_reg_dir / f's{self.sn:02}'
 
         dd.io.save(fdir / fname, vars(self), compression = None)
 
     def load(self,filename = None):
-        """ Load the content of a data set object from a hpf5 file 
+        """ 
+            Load the content of a data set object from a hpf5 file 
         """ 
         if filename is None: 
             dirs = Dirs(study_name = self.exp, glm = self.glm)
@@ -75,7 +77,10 @@ class Dataset:
 
         dd.io.load(fdir / fname, self, compression = None)
 
-    def get_info(self): 
+    def get_info(self):
+        """ 
+            Return info for data set in a data Frame
+        """
         d = {'TN':self.TN,'sess':self.sess,'run':self.run,'inst':self.inst,'task':self.task,'cond':self.cond}
         return pd.DataFrame(d)
 
@@ -88,7 +93,7 @@ class Dataset:
                     'none': no averaging 
                     'exp': across the whole experiment
                 weighting (bool)
-                    Should the betas be weighted by X.T * X  
+                    Should the betas be weighted by X.T * X? 
                 instr (bool)
                     Include instruction regressors? 
             Returns: 
@@ -120,15 +125,10 @@ class Dataset:
         else:
             raise(NameError('averaging needs to be sess, exp, or none'))
         
-        # Now weight the different betas by the variance that they predict for the time series. THis also removes the mean of the time series implictly. Note that weighting is done always on the average regressor structure - so that regressors still remain exchangeable across sessions
+        # Now weight the different betas by the variance that they predict for the time series. This also removes the mean of the time series implictly. Note that weighting is done always on the average regressor structure - so that regressors still remain exchangeable across sessions
         if weighting > 0:
             XXm = np.mean(self.XX,0)
-            if weighting == 1: # Weighting by individual regressors 
-                XXs = np.diag(np.sqrt(np.diag(XXm)))
-            elif weighting == 2: 
-                XXs = scipy.linalg.sqrtm(XXm) # Note that XXm = XXs @ XXs.T
-            else:
-                raise(NameError('weighting needs to be 0, 1 or 2'))
+            XXs = scipy.linalg.sqrtm(XXm) # Note that XXm = XXs @ XXs.T
             for r in np.unique(S['run']): # WEight each run/session seperately 
                 idx = (S.run == r)
                 Y[idx,:] = XXs @ Y[idx,:] 
