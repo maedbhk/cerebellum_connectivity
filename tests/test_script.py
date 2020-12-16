@@ -48,6 +48,14 @@ def run_ridge():
             Model = run.train_models(config, save=True)
     pass
 
+def test_dataset():
+    Xdata = Dataset(experiment = 'sc1',glm = 7, roi = 'cerebellum_grey', 
+                 sn = 2)
+    Xdata.load_mat()        # Import the data from Matlab 
+    T = Xdata.get_info_run()
+    X,S = Xdata.get_data(averaging='exp')
+    X1,S1 = Xdata.get_data(averaging='exp',subset=T.cond<5)        
+    pass
 
 if __name__ == '__main__':
-    test_run_fit()
+    test_dataset()

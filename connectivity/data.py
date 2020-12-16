@@ -84,7 +84,14 @@ class Dataset:
         d = {'TN':self.TN,'sess':self.sess,'run':self.run,'inst':self.inst,'task':self.task,'cond':self.cond}
         return pd.DataFrame(d)
 
-    def get_data(self, averaging = 'sess', weighting = True, instr = True):
+    def get_info_run(self):
+        """ 
+            Return info for a typical run only
+        """
+        d = self.get_info()
+        return d[d.run==1]
+
+    def get_data(self, averaging = 'sess', weighting = True, subset = None):
         """ Get the data using a specific aggregation 
             Returns it as a numpy array and the information as a Pandas data frame
             Parameters: 
@@ -94,8 +101,8 @@ class Dataset:
                     'exp': across the whole experiment
                 weighting (bool)
                     Should the betas be weighted by X.T * X? 
-                instr (bool)
-                    Include instruction regressors? 
+                subset (index-like)
+                    Indicate the subset of regressors that should be considered 
             Returns: 
                 data (np.array)
                     Aggregated data 
@@ -107,9 +114,13 @@ class Dataset:
         N = self.sess.shape[0]
         T = self.get_info() 
 
-        # Create unique ID for each regressor for averaging
+        # Create unique ID for each regressor for averaging and subsetting it
         T['id'] = np.kron(np.ones((num_runs,)),np.arange(num_reg)).astype(int)
-    
+        if subset is None: 
+            subset = np.arange(num_reg)
+        elif subset.dtype == 'bool':
+            subset = subset.nonzero()[0]
+
         # Different ways of averaging 
         if (averaging == 'sess'):
             X = matrix.indicator(T.id + (self.sess-1) * num_reg)
@@ -124,10 +135,16 @@ class Dataset:
             Y = self.data
         else:
             raise(NameError('averaging needs to be sess, exp, or none'))
-        
+
+        # Subset the data
+        indx = np.in1d(S.id,subset)
+        Y = Y[indx,:]
+        S = S[indx]
+
         # Now weight the different betas by the variance that they predict for the time series. This also removes the mean of the time series implictly. Note that weighting is done always on the average regressor structure - so that regressors still remain exchangeable across sessions
         if weighting > 0:
             XXm = np.mean(self.XX,0)
+            XXm = XXm[subset,:][:,subset]      # Get the desired subset only 
             XXs = scipy.linalg.sqrtm(XXm) # Note that XXm = XXs @ XXs.T
             for r in np.unique(S['run']): # WEight each run/session seperately 
                 idx = (S.run == r)

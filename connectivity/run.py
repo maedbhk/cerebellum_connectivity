@@ -174,8 +174,8 @@ def eval_models(config):
         # Add the evaluation
         D.loc[i,'R'], Rvox = ev.calculate_R(Y,Ypred)  # R between predicted and observed 
         D.loc[i,'R2'], R2vox = ev.calculate_R2(Y,Ypred) # R2 between predicted and observed 
-        D.loc[i,'noise_Y_R'], _, D.loc[i,'noise_Y_R2'], _ = ev.calculate_noiseceiling(Y,T) # Noise ceiling for cerebellum (squared)
-        D.loc[i,'noise_X_R'], _, D.loc[i,'noise_X_R2'], _ = ev.calculate_noiseceiling(Ypred,T) # Noise ceiling for cortes (squared)
+        D.loc[i,'noise_Y_R'], _, D.loc[i,'noise_Y_R2'], _ = ev.calculate_reliability(Y,T) # Noise ceiling for cerebellum (squared)
+        D.loc[i,'noise_X_R'], _, D.loc[i,'noise_X_R2'], _ = ev.calculate_reliability(Ypred,T) # Noise ceiling for cortex (squared)
         pass
 
 
