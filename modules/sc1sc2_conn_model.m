@@ -444,9 +444,10 @@ switch what
                 load(fullfile(glmDir, subj_name{s}, 'SPM.mat')); 
             end
             
-            X= SPM.xX.xKXs.X;
+            X= SPM.xX.X; % Use the unweigthed design matrix 
             for i = 1:length(SPM.Sess)
                 XB = X(SPM.Sess(i).row,SPM.Sess(i).col);
+                XB = bsxfun(@minus,XB,mean(XB)); % Subtract the mean 
                 XX(:,:,i) = XB'*XB;
             end;
             
