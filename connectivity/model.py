@@ -40,12 +40,13 @@ class L2regression(Ridge,ModelMixin):
         super().__init__(alpha=alpha,fit_intercept=False)
 
     def fit(self,X,Y):
-        Xs = X / np.sqrt(np.sum(X**2,0)/X.shape[0]) # Control scaling
+        self.scale_ = np.sqrt(np.sum(X**2,0)/X.shape[0])
+        Xs = X / self.scale_
         return super().fit(Xs,Y)
 
     def predict(self,X):
-        Xs = X / np.sqrt(np.sum(X**2,0)/X.shape[0]) # Control scaling
-        return super().predict(Xs)
+        Xs = X / self.scale_
+        return Xs @ self.coef_
 
 class NNLS(BaseEstimator,ModelMixin):
     """
