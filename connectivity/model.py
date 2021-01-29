@@ -9,6 +9,8 @@ from sklearn.linear_model import ElasticNet
 from sklearn.decomposition import PCA
 from sklearn.cross_decomposition import PLSRegression
 from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import KFold
+from sklearn.base import clone
 
 """
 connectivity models
@@ -18,71 +20,96 @@ be easily used.
 
 @authors: Maedbh King, Ladan Shahshahani, Jörn Diedrichsen
 """
+
+
 class ModelMixin:
     """
-        This is a class that can give use extra behaviors or functions that we want our connectivity models to have - over an above the basic functionality provided by the stanard SK-learn BaseEstimator classes
-        As an example here is a function that serializes the fitted model
-        Not used right now, but maybe potentially useful. Note that Mixin classes do not have Constructor!
+    This is a class that can give use extra behaviors or functions that we want our connectivity models to have - over an above the basic functionality provided by the stanard SK-learn BaseEstimator classes
+    As an example here is a function that serializes the fitted model
+    Not used right now, but maybe potentially useful. Note that Mixin classes do not have Constructor!
     """
+
     def to_dict(self):
-        d = {'coef_':self.coef_}
-        return d
+        data = {"coef_": self.coef_}
+        return data
 
-class L2regression(Ridge,ModelMixin):
-    """
-        L2 regularized connectivity model
-        simple wrapper for Ridge. It performs scaling by stdev, but not by mean before fitting and prediction
-    """
-    def __init__(self, alpha = 1):
-        """
-            Simply calls the superordinate construction - but does not fit intercept, as this is tightly controlled in Dataset.get_data()
-        """
-        super().__init__(alpha=alpha,fit_intercept=False)
 
-    def fit(self,X,Y):
-        self.scale_ = np.sqrt(np.sum(X**2,0)/X.shape[0])
+class L2regression(Ridge, ModelMixin):
+    """
+    L2 regularized connectivity model
+    simple wrapper for Ridge. It performs scaling by stdev, but not by mean before fitting and prediction
+    """
+
+    def __init__(self, alpha=1):
+        """
+        Simply calls the superordinate construction - but does not fit intercept, as this is tightly controlled in Dataset.get_data()
+        """
+        self.cv_rmse = None
+        super().__init__(alpha=alpha, fit_intercept=False)
+
+    def rmse(self, Y, Y_pred):
+        self.rmse = np.sqrt(np.mean((Y - Y_pred)**2))
+        return self.rmse
+
+    def cv_rmse(self, X, Y, Y_pred):
+        model = clone(self)
+        five_fold = KFold(n_splits=5)
+        rmse_values = []
+        for tr_ind, va_ind in five_fold.split(tr):
+            # fit CV model and get RMSE
+            model.fit(X[tr_ind,:], Y[tr_ind,:])
+            rmse = model.rmse(Y[va_ind,:], Y_pred[va_ind,:])
+            rmse_values.append(rmse)
+
+        self.cv_rmse = np.mean(rmse_values)
+        return self.cv_rmse
+
+    def fit(self, X, Y):
+        self.scale_ = np.sqrt(np.sum(X ** 2, 0) / X.shape[0])
         Xs = X / self.scale_
-        return super().fit(Xs,Y)
+        return super().fit(Xs, Y)
 
-    def predict(self,X):
+    def predict(self, X):
         Xs = X / self.scale_
         return Xs @ self.coef_
 
-class NNLS(BaseEstimator,ModelMixin):
+
+class NNLS(BaseEstimator, ModelMixin):
     """
-        Fast implementation of a multivariate Non-negative least squares (NNLS) regression
-        Allows for both L2 and L1 penality on regression coefficients (i.e. Elastic-net like).
-        Regression model is transformed into a quadratic programming problem and then solved
-        using the  quadprog module
+    Fast implementation of a multivariate Non-negative least squares (NNLS) regression
+    Allows for both L2 and L1 penality on regression coefficients (i.e. Elastic-net like).
+    Regression model is transformed into a quadratic programming problem and then solved
+    using the  quadprog module
     """
-    def __init__(self,alpha = 0, gamma = 0):
+
+    def __init__(self, alpha=0, gamma=0):
         """
-            Constructor. Input:
-                alpha (double):
-                    L2-regularisation
-                gamma (double):
-                    L1-regularisation (0 def)
+        Constructor. Input:
+            alpha (double):
+                L2-regularisation
+            gamma (double):
+                L1-regularisation (0 def)
         """
         self.alpha = alpha
         self.gamma = gamma
 
-    def fit(self,X,Y):
+    def fit(self, X, Y):
         """
-            Fitting of NNLS model including scaling of X matrix
+        Fitting of NNLS model including scaling of X matrix
         """
-        N , P1 = X.shape
+        N, P1 = X.shape
         P2 = Y.shape[1]
-        self.scale_ = np.sqrt(np.sum(X**2,0)/X.shape[0])
+        self.scale_ = np.sqrt(np.sum(X ** 2, 0) / X.shape[0])
         Xs = X / self.scale_
         G = Xs.T @ Xs + np.eye(P1) * self.alpha
         a = Xs.T @ Y - self.gamma
         C = np.eye(P1)
         b = np.zeros((P1,))
-        self.coef_ = np.zeros((P1,P2))
+        self.coef_ = np.zeros((P1, P2))
         for i in range(P2):
-            self.coef_[:,i] = qp.solve_qp(G,a[:,i],C,b,0)[0]
+            self.coef_[:, i] = qp.solve_qp(G, a[:, i], C, b, 0)[0]
         return self
 
-    def predict(self,X):
+    def predict(self, X):
         Xs = X / self.scale_
         return Xs @ self.coef_

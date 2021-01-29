@@ -3,200 +3,368 @@ import sys
 import glob
 import numpy as np
 import json
-import deepdish as dd 
+import deepdish as dd
 import pandas as pd
 import connectivity.model as model
 import connectivity.evaluation as ev
+import copy
+
+from collections import defaultdict
 
 import connectivity.io as cio
 from connectivity.data import Dataset
 import connectivity.constants as const
 
 import warnings
-warnings.filterwarnings('ignore')
 
-np.seterr(divide='ignore', invalid='ignore')
+warnings.filterwarnings("ignore")
 
+np.seterr(divide="ignore", invalid="ignore")
+
+"""Main module for training and evaluating connectivity models.
+
+   @authors: Maedbh King, Jörn Diedrichsen  
+
+  Typical usage example:
+
+  config = get_default_train_config()
+  models = train_models(config=config)
+
+  config = get_default_eval_config()
+  models = eval_models(config)
 """
-Created on Aug 31 11:14:19 2020
-Main script for training and evaluating connectivity models
 
-@authors: Maedbh King, Jörn Diedrichsen 
-"""
 
 def delete_conn_files():
-    """ delete any pre-existing connectivity output
-    """
-    for exp in ['sc1', 'sc2']:
+    """delete any pre-existing connectivity output."""
+    for exp in ["sc1", "sc2"]:
         dirs = const.Dirs(study_name=exp, glm=7)
-        filelists = [glob.glob(os.path.join(dirs.con_train_dir, '*')), glob.glob(os.path.join(dirs.conn_eval_dir, '*'))]
+        filelists = [
+            glob.glob(os.path.join(dirs.conn_train_dir, "*")),
+            glob.glob(os.path.join(dirs.conn_eval_dir, "*")),
+        ]
         for filelist in filelists:
             for f in filelist:
                 os.remove(f)
-    print('deleting training and results data')
+    print("deleting training and results data")
+
 
 def get_default_train_config():
-    # defaults training config: 
+    """Defaults for training model(s).
+
+    Returns:
+        A dict mapping keys to training parameters.
+    """
+    # defaults training config:
     config = {
-        "name": 'L2_WB162_A1',      # Model name - determines the directory 
-        'model': 'L2regression',    # Model class name (must be in model.py)
-        'param': {'alpha': 1},      # Parameter to model constructor
-        "sessions": [1, 2],         # Sessions used for training data
-        "glm": 7,                   # GLM used for training data
-        "train_exp": 1,             # Experiment used for training data 
-        "averaging": "sess",        # Avaraging scheme for X and Y (see data.py)
-        "weighting": 2,             # 0: none, 1: by regr., 2: by full matrix
-        "incl_inst": True,          
-        'X_data': 'tesselsWB162',
-        'Y_data': 'cerebellum_grey',
-        "subjects": [2,3,4,6,8,9,10,12,14,15,17,18,19,20,21,22,24,25,26,27,28,29,30,31],
-        "mode": "crossed",          # Training mode
+        "name": "L2_WB162_A1",  # Model name - determines the directory
+        "model": "L2regression",  # Model class name (must be in model.py)
+        "param": {"alpha": 1},  # Parameter to model constructor
+        "sessions": [1, 2],  # Sessions used for training data
+        "glm": "glm7",  # GLM used for training data
+        "train_exp": "sc1",  # Experiment used for training data
+        "averaging": "sess",  # Averaging scheme for X and Y (see data.py)
+        "weighting": True,  # 0: none, 1: by regr., 2: by full matrix ????
+        "incl_inst": True,
+        "X_data": "tesselsWB162",
+        "Y_data": "cerebellum_grey",
+        "validate_model": False,
+        "subjects": [
+            "s01",
+            "s03",
+            "s04",
+            "s06",
+            "s08",
+            "s09",
+            "s10",
+            "s12",
+            "s14",
+            "s15",
+            "s17",
+            "s18",
+            "s19",
+            "s20",
+            "s21",
+            "s22",
+            "s24",
+            "s25",
+            "s26",
+            "s27",
+            "s28",
+            "s29",
+            "s30",
+            "s31",
+        ],
+        "mode": "crossed",  # Training mode
     }
     return config
+
 
 def get_default_eval_config():
-    # defaults training config: 
+    """Defaults for evaluating model(s).
+
+    Returns:
+        A dict mapping keys to evaluation parameters.
+    """
     config = {
-        "name": 'L2_WB162_A1',
+        "name": "L2_WB162_A1",
         "sessions": [1, 2],
-        "glm": 7,
-        "train_exp": 1,
-        "eval_exp": 2,
+        "glm": "glm7",
+        "train_exp": "sc1",
+        "eval_exp": "sc2",
         "averaging": "sess",
-        "weighting": 2,             # 0: none, 1: by regr., 2: by full matrix
+        "weighting": True,  # 0: none, 1: by regr., 2: by full matrix???
         "incl_inst": True,
-        'X_data': 'tesselsWB162',
-        'Y_data': 'cerebellum_grey',
-        "subjects": [2,3,4,6,8,9,10,12,14,15,17,18,19,20,21,22,24,25,26,27,28,29,30,31],
+        "X_data": "tesselsWB162",
+        "Y_data": "cerebellum_grey",
+        "subjects": [
+            "s01",
+            "s03",
+            "s04",
+            "s06",
+            "s08",
+            "s09",
+            "s10",
+            "s12",
+            "s14",
+            "s15",
+            "s17",
+            "s18",
+            "s19",
+            "s20",
+            "s21",
+            "s22",
+            "s24",
+            "s25",
+            "s26",
+            "s27",
+            "s28",
+            "s29",
+            "s30",
+            "s31",
+        ],
         "mode": "crossed",
-        "eval_splitby": None
+        "eval_splitby": None,
+        "save_voxels": False,
     }
     return config
 
-def train_models(config, save = False):
-    """ 
-        train_model: trains a specific model class on X and Y data from a specific experiment for all subjects 
-        Parameters: 
-            config (dict)
-                Training configuration (see get_default_train_config)
-            save (bool)
-                Save fitted models automatically to conn-folder
-        Returns: 
-            models (list)
-                List of trained models for all subject 
-    """
-    exp = config['train_exp']
-    dirs = const.Dirs(study_name=f'sc{exp}', glm=config['glm'])
-    models = []
 
+def train_models(config, save=False):
+    """Trains a specific model class on X and Y data from a specific experiment for subjects listed in config.
+
+    Args:
+        config (dict): Training configuration, returned from get_default_train_config()
+        save (bool): Optional; Save fitted models automatically to disk.
+    Returns:
+        models (list): list of trained models for subjects listed in config.
+    """
+
+    dirs = const.Dirs(exp_name=config["train_exp"], glm=config["glm"])
+    models = []
     # Store the training configuration in model directory
     if save:
-        fname = [config['name']]
-        fpath = dirs.conn_train_dir / config['name']
+        fpath = dirs.conn_train_dir / config["name"]
         if not os.path.exists(fpath):
-            print(f'creating {fpath}')
+            print(f"creating {fpath}")
             os.makedirs(fpath)
-        cname = fpath / 'train_config.json'
-        with open(cname, 'w') as fp:
-            json.dump(config, fp)
-    
-    # Loop over subjects and train 
-    for s in config['subjects']:
-        print(f'Subject{s:02d}\n')
 
-        # Get the condensed data
-        Ydata=Dataset(glm =config['glm'], sn = s, roi=config['Y_data'])
-        Ydata.load_mat()
-        Y,T = Ydata.get_data(averaging=config['averaging'],
-                             weighting=config['weighting'])
-        Xdata = Dataset(glm=config['glm'], sn= s, roi=config['X_data']) 
-        Xdata.load_mat()
-        X,T = Xdata.get_data(averaging=config['averaging'],
-                             weighting=config['weighting'])
+        cname = fpath / "train_config.json"
+        with open(cname, "w") as fp:
+            json.dump(config, fp)
+
+    # Loop over subjects and train
+    for subj in config["subjects"]:
+        print(f"Training model on {subj}")
+
+        # get data
+        Y, Y_info, X, X_info = _get_data(config=config, subj=subj)
+
         # Generate new model and put in the list
-        newModel = getattr(model,config['model'])(**config['param'])
-        models.append(newModel)
-        # Fit this model 
-        models[-1].fit(X,Y)
-        
-        # Save the fitted model to disk if required 
-        if save: 
-            fname = _get_model_name(config['name'],config['train_exp'],s)
-            dd.io.save(fname,models[-1], compression = None) 
-    
-    # Return list of models
+        new_model = getattr(model, config["model"])(**config["param"])
+        models.append(new_model)
+
+        # Fit model and get train rmse
+        models[-1].fit(X, Y)
+        Y_pred = models[-1].predict(X, Y)
+        models[-1].rmse(Y, Y_pred)
+
+        # get cv rmse
+        if config['validate_model']:
+            models[-1].cv_rmse(X, Y, Y_pred)
+
+        # Save the fitted model to disk if required
+        if save:
+            fname = _get_model_name(
+                train_name=config["name"], exp=config["train_exp"], subj_id=subj
+            )
+            dd.io.save(fname, models[-1], compression=None)
+
     return models
 
+
 def eval_models(config):
-    """ 
-        eval_models: trains a specific model class on X and Y data from a specific experiment for all subjects 
-        Parameters: 
-            config (dict)
-                Eval configuration (see get_default_eval_config
-        Returns: 
-            T (pd.DataFrame)
-                Evaluation of different models on the data 
+    """Evaluates a specific model class on X and Y data from a specific experiment for subjects listed in config.
+
+    Args:
+        config (dict): Evaluation configuration, returned from get_default_eval_config()
+    Returns:
+        models (pd dataframe): evaluation of different models on the data
     """
 
-    eexp = config['eval_exp']
-    D = pd.DataFrame()
+    eval_summary = defaultdict(list)
+    eval_voxels = defaultdict(list)
 
-    for i,s in enumerate(config['subjects']):
-        print(f'Subject{s:02d}\n')
+    for idx, subj in enumerate(config["subjects"]):
 
-        # Get the data
-        Ydata=Dataset(experiment = f'sc{eexp}', glm = config['glm'], sn = s, roi=config['Y_data'])
-        Ydata.load_mat()
-        Y,T = Ydata.get_data(averaging=config['averaging'], 
-                             weighting=config['weighting'] )
-        Xdata = Dataset(experiment = f'sc{eexp}', glm=config['glm'], sn= s, roi=config['X_data']) 
-        Xdata.load_mat()
-        X,T = Xdata.get_data(averaging=config['averaging'],
-                             weighting=config['weighting'])
+        print(f"Evaluating model on {subj}")
+
+        # get data
+        Y, Y_info, X, X_info = _get_data(config=config, subj=subj)
 
         # Get the model from file
-        fname = _get_model_name(config['name'],config['train_exp'],s)
+        fname = _get_model_name(
+            train_name=config["name"], exp=config["train_exp"], subj_id=subj
+        )
         fitted_model = dd.io.load(fname)
 
-        # Save the fitted model to disk if required 
-        Ypred = fitted_model.predict(X)
-        if config['mode']=='crossed':
-            Ypred=np.r_[Ypred[T.sess==2,:],Ypred[T.sess==1,:]]
-        
-        # Add the subject number 
-        D.loc[i,'SN'] = s
+        # Save the fitted model to disk if required
+        Y_pred = fitted_model.predict(X)
+        if config["mode"] == "crossed":
+            Y_pred = np.r_[y_pred[Y_info.sess == 2, :], Y_pred[Y_info.sess == 1, :]]
 
-        # Copy over all scalars or strings to the Data frame: 
+        # Add the subject number
+        eval_summary["subj_id"].append(subj)
+
+        # Copy over all scalars or strings to eval_summary dataframe:
         for key, value in config.items():
             if type(value) is not list:
-                D.loc[i,key]=value
+                # df.loc[idx, key] = value
+                eval_summary[key].append(value)
 
-        # Add the evaluation
-        D.loc[i,'R'], Rvox = ev.calculate_R(Y,Ypred)  # R between predicted and observed 
-        D.loc[i,'R2'], R2vox = ev.calculate_R2(Y,Ypred) # R2 between predicted and observed 
-        D.loc[i,'noise_Y_R'], _, D.loc[i,'noise_Y_R2'], _ = ev.calculate_reliability(Y,T) # Noise ceiling for cerebellum (squared)
-        D.loc[i,'noise_X_R'], _, D.loc[i,'noise_X_R2'], _ = ev.calculate_reliability(Ypred,T) # Noise ceiling for cortex (squared)
-        pass
+        # add evaluation (summary)
+        eval_data = _get_eval_summary(Y=Y, Y_pred=Y_pred, Y_info=Y_info, X_info=X_info)
+        for k, v in eval_data.items():
+            eval_summary[k].append(v)
 
+        # add evaluation (voxels)
+        if config["save_voxels"]:
+            eval_data = _get_eval_voxels(
+                Y=Y, Y_pred=Y_pred, Y_info=Y_info, X_info=X_info
+            )
+            for k, v in eval_data.items():
+                eval_voxels[k].append(v)
 
     # Return list of models
-    return D
+    return pd.DataFrame.from_dict(eval_summary), eval_voxels
 
-def _get_model_name(train_name, exp, subject):
-    """ returns path/name for connectivity training model outputs
-        Args: 
-            train_name (str)
-                Name of trained model
-            exp (int)
-                Experiment number
-            subject (int)
-                Subject number
-        Returns: 
-            fpath (str)
-                full path and name to connectivity output for model training
+
+def _get_eval_summary(Y, Y_pred, Y_info, X_info):
+    """Compute evaluation, returning summary data.
+
+    Args:
+        Y (np array):
+        Y_pred (np array):
+        Y_info (pd dataframe):
+        X_info (pd dataframe):
+    Returns:
+        dict containing evaluations (R, R2, noise) averaged across voxels.
     """
-    dirs = const.Dirs(study_name=f'sc{exp}')
-    fname = f'{train_name}_s{subject:02d}.h5'
+    # initialise dictionary
+    data = {}
+
+    # Add the evaluation
+    data["R"], _ = ev.calculate_R(Y=Y, Y_pred=Y_pred)
+
+    # R between predicted and observed
+    data["R2"], _ = ev.calculate_R2(Y=Y, Y_pred=Y_pred)
+
+    # R2 between predicted and observed
+    data["noise_Y_R"], _, data["noise_Y_R2"], _ = ev.calculate_reliability(
+        Y=Y, dataframe=Y_info
+    )
+
+    # Noise ceiling for cerebellum (squared)
+    data["noise_X_R"], _, data["noise_X_R2"], _ = ev.calculate_reliability(
+        Y=Y_pred, dataframe=X_info
+    )
+
+    # # Noise ceiling for cortex (squared)
+    #     pass
+
+    return data
+
+
+def _get_eval_voxels(Y, Y_pred, Y_info, X_info):
+    """Compute evaluation on voxels.
+
+    Args:
+        Y (np array):
+        Y_pred (np array):
+        Y_info (pd dataframe):
+        X_info (pd dataframe):
+    Returns:
+        dict containing evaluations (R, R2, noise) across voxels.
+    """
+    # initialise dictionary
+    data = {}
+
+    # R between predicted and observed
+    _, data["R_vox"] = ev.calculate_R(Y=Y, Y_pred=Y_pred)
+
+    # R2 between predicted and observed
+    _, data["R2_vox"] = ev.calculate_R2(Y=Y, Y_pred=Y_pred)
+
+    # R2 between predicted and observed
+    _, data["noise_Y_R_vox"], _, data["noise_Y_R2_vox"] = ev.calculate_reliability(
+        Y=Y, dataframe=Y_info
+    )
+
+    # Noise ceiling for cerebellum (squared)
+    _, data["noise_X_R_vox"], _, data["noise_X_R2_vox"] = ev.calculate_reliability(
+        Y=Y_pred, dataframe=X_info
+    )
+
+    return data
+
+
+def _get_data(config, subj):
+    # Get the data
+    Ydata = Dataset(
+        experiment=config["eval_exp"],
+        glm=config["glm"],
+        subj_id=subj,
+        roi=config["Y_data"],
+    )
+    Y, Y_info = Ydata.get_data(
+        averaging=config["averaging"], weighting=config["weighting"]
+    )
+
+    Xdata = Dataset(
+        experiment=config["eval_exp"],
+        glm=config["glm"],
+        subj_id=subj,
+        roi=config["X_data"],
+    )
+    X, X_info = Xdata.get_data(
+        averaging=config["averaging"], weighting=config["weighting"]
+    )
+
+    return Y, Y_info, X, X_info
+
+
+def _get_model_name(train_name, exp, subj_id):
+    """returns path/name for connectivity training model outputs.
+
+    Args:
+        train_name (str): Name of trained model
+        exp (str): Experiment name
+        subj_id (str): Subject id
+    Returns:
+        fpath (str): Full path and name to connectivity output for model training.
+    """
+
+    dirs = const.Dirs(exp_name=exp)
+    fname = f"{train_name}_{subj_id}.h5"
     fpath = os.path.join(dirs.conn_train_dir, train_name, fname)
     return fpath
-    
