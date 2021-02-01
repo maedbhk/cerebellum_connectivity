@@ -12,7 +12,7 @@ behavDir        = 'data';
 imagingDir      = 'imaging_data';
 suitDir         = 'suit';
 regDir          = 'RegionOfInterest';
-connDir         = 'connModels'; % setting a different directory than in sc1sc2_connectivity
+connDir         = 'conn_models'; % setting a different directory than in sc1sc2_connectivity
 suitToolDir     = '/Users/ladan/Documents/MATLAB/suit';
 encodeDir       = 'encoding';
 beta_roiDir     = 'beta_roi';
@@ -474,9 +474,8 @@ switch what
             fprintf('\n');
         end % s (sn)
         
-    case 'PREP:MDTB:cereb:suit_betas'         % Normalize betas to SUIT space and creates 'wdBetas_UW.mat'
-        % it uses the betas univariately prewhitened in the case
-        % 'ROI:mdtb:beta_unn' for ROI: cerebellum_grey to create and
+    case 'PREP:MDTB:cereb:suit_betas'         % Normalize betas to SUIT space and creates 'beta_regions_cerebellum_suit.mat'
+        % cerebellum_grey to create and
         % reslice betas as volumes into suit space
         % Example: sc1sc2_conn_model('PREP:MDTB:cereb:suit_betas', 'experiment_num', 1, 'glm', 7)
         
