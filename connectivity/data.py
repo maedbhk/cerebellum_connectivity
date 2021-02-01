@@ -104,8 +104,9 @@ class Dataset:
             "task": self.task,
             "cond": self.cond,
         }
+        return self.info
 
-    def get_info_exemplar(self):
+    def get_info_run(self):
         """Returns info for a typical run only."""
         info = self.get_info()
         return info[info.run == 1]
@@ -127,6 +128,8 @@ class Dataset:
             self.subset = np.arange(num_reg)
         elif subset.dtype == "bool":
             self.subset = subset.nonzero()[0]
+
+        return self.subset
 
     def average(self, averaging):
         """Average the data by session, experiment, or no averaging.
@@ -184,8 +187,9 @@ class Dataset:
             data (np.array): aggregated data
             info (pandas dataframe): dataframe for the aggregated data
         """
-        # load mat file from disk
-        self.load_mat()
+        # check that mat is loaded
+        if not self.data:
+            self.load_mat()
 
         # return info for dataset
         self.get_info()

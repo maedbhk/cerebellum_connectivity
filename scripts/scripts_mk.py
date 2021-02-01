@@ -20,13 +20,14 @@ def train_ridge(log_alpha, resolution='tesselsWB162', subj_id=const.return_subjs
         config["subjects"] = subj_id
         models = run.train_models(config, save=True)
 
-        # get average cv_rmse for each model
+        # get average cv_rmse across models
         cv_rmse.append(get_best_ridge(models))
     
     # best alpha
     best_idx = np.argmin(cv_rmse)
 
     return log_alpha[best_idx]
+
 
 def get_best_ridge(models):
     cv_rmse = []

@@ -65,3 +65,21 @@ def calculate_reliability(Y, dataframe):
     R, R_vox = calculate_R(Y, Y_flip)
     R2, R2_vox = calculate_R2(Y, Y_flip)
     return R, R_vox, R2, R2_vox
+
+
+def calculate_rmse(Y, Y_pred):
+    """Calculate the root mean square error between Y and Y_pred
+
+    Args: 
+        Y (nd-array): data
+        Y_pred( (np-array): model predictions
+    Returns: 
+        rmse (scalar): root mean square error value
+        rmse_vox (1d-array): rmse value per voxel
+    """
+    res = Y - Y_pred
+    mse = np.nanmean(res ** 2, axis=0)
+    rmse = np.sqrt(np.nanmean(mse, axis=0))
+    rmse_vox = np.sqrt(mse)
+
+    return rmse, rmse_vox

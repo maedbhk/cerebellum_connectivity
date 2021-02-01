@@ -47,27 +47,12 @@ class L2regression(Ridge, ModelMixin):
         self.cv_rmse = None
         super().__init__(alpha=alpha, fit_intercept=False)
 
-    def rmse(self, Y, Y_pred):
-        self.rmse = np.sqrt(np.mean((Y - Y_pred)**2))
-        return self.rmse
-
-    def cv_rmse(self, X, Y, Y_pred):
-        model = clone(self)
-        five_fold = KFold(n_splits=5)
-        rmse_values = []
-        for tr_ind, va_ind in five_fold.split(tr):
-            # fit CV model and get RMSE
-            model.fit(X[tr_ind,:], Y[tr_ind,:])
-            rmse = model.rmse(Y[va_ind,:], Y_pred[va_ind,:])
-            rmse_values.append(rmse)
-
-        self.cv_rmse = np.mean(rmse_values)
-        return self.cv_rmse
 
     def fit(self, X, Y):
         self.scale_ = np.sqrt(np.sum(X ** 2, 0) / X.shape[0])
         Xs = X / self.scale_
         return super().fit(Xs, Y)
+
 
     def predict(self, X):
         Xs = X / self.scale_

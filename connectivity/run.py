@@ -9,6 +9,8 @@ import connectivity.model as model
 import connectivity.evaluation as ev
 import copy
 
+from sklearn.model_selection import cross_val_score
+
 from collections import defaultdict
 
 import connectivity.io as cio
@@ -64,11 +66,12 @@ def get_default_train_config():
         "glm": "glm7",  # GLM used for training data
         "train_exp": "sc1",  # Experiment used for training data
         "averaging": "sess",  # Averaging scheme for X and Y (see data.py)
-        "weighting": True,  # 0: none, 1: by regr., 2: by full matrix ????
-        "incl_inst": True,
+        "weighting": True,  # "none" "full" "diag"
+        # "incl_inst": True,
         "X_data": "tesselsWB162",
         "Y_data": "cerebellum_grey",
         "validate_model": False,
+        "cv_fold": None,
         "subjects": [
             "s01",
             "s03",
@@ -187,11 +190,11 @@ def train_models(config, save=False):
         # Fit model and get train rmse
         models[-1].fit(X, Y)
         Y_pred = models[-1].predict(X, Y)
-        models[-1].rmse(Y, Y_pred)
+        models[-1]['train_rmse'] = ev.calculate_rmse(Y, Y_pred)
 
         # get cv rmse
         if config['validate_model']:
-            models[-1].cv_rmse(X, Y, Y_pred)
+            models[-1]['cv_rmse'] = _validate_models(models[-1], X, Y, config['cv_fold'])
 
         # Save the fitted model to disk if required
         if save:
@@ -202,8 +205,20 @@ def train_models(config, save=False):
 
     return models
 
+    
+def _validate_models(model, X, Y, cv_fold):
+    
+    def rmse(model, X, Y):
+        Y_pred = model.predict(X)
+        res = Y - Y_pred
+        mse = np.nanmean(res ** 2, axis=0)
+        return np.sqrt(np.nanmean(mse, axis=0))
 
-def eval_models(config):
+    cv_rmse_all = cross_val_score(model, X, Y, scoring=rmse, cv=cv_fold)
+    return np.nanmean(cv_rmse_all)
+
+
+def test_models(config):
     """Evaluates a specific model class on X and Y data from a specific experiment for subjects listed in config.
 
     Args:
@@ -212,7 +227,7 @@ def eval_models(config):
         models (pd dataframe): evaluation of different models on the data
     """
 
-    eval_summary = defaultdict(list)
+    eval_all = defaultdict(list)
     eval_voxels = defaultdict(list)
 
     for idx, subj in enumerate(config["subjects"]):
@@ -228,39 +243,38 @@ def eval_models(config):
         )
         fitted_model = dd.io.load(fname)
 
-        # Save the fitted model to disk if required
+        # Get model predictions
         Y_pred = fitted_model.predict(X)
         if config["mode"] == "crossed":
             Y_pred = np.r_[y_pred[Y_info.sess == 2, :], Y_pred[Y_info.sess == 1, :]]
 
         # Add the subject number
-        eval_summary["subj_id"].append(subj)
+        eval_all["subj_id"].append(subj)
 
-        # Copy over all scalars or strings to eval_summary dataframe:
+        # Copy over all scalars or strings to eval_all dataframe:
         for key, value in config.items():
             if type(value) is not list:
                 # df.loc[idx, key] = value
-                eval_summary[key].append(value)
+                eval_all[key].append(value)
 
         # add evaluation (summary)
-        eval_data = _get_eval_summary(Y=Y, Y_pred=Y_pred, Y_info=Y_info, X_info=X_info)
+        eval_data = _get_eval(Y=Y, Y_pred=Y_pred, Y_info=Y_info, X_info=X_info)
         for k, v in eval_data.items():
-            eval_summary[k].append(v)
+            eval_all[k].append(v)
 
         # add evaluation (voxels)
         if config["save_voxels"]:
-            eval_data = _get_eval_voxels(
-                Y=Y, Y_pred=Y_pred, Y_info=Y_info, X_info=X_info
-            )
-            for k, v in eval_data.items():
+            for k, v in eval_data.items() if 'vox' in k:
                 eval_voxels[k].append(v)
+        else:
+            eval_all = [eval_all[k] for k in eval_all if 'vox' not in k]
 
     # Return list of models
-    return pd.DataFrame.from_dict(eval_summary), eval_voxels
+    return pd.DataFrame.from_dict(eval_all), eval_voxels
 
 
-def _get_eval_summary(Y, Y_pred, Y_info, X_info):
-    """Compute evaluation, returning summary data.
+def _get_eval(Y, Y_pred, Y_info, X_info):
+    """Compute evaluation, returning summary and voxel data.
 
     Args:
         Y (np array):
@@ -268,62 +282,29 @@ def _get_eval_summary(Y, Y_pred, Y_info, X_info):
         Y_info (pd dataframe):
         X_info (pd dataframe):
     Returns:
-        dict containing evaluations (R, R2, noise) averaged across voxels.
+        dict containing evaluations (R, R2, noise).
     """
     # initialise dictionary
     data = {}
 
     # Add the evaluation
-    data["R"], _ = ev.calculate_R(Y=Y, Y_pred=Y_pred)
+    data["R"], data["R_vox"]  = ev.calculate_R(Y=Y, Y_pred=Y_pred)
 
     # R between predicted and observed
-    data["R2"], _ = ev.calculate_R2(Y=Y, Y_pred=Y_pred)
+    data["R2"], data["R2_vox"] = ev.calculate_R2(Y=Y, Y_pred=Y_pred)
 
     # R2 between predicted and observed
-    data["noise_Y_R"], _, data["noise_Y_R2"], _ = ev.calculate_reliability(
+    data["noise_Y_R"], data["noise_Y_R_vox"], data["noise_Y_R2"], data["noise_Y_R2_vox"] = ev.calculate_reliability(
         Y=Y, dataframe=Y_info
     )
 
     # Noise ceiling for cerebellum (squared)
-    data["noise_X_R"], _, data["noise_X_R2"], _ = ev.calculate_reliability(
+    data["noise_X_R"], data["noise_X_R_vox"], data["noise_X_R2"], data["noise_X_R2_vox"] = ev.calculate_reliability(
         Y=Y_pred, dataframe=X_info
     )
 
     # # Noise ceiling for cortex (squared)
     #     pass
-
-    return data
-
-
-def _get_eval_voxels(Y, Y_pred, Y_info, X_info):
-    """Compute evaluation on voxels.
-
-    Args:
-        Y (np array):
-        Y_pred (np array):
-        Y_info (pd dataframe):
-        X_info (pd dataframe):
-    Returns:
-        dict containing evaluations (R, R2, noise) across voxels.
-    """
-    # initialise dictionary
-    data = {}
-
-    # R between predicted and observed
-    _, data["R_vox"] = ev.calculate_R(Y=Y, Y_pred=Y_pred)
-
-    # R2 between predicted and observed
-    _, data["R2_vox"] = ev.calculate_R2(Y=Y, Y_pred=Y_pred)
-
-    # R2 between predicted and observed
-    _, data["noise_Y_R_vox"], _, data["noise_Y_R2_vox"] = ev.calculate_reliability(
-        Y=Y, dataframe=Y_info
-    )
-
-    # Noise ceiling for cerebellum (squared)
-    _, data["noise_X_R_vox"], _, data["noise_X_R2_vox"] = ev.calculate_reliability(
-        Y=Y_pred, dataframe=X_info
-    )
 
     return data
 
@@ -336,6 +317,10 @@ def _get_data(config, subj):
         subj_id=subj,
         roi=config["Y_data"],
     )
+
+    # load mat
+    Ydata.load_mat()
+
     Y, Y_info = Ydata.get_data(
         averaging=config["averaging"], weighting=config["weighting"]
     )
@@ -346,6 +331,10 @@ def _get_data(config, subj):
         subj_id=subj,
         roi=config["X_data"],
     )
+
+    # load mat
+    Xdata.load_mat()
+
     X, X_info = Xdata.get_data(
         averaging=config["averaging"], weighting=config["weighting"]
     )
