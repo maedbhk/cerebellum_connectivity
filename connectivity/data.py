@@ -148,8 +148,8 @@ class Dataset:
             Y_data = np.linalg.solve(X.T @ X, X.T @ self.data)
             df = self.info[self.info.run == 1]
         elif averaging == "none":
-            df = self.info
             Y_data = self.data
+            df = self.info
         else:
             raise (NameError("averaging needs to be sess, exp, or none"))
 

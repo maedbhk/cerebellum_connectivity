@@ -193,8 +193,9 @@ def train_models(config, save=False):
         models[-1]['train_rmse'] = ev.calculate_rmse(Y, Y_pred)
 
         # get cv rmse
-        if config['validate_model']:
-            models[-1]['cv_rmse'] = _validate_models(models[-1], X, Y, config['cv_fold'])
+        if config['validate_model']: 
+            cv_rmse_all = cross_val_score(models[-1], X, Y, scoring=ev.calculate_rmse, cv=config['cv_fold'])
+            models[-1]['cv_rmse'] = np.nanmean(cv_rmse_all)
 
         # Save the fitted model to disk if required
         if save:
@@ -205,20 +206,8 @@ def train_models(config, save=False):
 
     return models
 
-    
-def _validate_models(model, X, Y, cv_fold):
-    
-    def rmse(model, X, Y):
-        Y_pred = model.predict(X)
-        res = Y - Y_pred
-        mse = np.nanmean(res ** 2, axis=0)
-        return np.sqrt(np.nanmean(mse, axis=0))
 
-    cv_rmse_all = cross_val_score(model, X, Y, scoring=rmse, cv=cv_fold)
-    return np.nanmean(cv_rmse_all)
-
-
-def test_models(config):
+def eval_models(config):
     """Evaluates a specific model class on X and Y data from a specific experiment for subjects listed in config.
 
     Args:

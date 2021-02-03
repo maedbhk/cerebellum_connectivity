@@ -80,6 +80,6 @@ def calculate_rmse(Y, Y_pred):
     res = Y - Y_pred
     mse = np.nanmean(res ** 2, axis=0)
     rmse = np.sqrt(np.nanmean(mse, axis=0))
-    rmse_vox = np.sqrt(mse)
+    # rmse_vox = np.sqrt(mse)
 
-    return rmse, rmse_vox
+    return rmse
