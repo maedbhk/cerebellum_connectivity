@@ -253,8 +253,9 @@ def eval_models(config):
 
         # add evaluation (voxels)
         if config["save_voxels"]:
-            for k, v in eval_data.items() if 'vox' in k:
-                eval_voxels[k].append(v)
+            for k, v in eval_data.items():
+                if 'vox' in k:
+                    eval_voxels[k].append(v)
         else:
             eval_all = [eval_all[k] for k in eval_all if 'vox' not in k]
 

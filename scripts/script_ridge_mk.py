@@ -30,8 +30,8 @@ def get_train_test_subjects(subj_ids, test_size=.3):
     # select test set
     test_subjs = list(sample(subj_ids, num_in_test))
     train_subjs = list([x for x in subj_ids if x not in test_subjs])
-
-	return train_subjs, test_subjs
+    
+    return train_subjs, test_subjs
 
 
 def train_ridge(log_alpha, resolution='tesselsWB162', subj_id=const.return_subjs, train_exp='sc1'):
@@ -178,10 +178,10 @@ def run(model='train', resolution='tesselsWB162'):
     for exp in range(2):
         if model=="train":
             print("training ridge model...")
-            train_ridge(log_alpha=[0,2,4,6,8,10], resolution=resolution, subj_id=train_subjs, train_exp=f'sc{exp+1}')
+            train_ridge(log_alpha=[0,2,4,6,8,10], resolution=resolution, subj_id=['s03', 's04'], train_exp=f'sc{exp+1}')
         elif model=="eval":
             print("evaluating ridge model...")
-            eval_ridge(log_alpha=[0,2,4,6,8,10], resolution=resolution, subj_id=train_subjs, train_exp=f'sc{2-exp}', eval_exp=f'sc{exp+1}')
+            eval_ridge(log_alpha=[0,2,4,6,8,10], resolution=resolution, subj_id=['s03', 's04'], train_exp=f'sc{2-exp}', eval_exp=f'sc{exp+1}')
         elif model=="generalize":
             pass
 
