@@ -78,15 +78,11 @@ target/
 # exclude data from source control by default
 /data/
 
-
 # exclude reports and figures
 /reports/
 
-# exclude data transfer script
-data_transfer.py
-
-# exclude bash scripts
-run_savio_jobs.sh
+# exclude savio scripts (Berkeley-specific)
+savio_scripts/
 
 # Mac OS-specific storage files
 .DS_Store
