@@ -56,7 +56,7 @@ class L2regression(Ridge, ModelMixin):
 
     def predict(self, X):
         Xs = X / self.scale_
-        return Xs @ self.coef_
+        return Xs @ self.coef_.T # weights need to be transposed? 
 
 
 class NNLS(BaseEstimator, ModelMixin):

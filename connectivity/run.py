@@ -5,17 +5,16 @@ import numpy as np
 import json
 import deepdish as dd
 import pandas as pd
-import connectivity.model as model
-import connectivity.evaluation as ev
 import copy
-
-from sklearn.model_selection import cross_val_score
-
 from collections import defaultdict
+from sklearn.model_selection import cross_val_score
+from sklearn.metrics import mean_squared_error
 
 import connectivity.io as cio
 from connectivity.data import Dataset
 import connectivity.constants as const
+import connectivity.model as model
+import connectivity.evaluation as ev
 
 import warnings
 
@@ -181,7 +180,7 @@ def train_models(config, save=False):
         print(f"Training model on {subj}")
 
         # get data
-        Y, Y_info, X, X_info = _get_data(config=config, subj=subj)
+        Y, Y_info, X, X_info = _get_data(config=config, exp=config['train_exp'], subj=subj)
 
         # Generate new model and put in the list
         new_model = getattr(model, config["model"])(**config["param"])
@@ -189,13 +188,14 @@ def train_models(config, save=False):
 
         # Fit model and get train rmse
         models[-1].fit(X, Y)
-        Y_pred = models[-1].predict(X, Y)
-        models[-1]['train_rmse'] = ev.calculate_rmse(Y, Y_pred)
+        Y_pred = models[-1].predict(X)
+        models[-1].train_rmse = mean_squared_error(Y, Y_pred, squared=False)
 
         # get cv rmse
         if config['validate_model']: 
-            cv_rmse_all = cross_val_score(models[-1], X, Y, scoring=ev.calculate_rmse, cv=config['cv_fold'])
-            models[-1]['cv_rmse'] = np.nanmean(cv_rmse_all)
+            cv_mse_all = cross_val_score(models[-1], X, Y, scoring='neg_mean_squared_error', cv=config['cv_fold'])*-1
+            cv_rmse_all = np.sqrt(cv_mse_all)
+            models[-1].cv_rmse = np.nanmean(cv_rmse_all)
 
         # Save the fitted model to disk if required
         if save:
@@ -224,7 +224,7 @@ def eval_models(config):
         print(f"Evaluating model on {subj}")
 
         # get data
-        Y, Y_info, X, X_info = _get_data(config=config, subj=subj)
+        Y, Y_info, X, X_info = _get_data(config=config, exp=config['eval_exp'], subj=subj)
 
         # Get the model from file
         fname = _get_model_name(
@@ -235,29 +235,34 @@ def eval_models(config):
         # Get model predictions
         Y_pred = fitted_model.predict(X)
         if config["mode"] == "crossed":
-            Y_pred = np.r_[y_pred[Y_info.sess == 2, :], Y_pred[Y_info.sess == 1, :]]
+            Y_pred = np.r_[Y_pred[Y_info.sess == 2, :], Y_pred[Y_info.sess == 1, :]]
 
-        # Add the subject number
-        eval_all["subj_id"].append(subj)
+        # get rmse
+        rmse = mean_squared_error(Y, Y_pred, squared=False)
+
+        # set up dict
+        data = {'test_rmse': rmse, 'subj_id': subj}
 
         # Copy over all scalars or strings to eval_all dataframe:
         for key, value in config.items():
             if type(value) is not list:
-                # df.loc[idx, key] = value
-                eval_all[key].append(value)
+                data.update({key: value})
 
         # add evaluation (summary)
-        eval_data = _get_eval(Y=Y, Y_pred=Y_pred, Y_info=Y_info, X_info=X_info)
-        for k, v in eval_data.items():
-            eval_all[k].append(v)
+        evals = _get_eval(Y=Y, Y_pred=Y_pred, Y_info=Y_info, X_info=X_info)
+        data.update(evals)
 
         # add evaluation (voxels)
         if config["save_voxels"]:
-            for k, v in eval_data.items():
+            for k, v in data.items():
                 if 'vox' in k:
                     eval_voxels[k].append(v)
         else:
-            eval_all = [eval_all[k] for k in eval_all if 'vox' not in k]
+            data = {k: v for k, v in data.items() if 'vox' not in k}
+
+        # append data for each subj
+        for k, v in data.items():
+            eval_all[k].append(v)
 
     # Return list of models
     return pd.DataFrame.from_dict(eval_all), eval_voxels
@@ -299,10 +304,10 @@ def _get_eval(Y, Y_pred, Y_info, X_info):
     return data
 
 
-def _get_data(config, subj):
+def _get_data(config, exp, subj):
     # Get the data
     Ydata = Dataset(
-        experiment=config["eval_exp"],
+        experiment=exp,
         glm=config["glm"],
         subj_id=subj,
         roi=config["Y_data"],
@@ -316,7 +321,7 @@ def _get_data(config, subj):
     )
 
     Xdata = Dataset(
-        experiment=config["eval_exp"],
+        experiment=exp,
         glm=config["glm"],
         subj_id=subj,
         roi=config["X_data"],
