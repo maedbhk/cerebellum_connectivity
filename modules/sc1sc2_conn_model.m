@@ -176,7 +176,7 @@ switch what
         
         for s = sn
             glmDir  = fullfile(baseDir, experiment, sprintf('GLM_firstlevel_%d', glm), subj_name{s});
-            betaDir = fullfile(baseDir, experiment, beta_roiDir, sprintf('glm%d', glm, subj_name{s}));
+            betaDir = fullfile(baseDir, experiment, beta_roiDir, sprintf('glm%d', glm), subj_name{s});
             fprintf('%s univariate normalized betas for %s \n', parcelType, subj_name{s});
             B = [];
             
@@ -210,8 +210,8 @@ switch what
                 resMS = Y{r}(end,:);
                 beta  = Y{r}(1:end-1,:); % remove resMS
 
-                B_tmp.betasNW{1, 1} = bsxfun(@rdivide,beta,sqrt(resMS));
-                B_tmp.betasUW{1, 1} = beta;
+                B_tmp.betasNW{1, 1} = beta; 
+                B_tmp.betasUW{1, 1} = bsxfun(@rdivide,beta,sqrt(resMS));
                 B_tmp.mbetasNW  = mean(B_tmp.betasNW{1},2)';
                 B_tmp.mbetasUW  = mean(B_tmp.betasUW{1},2)';
                 B_tmp.region_num    = r;
@@ -223,8 +223,8 @@ switch what
             end
             
             % save the betas
-            dircheck(fullfile(betaDir, subj_name{s}));
-            save(fullfile(betaDir, subj_name{s}, sprintf('beta_regions_%s.mat', roi_name)), 'B', '-v7.3');
+            dircheck(betaDir);
+            save(fullfile(betaDir, sprintf('beta_regions_%s.mat', roi_name)), 'B', '-v7.3');
             fprintf('\n');
         end % sn
     case 'ROI:MDTB:add_to_beta'               % creates a new structure using beta_region files.
@@ -237,7 +237,7 @@ switch what
         glm            = 7;
         %%% run 'ROI:mdtb:empty_parcel' to get oparcel.
         
-        vararginoptions(varargin, {'sn', 'experiment_num', 'glm', 'parcelType', 'oparcel', 'discardp', 'which', 'xres'});
+        vararginoptions(varargin, {'sn', 'experiment_num', 'glm', 'parcelType', 'oparcel', 'discardp', 'which'});
         
         experiment = sprintf('sc%d', experiment_num);
         
@@ -274,10 +274,10 @@ switch what
             load(fullfile(betaDir, subj_name{s}, sprintf('beta_regions_%s', parcelType)));
             
             % discarding the intercepts
-            if strcmp(parcelType, 'cerebellum_grey')
+            if length(B.betasUW) == 1 % Single region, preserve each voxel 
                 myfield = 'betasUW';
                 Y.data = B.(myfield){1}(1:end - 16, :); % discarding the intercepts
-            elseif(strcmp(parcelType, 'tesselsWB162'))||(strcmp(parcelType, 'tesselsWB362'))||strcmp(parcelType, 'tesselsWB642')
+            else % Many regions - take the mean of each region 
                 myfield = 'mbetasUW';
                 tmp = B.(myfield)';
                 Y.data = tmp(1:end - 16, :); % discarding the intercepts
