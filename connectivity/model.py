@@ -46,3 +46,24 @@ class L2regression(Ridge,ModelMixin):
     def predict(self,X):
         Xs = X / np.sqrt(np.sum(X**2,0)/X.shape[0]) # Control scaling 
         return super().predict(Xs)
+
+class PLSRegress(PLSRegression, ModelMixin):
+    """
+        PLS regression connectivity model
+        for more info:
+            https://ogrisel.github.io/scikit-learn.org/sklearn-tutorial/modules/generated/sklearn.pls.PLSRegression.html
+            from sklearn.pls import PLSCanonical, PLSRegression, CCA
+            https://scikit-learn.org/stable/modules/generated/sklearn.cross_decomposition.PLSRegression.html
+            pls2_mod = PLSRegression(n_components = N, algorithm = method)
+    """
+
+    def __init__(self, n_components = 1):
+        super().__init__(n_components =n_components)
+        
+    def fit(self, X, Y):
+        Xs = X / np.sqrt(np.sum(X**2,0)/X.shape[0]) # Control scaling 
+        return super().fit(Xs,Y)
+
+    def predict(self, X):
+        Xs = X / np.sqrt(np.sum(X**2,0)/X.shape[0]) # Control scaling 
+        return super().predict(Xs)
