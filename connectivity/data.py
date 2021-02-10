@@ -124,8 +124,10 @@ class Dataset:
             data_info (pandas dataframe): dataframe for the aggregated data
         """
         # check that mat is loaded
-        if not hasattr(self, 'data'):
-            self.load_mat()
+        try: 
+            hasattr(self, 'data')
+        except ValueError:
+            print("Please run load_mat before returning data")
 
         num_runs = max(self.run)
         num_reg = sum(self.run==1)
@@ -169,5 +171,9 @@ class Dataset:
             for r in np.unique(data_info['run']): # WEight each run/session seperately 
                 idx = (data_info.run == r)
                 data[idx,:] = XXs @ data[idx,:] 
+
+        # there are missing values in cerebellum_suit, which causes problems later on in fitting model.
+        if self.roi=="cerebellum_suit":
+            data = np.nan_to_num(data)
 
         return data, data_info

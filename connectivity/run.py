@@ -36,20 +36,6 @@ np.seterr(divide="ignore", invalid="ignore")
 """
 
 
-def delete_conn_files():
-    """delete any pre-existing connectivity output."""
-    for exp in ["sc1", "sc2"]:
-        dirs = const.Dirs(study_name=exp, glm=7)
-        filelists = [
-            glob.glob(os.path.join(dirs.conn_train_dir, "*")),
-            glob.glob(os.path.join(dirs.conn_eval_dir, "*")),
-        ]
-        for filelist in filelists:
-            for f in filelist:
-                os.remove(f)
-    print("deleting training and results data")
-
-
 def get_default_train_config():
     """Defaults for training model(s).
 
@@ -146,7 +132,7 @@ def get_default_eval_config():
             "s31",
         ],
         "mode": "crossed",
-        "eval_splitby": None,
+        "splitby": None,
         "save_voxels": False,
     }
     return config
@@ -164,16 +150,12 @@ def train_models(config, save=False):
 
     dirs = const.Dirs(exp_name=config["train_exp"], glm=config["glm"])
     models = []
+    train_all = defaultdict(list)
     # Store the training configuration in model directory
     if save:
-        fpath = dirs.conn_train_dir / config["name"]
-        if not os.path.exists(fpath):
-            print(f"creating {fpath}")
-            os.makedirs(fpath)
-
-        cname = fpath / "train_config.json"
-        with open(cname, "w") as fp:
-            json.dump(config, fp)
+        fpath = os.path.join(dirs.conn_train_dir, config["name"])
+        cio.make_dirs(fpath)
+        cio.save_dict_as_JSON(os.path.join(fpath, "train_config.json"), config)
 
     # Loop over subjects and train
     for subj in config["subjects"]:
@@ -186,16 +168,29 @@ def train_models(config, save=False):
         new_model = getattr(model, config["model"])(**config["param"])
         models.append(new_model)
 
-        # Fit model and get train rmse
-        models[-1].fit(X, Y)
-        Y_pred = models[-1].predict(X)
-        models[-1].train_rmse = mean_squared_error(Y, Y_pred, squared=False)
+        # cross the sessions
+        if config['mode']=="crossed":
+            Y = np.r_[Y[Y_info.sess == 2, :], Y[Y_info.sess == 1, :]]
 
-        # get cv rmse
-        if config['validate_model']: 
-            cv_mse_all = cross_val_score(models[-1], X, Y, scoring='neg_mean_squared_error', cv=config['cv_fold'])*-1
-            cv_rmse_all = np.sqrt(cv_mse_all)
-            models[-1].cv_rmse = np.nanmean(cv_rmse_all)
+        # Fit model, get train and validate metrics
+        models[-1].fit(X, Y)
+        models[-1].rmse_train, models[-1].R_train = train_metrics(models[-1], X, Y)
+        models[-1].rmse_cv, models[-1].R_cv = validate_metrics(models[-1], X, Y, config['cv_fold'])
+
+        # collect rmse for each subject and each model
+        data = {'subj_id': subj, 
+                'rmse_train': models[-1].rmse_train, 
+                'R_train': models[-1].R_train,
+                'rmse_cv': models[-1].rmse_cv, 
+                'R_cv': models[-1].R_cv}
+
+        # Copy over all scalars or strings from config to eval dict:
+        for key, value in config.items():
+            if not isinstance(value, (list, dict)):
+                data.update({key: value})
+
+        for k, v in data.items():
+            train_all[k].append(v)
 
         # Save the fitted model to disk if required
         if save:
@@ -204,7 +199,30 @@ def train_models(config, save=False):
             )
             dd.io.save(fname, models[-1], compression=None)
 
-    return models
+    return models, pd.DataFrame.from_dict(train_all)
+
+
+def train_metrics(model, X, Y):
+    Y_pred = model.predict(X)
+
+    # get train rmse and R
+    rmse_train = mean_squared_error(Y, Y_pred, squared=False)
+    R_train, _  = ev.calculate_R(Y, Y_pred)
+
+    return rmse_train, R_train
+
+
+def validate_metrics(model, X, Y, cv_fold):
+    # get model predictions 
+    Y_pred = model.predict(X)
+
+    # get cv rmse and R
+    rmse_cv_all = np.sqrt(cross_val_score(model, X, Y, scoring='neg_mean_squared_error', cv=cv_fold)*-1)
+    rmse_cv = np.nanmean(rmse_cv_all)
+    r_cv_all = cross_val_score(model, X, Y, scoring=ev.calculate_R_cv, cv=cv_fold)
+    R_cv = np.nanmean(r_cv_all)
+
+    return rmse_cv, R_cv
 
 
 def eval_models(config):
@@ -241,7 +259,7 @@ def eval_models(config):
         rmse = mean_squared_error(Y, Y_pred, squared=False)
 
         # set up dict
-        data = {'test_rmse': rmse, 'subj_id': subj}
+        data = {'rmse_eval': rmse, 'subj_id': subj}
 
         # Copy over all scalars or strings to eval_all dataframe:
         for key, value in config.items():
@@ -283,7 +301,7 @@ def _get_eval(Y, Y_pred, Y_info, X_info):
     data = {}
 
     # Add the evaluation
-    data["R"], data["R_vox"]  = ev.calculate_R(Y=Y, Y_pred=Y_pred)
+    data["R_eval"], data["R_vox"]  = ev.calculate_R(Y=Y, Y_pred=Y_pred)
 
     # R between predicted and observed
     data["R2"], data["R2_vox"] = ev.calculate_R2(Y=Y, Y_pred=Y_pred)

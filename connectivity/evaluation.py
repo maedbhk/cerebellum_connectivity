@@ -26,6 +26,17 @@ def calculate_R(Y, Y_pred):
     return R, R_vox
 
 
+def calculate_R_cv(model, X, Y):
+    Y_pred = model.predict(X)
+
+    SYP = np.nansum(Y * Y_pred, axis=0)
+    SPP = np.nansum(Y_pred * Y_pred, axis=0)
+    SST = np.sum(Y ** 2, axis=0)  # use np.nanmean(Y) here?
+
+    R = np.nansum(SYP) / np.sqrt(np.nansum(SST) * np.nansum(SPP))
+    return R
+    
+
 def calculate_R2(Y, Y_pred):
     """Calculates squared correlation between Y and Y_pred without subtracting the mean.
     Args:

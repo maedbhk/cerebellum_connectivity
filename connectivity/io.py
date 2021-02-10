@@ -7,6 +7,7 @@ import deepdish as dd
 import shutil
 import json
 import nibabel as nib
+import os
 
 """General purpose module for loading and saving data.
 
@@ -106,11 +107,28 @@ def convert_to_dataframe(file_obj, cols):
     return dataframe
 
 
-def save_to_nifti():
-    # img = nifti obj
+def save_nifti_obj(nib_obj, fpath):
+    """ saves nib obj to nifti file
+        Args: 
+            nib_obj (Niimg-like object): contains vol data in nib obj
+            fpath (str): full path to nib_obj
+        Returns: 
+            saves nifti file to fpath
+    """
 
-    img.set_filename(fpath)
-    nib.save(img, fpath)  # save to file
+    nib.save(nib_obj, fpath)
+    print(f'saved {fpath}')
+
+
+def make_nifti_obj(vol_data, affine_mat):
+    """ makes nifti obj 
+        Args: 
+            vol_data (numpy array): data in vol space (xyz)
+            affine_mat (numpy array): affine transformation matrix
+        Returns: 
+            Nib Obj
+    """
+    return nib.Nifti1Image(vol_data, affine_mat)
 
 
 def _convertobj(file_obj, key):
@@ -118,3 +136,9 @@ def _convertobj(file_obj, key):
     dataset = file_obj[key]
     tostring = lambda obj: "".join(chr(i) for i in obj[:])
     return [tostring(file_obj[val]) for val in dataset[()].flatten()]
+
+
+def make_dirs(fpath):
+    if not os.path.exists(fpath):
+        print(f"creating {fpath}")
+        os.makedirs(fpath)
