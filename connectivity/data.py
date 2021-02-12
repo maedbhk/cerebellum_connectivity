@@ -172,7 +172,7 @@ class Dataset:
                 idx = (data_info.run == r)
                 data[idx,:] = XXs @ data[idx,:] 
 
-        # there are missing values in cerebellum_suit, which causes problems later on in fitting model.
+        # there are NaN values in cerebellum_suit, which causes problems later on in fitting model.
         if self.roi=="cerebellum_suit":
             data = np.nan_to_num(data)
 

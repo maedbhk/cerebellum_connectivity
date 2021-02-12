@@ -146,6 +146,7 @@ def train_models(config, save=False):
         save (bool): Optional; Save fitted models automatically to disk.
     Returns:
         models (list): list of trained models for subjects listed in config.
+        train_all (pd dataframe): dataframe containing 
     """
 
     dirs = const.Dirs(exp_name=config["train_exp"], glm=config["glm"])

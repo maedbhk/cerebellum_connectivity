@@ -2,6 +2,10 @@ import os
 import pandas as pd
 import numpy as np
 import seaborn as sns
+import re
+import glob
+import deepdish as dd
+from collections import defaultdict
 import matplotlib.pyplot as plt
 
 import connectivity.constants as const 
@@ -92,3 +96,46 @@ def plot_eval_predictions(dataframe, best_alpha=None, hue=None):
     plt.ylabel('R', fontsize=20);
     plt.xticks([0,1,2], ['noise ceiling (data)', 'noise ceiling (model)', 'model predictions'], rotation ='45')
     plt.legend(fontsize=15)
+
+
+def get_train_weights(model_name='ridge_tesselsWB162_alpha_6_uncrossed'):
+
+    data_dict = defaultdict(list)
+    for exp in ['sc1', 'sc2']:
+        
+        dirs = const.Dirs(exp_name=exp)
+        trained_models = glob.glob(os.path.join(dirs.conn_train_dir, model_name, '*.h5'))
+
+        for fname in trained_models:
+
+            # Get the model from file
+            fitted_model = dd.io.load(fname)
+            
+            regex = r'_(s\d+).'
+
+            subj = re.findall(regex, fname)[0]
+            weights = np.nanmean(fitted_model.coef_, 0)
+
+            data = {'ROI': np.arange(1,len(weights)+1),
+                    'weights': weights,
+                    'subj': [subj]*len(weights),
+                    'exp': [exp]*len(weights)}
+            
+            # append data for each subj
+            for k, v in data.items():
+                data_dict[k].extend(v)
+            
+    return pd.DataFrame.from_dict(data_dict)
+
+
+def plot_train_weights(dataframe, hue=None):
+    plt.figure(figsize=(8,8))
+
+    sns.lineplot(x='ROI', y='weights', hue=hue, data=dataframe, ci=None)
+
+    plt.axhline(linewidth=2, color='r')
+    plt.title('Cortical weights averaged across subjects');
+    plt.tick_params(axis='both', which='major', labelsize=15)
+    plt.xlabel('ROI', fontsize=20)
+    plt.ylabel('Weights', fontsize=20);
+
