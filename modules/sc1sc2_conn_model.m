@@ -5,14 +5,14 @@ function [ varargout ] = sc1sc2_conn_model( what, varargin )
 %==========================================================================
 % setting directories
 % baseDir         = '/Volumes/MotorControl/data/super_cerebellum_new';
-baseDir         = '/Users/ladan/Documents/Project-Cerebellum/Cerebellum_Data'; 
+baseDir         = '/Users/ladan/Documents/Project-Cerebellum/Cerebellum_Data';
 baseDir         = '/srv/diedrichsen/data/super_cerebellum';
 wbDir           = fullfile(baseDir,'sc1','surfaceWB');
 behavDir        = 'data';
 imagingDir      = 'imaging_data';
 suitDir         = 'suit';
 regDir          = 'RegionOfInterest';
-connDir         = 'connModels'; % setting a different directory than in sc1sc2_connectivity
+connDir         = 'conn_models'; % setting a different directory than in sc1sc2_connectivity
 suitToolDir     = '/Users/ladan/Documents/MATLAB/suit';
 encodeDir       = 'encoding';
 beta_roiDir     = 'beta_roi';
@@ -32,116 +32,37 @@ hemI    = {'L', 'R'}; % left and right hemisphere
 hemName = {'CortexLeft', 'CortexRight'};
 
 %==========================================================================
-% variables 
+% variables
 runLst  = 1:16;    %% run numbers to use in GLM
 % ntp     = 598;     %% number of time points after eliminating the dummy scans
 
 switch what
-    case 'CONN:MDTB:text_file'                % Creates a text file like sc1_sc2_taskConds.txt
-        % this case uses one subjects SPM_info and sc1_sc2_taskConds.txt or
-        % sc1_sc2_taskConds_GLM7.txt to create a new text file with the
-        % instructions data as well.
-        % Example: sc1sc2_conn_model('CONN:MDTB:text_file' );
-        
-        sn   = 2; % the subject that will be used to create the text file
-        glm  = 7; % glmNum
-        irun = 1; % data for this run will be used
-        
-        % loading sc1_sc2_taskConds.txt to identify the shared
-        % conditions/tasks
-        D = dload(fullfile(baseDir, 'sc1_sc2_taskConds_GLM7.txt'));
-        
-        % SPM_info s
-        S = [];
-        for ex = [1, 2]
-            glmDir = fullfile(baseDir, sprintf('sc%d', ex), sprintf('GLM_firstlevel_%d', glm), subj_name{sn});
-            
-            % load SPM_info
-            T = load(fullfile(glmDir, 'SPM_info.mat'));
-
-            % get the data for one run: run 1
-            Ttemp = getrow(T, T.run == irun);
-            
-            % finding common conditions/tasks
-            commons = D.condNames(D.overlap == 1); % getting the common tasks
-            matchs  = double(cell2mat(cellfun(@(x) ismember(x, commons), Ttemp.CN, 'UniformOutput', 0)));
-            
-            % setting the overlap flag = 1 for instructions of the common
-            % tasks
-            i = find(matchs == 1);
-            i = i-1;
-            
-            matchs(i) = 1;
-
-            % create a new field with overlap flag.
-            Ttemp.overlap = matchs;
-            
-            % create a new field with the studyNum specified
-            Ttemp.StudyNum = ex.*ones(length(Ttemp.cond), 1);
-            
-            % create new fields for taskNumUni and condNumUni
-            % initializing:
-            Ttemp.condNumUni = zeros(length(Ttemp.cond), 1);
-            Ttemp.taskNumUni = zeros(length(Ttemp.task), 1);
-            if ex == 1
-                Ttemp.condNumUni = Ttemp.cond;
-                Ttemp.taskNumUni = Ttemp.task;
-            elseif ex == 2
-                Ttemp.condNumUni(Ttemp.inst == 0) = Ttemp.cond((Ttemp.inst == 0)) + 29;
-                Ttemp.taskNumUni(Ttemp.inst == 0) = Ttemp.task((Ttemp.inst == 0)) + 17;
+    case 'ROI:MDTB:define_suit_group'               % Defines group suit ROI
+        cd(fullfile(baseDir,'sc1','suit','anatomicals'));
+        spmj_resample('cerebellarGreySUIT_corrected.nii','cerebellarGreySUIT3mm.nii',2/3); % REssample to 3mm
+        R{1}.type  = 'image';
+        R{1}.file  = 'cerebellarGreySUIT3mm.nii';
+        R{1}.name  = sprintf('cerebellum_suit');
+        R{1}.threshold = 0.25;
+        R=region_calcregions(R);
+        save(fullfile(baseDir,'sc1','RegionOfInterest','data','regions_cerebellum_suit.mat'),'R');
+    case 'ROI:MDTB:define_suit'  % Defines individual regions from the suit ROI
+        sn = returnSubjs;
+        saveasimg = 0; % Automatixally save the ROI as an image?
+        vararginoptions(varargin, {'sn','saveasimg'});
+        load(fullfile(baseDir,'sc1','RegionOfInterest','data','regions_cerebellum_suit.mat'));
+        for s=sn
+            suitDir=fullfile(baseDir,'sc1','suit','anatomicals',subj_name{s});
+            [defs,mat]=spmdefs_get_dartel(fullfile(suitDir,'u_a_c_anatomical_seg1.nii'),fullfile(suitDir,'Affine_c_anatomical_seg1.mat'));
+            % Deform the group region
+            [R{1}.data(:,1),R{1}.data(:,2),R{1}.data(:,3)]=spmdefs_transform(defs,mat,R{1}.data(:,1),R{1}.data(:,2),R{1}.data(:,3));
+            save(fullfile(baseDir,'sc1','RegionOfInterest','data',subj_name{s},'regions_cerebellum_suit.mat'),'R');
+            if (saveasimg)
+                V=spm_vol(fullfile(baseDir,'sc1','imaging_data',subj_name{s},'rmeanepi.nii'));
+                name = fullfile(baseDir,'sc1','RegionOfInterest','data',subj_name{s},'regions_cerebellum_suit.nii');
+                region_saveasimg(R{1},V,'name',name);
             end
-            
-            % filling in trialType and duration
-            % initializing with the values for the instructions
-            Ttemp.trialType = zeros(length(Ttemp.cond), 1);
-            Ttemp.duration  = 5.*ones(length(Ttemp.cond), 1);
-            
-            Ttemp.trialType(Ttemp.inst == 0) = D.trialType(D.StudyNum == ex & D.condNum ~= 0);
-            Ttemp.duration(Ttemp.inst == 0)  = D.duration(D.StudyNum == ex & D.condNum ~= 0);
-            
-            S = addstruct(S, Ttemp);
-            
-            clear T Ttemp commons Matchs
         end
-        
-        % removing unnecessary fields
-        S = rmfield(S, 'SN');
-        S = rmfield(S, 'run');
-        S = rmfield(S, 'sess');
-        S = rmfield(S, 'instime');
-        S = rmfield(S, 'instOrder');
-        S = rmfield(S, 'taskName_before');
-        S = rmfield(S, 'taskName_after');
-        
-        % Changing some fields' names
-        S.condName   = S.CN;
-        S.taskName   = S.TN;
-        S.condNum    = S.cond;
-        S.taskNum    = S.task;
-        
-        S = rmfield(S, 'CN');
-        S = rmfield(S, 'TN');
-        S = rmfield(S, 'cond');
-        S = rmfield(S, 'task');
-        
-        % reorder fields using a reference structure variable S2
-        S2.StudyNum   = 0;
-        S2.taskNum    = 0;
-        S2.taskNumUni = 0;
-        S2.condNum    = 0;
-        S2.condNumUni = 0;
-        S2.taskName   = {};
-        S2.condName   = {};
-        S2.overlap    = 0;
-        S2.trialType  = 0;
-        S2.duration   = 0;
-        S2.inst       = 0;
-        
-        S = orderfields(S,S2);
-
-        filename = fullfile(baseDir, 'sc1_sc2_taskConds_conn.txt');
-        dsave(filename, S);
-    
     case 'ROI:MDTB:define'                    % Create region files
         % defines the cortical ROIs using atlases' workbench gifti files for each subject
         % For the cerebellar parcels, you may need to run
@@ -160,17 +81,17 @@ switch what
         experiment = sprintf('sc%d', experiment_num);
         
         % setting glm directory
-%         glmDir = fullfile(baseDir, experiment, sprintf('GLM_firstlevel_%d', glm));
+        %         glmDir = fullfile(baseDir, experiment, sprintf('GLM_firstlevel_%d', glm));
         surfDir = fullfile(baseDir, 'sc1', sprintf('fs_LR_%d', atlas_res)); %% the directory where the atlas is located
         
         for s = sn
             fprintf('Defining %s for %s \n', parcelType, subj_name{s})
             R = []; %% initializing the R variable which will contain the data for the subject's ROI
             
-%             mask = fullfile(glmDir, subj_name{s}, 'mask.nii');
+            %             mask = fullfile(glmDir, subj_name{s}, 'mask.nii');
             mask = fullfile(baseDir, 'sc1', regDir,'data',subj_name{s}, 'cortical_mask_grey_corr.nii');
             
-%             dircheck(fullfile(baseDir, experiment,regDir,'data',subj_name{s}));
+            %             dircheck(fullfile(baseDir, experiment,regDir,'data',subj_name{s}));
             
             if ismember(parcelType, corticalParcels)
                 idx       = 1;  %% parcel index
@@ -203,28 +124,28 @@ switch what
                     R = region_calcregions(R);
                 end % h (hemi)
             elseif ismember(parcelType, cerebellarParcels)
-                    parcelDir  = fullfile(suitToolDir, 'atlasesSUIT'); %% directory where the nifti image is stored
-                    
-                    switch parcelType
-                        case 'Buckner_7'
-                            CV          = spm_vol(fullfile(parcelDir, sprintf('%sNetworks.nii', parcelType)));
-                        case 'Buckner_17'
-                            CV          = spm_vol(fullfile(parcelDir, sprintf('%sNetworks.nii', parcelType)));
-                        case 'Cerebellum_cole'
-                            CV          = spm_vol(fullfile(parcelDir, sprintf('%s.nii', parcelType)));
-                    end % switch parcelType for cerebellum
-                    CX          = spm_read_vols(CV);
-                    nparcel     = length(unique(CX)) - 1; % 0 will also be discarded
-                    
-                    for r = 1:nparcel
-                        file = fullfile(baseDir, experiment, suitDir, 'anatomicals', subj_name{s}, sprintf('iw_%sNetworks_u_a_c_anatomical_seg1.nii', parcelType));
-                        R{r}.type  = 'roi_image';
-                        R{r}.file  = file;
-                        R{r}.name  = sprintf('cereb_parcel-%0.2d', r);
-                        R{r}.value = r;
-%                         R{r}.image = mask;
-                    end % i(regions/parcels)
-                    R = region_calcregions(R);
+                parcelDir  = fullfile(suitToolDir, 'atlasesSUIT'); %% directory where the nifti image is stored
+                
+                switch parcelType
+                    case 'Buckner_7'
+                        CV          = spm_vol(fullfile(parcelDir, sprintf('%sNetworks.nii', parcelType)));
+                    case 'Buckner_17'
+                        CV          = spm_vol(fullfile(parcelDir, sprintf('%sNetworks.nii', parcelType)));
+                    case 'Cerebellum_cole'
+                        CV          = spm_vol(fullfile(parcelDir, sprintf('%s.nii', parcelType)));
+                end % switch parcelType for cerebellum
+                CX          = spm_read_vols(CV);
+                nparcel     = length(unique(CX)) - 1; % 0 will also be discarded
+                
+                for r = 1:nparcel
+                    file = fullfile(baseDir, experiment, suitDir, 'anatomicals', subj_name{s}, sprintf('iw_%sNetworks_u_a_c_anatomical_seg1.nii', parcelType));
+                    R{r}.type  = 'roi_image';
+                    R{r}.file  = file;
+                    R{r}.name  = sprintf('cereb_parcel-%0.2d', r);
+                    R{r}.value = r;
+                    %                         R{r}.image = mask;
+                end % i(regions/parcels)
+                R = region_calcregions(R);
             end % cortex or cerebellum
             
             if strcmp(parcelType, 'tesselsWB')
@@ -236,179 +157,77 @@ switch what
             save(fullfile(baseDir, 'sc1', regDir, 'data', subj_name{s}, roi_name),'R', '-v7.3');
             fprintf('\n');
         end % sn (subject)
-    case 'ROI:MDTB:beta_unn'                  % Calculate BetaUW for regions
+    case 'ROI:MDTB:beta_unn'
+        % Calculate BetaUW for regions
         % univariately normalizes beta values and saves both the normalized
-        % and non-normalized beta values in a new structure. The case for
-        % time series extraction only saves the non-normalized beta values.
-        % for sc1, there are 88 beta values per subject. The normalization
-        % method is 'runwise'.
-        % Example: sc1sc2_conn_model('ROI:MDTB:beta_unn', 'experiment_num', 1, 'glm', 7, 'discardp', 0, 'parcelType', 'tesselsWB', 'xres', 162, 'which', 'cond', 'sn');
-        
+        % and non-normalized beta values in a new structure.
+        % Changed this code to directly work on the beta images
+        % for sc1, there are 88 beta values per subject.
         sn             = returnSubjs;
         experiment_num = 1;
-        parcelType     = 'tesselsWB';  %% other options are 'Buckner_17', 'yeo_7WB', and 'yeo_17WB'
-        xres           = 162;          %% only for tessselsWB:options: 162, 362, 642, 1002, 1442
+        parcelType     = 'tesselsWB162';  %% other options are 'cerebellum_suit', 'yeo_7WB', and 'yeo_17WB'
         glm            = 7;
-        oparcel        = 1;           %% the parcel that will be omited due to the fact that it was empty in some of the subjects
-        %%% run 'ROI:mdtb:empty_parcel' to get oparcel.
-        discardp       = 0;           %% set this flag to 1 if you want to omit a parcel and 0 otherwise.
-        which          = 'cond';      %% can be set to 'task' or 'cond'
         
         vararginoptions(varargin, {'sn', 'experiment_num', 'glm', 'parcelType', 'oparcel', 'discardp', 'which', 'xres'});
         
         experiment = sprintf('sc%d', experiment_num);
         
         % setting directories
-        glmDir  = fullfile(baseDir, experiment, sprintf('GLM_firstlevel_%d', glm));
-        betaDir = fullfile(baseDir, experiment, beta_roiDir, sprintf('glm%d', glm));
-        dircheck(betaDir); % beta values for each parcelType is saved here
-        
-        if ismember(parcelType, corticalParcels) % the parcelType is from cortex
-            structure_cc = {'cortex'};
-        elseif ismember(parcelType, cerebellarParcels) % the parcelType is from cerebellum
-            structure_cc = {'cerebellum'};
-        end % a cortical parcelType or a cerebellar parcelType?
         
         for s = sn
+            glmDir  = fullfile(baseDir, experiment, sprintf('GLM_firstlevel_%d', glm), subj_name{s});
+            betaDir = fullfile(baseDir, experiment, beta_roiDir, sprintf('glm%d', glm), subj_name{s});
             fprintf('%s univariate normalized betas for %s \n', parcelType, subj_name{s});
             B = [];
             
             % load in SPM_info to get the info for the tasks and
             % condditions
-            T           = load(fullfile(glmDir, subj_name{s}, 'SPM_info.mat'));
-            
-            % checking if temporal derivative regressors were included in
-            % the glm or not. Here, they are thrown away! if they are
-            % included
-            if isfield(T, 'derive')    % derivatives were included
-                T_rd        = getrow(T, T.deriv == 0); %% removing the derivative regressors
-                indd        = T.deriv == 0;
-            elseif ~isfield(T, 'deriv') % derivatives were not included
-                T_rd = T;
-                indd = 1:length(T.(which));
-            end % is deriv a field or not?
-            
-            nregressors = length(T_rd.(which))/(length(runLst)); % number of regressors (deriv and non-deriv) in a run
-            
+            T           = load(fullfile(glmDir, 'SPM_info.mat'));
             
             % load in spm file
             % Checks if SPM_light exists. Loads it if its exists, otherwise
             % the bigger SPM.mat file will be loaded
-            if exist(fullfile(glmDir, subj_name{s}, 'SPM_light.mat'), 'file')
-                load(fullfile(glmDir, subj_name{s}, 'SPM_light.mat'));
+            if exist(fullfile(glmDir, 'SPM_light.mat'), 'file')
+                load(fullfile(glmDir, 'SPM_light.mat'));
             else
-                load(fullfile(glmDir, subj_name{s}, 'SPM.mat'));
+                load(fullfile(glmDir, 'SPM.mat'));
             end
             
+            
             % load in ROI file
-            if strcmp(parcelType, 'tesselsWB')
-                roi_name = sprintf('regions_%s%d.mat', parcelType, xres);
-            else
-                roi_name = sprintf('regions_%s%d.mat', parcelType);
-            end
+            roi_name=sprintf('regions_%s.mat',parcelType);
             load(fullfile(baseDir, 'sc1', regDir, 'data', subj_name{s}, roi_name));
             
             % Get the raw data files
-            V=SPM.xY.VY;
-            
+            V=SPM.Vbeta;
+            V(end+1)=SPM.VResMS;
+            cd(glmDir);
             tic;
-            Y = region_getdata(V,R);  % Data is N x P
+            Y = region_getdata(V,R,'interp',1,'ignore_nan',1);  % Data is N x P
+            B=[];
             for r = 1:numel(R) % R is the output 'regions' structure from 'ROI_define'
                 % Get betas (univariately prewhitened)
-                fprintf('beta values for region %0.2d\n', r);
-                
-                switch discardp
-                    case 0 % don't want to discard any parcel
-                        tic;
-                        [~,resMS,~,beta_hat,~,~] = rsa.spm.noiseNormalizeBeta(Y{r},SPM,'normmode','overall');
-%                         [u_hat,resMS,Sw_hat,beta_hat,shrinkage,trRR] = rsa.spm.noiseNormalizeBeta(Y{r},SPM,'normmode','overall');
-%                         fprintf('beta UW for %s %0.2d took %f\n', subj_name{s}, r, toc);
-                    case 1 % want to discard the parcel that is empty and is identified by oparcel
-                        if r ~= oparcel
-                            [~,resMS,~,beta_hat,~,~] = rsa.spm.noiseNormalizeBeta(Y{r},SPM,'normmode','runwise');
-                        else
-                            resMS    = [];
-                            beta_hat = [];
-                        end
-                end % switch discardp
-                
-                % option to include empty betasUW matrix (no betas for some
-                % ROIs for some subjects)
-                if isempty(beta_hat)
-                    %                     betasUW = zeros(size(beta_hat,1),1);
-                    
-                    B_tmp.betasNW{1, 1} = 0;
-                    B_tmp.betasUW{1, 1} = 0;
-                    B_tmp.mbetasNW      = zeros(1, size(SPM.xX.X, 2));
-                    B_tmp.mbetasUW      = zeros(1, size(SPM.xX.X, 2));
-                    B_tmp.mrbetasNW{1, 1} = 0;
-                    B_tmp.mrbetasUW{1, 1} = 0;
-                    %                     B_tmp.mrmbetasNW = 0;
-                    %                     B_tmp.mrmbetasUW = 0;
-                else
-                    betasUW = bsxfun(@rdivide,beta_hat,sqrt(resMS)); % univariate noise normalisation
-                    B_tmp.betasNW{1, 1} = beta_hat;
-                    B_tmp.betasUW{1, 1} = betasUW;
-                    B_tmp.mbetasNW      = mean(beta_hat, 2)';
-                    B_tmp.mbetasUW      = mean(betasUW, 2)';
-                    
-                    % calculate the mean beta across runs
-                    %%% for all the voxels in the parcel
-                    %%%% remove the intercepts
-                    beta_hat_ri = beta_hat(1:end - length(runLst), :);
-                    betasUW_ri  = betasUW(1:end - length(runLst), :);
-                    
-                    beta_hat_ri_rd = beta_hat_ri(indd, :)';
-                    betasUW_ri_rd  = betasUW_ri(indd, :)';
-                    
-                    nvox = size(beta_hat, 2); % number of voxels in a parcel.
-                    beta_hat_ri_reshaped = reshape(beta_hat_ri_rd, [nvox, nregressors, length(runLst)]);
-                    betasUW_ri_reshaped  = reshape(betasUW_ri_rd, [nvox, nregressors, length(runLst)]);
-                    
-                    mr_beta_hat_ri_reshaped = mean(beta_hat_ri_reshaped, 3);
-                    mr_betasUW_ri_reshaped  = mean(betasUW_ri_reshaped, 3);
-                    
-                    B_tmp.mrbetasNW{1, 1} = mr_beta_hat_ri_reshaped;
-                    B_tmp.mrbetasUW{1, 1} = mr_betasUW_ri_reshaped;
-                    
-                    %                     %%% for the mean beta in a parcel
-                    %                     B_tmp.mrmbetasNW = mean(mr_beta_hat_ri_reshaped, 1);
-                    %                     B_tmp.mrmbetasUW = mean(mr_betasUW_ri_reshaped, 1);
-                end
-                
+                resMS = Y{r}(end,:);
+                beta  = Y{r}(1:end-1,:); % remove resMS
+
+                B_tmp.betasNW{1, 1} = beta; 
+                B_tmp.betasUW{1, 1} = bsxfun(@rdivide,beta,sqrt(resMS));
+                B_tmp.mbetasNW  = mean(B_tmp.betasNW{1},2)';
+                B_tmp.mbetasUW  = mean(B_tmp.betasUW{1},2)';
                 B_tmp.region_num    = r;
                 B_tmp.region_name   = {R{r}.name};
                 B_tmp.SN            = s;
-                B_tmp.structure_cc  = structure_cc; %% is the structure from cortex or cerebellum?
-                
-%                 % here, I will be adding task and cond info from SPM_info
-%                 % to the beta_region file. This would make things alot
-%                 % easier for future analysis
-%                 %%% SPM info file has 16 rows less than beta region. Those
-%                 %%% 16 rows correspond to betas for intercepts
-%                 B_tmp.run  = T.run;
-%                 B_tmp.sess = T.sess;
-%                 B_tmp.CN   = T.CN;
-%                 B_tmp.TN   = T.TN;
-%                 B_tmp.cond = T.cond;
-%                 B_tmp.task = T.task;
-%                 B_tmp.inst = T.inst;
                 
                 B = addstruct(B, B_tmp);
-            end % R (regions)
-            if strcmp(parcelType, 'tesselsWB')
-                % tesselsWB has different resolutions
-                roi_name = sprintf('tesselsWB%d', xres);
-            else
                 roi_name = parcelType;
             end
             
             % save the betas
-            dircheck(fullfile(betaDir, subj_name{s}));
-            save(fullfile(betaDir, subj_name{s}, sprintf('beta_regions_%s.mat', roi_name)), 'B', '-v7.3');
+            dircheck(betaDir);
+            save(fullfile(betaDir, sprintf('beta_regions_%s.mat', roi_name)), 'B', '-v7.3');
             fprintf('\n');
-        end % sn       
-    case 'ROI:MDTB:add_to_beta'               % creates a new structure using beta_region files. 
+        end % sn
+    case 'ROI:MDTB:add_to_beta'               % creates a new structure using beta_region files.
         % The structure will be uesd in connectivity project only
         % Example: sc1sc2_conn_model('ROI:MDTB:add_to_beta', 'experiment_num', 1, 'parcelType', 'cerebellum_grey', 'glm', 7)
         
@@ -418,7 +237,7 @@ switch what
         glm            = 7;
         %%% run 'ROI:mdtb:empty_parcel' to get oparcel.
         
-        vararginoptions(varargin, {'sn', 'experiment_num', 'glm', 'parcelType', 'oparcel', 'discardp', 'which', 'xres'});
+        vararginoptions(varargin, {'sn', 'experiment_num', 'glm', 'parcelType', 'oparcel', 'discardp', 'which'});
         
         experiment = sprintf('sc%d', experiment_num);
         
@@ -438,16 +257,16 @@ switch what
             T  = load(fullfile(glmDir, subj_name{s}, 'SPM_info.mat'));
             
             % calculate the inner product of design matrix for proper weighting
-            try 
-                load(fullfile(glmDir, subj_name{s}, 'SPM_light.mat')); 
+            try
+                load(fullfile(glmDir, subj_name{s}, 'SPM_light.mat'));
             catch
-                load(fullfile(glmDir, subj_name{s}, 'SPM.mat')); 
+                load(fullfile(glmDir, subj_name{s}, 'SPM.mat'));
             end
             
-            X= SPM.xX.X; % Use the unweigthed design matrix 
+            X= SPM.xX.X; % Use the unweigthed design matrix
             for i = 1:length(SPM.Sess)
                 XB = X(SPM.Sess(i).row,SPM.Sess(i).col);
-                XB = bsxfun(@minus,XB,mean(XB)); % Subtract the mean 
+                XB = bsxfun(@minus,XB,mean(XB)); % Subtract the mean
                 XX(:,:,i) = XB'*XB;
             end;
             
@@ -455,28 +274,27 @@ switch what
             load(fullfile(betaDir, subj_name{s}, sprintf('beta_regions_%s', parcelType)));
             
             % discarding the intercepts
-            if strcmp(parcelType, 'cerebellum_grey')
+            if length(B.betasUW) == 1 % Single region, preserve each voxel 
                 myfield = 'betasUW';
                 Y.data = B.(myfield){1}(1:end - 16, :); % discarding the intercepts
-            elseif(strcmp(parcelType, 'tesselsWB162'))||(strcmp(parcelType, 'tesselsWB362'))||strcmp(parcelType, 'tesselsWB642')
+            else % Many regions - take the mean of each region 
                 myfield = 'mbetasUW';
                 tmp = B.(myfield)';
                 Y.data = tmp(1:end - 16, :); % discarding the intercepts
-            end  
-                        
+            end
+            
             % adding the extra fields from SPM_info
             Y = addstruct(Y, T);
-            Y.XX = XX; 
-                        
+            Y.XX = XX;
+            
             % save the betas
             % dircheck(fullfile(betaDir, subj_name{s}));
             save(fullfile(betaDir, subj_name{s}, sprintf('Y_glm%d_%s.mat', glm, parcelType)), '-struct', 'Y', '-v7.3');
             fprintf('\n');
         end % s (sn)
         
-    case 'PREP:MDTB:cereb:suit_betas'         % Normalize betas to SUIT space and creates 'wdBetas_UW.mat'
-        % it uses the betas univariately prewhitened in the case
-        % 'ROI:mdtb:beta_unn' for ROI: cerebellum_grey to create and
+    case 'PREP:MDTB:cereb:suit_betas'         % Normalize betas to SUIT space and creates 'beta_regions_cerebellum_suit.mat'
+        % cerebellum_grey to create and
         % reslice betas as volumes into suit space
         % Example: sc1sc2_conn_model('PREP:MDTB:cereb:suit_betas', 'experiment_num', 1, 'glm', 7)
         
@@ -503,7 +321,7 @@ switch what
             Vi   = spm_vol(fullfile(suitAnatDir, subj_name{s},'maskbrainSUITGrey.nii'));
             X    = spm_read_vols(Vi);
             indx = find(X > 0); % indx where my cerebellar grey matter voxels at? linear indices of grey matter voxels
-            % ^^^the number of cerebellar grey matter voxels (size(indx, 1)) should be matching size(B.betasUW{1}, 2) 
+            % ^^^the number of cerebellar grey matter voxels (size(indx, 1)) should be matching size(B.betasUW{1}, 2)
             
             filenames = cell(1, size(B.betasUW{1},1));
             % make volume (betas)
@@ -536,7 +354,7 @@ switch what
                 delete(char(fullfile(glmDir, subj_name{s},deleteFiles(b).name)));
             end
             save(fullfile(suitGlmDir,subj_name{s},'wdBetas_UW.mat'),'D');
-%             save(fullfile(suitGlmDir,subj_name{s},'wdBetas_UW.mat'),'D', '-v7');
+            %             save(fullfile(suitGlmDir,subj_name{s},'wdBetas_UW.mat'),'D', '-v7');
             fprintf('UW betas resliced into suit space for %s \n',subj_name{s});
         end % s (sn)
     case 'PREP:MDTB:cereb:voxels'             % creates Y_info file for the cerebelalr voxels
@@ -626,7 +444,7 @@ switch what
             
             outName = fullfile(encodeSubjDir,sprintf('Y_info_glm%d_%s.mat', glm, data));
             save(outName,'Y','-v7.3');
-%             save(outName,'Y','-v7');
+            %             save(outName,'Y','-v7');
             fprintf('cerebellar voxels (%s) computed for %s \n', data, subj_name{s});
             clear B1 idx Bb indx
         end % s (sn)
@@ -732,7 +550,7 @@ switch what
             
             load(fullfile(baseDir, 'sc1', regDir, 'data', subj_name{s},regionName)); % loads R into workspace
             regs = [1:length(R)/2;length(R)/2+1:length(R)];
-
+            
             for h = 1:2
                 encodeSubjDir = fullfile(encodingDir, subj_name{s});
                 load(fullfile(encodeSubjDir,sprintf('Y_info_glm%d_cortex_%s.mat',glm,hemI{h})));
@@ -751,7 +569,7 @@ switch what
                 end
             end % h (hemisphere)
             Y.data = data;
-%             Y      = rmfield(Y,'nonZeroInd');
+            %             Y      = rmfield(Y,'nonZeroInd');
             
             if strcmp(parcelType, 'tesselsWB')
                 YoutName = sprintf('Y_info_glm%d_tesselsWB%d.mat', glm, xres);
@@ -762,7 +580,7 @@ switch what
             outName = fullfile(encodeSubjDir, YoutName);
             save(outName, 'Y', '-v7.3');
             fprintf('%s vertices: (Y data) computed for %s \n', parcelType, subj_name{s});
-        end % s (sn)     
+        end % s (sn)
     case 'PREP:MDTB:Y_allsubjs'               % Make a structure of activity profiles of all subject
         % B, mean betas, and zero-meaned betas are stored
         % Example: sc1sc2_conn_model('PREP:MDTB:Y_allsubjs' , 'experiment_num', 1, 'glm', 7)
@@ -770,7 +588,7 @@ switch what
         sn               = returnSubjs; % Take only good subjects
         glm              = 7;           % glmNum
         experiment_num   = 1;           % either 1 or 2
-        type             ='grey_nan';   % 'cortex_L', 'cortex_R', 'tesselsWB162', ... 
+        type             ='grey_nan';   % 'cortex_L', 'cortex_R', 'tesselsWB162', ...
         session_specific = 1;
         
         vararginoptions(varargin, {'sn', 'glm', 'experiment_num', 'type', 'session_specific'});
@@ -779,7 +597,7 @@ switch what
         
         % setting directories
         glmDir      = fullfile(baseDir, experiment, sprintf('GLM_firstlevel_%d', glm));
-        encodingDir = fullfile(baseDir, experiment, encodeDir, sprintf('glm%d', glm)); 
+        encodingDir = fullfile(baseDir, experiment, encodeDir, sprintf('glm%d', glm));
         
         numSubj=length(sn);
         
@@ -812,7 +630,7 @@ switch what
             save(fullfile(encodingDir, sprintf('Y_%s_all_se.mat',type)),'B', 'Bm', 'Bzc', '-v7.3');
         else
             save(fullfile(encodingDir,sprintf('Y_%s_all.mat',type)), 'B', 'Bm', 'Bzc', '-v7.3');
-        end  
+        end
     case 'PREP:MDTB:get_meanBeta'             % Take the structure and extract mean beta for cross-session modeling
         % THIS CASE SHOULD RUN WITH ALL THE SUBJECTS YOU WANT TO DO THE
         % ANALYSIS FOR!
@@ -823,12 +641,12 @@ switch what
         
         sn       = returnSubjs;
         type     = 'grey_nan';    % 'grey_nan' for the cerebellum, 'tesselsWB162', 'tesselsWB362', 'tesselsWB642'
-        experStr = {'sc1','sc2'}; % cell array containing strings that represents experiments 
+        experStr = {'sc1','sc2'}; % cell array containing strings that represents experiments
         glm      = 7;
         which    = 'cond';        % 'cond' or 'task' (task for glm 8)
         
         vararginoptions(varargin,{'sn','glm','type', 'experStr', 'which'});
-
+        
         % Loop over experiments
         for e = 1:length(experStr)
             fprintf('%s study %s: \n', type, experStr{e})
@@ -842,12 +660,12 @@ switch what
                 D          = D.Y;
                 T          = load(fullfile(glmDir, subj_name{sn(si)}, 'SPM_info.mat'));
                 
-%                 if (strcmp(type,'162_tessellation_hem'))
-%                     Tcort=load(fullfile(rootDir,'sc1',regDir,'data','162_reorder.mat'));
-%                     Tcort=getrow(Tcort,Tcort.good==1);
-%                     D.B = D.B(:,Tcort.regIndx);
-%                     D.Yres = D.Yres(:,Tcort.regIndx);
-%                 end;
+                %                 if (strcmp(type,'162_tessellation_hem'))
+                %                     Tcort=load(fullfile(rootDir,'sc1',regDir,'data','162_reorder.mat'));
+                %                     Tcort=getrow(Tcort,Tcort.good==1);
+                %                     D.B = D.B(:,Tcort.regIndx);
+                %                     D.Yres = D.Yres(:,Tcort.regIndx);
+                %                 end;
                 
                 % Now generate mean estimates per session
                 % Note that in the new SPM_info Instruction is coded as cond =0
@@ -866,13 +684,13 @@ switch what
         experStr  = {'sc1','sc2'};
         glm       = 7;
         type      = 'grey_nan';
-%         inclInstr = 1;                           % Include instruction?
+        %         inclInstr = 1;                           % Include instruction?
         vararginoptions(varargin,{'experStr', 'glm', 'type', 'inclInstr'});
         
         % Load the betas for all the tasks
         for e = 1:length(experStr)
             % setting directories
-%             glmDir      = fullfile(baseDir, experStr{e}, sprintf('GLM_firstlevel_%d', glm));
+            %             glmDir      = fullfile(baseDir, experStr{e}, sprintf('GLM_firstlevel_%d', glm));
             encodingDir = fullfile(baseDir, experStr{e}, encodeDir, sprintf('glm%d', glm));
             YD{e}       = load(fullfile(encodingDir,sprintf('mbeta_%s_all.mat',type)));
         end % e (experStr)
@@ -881,12 +699,12 @@ switch what
         % rest
         T = dload(fullfile(baseDir,'sc1_sc2_taskConds2.txt'));
         
-%         % from sc1sc2_connectivity: Make an integrated Structure
-%         T1=T;
-%         T2=T;
-%         T1.sess=ones(length(T.condNum),1)*1;
-%         T2.sess=ones(length(T.condNum),1)*2;
-%         T=addstruct(T1,T2);
+        %         % from sc1sc2_connectivity: Make an integrated Structure
+        %         T1=T;
+        %         T2=T;
+        %         T1.sess=ones(length(T.condNum),1)*1;
+        %         T2.sess=ones(length(T.condNum),1)*2;
+        %         T=addstruct(T1,T2);
         
         % Make an integrated Structure
         S = [];
@@ -910,17 +728,17 @@ switch what
             for se = 1:2
                 % for each session, it gets the two experiments and
                 % concatenates them.
-                for e = 1:length(experStr) 
-%                     YD{e}.B{si,se}=[YD{e}.B{si, se}(2:end,:);zeros(1,size(YD{e}.B{si,se},2))];
+                for e = 1:length(experStr)
+                    %                     YD{e}.B{si,se}=[YD{e}.B{si, se}(2:end,:);zeros(1,size(YD{e}.B{si,se},2))];
                     YD{e}.B{si,se}=bsxfun(@minus,YD{e}.B{si,se},mean(YD{e}.B{si,se}));
                     Y{si} = [Y{si};YD{e}.B{si,se}];
                 end % e (experiments)
-%                 Y{si} = [Y{si};YD{1}.B{si,se};YD{2}.B{si,se}]; % changed this!
+                %                 Y{si} = [Y{si};YD{1}.B{si,se};YD{2}.B{si,se}]; % changed this!
             end % se (session)
         end % si (subjects)
         varargout = {Y,S};
-
-    case 'CONN:MDTB:CortCov'                  % Calculates and plots variance inflation factor 
+        
+    case 'CONN:MDTB:CortCov'                  % Calculates and plots variance inflation factor
         % borrowed from sc1sc2_connectivity('cortical_covariances' )
         % Example: sc1sc2_conn_model('CONN:MDTB:CortCov', 'sn', 6, 'glm', 7, 'experiment_num', 1, 'xres', 162)
         sn             = returnSubjs;
@@ -937,14 +755,14 @@ switch what
         % setting directories
         betaDir = fullfile(baseDir, experiment, sprintf('Beta_GLM_%d', glm));
         surfDir = fullfile(baseDir, experiment, sprintf('fs_LR_%d', atlas_res)); %% the directory where the atlas is located + giftti label files
-%         glmDir  = fullfile(baseDir, experiment, sprintf('GLM_firstlevel_%d', glm));
+        %         glmDir  = fullfile(baseDir, experiment, sprintf('GLM_firstlevel_%d', glm));
         connDir = fullfile(baseDir, experiment, 'connModels');
-
-%         % Figure out the right ones to use ????
-%         X  = load(fullfile(baseDir, experiment, regDir,'data', sprintf('%d_reorder.mat', xres)));
-%         Xx = getrow(X,X.newIndx);
-%         Xx = getrow(Xx,Xx.good == 1);
-                
+        
+        %         % Figure out the right ones to use ????
+        %         X  = load(fullfile(baseDir, experiment, regDir,'data', sprintf('%d_reorder.mat', xres)));
+        %         Xx = getrow(X,X.newIndx);
+        %         Xx = getrow(Xx,Xx.good == 1);
+        
         % Calculate correlations
         is = 1;
         for s = sn
@@ -953,9 +771,9 @@ switch what
             filename = fullfile(betaDir, subj_name{s}, sprintf('beta_regions_tesselsWB%d', xres));
             load(filename);
             
-%             B_good = B(:, Xx.regIndx2);   % Remove the bad regions
-%             B2 = bsxfun(@minus, B_good, nanmean(B_good));
-%             
+            %             B_good = B(:, Xx.regIndx2);   % Remove the bad regions
+            %             B2 = bsxfun(@minus, B_good, nanmean(B_good));
+            %
             % get the tessels mean beta: mbetasUW field
             Betas = (B.mbetasUW)';
             
@@ -1000,13 +818,13 @@ switch what
             nReg = numel(unique(G.cdata))-1; % exclude 0 - medial wall
             
             dv = zeros(length(G.cdata), 3);
-            for r = 1:nReg 
+            for r = 1:nReg
                 dv(G.cdata(:,1) == r, 1) = data{1}(idx);
                 dv(G.cdata(:,1) == r, 2) = data{2}(idx);
                 dv(G.cdata(:,1) == r, 3) = data{3}(idx);
                 idx = idx + 1;
             end % r(tessels)
-
+            
             G       = surf_makeFuncGifti(dv,'anatomicalStruct', hemName{h}, 'columnNames', plottitle);
             outfile = (fullfile(connDir, sprintf('CortCov-%d.glm%d.%dk.%s.func.gii', xres, glm, atlas_res, hemI{h})));
             save(G, outfile);
@@ -1025,11 +843,11 @@ switch what
             fprintf('Cortical covariances for %d tesselation\n', nn)
             sc1sc2_conn_model('cortical_covariances', 'sn', sn, 'glm', glm, 'experiment_num', experiment_num, 'xres', nn);
         end % nn
-    
+        
     case 'CONN:MDTB:model_mbeta'              % Conn. modelling using average beta per session
         % uses the mat file saved in the case 'get_meanBeta_cerebellum'
         % Example: sc1sc2_conn_model('CONN:MDTB:model_mbeta', 'method', 'linRegress')
-
+        
         sn         = returnSubjs;
         glm        = 7;
         method     = 'plsr';         % linRegress, ridgeFixed, plsr, pcr
@@ -1041,7 +859,7 @@ switch what
         inclInstr  = 1;              % For future use: include Instruction
         params     = 10;             % params are to be specified according to the method. The default is for pls regression
         scale      = 0;              % scale=1: zscore X and Y (particularly for pls regression)
-%         numReg   = NaN;%???? 
+        %         numReg   = NaN;%????
         
         vararginoptions(varargin,{'sn', 'method', 'yname', 'xname', 'trainMode', ...
             'overwrite', 'trainExper', 'inclInstr', 'params', 'scale', 'glm'});
@@ -1085,7 +903,7 @@ switch what
             end
             
             % Get data
-            ss = find(sn(si) == returnSubjs); 
+            ss = find(sn(si) == returnSubjs);
             xx = X{ss}(trainXindx,:);
             yy = Y{ss}(trainYindx,:);
             
@@ -1142,14 +960,14 @@ switch what
             RR    = addstruct(RR,R);
             save(outName,'-struct','R', '-v7.3');
             fprintf('\n');
-        end % si (subjects) 
+        end % si (subjects)
         varargout{1} = {RR};
     case 'CONN:MDTB:run_model_mbeta'          % Runs different models
         sc1sc2_conn_model('CONN:MDTB:model_mbeta', 'method', 'linRegress', 'params', []);
         sc1sc2_conn_model('CONN:MDTB:model_mbeta', 'method', 'ridgeFixed', 'sn', subs, 'params', [0, 20], 'overwrite', 1);
         sc1sc2_conn_model('CONN:MDTB:model_mbeta', 'method', 'pcr', 'sn', subs, 'params', [10, 12], 'overwrite', 1, 'scale', 1);
         sc1sc2_conn_model('CONN:MDTB:model_mbeta', 'method', 'plsr_1', 'sn', subs, 'params', [10, 12], 'overwrite', 1, 'scale', 1);
-
+        
     case 'CONN:MDTB:sample_DesignMatrix'      % saves a sample design matrix for weighting estimates later during evaluation
         % later in the python code this design matrix will be needed. It
         % would be better to save this design matrix so that I don't need
@@ -1158,7 +976,7 @@ switch what
         % structure into python!
         % Example: sc1sc2_conn_model('CONN:MDTB:sample_DesignMatrix', 'sn', 2, 'experNums', [1], 'glm', 7)
         
-        sn        = returnSubjs;  
+        sn        = returnSubjs;
         experNums = [1, 2];
         glm       = 7;
         
@@ -1200,30 +1018,30 @@ switch what
         splitby   = [];              %% 'splitby': by which variable should the evaluation be split?
         yname     = 'grey_nan';
         xname     = 'tesselsWB162';
-        inclInstr = 1; 
+        inclInstr = 1;
         meanSubt  = 1;               %% Mean pattern subtraction before prediction?
         
         vararginoptions(varargin(2:end),{'subset','splitby','meanSubt','xname','yname'});
         
-%         experStr = {'sc1', 'sc2'};
+        %         experStr = {'sc1', 'sc2'};
         
         % Get data
         [Y, ~] = sc1sc2_conn_model('PREP:MDTB:get_wcon', 'type', yname, 'inclInstr',inclInstr); % get the data for the cerebellum
         [X, S] = sc1sc2_conn_model('PREP:MDTB:get_wcon', 'type', xname, 'inclInstr',inclInstr); % get the data for cortical tessels
-
-%         % Get task/Condition info
-%         T = dload(fullfile(baseDir,'sc1_sc2_taskConds2.txt'));
+        
+        %         % Get task/Condition info
+        %         T = dload(fullfile(baseDir,'sc1_sc2_taskConds2.txt'));
         
         if (isempty(subset))
-            subset = S.StudyNum == 2; 
-        end 
-%         S.subset = [subset; subset]; % ??????? This might be wrong. Need to check it
+            subset = S.StudyNum == 2;
+        end
+        %         S.subset = [subset; subset]; % ??????? This might be wrong. Need to check it
         S.subset = subset;
         
         if (isempty(splitby))
             splitby = ones(length(S.StudyNum),1);
         end
-%         S.splitby = [splitby; splitby];  % Double for the two conditions???????
+        %         S.splitby = [splitby; splitby];  % Double for the two conditions???????
         S.splitby = splitby;  % Double for the two conditions???????
         
         sS     = getrow(S, S.subset);
@@ -1256,11 +1074,11 @@ switch what
                     find(S.subset & S.sess == 1 & S.splitby == splits(sp))];
                 
                 % If the data is sorted [sess2;sess1], then [sess1;sess2]
-                % is the crossvalidated estimate. 
+                % is the crossvalidated estimate.
                 predY   = X{s}(testAindx,:)*M.W{m};                    % Predicted Y using crossvalidation
                 predYnc = X{s}(testBindx,:)*M.W{m};                    % Predicted Y not crossvalidated
                 
-                % Caluculate the respective sums-of-squares 
+                % Caluculate the respective sums-of-squares
                 SSP   = sum(sum(predY(:,goodindx).^2));                                % Sum of square of predictions
                 SSY   = sum(sum(Y{s}(testBindx,goodindx).^2));                         % Sum of squares of data
                 SSCp  = sum(sum(predY(:,goodindx).*predYnc(:,goodindx)));              % Covariance of Predictions
@@ -1279,8 +1097,8 @@ switch what
                 R.Rp              = SSCp ./ SSP;            % Reliability of prediction
                 
                 % If we knew the true pattern, the best correlation we
-                % would expect is sqrt(Ry) 
-                % We also want to take into account the relaibility 
+                % would expect is sqrt(Ry)
+                % We also want to take into account the relaibility
                 
                 R.split = splits(sp);
                 
@@ -1294,7 +1112,7 @@ switch what
                 
                 ginni    = 1 - 2*sum(bsxfun(@times, Wss, w));
                 R.ginni  = nanmean(ginni); % Ginni index: mean over voxels
-%                 R.numReg = M.numReg(m); %% ?????????????????????
+                %                 R.numReg = M.numReg(m); %% ?????????????????????
                 
                 RR = addstruct(RR,R);
             end % sp (?????????????????)
@@ -1330,7 +1148,7 @@ switch what
         EO = [];
         for s = sn
             fprintf('eval %s %s\n', method, subj_name{s});
-            % load in the structure for the model 
+            % load in the structure for the model
             M   = load(fullfile(connModDir, sprintf('mb4_%s_%s_%s.mat', xname, method, subj_name{s})));
             OUT = sc1sc2_conn_model('CONN:MDTB:evaluate', M, 'yname', yname, 'xname', xname, ...
                 'subset', subset, 'splitby', splitby);
@@ -1395,7 +1213,7 @@ switch what
         methods    = {'plsr_1'};     %% cell array containing all the models you want the plot for
         trainExper = 1;
         glm        = 7;
-        xname      = 'tesselsWB162'; 
+        xname      = 'tesselsWB162';
         yfield     = 'Rcv';
         xfield     = 'spIdx';
         
@@ -1406,7 +1224,7 @@ switch what
         Expers   = [1, 2];
         
         testExper = experStr{Expers ~= trainExper};
-
+        
         TT = [];
         for nm = 1:length(methods)
             % setting directories
@@ -1424,8 +1242,8 @@ switch what
         [params,b,TT.parCat]=unique([TT.params],'rows');
         % Do an xyplot normalized to an upper noise ceiling, which only is
         % determined by the relability of the data
-%         xyplot(T.(xfield),T.(yfield)./sqrt(T.Ry),T.lamCat,'split',T.methNum,'style_thickline','leg',methStr,'subset',T.traindata == 2);
-%         xyplot(TT.(xfield),TT.(yfield)./sqrt(abs(TT.Ry)),TT.parCat,'split',TT.methNum,'style_thickline','leg',methStr);
+        %         xyplot(T.(xfield),T.(yfield)./sqrt(T.Ry),T.lamCat,'split',T.methNum,'style_thickline','leg',methStr,'subset',T.traindata == 2);
+        %         xyplot(TT.(xfield),TT.(yfield)./sqrt(abs(TT.Ry)),TT.parCat,'split',TT.methNum,'style_thickline','leg',methStr);
         xyplot(TT.(xfield),TT.(yfield),TT.parCat,'split',TT.methNum,'style_thickline','leg',methStr);
         
         % Now determine a lower noise ceiling.... This is determined by the
@@ -1458,7 +1276,7 @@ switch what
         surfDir = fullfile(baseDir, experiment, sprintf('fs_LR_%d', atlas_res)); %% the directory where the atlas is located + giftti label files
         connDir = fullfile(baseDir, experiment, 'connModels');
         
-        for s = sn 
+        for s = sn
             
             % load in SPM_info
             T = load(fullfile(glmDir, subj_name{s}, 'SPM_info.mat'));
@@ -1466,16 +1284,16 @@ switch what
             % load in the beta file for each yeo_17WB
             load(fullfile(betaDir, subj_name{s}, sprintf('beta_regions_tesselsWB%d.mat', xres)));
             B1   = B;
-
+            
             % load in the beta file for cerebellum_grey
             load(fullfile(betaDir, subj_name{s}, 'beta_regions_cerebellum_grey.mat'));
-%             load(fullfile(betaDir, subj_name{s}, 'beta_regions_Buckner_17.mat'));
+            %             load(fullfile(betaDir, subj_name{s}, 'beta_regions_Buckner_17.mat'));
             B2 = B;
             
             % get X and Y
             Xtmp = B1.mbetasUW(:, 1:end - length(runLst));
             % Y.
-%             Bcereb = cell2mat(B2.betasUW{15});
+            %             Bcereb = cell2mat(B2.betasUW{15});
             Bcereb = cell2mat(B2.betasUW);
             Y1      = Bcereb';
             
@@ -1484,13 +1302,13 @@ switch what
             X = Xtmp';
             
             % for each run separately
-            for r = 1:16 
+            for r = 1:16
                 Xf = X(T.run == r, :);
                 Yf = Y1(T.run == r, :);
                 Xi = zscore(Xf);
                 Yi = zscore(Yf);
                 
-%                 [XL,YL,XS,YS,BETA,PCTVAR,MSE,stats] = plsregress(Xi,Yi);
+                %                 [XL,YL,XS,YS,BETA,PCTVAR,MSE,stats] = plsregress(Xi,Yi);
                 
                 out = conn_model_reg(Xi, Yi, 'model', 'plsr', 'nPC', 13);
                 
@@ -1505,7 +1323,7 @@ switch what
         % Example:sc1sc2_conn_model('CONN:MDTB:ols')
         % This is the simplest case where I just take the mean beta for
         % each cortical parcel (averaged across runs) and estimate the
-        % connectivity. 
+        % connectivity.
         
         sn             = returnSubjs;
         glm            = 7;
@@ -1520,7 +1338,7 @@ switch what
         % pseudocode:
         % The multivariate multiple regression is:
         % Y = XW + E
-        % Y(k-by-q), X(k-by-p), W(p-by-q). 
+        % Y(k-by-q), X(k-by-p), W(p-by-q).
         % where k is the number of conditions.
         % q is the number of cerebellar voxels
         % p is the number of cortical voxels.
@@ -1534,7 +1352,7 @@ switch what
         dircheck(connModels);
         glmDir  = fullfile(baseDir, experiment, sprintf('GLM_firstlevel_%d', glm));
         
-        for s = sn 
+        for s = sn
             tic;
             fprintf('subject: %s, ols\n', subj_name{s});
             subjConn    = [];
@@ -1544,11 +1362,11 @@ switch what
             % load in the beta file for each yeo_17WB
             load(fullfile(betaDir, subj_name{s}, sprintf('beta_regions_tesselsWB%d.mat', xres)));
             B1   = B;
-
+            
             % load in the beta file for cerebellum_grey
             load(fullfile(betaDir, subj_name{s}, 'beta_regions_cerebellum_grey.mat'));
             B2 = B;
-
+            
             switch cv
                 case 0 % no cross validation: use average across runs
                     % X.
@@ -1569,7 +1387,7 @@ switch what
                     
                     % 1. regression
                     What_ols = conn_model_reg(Xin, Y, 'model', 'ols');
-
+                    
                     % calculate R2 and R
                     Yhat     = Xin*What_ols;
                     SSR      = sum(sum(sum((Y - Yhat).^2)));
@@ -1582,7 +1400,7 @@ switch what
                     R2cv = NaN;
                     Rcv  = NaN;
                 case 1 % use cross validation across runs
-                    % load in SPM_info 
+                    % load in SPM_info
                     T = load(fullfile(glmDir, subj_name{s}, 'SPM_info.mat'));
                     folds      = T.run;
                     conditions = T.cond;
@@ -1612,7 +1430,7 @@ switch what
             tmp.R      = R;
             tmp.R2cv   = R2cv;
             tmp.Rcv    = Rcv;
-             
+            
             fprintf('took %f\n', toc);
             
             subjConn = addstruct(subjConn, tmp);
@@ -1626,7 +1444,7 @@ switch what
         % Example:sc1sc2_conn_model('CONN:MDTB:rrr')
         
         % I'm not including options for rois. I am just using yeo_17WB and
-        % cerebellum_grey. 
+        % cerebellum_grey.
         
         sn             = returnSubjs;
         glm            = 7;
@@ -1634,7 +1452,7 @@ switch what
         rPC            = 17;
         xres           = 162; %% options: 162, 362, 642, 1002, 1442
         cv             = 1;   %% cv = 0 no cv, cv = 1 with cv
-
+        
         
         vararginoptions(varargin, {'sn', 'glm', 'experiment_num', 'rPC', 'xres', 'cv'});
         
@@ -1643,7 +1461,7 @@ switch what
         % pseudocode:
         % The multivariate multiple regression is:
         % Y = XW + E
-        % Y(k-by-q), X(k-by-p), W(p-by-q). 
+        % Y(k-by-q), X(k-by-p), W(p-by-q).
         % where k is the number of conditions.
         % q is the number of cerebellar voxels
         % p is the number of cortical voxels.
@@ -1670,7 +1488,7 @@ switch what
             % load in the beta file for each yeo_17WB
             load(fullfile(betaDir, subj_name{s}, sprintf('beta_regions_tesselsWB%d.mat', xres)));
             B1 = B;
-
+            
             % load in the beta file for cerebellum_grey
             load(fullfile(betaDir, subj_name{s}, 'beta_regions_cerebellum_grey.mat'));
             B2 = B;
@@ -1708,7 +1526,7 @@ switch what
                     R2cv = NaN;
                     Rcv  = NaN;
                 case 1 % use cross validation across runs
-                    % load in SPM_info 
+                    % load in SPM_info
                     T = load(fullfile(glmDir, subj_name{s}, 'SPM_info.mat'));
                     folds      = T.run;
                     conditions = T.cond;
@@ -1738,7 +1556,7 @@ switch what
             tmp.R      = R;
             tmp.R2cv   = R2cv;
             tmp.Rcv    = Rcv;
-             
+            
             fprintf('took %f\n', toc);
             
             subjConn = addstruct(subjConn, tmp);
@@ -1752,7 +1570,7 @@ switch what
         % Example:sc1sc2_conn_model('CONN:MDTB:ridge')
         
         % I'm not including options for rois. I am just using yeo_17WB and
-        % cerebellum_grey. 
+        % cerebellum_grey.
         
         sn             = returnSubjs;
         glm            = 7;
@@ -1760,7 +1578,7 @@ switch what
         xres           = 162;
         lambda         = 0.01; %% options: 162, 362, 642, 1002, 1442
         cv             = 1;    %% cv = 0 no cv, cv = 1 with cv
-
+        
         
         vararginoptions(varargin, {'sn', 'glm', 'experiment_num', 'xres', 'lambda', 'cv'});
         
@@ -1785,7 +1603,7 @@ switch what
             % load in the beta file for each yeo_17WB
             load(fullfile(betaDir, subj_name{s}, sprintf('beta_regions_tesselsWB%d.mat', xres)));
             B1 = B;
-
+            
             % load in the beta file for cerebellum_grey
             load(fullfile(betaDir, subj_name{s}, 'beta_regions_cerebellum_grey.mat'));
             B2 = B;
@@ -1822,7 +1640,7 @@ switch what
                     R2cv = NaN;
                     Rcv  = NaN;
                 case 1 % use cross validation across runs
-                    % load in SPM_info 
+                    % load in SPM_info
                     T = load(fullfile(glmDir, subj_name{s}, 'SPM_info.mat'));
                     folds      = T.run;
                     conditions = T.cond;
@@ -1970,7 +1788,7 @@ switch what
             save(fullfile(subjConnDir, sprintf('conn_plsr_matlab_%d.mat', rPc)), 'subjConn', '-v7.3');
             
             fprintf('Done\n\n');
-        end % s (sn)        
+        end % s (sn)
     case 'CONN:MDTB:plsr'                     % Partial Least squares regression, all MDTB
         % Example: sc1sc2_conn_model('CONN:MDTB:plsr')
         
@@ -2201,21 +2019,21 @@ switch what
         
         connDir = fullfile(baseDir, experiment, 'connModels', model, sprintf('glm%d', glm));
         
-        switch model 
+        switch model
             case 'rrr'
                 xvar = 'rPc';
             case 'ridge'
                 xvar = 'lambda';
         end
-
+        
         for nn = xresArr
             % load in the dataframe with model selection info for all the
             % subjects
             load(fullfile(connDir, sprintf('%sModel_%d.mat', model, nn)));
-%             xyplot(df.(xvar),df.(yvar), [], 'CAT', CAT, 'split', txx.(which), 'label', taskNames_Inst);
+            %             xyplot(df.(xvar),df.(yvar), [], 'CAT', CAT, 'split', txx.(which), 'label', taskNames_Inst);
             
         end % nn (xres)
-
+        
     case 'Houskeeping:renameSPM'              % Changes directory paths in SPM struct
         % rename SPM directories
         % Example: sc1sc2_conn_model('Houskeeping:renameSPM', 'experiment_num', 2, 'glm', 8, 'sn', 6)
@@ -2252,15 +2070,15 @@ switch what
     case 'Houskeeping:move_files'             % moving files
         % Example: sc1sc2_conn_model('Houskeeping:move_files')
         
-        sn             = returnSubjs; 
+        sn             = returnSubjs;
         experiment_num = 1;
         glm            = 7;
         copywhich      = 'GLM';
         serverDir      = '/Volumes/MotorControl/data/super_cerebellum_new';
         roi_name       = 'cerebellum_grey'; % options: cerebellum_grey, 'tesselsWB162';
-
+        
         vararginoptions(varargin, {'sn', 'glm', 'experiment_num', 'con_vs', 'nTrans', 'copywhich', 'roi_name'});
-          
+        
         switch copywhich
             case 'region_cortex'
                 experiment = sprintf('sc%d', experiment_num);
@@ -2271,7 +2089,7 @@ switch what
                     sourceFile  = fullfile(sourceDir, subj_name{s}, 'regions_cortex.mat');
                     destDirSubj = fullfile(destDir, subj_name{s});
                     [success(s), Message{s}, ~] = copyfile(sourceFile, destDirSubj);
-                end % sn 
+                end % sn
             case 'SPM_info'
                 experiment = sprintf('sc%d', experiment_num);
                 sourceDir  = fullfile(serverDir, experiment, sprintf('GLM_firstlevel_%d', glm));
@@ -2282,7 +2100,7 @@ switch what
                     destFolder   = fullfile(destDir, subj_name{s});
                     dircheck(destFolder);
                     cd(sourceFolder);
-%                     system(sprintf('find -name -exec cp  -R %s %s;', sourceFolder, destFolder));
+                    %                     system(sprintf('find -name -exec cp  -R %s %s;', sourceFolder, destFolder));
                     [success(s), message{s}, ~] = copyfile(fullfile(sourceFolder, 'SPM_info.mat'), destFolder, 'f');
                     
                     if success(s) == 1
@@ -2303,7 +2121,7 @@ switch what
                     dircheck(destFolder);
                     cd(sourceFolder);
                     %                     system(sprintf('find -name -exec cp  -R %s %s;', sourceFolder, destFolder));
-%                     [success(s), message{s}, ~] = copyfile(fullfile(sourceFolder, 'SPM_light.mat'), destFolder, 'f');
+                    %                     [success(s), message{s}, ~] = copyfile(fullfile(sourceFolder, 'SPM_light.mat'), destFolder, 'f');
                     [success(s), message{s}, ~] = copyfile(fullfile(sourceFolder, 'SPM.mat'), destFolder, 'f');
                     
                     if success(s) == 1
@@ -2420,14 +2238,14 @@ switch what
                 % just checking steps of PLS-R with an example from
                 % (Krishnan et al., 2011)
                 X1 = [2 5 6 1 9 1 7 6 2 1 7 3; ...
-                      4 1 5 8 8 7 2 8 6 4 8 2; ...
-                      5 8 7 3 7 1 7 4 5 1 4 3];
+                    4 1 5 8 8 7 2 8 6 4 8 2; ...
+                    5 8 7 3 7 1 7 4 5 1 4 3];
                 X2 = [3 3 7 6 1 1 10 2 2 1 7 4; ...
-                      2 3 8 7 1 6 9 1 8 8 1 6;  ...
-                      1 7 3 1 1 3 1 8 1 3 9 5];
+                    2 3 8 7 1 6 9 1 8 8 1 6;  ...
+                    1 7 3 1 1 3 1 8 1 3 9 5];
                 X3 = [9 0 7 1 8 7 4 2 3 6 2 7;  ...
-                      8 0 6 5 9 7 4 4 2 10 3 8; ...
-                      7 7 4 5 7 6 7 6 5 4 8 8];
+                    8 0 6 5 9 7 4 4 2 10 3 8; ...
+                    7 7 4 5 7 6 7 6 5 4 8 8];
                 X = [X1; X2; X3];
                 
                 Y1 = [15 600; 19 520; 18 545];
@@ -2452,7 +2270,7 @@ switch what
                 P = []; % X loadings
                 W = []; % X weights
                 C = []; % Y weights
-                Q = []; 
+                Q = [];
                 b = []; % regression coefficients
                 
                 while iterate
@@ -2516,9 +2334,9 @@ switch what
                 B = diag(b);
                 Wpls3 = pinv(P')*B*C';
                 keyboard;
- 
+                
         end
-    case 'CONN:TOY_plsr'                      % playing around with matlab's plsregress 
+    case 'CONN:TOY_plsr'                      % playing around with matlab's plsregress
         % Example: sc1sc2_conn_model('CONN:TOY_plsr');
         
         load spectra
@@ -2561,8 +2379,8 @@ switch what
         betaDir     = fullfile(baseDir, experiment, sprintf('Beta_GLM_%d', glm));
         surfDir     = fullfile(baseDir, experiment, sprintf('fs_LR_%d', atlas_res)); %% the directory where the atlas is located + giftti label files
         connDir     = fullfile(baseDir, experiment, 'connModels');
-%         encodingDir = fullfile(baseDir, experiment, encodeDir, sprintf('glm%d', glm));
-                
+        %         encodingDir = fullfile(baseDir, experiment, encodeDir, sprintf('glm%d', glm));
+        
         for s = sn
             fprintf('Cortical %d PCA loading map for %s\n', xres, subj_name{s});
             % directory to save the pca map for loadings
@@ -2580,9 +2398,9 @@ switch what
             X0 = bsxfun(@minus, X, nanmean(X));
             
             [coeff,score,latent,tsquared,explained,mu] = pca(X0, 'NumComponents',nPC);
-
+            
             % create spatial maps for the loadings (coeff)
-                
+            
             % using workbench
             % lots of this part is like the ROI:define
             %%% saves Variance, VIF, and combined as a single gifti file which
@@ -2608,9 +2426,9 @@ switch what
                 
                 G       = surf_makeFuncGifti(dv,'anatomicalStruct', hemName{h}, 'columnNames', plottitle);
                 outfile = (fullfile(connPcaSurfDir, sprintf('%s.cortPcLoadings-%d.pc%d.glm%d.%dk.%s.func.gii', ...
-                            subj_name{s}, xres, nPC, glm, atlas_res, hemI{h})));
-%                 outfile = (fullfile(connPcaSurfDir, sprintf('%s.cortPcLoadings-32k.pc%d.glm%d.%dk.%s.func.gii', ...
-%                             subj_name{s}, nPC, glm, atlas_res, hemI{h})));
+                    subj_name{s}, xres, nPC, glm, atlas_res, hemI{h})));
+                %                 outfile = (fullfile(connPcaSurfDir, sprintf('%s.cortPcLoadings-32k.pc%d.glm%d.%dk.%s.func.gii', ...
+                %                             subj_name{s}, nPC, glm, atlas_res, hemI{h})));
                 save(G, outfile);
             end % h (hemispheres)
         end % sn
@@ -2650,7 +2468,7 @@ switch what
         % also make a group gifti
         outGroupName = fullfile(giftiDir, sprintf('all_group_PLS%d_%d.func.gii', npls, xres));
         surf_groupGiftis(infilenames, 'outfilenames', {outGroupName}, 'outcolnames', columnName, 'replaceNaNs', 1);
-
+        
     otherwise
         disp('there is no such case.')
 end
@@ -2676,7 +2494,7 @@ function [W, R2, R, R2_vox, R_vox, varargout] = conn_model_fit(Y,X,method,vararg
 % VARARGIN:
 %    'threshold': Thresholds the u-coefficient at a particular value(s)
 %                 before evaluating the prediction (all < threshold -> 0)
-%    'numReg' : For nonNegStepwise the maximum number of regions 
+%    'numReg' : For nonNegStepwise the maximum number of regions
 %    'lambda' : [L1 L2] regularization coefficient
 % OUTPUT:
 %    R2      : correlation value between Y-actual and Y-pred (overall)
@@ -2689,7 +2507,7 @@ function [W, R2, R, R2_vox, R_vox, varargout] = conn_model_fit(Y,X,method,vararg
 % Ladan Shahshahani (June 2020)
 
 
-params = []; 
+params = [];
 scale  = 0; % 1 to zscore the data and 0 if not!
 
 switch scale
@@ -2748,7 +2566,7 @@ switch method
         plsr_out.stats{1, 1} = stats;
         
         varargout{1} = plsr_out;
-    case 'plsr_2'                  % "general" pls regression 
+    case 'plsr_2'                  % "general" pls regression
     case 'pcr'                     % principal component regression
         nPC = params(1);
         
@@ -2780,11 +2598,11 @@ SST = nansum(Y.*Y);
 %     SSR   = nansum(res.^2);
 %     R2_vox(i,:) = 1 - SSR./SST;
 %     R2(i,1)     = 1 - nansum(SSR)/nansum(SST);
-% 
+%
 %     % R (per voxel)
 %     SYP = nansum(Y.*Ypred,1);
 %     SPP = nansum(Ypred.*Ypred);
-% 
+%
 %     R_vox(i,:) = SYP./sqrt(SST.*SPP);
 %     R(i,1)     = nansum(SYP)./sqrt(nansum(SST).*nansum(SPP));
 % end % i (size (W, 3))
@@ -2797,7 +2615,7 @@ SSR   = nansum(res.^2);
 R2     = 1 - nansum(SSR)/nansum(SST);
 R2_vox = 1 - SSR./SST; % per voxel
 
-% R 
+% R
 SYP = nansum(Y.*Ypred,1);
 SPP = nansum(Ypred.*Ypred);
 
@@ -2814,7 +2632,7 @@ function varargout = conn_model_reg(X, Y, varargin)
 %  varargin:
 %       model : 'ols' or 'rrr' or 'pls'
 %       nPC   : # of PCs for rrr
-%       lambda: for ridge regression is the lambda 
+%       lambda: for ridge regression is the lambda
 %
 % OUTPUT:
 %   What              : connectivity weights
@@ -2831,15 +2649,15 @@ end
 
 switch model
     case 'ols'          % ols
-%         What = (X'*X)\(X'*Y);     
-        % in case X'X is singular, Matlab will raise a warning: 
+        %         What = (X'*X)\(X'*Y);
+        % in case X'X is singular, Matlab will raise a warning:
         % Warning: Matrix is close to singular or badly scaled. Results may be inaccurate.
-        % I am using pinv for calculation. 
+        % I am using pinv for calculation.
         What = pinv(X'*X)*(X'*Y); % in case X'X is singular (not invertible)
         varargout{1} = What;
     case 'rrr'          % reduced rank regression
         % 1.1 Wols
-%         What_ols = (X'*X)\(X'*Y);
+        %         What_ols = (X'*X)\(X'*Y);
         What_ols = pinv(X'*X)*(X'*Y); % in case X'X is singular (not invertible)
         
         % 1.2 Yhat_OLS = XWhat_OLS
@@ -2866,8 +2684,8 @@ switch model
         X0 = zscore(X);
         Y0 = zscore(Y);
         
-%         X0 = X;
-%         Y0 = Y;
+        %         X0 = X;
+        %         Y0 = Y;
         
         
         [XL,YL,XS,YS,BETA,PCTVAR,MSE,stats] = plsregress(X0,Y0, nPC);
@@ -3027,7 +2845,7 @@ end
 
 Yhat_cv = zeros(numCond,numVoxy,numPart);
 What_cv = zeros(numVoxx,numVoxy,numPart);
-for ifold = 1:numPart 
+for ifold = 1:numPart
     % run indices used for training
     trainRun = part ~=ifold;
     testRun  = part == ifold;
@@ -3131,7 +2949,7 @@ end % doing cross validation
 % Two modes of training can be used: crossed: Xtrain from one session
 % paired with Ytrain from the other session. See how the integrated
 % structure for conditions information is created!
-% **** can use 'CONN:MDTB:run_model_mbeta' to generate different models 
+% **** can use 'CONN:MDTB:run_model_mbeta' to generate different models
 % 9. Evaluate!
 
 %==========================================================================
@@ -3142,7 +2960,7 @@ end % doing cross validation
 % need to make a change in suit_reslice_dartel.m function. You will need to
 % add a variable as output. Compare the following code with the original
 % suit function, the bounding box part:
-% Now get the output images into the right resolution and bounding box 
+% Now get the output images into the right resolution and bounding box
 % for i=1:N
 %     V=spm_vol(out.files{i});
 %     Data=zeros(size(Xm));
@@ -3185,7 +3003,7 @@ end % doing cross validation
 % task in the subject.
 % The other fields from sc1_sc2_taskConds_GLM7 were also changed. in
 % taskNum, condNum, taskNumUni, and condNumUni, instruction is always
-% indicated with 0 (just as before). 
+% indicated with 0 (just as before).
 % For the overlap flag, the instructions that is comming before a shared
 % task also has 1 as overlap. Because, technically I think it can also be
 % considered as a shared task/condition.
