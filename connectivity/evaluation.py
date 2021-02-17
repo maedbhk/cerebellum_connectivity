@@ -9,6 +9,7 @@ import numpy as np
 
 def calculate_R(Y, Y_pred):
     """Calculates correlation between Y and Y_pred without subtracting the mean.
+
     Args:
         Y (nd-array):
         Y_pred (nd-array):
@@ -27,6 +28,15 @@ def calculate_R(Y, Y_pred):
 
 
 def calculate_R_cv(model, X, Y):
+    """Calculates correlation between Y and Y_pred without subtracting the mean.
+
+    Args:
+        model (class instance): fitted model, must contain predict method.
+        X (nd-array):
+        Y (nd-array):
+    Returns:
+        R (scalar): Correlation between Y and Y_pred
+    """
     Y_pred = model.predict(X)
 
     SYP = np.nansum(Y * Y_pred, axis=0)
@@ -35,10 +45,11 @@ def calculate_R_cv(model, X, Y):
 
     R = np.nansum(SYP) / np.sqrt(np.nansum(SST) * np.nansum(SPP))
     return R
-    
+
 
 def calculate_R2(Y, Y_pred):
     """Calculates squared correlation between Y and Y_pred without subtracting the mean.
+
     Args:
         Y (nd-array):
         Y_pred (nd-array):

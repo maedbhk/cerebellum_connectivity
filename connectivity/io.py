@@ -108,25 +108,25 @@ def convert_to_dataframe(file_obj, cols):
 
 
 def save_nifti_obj(nib_obj, fpath):
-    """ saves nib obj to nifti file
-        Args: 
-            nib_obj (Niimg-like object): contains vol data in nib obj
-            fpath (str): full path to nib_obj
-        Returns: 
-            saves nifti file to fpath
+    """saves nib obj to nifti file
+    Args:
+        nib_obj (Niimg-like object): contains vol data in nib obj
+        fpath (str): full path to nib_obj
+    Returns:
+        saves nifti file to fpath
     """
 
     nib.save(nib_obj, fpath)
-    print(f'saved {fpath}')
+    print(f"saved {fpath}")
 
 
 def make_nifti_obj(vol_data, affine_mat):
-    """ makes nifti obj 
-        Args: 
-            vol_data (numpy array): data in vol space (xyz)
-            affine_mat (numpy array): affine transformation matrix
-        Returns: 
-            Nib Obj
+    """makes nifti obj
+    Args:
+        vol_data (numpy array): data in vol space (xyz)
+        affine_mat (numpy array): affine transformation matrix
+    Returns:
+        Nib Obj
     """
     return nib.Nifti1Image(vol_data, affine_mat)
 

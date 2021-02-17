@@ -133,7 +133,7 @@ def get_default_eval_config():
         ],
         "mode": "crossed",
         "splitby": None,
-        "save_voxels": False,
+        "save_maps": False,
     }
     return config
 
@@ -146,7 +146,7 @@ def train_models(config, save=False):
         save (bool): Optional; Save fitted models automatically to disk.
     Returns:
         models (list): list of trained models for subjects listed in config.
-        train_all (pd dataframe): dataframe containing 
+        train_all (pd dataframe): dataframe containing
     """
 
     dirs = const.Dirs(exp_name=config["train_exp"], glm=config["glm"])
@@ -163,27 +163,29 @@ def train_models(config, save=False):
         print(f"Training model on {subj}")
 
         # get data
-        Y, Y_info, X, X_info = _get_data(config=config, exp=config['train_exp'], subj=subj)
+        Y, Y_info, X, X_info = _get_data(config=config, exp=config["train_exp"], subj=subj)
 
         # Generate new model and put in the list
         new_model = getattr(model, config["model"])(**config["param"])
         models.append(new_model)
 
         # cross the sessions
-        if config['mode']=="crossed":
+        if config["mode"] == "crossed":
             Y = np.r_[Y[Y_info.sess == 2, :], Y[Y_info.sess == 1, :]]
 
         # Fit model, get train and validate metrics
         models[-1].fit(X, Y)
         models[-1].rmse_train, models[-1].R_train = train_metrics(models[-1], X, Y)
-        models[-1].rmse_cv, models[-1].R_cv = validate_metrics(models[-1], X, Y, config['cv_fold'])
+        models[-1].rmse_cv, models[-1].R_cv = validate_metrics(models[-1], X, Y, config["cv_fold"])
 
         # collect rmse for each subject and each model
-        data = {'subj_id': subj, 
-                'rmse_train': models[-1].rmse_train, 
-                'R_train': models[-1].R_train,
-                'rmse_cv': models[-1].rmse_cv, 
-                'R_cv': models[-1].R_cv}
+        data = {
+            "subj_id": subj,
+            "rmse_train": models[-1].rmse_train,
+            "R_train": models[-1].R_train,
+            "rmse_cv": models[-1].rmse_cv,
+            "R_cv": models[-1].R_cv,
+        }
 
         # Copy over all scalars or strings from config to eval dict:
         for key, value in config.items():
@@ -195,30 +197,47 @@ def train_models(config, save=False):
 
         # Save the fitted model to disk if required
         if save:
-            fname = _get_model_name(
-                train_name=config["name"], exp=config["train_exp"], subj_id=subj
-            )
+            fname = _get_model_name(train_name=config["name"], exp=config["train_exp"], subj_id=subj)
             dd.io.save(fname, models[-1], compression=None)
 
     return models, pd.DataFrame.from_dict(train_all)
 
 
 def train_metrics(model, X, Y):
+    """computes training metrics (rmse and R) on X and Y
+
+    Args: 
+        model (class instance): must be fitted model
+        X (nd-array): 
+        Y (nd-array): 
+    Returns: 
+        rmse_train (scalar), R_train (scalar)
+    """
     Y_pred = model.predict(X)
 
     # get train rmse and R
     rmse_train = mean_squared_error(Y, Y_pred, squared=False)
-    R_train, _  = ev.calculate_R(Y, Y_pred)
+    R_train, _ = ev.calculate_R(Y, Y_pred)
 
     return rmse_train, R_train
 
 
 def validate_metrics(model, X, Y, cv_fold):
-    # get model predictions 
+    """computes CV training metrics (rmse and R) on X and Y
+
+    Args: 
+        model (class instance): must be fitted model
+        X (nd-array): 
+        Y (nd-array): 
+        cv_fold (int): number of CV folds
+    Returns: 
+        rmse_cv (scalar), R_cv (scalar)
+    """
+    # get model predictions
     Y_pred = model.predict(X)
 
     # get cv rmse and R
-    rmse_cv_all = np.sqrt(cross_val_score(model, X, Y, scoring='neg_mean_squared_error', cv=cv_fold)*-1)
+    rmse_cv_all = np.sqrt(cross_val_score(model, X, Y, scoring="neg_mean_squared_error", cv=cv_fold) * -1)
     rmse_cv = np.nanmean(rmse_cv_all)
     r_cv_all = cross_val_score(model, X, Y, scoring=ev.calculate_R_cv, cv=cv_fold)
     R_cv = np.nanmean(r_cv_all)
@@ -243,12 +262,10 @@ def eval_models(config):
         print(f"Evaluating model on {subj}")
 
         # get data
-        Y, Y_info, X, X_info = _get_data(config=config, exp=config['eval_exp'], subj=subj)
+        Y, Y_info, X, X_info = _get_data(config=config, exp=config["eval_exp"], subj=subj)
 
         # Get the model from file
-        fname = _get_model_name(
-            train_name=config["name"], exp=config["train_exp"], subj_id=subj
-        )
+        fname = _get_model_name(train_name=config["name"], exp=config["train_exp"], subj_id=subj)
         fitted_model = dd.io.load(fname)
 
         # Get model predictions
@@ -260,7 +277,7 @@ def eval_models(config):
         rmse = mean_squared_error(Y, Y_pred, squared=False)
 
         # set up dict
-        data = {'rmse_eval': rmse, 'subj_id': subj}
+        data = {"rmse_eval": rmse, "subj_id": subj}
 
         # Copy over all scalars or strings to eval_all dataframe:
         for key, value in config.items():
@@ -272,12 +289,13 @@ def eval_models(config):
         data.update(evals)
 
         # add evaluation (voxels)
-        if config["save_voxels"]:
+        if config["save_maps"]:
             for k, v in data.items():
-                if 'vox' in k:
+                if "vox" in k:
                     eval_voxels[k].append(v)
-        else:
-            data = {k: v for k, v in data.items() if 'vox' not in k}
+        
+        # don't save voxel data to summary            
+        data = {k: v for k, v in data.items() if "vox" not in k}
 
         # append data for each subj
         for k, v in data.items():
@@ -302,20 +320,26 @@ def _get_eval(Y, Y_pred, Y_info, X_info):
     data = {}
 
     # Add the evaluation
-    data["R_eval"], data["R_vox"]  = ev.calculate_R(Y=Y, Y_pred=Y_pred)
+    data["R_eval"], data["R_vox"] = ev.calculate_R(Y=Y, Y_pred=Y_pred)
 
     # R between predicted and observed
     data["R2"], data["R2_vox"] = ev.calculate_R2(Y=Y, Y_pred=Y_pred)
 
     # R2 between predicted and observed
-    data["noise_Y_R"], data["noise_Y_R_vox"], data["noise_Y_R2"], data["noise_Y_R2_vox"] = ev.calculate_reliability(
-        Y=Y, dataframe=Y_info
-    )
+    (
+        data["noise_Y_R"],
+        data["noise_Y_R_vox"],
+        data["noise_Y_R2"],
+        data["noise_Y_R2_vox"],
+    ) = ev.calculate_reliability(Y=Y, dataframe=Y_info)
 
     # Noise ceiling for cerebellum (squared)
-    data["noise_X_R"], data["noise_X_R_vox"], data["noise_X_R2"], data["noise_X_R2_vox"] = ev.calculate_reliability(
-        Y=Y_pred, dataframe=X_info
-    )
+    (
+        data["noise_X_R"],
+        data["noise_X_R_vox"],
+        data["noise_X_R2"],
+        data["noise_X_R2_vox"],
+    ) = ev.calculate_reliability(Y=Y_pred, dataframe=X_info)
 
     # # Noise ceiling for cortex (squared)
     #     pass
@@ -324,6 +348,15 @@ def _get_eval(Y, Y_pred, Y_info, X_info):
 
 
 def _get_data(config, exp, subj):
+    """get X and Y data for exp and subj
+
+    Args: 
+        config (dict): must contain keys for glm, Y_data, X_data, averaging, weighting
+        exp (str): 'sc1' or 'sc2'
+        subj (str): default subjs are set in constants.py
+    Returns:
+        Y (nd array), Y_info (pd dataframe), X (nd array), X_info (pd dataframe)
+    """
     # Get the data
     Ydata = Dataset(
         experiment=exp,
@@ -335,9 +368,7 @@ def _get_data(config, exp, subj):
     # load mat
     Ydata.load_mat()
 
-    Y, Y_info = Ydata.get_data(
-        averaging=config["averaging"], weighting=config["weighting"]
-    )
+    Y, Y_info = Ydata.get_data(averaging=config["averaging"], weighting=config["weighting"])
 
     Xdata = Dataset(
         experiment=exp,
@@ -349,9 +380,7 @@ def _get_data(config, exp, subj):
     # load mat
     Xdata.load_mat()
 
-    X, X_info = Xdata.get_data(
-        averaging=config["averaging"], weighting=config["weighting"]
-    )
+    X, X_info = Xdata.get_data(averaging=config["averaging"], weighting=config["weighting"])
 
     return Y, Y_info, X, X_info
 

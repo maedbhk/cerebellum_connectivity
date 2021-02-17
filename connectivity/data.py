@@ -47,7 +47,6 @@ class Dataset:
         self.subj_id = subj_id
         self.data = None
 
-
     def load_mat(self):
         """Reads a data set from the Y_info file and corresponding GLM file from matlab."""
         dirs = const.Dirs(exp_name=self.exp, glm=self.glm)
@@ -67,7 +66,6 @@ class Dataset:
         self.run = np.array(file["run"]).reshape(-1).astype(int)
         return self
 
-
     def save(self, filename=None):
         """Save the content of the data set in a dict as a hpf5 file.
 
@@ -83,7 +81,6 @@ class Dataset:
 
         dd.io.save(fdir / fname, vars(self), compression=None)
 
-
     def load(self, filename=None):
         """Load the content of a data set object from a hpf5 file.
         Args:
@@ -98,19 +95,23 @@ class Dataset:
 
         return dd.io.load(fdir / fname, self, compression=None)
 
-
     def get_info(self):
         """Return info for data set in a dataframe."""
-        d = {'TN':self.TN,'sess':self.sess,'run':self.run,'inst':self.inst,'task':self.task,'cond':self.cond}
-        
-        return pd.DataFrame(d)
+        d = {
+            "TN": self.TN,
+            "sess": self.sess,
+            "run": self.run,
+            "inst": self.inst,
+            "task": self.task,
+            "cond": self.cond,
+        }
 
+        return pd.DataFrame(d)
 
     def get_info_run(self):
         """Returns info for a typical run only."""
         info = self.get_info()
         return info[info.run == 1]
-
 
     def get_data(self, averaging="sess", weighting=True, subset=None):
         """Get the data using a specific aggregation.
@@ -124,56 +125,56 @@ class Dataset:
             data_info (pandas dataframe): dataframe for the aggregated data
         """
         # check that mat is loaded
-        try: 
-            hasattr(self, 'data')
+        try:
+            hasattr(self, "data")
         except ValueError:
             print("Please run load_mat before returning data")
 
         num_runs = max(self.run)
-        num_reg = sum(self.run==1)
+        num_reg = sum(self.run == 1)
         # N = self.sess.shape[0]
-        info = self.get_info() 
+        info = self.get_info()
 
         # Create unique ID for each regressor for averaging and subsetting it
-        info['id'] = np.kron(np.ones((num_runs,)),np.arange(num_reg)).astype(int)
-        if subset is None: 
+        info["id"] = np.kron(np.ones((num_runs,)), np.arange(num_reg)).astype(int)
+        if subset is None:
             subset = np.arange(num_reg)
-        elif subset.dtype == 'bool':
+        elif subset.dtype == "bool":
             subset = subset.nonzero()[0]
 
-        # Different ways of averaging 
-        if (averaging == 'sess'):
-            X = matrix.indicator(info.id + (self.sess-1) * num_reg)
+        # Different ways of averaging
+        if averaging == "sess":
+            X = matrix.indicator(info.id + (self.sess - 1) * num_reg)
             data = np.linalg.solve(X.T @ X, X.T @ self.data)
-            data_info = info[np.logical_or(info.run==1,info.run==9)]
-        elif (averaging == 'exp'):
+            data_info = info[np.logical_or(info.run == 1, info.run == 9)]
+        elif averaging == "exp":
             X = matrix.indicator(info.id)
             data = np.linalg.solve(X.T @ X, X.T @ self.data)
-            data_info = info[info.run==1]
-        elif (averaging == 'none'):
-            data_info = info 
+            data_info = info[info.run == 1]
+        elif averaging == "none":
+            data_info = info
             data = self.data
         else:
-            raise(NameError('averaging needs to be sess, exp, or none'))
+            raise (NameError("averaging needs to be sess, exp, or none"))
 
         # data_infoubset the data
-        indx = np.in1d(data_info.id,subset)
-        data = data[indx,:]
+        indx = np.in1d(data_info.id, subset)
+        data = data[indx, :]
         data_info = data_info[indx]
 
-        # Now weight the different betas by the variance that they predict for the time series. 
-        # This also removes the mean of the time series implictly. 
+        # Now weight the different betas by the variance that they predict for the time series.
+        # This also removes the mean of the time series implictly.
         # Note that weighting is done always on the average regressor structure, so that regressors still remain exchangeable across sessions
         if weighting:
-            XXm = np.mean(self.XX,0)
-            XXm = XXm[subset,:][:,subset]      # Get the desired subset only 
-            XXs = scipy.linalg.sqrtm(XXm) # Note that XXm = XXs @ XXs.T
-            for r in np.unique(data_info['run']): # WEight each run/session seperately 
-                idx = (data_info.run == r)
-                data[idx,:] = XXs @ data[idx,:] 
+            XXm = np.mean(self.XX, 0)
+            XXm = XXm[subset, :][:, subset]  # Get the desired subset only
+            XXs = scipy.linalg.sqrtm(XXm)  # Note that XXm = XXs @ XXs.T
+            for r in np.unique(data_info["run"]):  # WEight each run/session seperately
+                idx = data_info.run == r
+                data[idx, :] = XXs @ data[idx, :]
 
         # there are NaN values in cerebellum_suit, which causes problems later on in fitting model.
-        if self.roi=="cerebellum_suit":
+        if self.roi == "cerebellum_suit":
             data = np.nan_to_num(data)
 
         return data, data_info

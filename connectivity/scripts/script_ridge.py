@@ -44,6 +44,7 @@ def eval_ridge(resolution, logalpha, sn=const.return_subjs):
     D.to_csv(d.conn_eval_dir / f"Ridge_WB{resolution}.dat")
     return D
 
+
 if __name__ == "__main__":
     D = eval_ridge(162, [-2, 0, 2, 4, 6, 8, 10])
     # D = train_ridge(162,[0,2,4,6,8,10],sn=[2])

@@ -47,16 +47,14 @@ class L2regression(Ridge, ModelMixin):
         self.cv_rmse = None
         super().__init__(alpha=alpha, fit_intercept=False)
 
-
     def fit(self, X, Y):
         self.scale_ = np.sqrt(np.sum(X ** 2, 0) / X.shape[0])
         Xs = X / self.scale_
         return super().fit(Xs, Y)
 
-
     def predict(self, X):
         Xs = X / self.scale_
-        return Xs @ self.coef_.T # weights need to be transposed? 
+        return Xs @ self.coef_.T  # weights need to be transposed (throws error otherwise)
 
 
 class NNLS(BaseEstimator, ModelMixin):
