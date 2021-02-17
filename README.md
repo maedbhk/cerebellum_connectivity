@@ -28,16 +28,20 @@ This will automatically create a new virtual environment for you and install all
 
     $ pipenv install
 
-## Activating the virtual environment:
+## Activating the virtual environment in terminal:
 
     $ pipenv shell
 
 > NOTE: To deactivate the virtual environment when you are done working, simply type `exit`
 
+## Adding kernel to jupyter notebook:
+
+    $ python -m ipykernel install --user --name connectivity
+
 ## Running connectivity models:
 
     And example of how to run a set of connectivity models + evaluate them can be found in 
-    Scripts/sript_ridge.py  
+    connectivity/scripts/script_ridge.py or script_ridge_mk.py 
 
 
 Project Organization
@@ -92,6 +96,6 @@ Repository structure:
     │   ├── data.py              <- Module containing the Dataset class 
     │   ├── models.py            <- Module for defining different models classes (mostly derived from sklearn, but potentially with mixin )
     |   ├── run.py               <- Module defining function to traind and evaluate a model on a set of subjects - uses `train_config` and `eval_config` to set the parameters
-    │   └── visualize.py         <- Module to map results to the surface and visualize them. Parameter should be set as globals in module - not a class! 
+    │   └── visualize.py         <- Module to map results to the surface and visualize them. 
 --------
 
