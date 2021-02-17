@@ -63,28 +63,6 @@ def convert_to_vol(Y, vox_indx, mask):
 
     return make_nifti_obj(vol_data=vol_data, affine_mat=mat)
 
-def make_nifti_obj(vol_data, affine_mat):
-    """ makes nifti obj 
-        Args: 
-            vol_data (numpy array): data in vol space (xyz)
-            affine_mat (numpy array): affine transformation matrix
-        Returns: 
-            Nib Obj
-    """
-    return nib.Nifti1Image(vol_data, affine_mat)
-
-def save_nifti_obj(nib_obj, fpath):
-    """ saves nib obj to nifti file
-        Args: 
-            nib_obj (Niimg-like object): contains vol data in nib obj
-            fpath (str): full path to nib_obj
-        Returns: 
-            saves nifti file to fpath
-    """
-
-    nib.save(nib_obj, fpath)
-    print(f'saved {fpath}')
-
 def calc_nifti_average(imgs, fpath):
     """ calculates average nifti image
         Args: 
@@ -287,7 +265,6 @@ def _load_data(self):
 
     # conjoin nested keys (will form nifti filenames)
     return self._flatten_nested_dict(data_dict_all) 
-
 
 def plot_interactive_surface(self):
     view = plotting.view_surf(self.inflated, self.texture, 

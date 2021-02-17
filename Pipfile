@@ -20,6 +20,12 @@ dictdiffer = "*"
 matplotlib = "*"
 seaborn = "*"
 quadprog = "*"
+black = "*"
+jedi = "==0.17.2"
+nilearn = "*"
 
 [requires]
 python_version = "3.7"
+
+[pipenv]
+allow_prereleases = true
