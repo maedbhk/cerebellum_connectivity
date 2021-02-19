@@ -7,6 +7,7 @@ import glob
 import deepdish as dd
 from collections import defaultdict
 import matplotlib.pyplot as plt
+import flatmap
 
 import connectivity.constants as const
 import connectivity.io as cio
@@ -83,9 +84,9 @@ def plot_train_predictions(dataframe, hue=None):
         dataframe (pandas dataframe): must contain 'train_name' and 'train_R_cv'
         hue (str or None): can be 'train_exp', 'Y_data' etc.
     """
-    plt.figure(figsize=(8, 8))
+    plt.figure(figsize=(15, 10))
     # R
-    sns.factorplot(x="train_name", y="train_R_cv", hue=hue, data=dataframe, legend=False)
+    sns.factorplot(x="train_name", y="train_R_cv", hue=hue, data=dataframe, legend=False, ci=None, size=4, aspect=2)
     plt.title("Model Training (CV Predictions)", fontsize=20)
     plt.tick_params(axis="both", which="major", labelsize=15)
     plt.xticks(rotation="45", ha="right")
@@ -94,8 +95,8 @@ def plot_train_predictions(dataframe, hue=None):
     plt.legend(fontsize=15)
 
 
-def plot_eval_predictions(dataframe, exp='sc1', hue='eval_name'):
-    """plots evaluation predictions (R eval) for all models in dataframe for 'sc1' or 'sc2'
+def plot_eval_predictions(dataframe, exp='sc1'):
+    """plots evaluation predictions (R eval) for best model in dataframe for 'sc1' or 'sc2'
 
     Also plots model-dependent and model-independent noise ceilings.
 
@@ -104,8 +105,15 @@ def plot_eval_predictions(dataframe, exp='sc1', hue='eval_name'):
         exp (str): either 'sc1' or 'sc2'
         hue (str or None): default is 'eval_name' 
     """
-    # filter dataframe based on exp
-    dataframe = dataframe.query(f'eval_exp=="{exp}"')
+    # get best model (from train CV)
+    best_model = get_best_model(train_exp=exp)
+
+    if exp is 'sc1':
+        eval_exp = 'sc2'
+    else:
+        eval_exp = 'sc1'
+
+    dataframe = dataframe.query(f'eval_exp=="{eval_exp}" and eval_name=="{best_model}"')
 
     # get noise ceilings
     dataframe["eval_noiseceiling_Y"] = np.sqrt(dataframe.eval_noise_Y_R)
@@ -116,9 +124,9 @@ def plot_eval_predictions(dataframe, exp='sc1', hue='eval_name'):
     df = pd.melt(dataframe, value_vars=cols, id_vars=set(dataframe.columns) - set(cols)).rename(
         {"variable": "data_type", "value": "data"}, axis=1)
 
-    plt.figure(figsize=(8, 8))
-    splot = sns.barplot(x="data_type", y="data", hue=hue, data=df)
-    plt.title(f"Model Evaluation (exp={exp})", fontsize=20)
+    plt.figure(figsize=(8,8))
+    splot = sns.barplot(x="data_type", y="data", data=df)
+    plt.title(f"Model Evaluation (exp={exp}: best model={best_model})", fontsize=20)
     plt.tick_params(axis="both", which="major", labelsize=15)
     plt.xlabel("")
     plt.ylabel("R", fontsize=20)
@@ -128,7 +136,7 @@ def plot_eval_predictions(dataframe, exp='sc1', hue='eval_name'):
         rotation="45",
         ha='right'
     )
-    plt.legend(fontsize=15)
+    # plt.legend(fontsize=15)
 
     # annotate barplot
     for p in splot.patches:
@@ -137,6 +145,59 @@ def plot_eval_predictions(dataframe, exp='sc1', hue='eval_name'):
                     ha='left', va='center', 
                     xytext = (0, 10), 
                     textcoords = 'offset points')
+
+
+def plot_map(gifti_func='group_R_vox', exp='sc1', model=None, cscale=None):
+    """plot surface map for best model
+
+    Args: 
+        gifti (str):
+        best_model (None or model name):
+        exp (str): 'sc1' or 'sc2'
+
+    """
+    if exp=='sc1':
+        dirs = const.Dirs(exp_name='sc2')
+    else: 
+        dirs = const.Dirs(exp_name='sc1')
+
+    # get evaluation 
+    df_eval = eval_summary()
+
+    # get best model
+    if not model:
+        model = get_best_model(train_exp=exp)
+    
+    # plot map
+    surf_data = cio.nib_load(os.path.join(dirs.conn_eval_dir, model, f'{gifti_func}.func.gii'))
+    return flatmap.plot(surf_data.agg_data(), symmetric_cmap=False, cscale=cscale)
+    
+
+def get_best_model(train_exp):
+    """Get idx for best ridge based on either rmse_train or rmse_cv.
+
+    If rmse_cv is populated, this is used to determine best ridge.
+    Otherwise, rmse_train is used.
+
+    Args:
+        exp (str): 'sc1' or 'sc2
+    Returns:
+        model name (str)
+    """
+    # load train summary (contains R CV of all trained models)
+    dirs = const.Dirs(exp_name=train_exp)
+    fpath = os.path.join(dirs.conn_train_dir, "train_summary.csv")
+    df = pd.read_csv(fpath)
+
+    # get mean values for each model
+    tmp = df.groupby('name').mean().reset_index()
+
+    # get best model (based on R CV)
+    best_model = tmp[tmp['R_cv']==tmp['R_cv'].max()]['name'].values[0]
+
+    print(f'best model for {train_exp} is {best_model}')
+
+    return best_model
 
 
 def train_weights(exp='sc1', model_name="ridge_tesselsWB162_alpha_6"):

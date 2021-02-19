@@ -341,6 +341,10 @@ def _get_eval(Y, Y_pred, Y_info, X_info):
         data["noise_X_R2_vox"],
     ) = ev.calculate_reliability(Y=Y_pred, dataframe=X_info)
 
+    # calculate noise ceiling
+    data["noise_ceiling_Y"] = np.sqrt(data["noise_Y_R_vox"])
+    data["noise_ceiling_XY"] = np.sqrt(data["noise_Y_R_vox"] * np.sqrt(data["noise_X_R_vox"]))
+
     # # Noise ceiling for cortex (squared)
     #     pass
 

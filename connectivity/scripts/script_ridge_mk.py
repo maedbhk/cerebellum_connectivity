@@ -7,12 +7,15 @@ import glob
 from random import seed, sample
 from collections import defaultdict
 import neptune
+import flatmap
+from pathlib import Path
 
 import connectivity.constants as const
 import connectivity.io as cio
 from connectivity.data import Dataset
 import connectivity.model as model
 import connectivity.run_mk as run_connect
+from connectivity import visualize_summary as summary
 
 
 def delete_conn_files():
@@ -94,7 +97,7 @@ def log_to_neptune(dataframe, config, modeltype="train"):
     neptune.stop()
 
 
-def train_ridge(log_alpha, train_exp="sc1",  cortex='tesselsWB162', cerebellum='cerebellum_suit', log_online=False, log_locally=True, model_ext=None):
+def train_ridge(log_alpha, train_exp="sc1",  cortex='tesselsWB642', cerebellum='cerebellum_suit', log_online=False, log_locally=True, model_ext=None):
     """Train ridge model(s) using different alpha values.
 
     Optimal alpha value is returned based on R_cv.
@@ -156,7 +159,7 @@ def train_ridge(log_alpha, train_exp="sc1",  cortex='tesselsWB162', cerebellum='
         df_all.to_csv(fpath, index=False)
 
 
-def eval_ridge(model_name, train_exp="sc1", eval_exp="sc2", cortex='tesselsWB162', cerebellum='cerebellum_suit', log_online=False, log_locally=True):
+def eval_ridge(model_name, train_exp="sc1", eval_exp="sc2", cortex='tesselsWB642', cerebellum='cerebellum_suit', log_online=False, log_locally=True):
     """Evaluate ridge model(s) using different alpha values.
 
     Args:
@@ -193,72 +196,40 @@ def eval_ridge(model_name, train_exp="sc1", eval_exp="sc2", cortex='tesselsWB162
     # eval model(s)
     df, voxels = run_connect.eval_models(config)
 
-    # save voxel data (only for cerebellum_suit)
+    # save voxel data to gifti(only for cerebellum_suit)
     if config["save_maps"] and config["Y_data"] == "cerebellum_suit":
         fpath = os.path.join(dirs.conn_eval_dir, model_name)
         cio.make_dirs(fpath)
-        save_voxels(data=voxels, fpath=os.path.join(fpath, "voxels_group.h5"))
+        save_maps(voxels, fpath)
 
     # write to neptune
     if log_online:
         log_to_neptune(dataframe=df, config=config, modeltype="eval")
 
     # concat data to eval summary (if file already exists)
-    fpath = os.path.join(dirs.conn_eval_dir, f"eval_summary.csv")
     if log_locally:
-        if os.path.isfile(fpath): 
-            df = pd.concat([df, pd.read_csv(fpath)])
-        df.to_csv(fpath, index=False)
+        eval_fpath = os.path.join(dirs.conn_eval_dir, f"eval_summary.csv")
+        if os.path.isfile(eval_fpath): 
+            df = pd.concat([df, pd.read_csv(eval_fpath)])
+        df.to_csv(eval_fpath, index=False)
 
 
-def save_voxels(data, fpath):
-    """Averages subj-level voxel output from model training/evaluation 
-    and saves to disk.
+def save_maps(voxels, fpath):
+    # get cerebellum_suit regions and mask
+    dirs = const.Dirs(exp_name='sc1')
+    os.chdir(os.path.join(dirs.reg_dir, 'data/group'))
+    regions = cio.read_mat_as_hdf5(fpath='regions_cerebellum_suit.mat')['R']
 
-    Args: 
-        data (dict): dictionary containing subj-level model predictions (R_vox, R2_vox)
-        fpath (str): full path to voxel output
-    Returns: 
-        saves 1-D arrays (group data) to disk (.h5)
-    """
-    avg_data = {}
-    # loop over keys and average across subjs
-    for k, v in data.items():
-        avg_data.update({k: np.array([float(sum(col)) / len(col) for col in zip(*v)])})
-
-    # calculate noise ceiling
-    avg_data["noise_ceiling_Y"] = np.sqrt(avg_data["noise_Y_R_vox"])
-    avg_data["noise_ceiling_XY"] = np.sqrt(avg_data["noise_Y_R_vox"] * np.sqrt(avg_data["noise_X_R_vox"]))
-
-    # save voxels to disk
-    cio.save_dict_as_hdf5(fpath=fpath, data_dict=avg_data)
-
-
-def get_best_model(exp):
-    """Get idx for best ridge based on either rmse_train or rmse_cv.
-
-    If rmse_cv is populated, this is used to determine best ridge.
-    Otherwise, rmse_train is used.
-
-    Args:
-        exp (str): 'sc1' or 'sc2
-    Returns:
-        model name (str)
-    """
-    # load train summary (contains R CV of all trained models)
-    dirs = const.Dirs(exp_name=exp)
-    fpath = os.path.join(dirs.conn_train_dir, "train_summary.csv")
-    df = pd.read_csv(fpath)
-
-    # get mean values for each model
-    tmp = df.groupby('name').mean().reset_index()
-
-    # get best model (based on R CV)
-    best_model = tmp[tmp['R_cv']==tmp['R_cv'].max()]['name'].values[0]
-
-    print(f'best model for {exp} is {best_model}')
-
-    return best_model
+    # transform voxel data to gifti data
+    for k,v in voxels.items():
+        nib_objs = cio.convert_to_vol(data=v, xyz=regions.data.T, mask=cio.nib_load(regions.file))
+        # get mean of nifti objs
+        nib_mean = cio.nib_mean(nib_objs)
+        # map volume to surface
+        surf_data = flatmap.vol_to_surf([nib_mean], space='SUIT')
+        # make and save gifti image
+        gii_img = flatmap.make_func_gifti(data=surf_data, column_names=[k])  
+        cio.nib_save(img=gii_img, fpath=os.path.join(fpath, f'group_{k}.func.gii'))
 
 
 def run():
@@ -269,11 +240,19 @@ def run():
 
     # eval models
     for exp in range(2):
+
         # get best train model (based on train CV)
-        model_name = get_best_model(exp=f"sc{2-exp}")
+        best_model = summary.get_best_model(train_exp=f"sc{2-exp}")
+
+        # delete training models that are suboptimal (save space)
+        dirs = const.Dirs(exp_name=f"sc{2-exp}")
+        model_fpaths = [f.path for f in os.scandir(dirs.conn_train_dir) if f.is_dir()]
+        for fpath in model_fpaths:
+            if best_model!=Path(fpath).name:
+                shutil.rmtree(fpath)
 
         # test best train model
-        eval_ridge(model_name=model_name, train_exp=f"sc{2-exp}", eval_exp=f"sc{exp+1}")
+        eval_ridge(model_name=best_model, train_exp=f"sc{2-exp}", eval_exp=f"sc{exp+1}")
 
 
 if __name__ == '__main__':
