@@ -45,12 +45,12 @@ switch what
         R{1}.name  = sprintf('cerebellum_suit');
         R{1}.threshold = 0.25;
         R=region_calcregions(R);
-        save(fullfile(baseDir,'sc1','RegionOfInterest','data','regions_cerebellum_suit.mat'),'R');
+        save(fullfile(baseDir,'sc1','RegionOfInterest','data','group','regions_cerebellum_suit.mat'),'R');
     case 'ROI:MDTB:define_suit'  % Defines individual regions from the suit ROI
         sn = returnSubjs;
         saveasimg = 0; % Automatixally save the ROI as an image?
         vararginoptions(varargin, {'sn','saveasimg'});
-        load(fullfile(baseDir,'sc1','RegionOfInterest','data','regions_cerebellum_suit.mat'));
+        load(fullfile(baseDir,'sc1','RegionOfInterest','data','group','regions_cerebellum_suit.mat'));
         for s=sn
             suitDir=fullfile(baseDir,'sc1','suit','anatomicals',subj_name{s});
             [defs,mat]=spmdefs_get_dartel(fullfile(suitDir,'u_a_c_anatomical_seg1.nii'),fullfile(suitDir,'Affine_c_anatomical_seg1.mat'));
@@ -167,8 +167,10 @@ switch what
         experiment_num = 1;
         parcelType     = 'tesselsWB162';  %% other options are 'cerebellum_suit', 'yeo_7WB', and 'yeo_17WB'
         glm            = 7;
+        ignore_nan     = 1; % Set Nans to zero for sampling? 
+        interp         = 1; % Interpolation for sampling 
         
-        vararginoptions(varargin, {'sn', 'experiment_num', 'glm', 'parcelType', 'oparcel', 'discardp', 'which', 'xres'});
+        vararginoptions(varargin, {'sn', 'experiment_num', 'glm', 'parcelType', 'oparcel', 'discardp', 'which', 'xres','ignore_nan','interp'});
         
         experiment = sprintf('sc%d', experiment_num);
         
@@ -203,7 +205,7 @@ switch what
             V(end+1)=SPM.VResMS;
             cd(glmDir);
             tic;
-            Y = region_getdata(V,R,'interp',1,'ignore_nan',1);  % Data is N x P
+            Y = region_getdata(V,R,'interp',interp,'ignore_nan',ignore_nan);  % Data is N x P
             B=[];
             for r = 1:numel(R) % R is the output 'regions' structure from 'ROI_define'
                 % Get betas (univariately prewhitened)
@@ -212,8 +214,11 @@ switch what
 
                 B_tmp.betasNW{1, 1} = beta; 
                 B_tmp.betasUW{1, 1} = bsxfun(@rdivide,beta,sqrt(resMS));
-                B_tmp.mbetasNW  = mean(B_tmp.betasNW{1},2)';
-                B_tmp.mbetasUW  = mean(B_tmp.betasUW{1},2)';
+                if (ignore_nan) 
+                    B_tmp.betasUW{1}(:,resMS==0)=0
+                end
+                B_tmp.mbetasNW  = nanmean(B_tmp.betasNW{1},2)';
+                B_tmp.mbetasUW  = nanmean(B_tmp.betasUW{1},2)';
                 B_tmp.region_num    = r;
                 B_tmp.region_name   = {R{r}.name};
                 B_tmp.SN            = s;
