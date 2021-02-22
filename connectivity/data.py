@@ -10,6 +10,7 @@ import scipy.io as sio
 from collections import defaultdict
 import h5py
 import flatmap
+import nibabel as nib
 
 # Import module as such - no need to make them a class
 import connectivity.constants as const
@@ -150,6 +151,96 @@ class Dataset:
         
         return gifti_img
     
+    
+    def load_gifti_cortex(self, data_array, column_names = [], label_name = 'Icosahedron-162.32k', hemi = 'Left'):
+        """
+        maps an array containing data for the tessels and returns gifti image
+
+        Args:
+            map_array    -   array for which you want the gifti. (number_of_regions-by-number_of_variables) 
+                             A column in the gifti will be created for each column of the array
+            column_names -   names of the columns in the gifti file. Default is empty
+            roi_name     -   cortical roi name
+            hemi         -   hemisphere: 'Left' or 'Right'
+        Returns:
+            gifti image
+        """
+        # get the shape of the data array
+        ## r is the number of regions
+        ## c is the number of maps (for pls for example, the map for each loading is in one column)
+        [r, c] = data_array.shape 
+
+        # % Make column_names if empty 
+        if not column_names:
+            for i in range(c):
+                column_names.append('col_%d'% i)
+                
+        # preparing the gifti object
+        # create the name of the structure
+        anat_struct = f"Cortex{hemi}"
+
+        # create the meta data for the gifti file
+        img_meta = {}
+        img_meta['AnatomicalStructurePrimary'] = anat_struct
+        img_meta['encoding'] = 'XML_BASE64_GZIP'
+        meta_ = nib.gifti.GiftiMetaData.from_dict(img_meta)
+
+        # fix the label ???????????????????????
+        img_label      = nib.gifti.gifti.GiftiLabel(key=0, red=1, green=1, blue=1, alpha=0)
+        img_labelTable = nib.gifti.gifti.GiftiLabelTable()
+        
+        gifti_img = nib.GiftiImage(meta = meta_, labeltable = img_labelTable)
+
+        # 1. load the label file. for tesselation it will be IcosahedranXXX.
+        ## 1.1 the gifti file is in fs_LR directory
+        dirs = const.Dirs(exp_name='sc1')
+        fs_lr_dir = dirs.fs_lr_dir
+        ## 1.2. load the gifti file
+        label_gifti = nib.load(os.path.join(fs_lr_dir, f"{label_name}.{hemi}.label.gii"))
+        ## 1.3. get the label assignments for each vertices
+        vertex_label = label_gifti.agg_data()
+        ## 1.4 delete the medial wall info
+        label_names = label_gifti.labeltable.get_labels_as_dict()    
+        del label_names[0] # assuming that the medial wall is the first label
+        ## 1.5 create label numbers
+        ### labels for left hemi come first!
+        if hemi == 'Left':
+            label_nums = np.arange(len(label_names.keys()))
+        elif hemi == 'Right':
+            label_nums = np.arange(len(label_names.keys()), r)
+
+        # 2. map the array to vertices
+        data_vertex = np.nan * np.ones((vertex_label.shape[0], c)) # initializing output to be all nans
+        for ic in range(c): # create a map corresponding to each label
+            # get the map for the current component
+            map_ic = data_array[:, ic]
+
+            # preparing different fields of the gifti
+            mmeta = {}
+            mmeta['name']  = 'Name'
+            mmeta['value'] = column_names[i]
+            mmeta_ = nib.gifti.GiftiMetaData.from_dict(mmeta)
+            coord_ = nib.gifti.gifti.GiftiCoordSystem(dataspace=0, xformspace=0, xform=None)
+            
+            # loop through regions
+            ihemi = 0 # this index is always starting from zero and is used to read from the parcellation 
+            for i in label_nums:
+                # get the value
+                region_val = map_ic[i]
+
+                # find the indices for the vertices of the parcel and 
+                # set their corresponding value equal to the value for that region
+                data_vertex[vertex_label == ihemi+1, ic] = region_val
+
+                gifti_img.add_gifti_data_array(nib.gifti.GiftiDataArray(data = data_vertex[:, ic], meta = mmeta_, 
+                                                intent = 'NIFTI_INTENT_NONE', 
+                                                datatype = 'NIFTI_TYPE_FLOAT32', 
+                                                coordsys = coord_))
+
+                ihemi = ihemi +1
+
+        return gifti_img
+
 
     def get_data(self, averaging="sess", weighting=True, subset=None):
         """Get the data using a specific aggregation.
