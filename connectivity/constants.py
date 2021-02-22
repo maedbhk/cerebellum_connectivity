@@ -70,4 +70,5 @@ class Dirs:
         self.conn_eval_dir = self.data_dir / "conn_models" / "eval"
         self.atlas = base_dir / "atlases"
         self.atlas_suit_flatmap = self.atlas / "suit_flatmap"
+        self.fs_lr_dir = base_dir / "fs_LR_32"
         self.figure = Path(__file__).absolute().parent.parent / "reports" / "figures"
