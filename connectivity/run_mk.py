@@ -177,7 +177,7 @@ def train_models(config, save=False):
         models[-1].fit(X, Y)
         models[-1].rmse_train, models[-1].R_train = train_metrics(models[-1], X, Y)
         models[-1].rmse_cv, models[-1].R_cv = validate_metrics(models[-1], X, Y, config["cv_fold"])
-
+        
         # collect rmse for each subject and each model
         data = {
             "subj_id": subj,
@@ -206,11 +206,11 @@ def train_models(config, save=False):
 def train_metrics(model, X, Y):
     """computes training metrics (rmse and R) on X and Y
 
-    Args: 
+    Args:
         model (class instance): must be fitted model
-        X (nd-array): 
-        Y (nd-array): 
-    Returns: 
+        X (nd-array):
+        Y (nd-array):
+    Returns:
         rmse_train (scalar), R_train (scalar)
     """
     Y_pred = model.predict(X)
@@ -225,17 +225,14 @@ def train_metrics(model, X, Y):
 def validate_metrics(model, X, Y, cv_fold):
     """computes CV training metrics (rmse and R) on X and Y
 
-    Args: 
+    Args:
         model (class instance): must be fitted model
-        X (nd-array): 
-        Y (nd-array): 
+        X (nd-array):
+        Y (nd-array):
         cv_fold (int): number of CV folds
-    Returns: 
+    Returns:
         rmse_cv (scalar), R_cv (scalar)
     """
-    # get model predictions
-    Y_pred = model.predict(X)
-
     # get cv rmse and R
     rmse_cv_all = np.sqrt(cross_val_score(model, X, Y, scoring="neg_mean_squared_error", cv=cv_fold) * -1)
     rmse_cv = np.nanmean(rmse_cv_all)
@@ -293,8 +290,8 @@ def eval_models(config):
             for k, v in data.items():
                 if "vox" in k:
                     eval_voxels[k].append(v)
-        
-        # don't save voxel data to summary            
+
+        # don't save voxel data to summary
         data = {k: v for k, v in data.items() if "vox" not in k}
 
         # append data for each subj
@@ -354,7 +351,7 @@ def _get_eval(Y, Y_pred, Y_info, X_info):
 def _get_data(config, exp, subj):
     """get X and Y data for exp and subj
 
-    Args: 
+    Args:
         config (dict): must contain keys for glm, Y_data, X_data, averaging, weighting
         exp (str): 'sc1' or 'sc2'
         subj (str): default subjs are set in constants.py

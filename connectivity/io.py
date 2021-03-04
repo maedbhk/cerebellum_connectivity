@@ -130,10 +130,10 @@ def convert_to_vol(data, xyz, mask):
     Args:
         data (list of 1d numpy array): voxel data, shape (num_vox, )
         xyz (int): world coordinates corresponding to grey matter voxels for group
-        mask (nib obj): nib obj with affine 
-    Returns: 
+        mask (nib obj): nib obj with affine
+    Returns:
         list of Nib Obj
-    
+
     """
     # get dat, mat, and dim from the mask
     dat = mask.get_fdata()
@@ -161,9 +161,9 @@ def convert_to_vol(data, xyz, mask):
 def nib_mean(nib_objs):
     """get mean image of list of nib objs
 
-    Args: 
+    Args:
         nib_objs (list): list of nib objs
-    Returns: 
+    Returns:
         mean nib obj
     """
     return mean_img(nib_objs)

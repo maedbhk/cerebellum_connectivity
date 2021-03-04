@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import quadprog as qp
+from scipy import sparse
 from sklearn.base import BaseEstimator
 from sklearn.linear_model import LinearRegression
 from sklearn.linear_model import Ridge
@@ -44,13 +45,41 @@ class L2regression(Ridge, ModelMixin):
         """
         Simply calls the superordinate construction - but does not fit intercept, as this is tightly controlled in Dataset.get_data()
         """
-        self.cv_rmse = None
         super().__init__(alpha=alpha, fit_intercept=False)
 
     def fit(self, X, Y):
         self.scale_ = np.sqrt(np.sum(X ** 2, 0) / X.shape[0])
         Xs = X / self.scale_
         return super().fit(Xs, Y)
+
+    def predict(self, X):
+        Xs = X / self.scale_
+        return Xs @ self.coef_.T  # weights need to be transposed (throws error otherwise)
+
+
+class WTA(LinearRegression, ModelMixin):
+    """
+    WTA model
+    It performs scaling by stdev, but not by mean before fitting and prediction
+    """
+
+    def __init__(self, positive=False):
+        """
+        Simply calls the superordinate construction - but does not fit intercept, as this is tightly controlled in Dataset.get_data()
+        """
+        super().__init__(positive=positive, fit_intercept=False)
+
+    def fit(self, X, Y):
+        self.scale_ = np.sqrt(np.sum(X ** 2, 0) / X.shape[0])
+        Xs = X / self.scale_
+        super().fit(Xs, Y)
+        wta_labels = np.argmax(self.coef_, axis=1)
+        wta_coef_ = np.amax(self.coef_, axis=1)
+        self.coef_ = np.zeros((self.coef_.shape))
+        num_vox = self.coef_.shape[0]
+        for v in range(num_vox):
+            self.coef_[v, wta_labels[v]] = wta_coef_[v]
+        return self.coef_
 
     def predict(self, X):
         Xs = X / self.scale_

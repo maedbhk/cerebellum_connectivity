@@ -48,7 +48,6 @@ class Dataset:
         self.subj_id = subj_id
         self.data = None
 
-
     def load_mat(self):
         """Reads a data set from the Y_info file and corresponding GLM file from matlab."""
         dirs = const.Dirs(exp_name=self.exp, glm=self.glm)
@@ -68,7 +67,6 @@ class Dataset:
         self.run = np.array(file["run"]).reshape(-1).astype(int)
         return self
 
-
     def save(self, filename=None):
         """Save the content of the data set in a dict as a hpf5 file.
 
@@ -84,7 +82,6 @@ class Dataset:
 
         dd.io.save(fdir / fname, vars(self), compression=None)
 
-
     def load(self, filename=None):
         """Load the content of a data set object from a hpf5 file.
         Args:
@@ -99,7 +96,6 @@ class Dataset:
 
         return dd.io.load(fdir / fname, self, compression=None)
 
-
     def get_info(self):
         """Return info for data set in a dataframe."""
         d = {
@@ -113,43 +109,39 @@ class Dataset:
 
         return pd.DataFrame(d)
 
-
     def get_info_run(self):
         """Returns info for a typical run only."""
         info = self.get_info()
         return info[info.run == 1]
-    
 
     def load_regions_cerebellum(self):
         """load cerebellum suit regions from mat file
 
-        Returns: 
+        Returns:
             regions (dict)
         """
-        dirs = const.Dirs(exp_name='sc1')
-        os.chdir(os.path.join(dirs.reg_dir, 'data/group'))
-        regions = cio.read_mat_as_hdf5(fpath='regions_cerebellum_suit.mat')['R']
+        dirs = const.Dirs(exp_name="sc1")
+        os.chdir(os.path.join(dirs.reg_dir, "data/group"))
+        regions = cio.read_mat_as_hdf5(fpath="regions_cerebellum_suit.mat")["R"]
 
         return regions
 
-    
     def load_gifti_cerebellum(self, nib_obj, column_name):
         """maps nib obj to surface and returns gifti image
 
-        Args: 
+        Args:
             nib_obj (nib obj):
             column_names (str): column name
-        Returns: 
+        Returns:
             gifti image
         """
         # map volume to surface
-        surf_data = flatmap.vol_to_surf([nib_obj], space='SUIT')
-        
+        surf_data = flatmap.vol_to_surf([nib_obj], space="SUIT")
+
         # make gifti images
-        gifti_img = flatmap.make_func_gifti(data=surf_data, column_names=column_names)  
-        
+        gifti_img = flatmap.make_func_gifti(data=surf_data, column_names=column_name)
+
         return gifti_img
-    
 
     def get_data(self, averaging="sess", weighting=True, subset=None):
         """Get the data using a specific aggregation.
