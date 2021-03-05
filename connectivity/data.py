@@ -21,7 +21,7 @@ from numpy.linalg import solve
 
 """Main module for getting data to be used for running connectivity models.
 
-   @authors: Maedbh King, Ladan Shahshahani, Jörn Diedrichsen  
+   @authors: Maedbh King, Ladan Shahshahani, Jörn Diedrichsen
 
   Typical usage example:
 
@@ -150,14 +150,14 @@ class Dataset:
         gifti_img = flatmap.make_func_gifti(data=surf_data, column_names=column_name)
 
         return gifti_img
-    
-    
+
+
     def load_gifti_cortex(self, data_array, column_names = [], label_name = 'Icosahedron-162.32k', hemi = 'Left'):
         """
         maps an array containing data for the tessels and returns gifti image
 
         Args:
-            map_array    -   array for which you want the gifti. (number_of_regions-by-number_of_variables) 
+            map_array    -   array for which you want the gifti. (number_of_regions-by-number_of_variables)
                              A column in the gifti will be created for each column of the array
             column_names -   names of the columns in the gifti file. Default is empty
             roi_name     -   cortical roi name
@@ -168,13 +168,13 @@ class Dataset:
         # get the shape of the data array
         ## r is the number of regions
         ## c is the number of maps (for pls for example, the map for each loading is in one column)
-        [r, c] = data_array.shape 
+        [r, c] = data_array.shape
 
-        # % Make column_names if empty 
+        # % Make column_names if empty
         if not column_names:
             for i in range(c):
                 column_names.append('col_%d'% i)
-                
+
         # preparing the gifti object
         # create the name of the structure
         anat_struct = f"Cortex{hemi}"
@@ -188,7 +188,7 @@ class Dataset:
         # fix the label ???????????????????????
         img_label      = nib.gifti.gifti.GiftiLabel(key=0, red=1, green=1, blue=1, alpha=0)
         img_labelTable = nib.gifti.gifti.GiftiLabelTable()
-        
+
         gifti_img = nib.GiftiImage(meta = meta_, labeltable = img_labelTable)
 
         # 1. load the label file. for tesselation it will be IcosahedranXXX.
@@ -200,7 +200,7 @@ class Dataset:
         ## 1.3. get the label assignments for each vertices
         vertex_label = label_gifti.agg_data()
         ## 1.4 delete the medial wall info
-        label_names = label_gifti.labeltable.get_labels_as_dict()    
+        label_names = label_gifti.labeltable.get_labels_as_dict()
         del label_names[0] # assuming that the medial wall is the first label
         ## 1.5 create label numbers
         ### labels for left hemi come first!
@@ -221,20 +221,20 @@ class Dataset:
             mmeta['value'] = column_names[i]
             mmeta_ = nib.gifti.GiftiMetaData.from_dict(mmeta)
             coord_ = nib.gifti.gifti.GiftiCoordSystem(dataspace=0, xformspace=0, xform=None)
-            
+
             # loop through regions
-            ihemi = 0 # this index is always starting from zero and is used to read from the parcellation 
+            ihemi = 0 # this index is always starting from zero and is used to read from the parcellation
             for i in label_nums:
                 # get the value
                 region_val = map_ic[i]
 
-                # find the indices for the vertices of the parcel and 
+                # find the indices for the vertices of the parcel and
                 # set their corresponding value equal to the value for that region
                 data_vertex[vertex_label == ihemi+1, ic] = region_val
 
-                gifti_img.add_gifti_data_array(nib.gifti.GiftiDataArray(data = data_vertex[:, ic], meta = mmeta_, 
-                                                intent = 'NIFTI_INTENT_NONE', 
-                                                datatype = 'NIFTI_TYPE_FLOAT32', 
+                gifti_img.add_gifti_data_array(nib.gifti.GiftiDataArray(data = data_vertex[:, ic], meta = mmeta_,
+                                                intent = 'NIFTI_INTENT_NONE',
+                                                datatype = 'NIFTI_TYPE_FLOAT32',
                                                 coordsys = coord_))
 
                 ihemi = ihemi +1
@@ -307,3 +307,47 @@ class Dataset:
             data = np.nan_to_num(data)
 
         return data, data_info
+
+def convert_to_vol(data, xyz, voldef):
+    """
+    This function converts 1D numpy array data to 3D vol space, and returns nib obj
+    that can then be saved out as a nifti file
+    Args:
+        data (list of 1d numpy array): voxel data, shape (num_vox, )
+        xyz (int): world coordinates corresponding to grey matter voxels for group
+        voldef (nib obj): nib obj with affine
+    Returns:
+        list of Nib Obj
+
+    """
+    # get dat, mat, and dim from the mask
+    dat = mask.get_fdata()
+    dim = dat.shape
+    mat = mask.affine
+
+    # xyz to ijk
+    ijk = flatmap.coords_to_voxelidxs(xyz, mask)
+    ijk = ijk.astype(int)
+
+    nib_objs = []
+    for y in data:
+        num_vox = len(y)
+        # initialise xyz voxel data
+        vol_data = np.zeros((dim[0], dim[1], dim[2]))
+        for i in range(num_vox):
+            vol_data[ijk[0][i], ijk[1][i], ijk[2][i]] = y[i]
+
+        # convert to nifti
+        nib_obj = nib.Nifti2Image(vol_data, mat)
+        nib_objs.append(nib_obj)
+    return nib_objs
+
+def convert_cerebellum_to_nifti(data):
+    """
+    INPUT:
+        data (np-arrray): 67xx length data array
+    OUTPUT:
+        nifti (nifti2image):
+
+    """
+def convert_cortex_to_gifti:
