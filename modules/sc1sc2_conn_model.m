@@ -4,9 +4,9 @@ function [ varargout ] = sc1sc2_conn_model( what, varargin )
 
 %==========================================================================
 % setting directories
-% baseDir         = '/Volumes/MotorControl/data/super_cerebellum_new';
-baseDir         = '/Users/ladan/Documents/Project-Cerebellum/Cerebellum_Data';
-baseDir         = '/srv/diedrichsen/data/super_cerebellum';
+baseDir         = '/Volumes/MotorControl/data/super_cerebellum_new';
+% baseDir         = '/Users/ladan/Documents/Project-Cerebellum/Cerebellum_Data';
+% baseDir         = '/srv/diedrichsen/data/super_cerebellum';
 wbDir           = fullfile(baseDir,'sc1','surfaceWB');
 behavDir        = 'data';
 imagingDir      = 'imaging_data';
@@ -234,7 +234,7 @@ switch what
         end % sn
     case 'ROI:MDTB:add_to_beta'               % creates a new structure using beta_region files.
         % The structure will be uesd in connectivity project only
-        % Example: sc1sc2_conn_model('ROI:MDTB:add_to_beta', 'experiment_num', 1, 'parcelType', 'cerebellum_grey', 'glm', 7)
+        % Example: sc1sc2_conn_model('ROI:MDTB:add_to_beta', 'experiment_num', 1, 'parcelType', 'yeo_7WB', 'glm', 7)
         
         sn             = returnSubjs;
         experiment_num = 1;
