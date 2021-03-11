@@ -10,7 +10,7 @@ import json
 import nibabel as nib
 from nilearn.image import mean_img
 import os
-import flatmap
+import SUITPy.flatmap as flatmap
 
 """General purpose module for loading and saving data.
 

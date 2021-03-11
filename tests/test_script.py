@@ -1,11 +1,12 @@
 from connectivity.data import Dataset
+import connectivity.data as data
 import connectivity.model as model
 import connectivity.run as run
 import numpy as np
 
 
 def test_single_fit():
-    Ydata = Dataset(glm=7, sn=2, roi="cerebellum_grey")
+    Ydata = Dataset(glm="glm7", sn="s02", roi="cerebellum_grey")
     Ydata.load_mat()
     Y, T = Ydata.get_data(averaging="sess")
     Xdata = Dataset(glm=7, sn=2, roi="tesselsWB162")
@@ -55,43 +56,27 @@ def run_ridge():
             config["param"] = paramX[i]
             config["weighting"] = 2
             config["train_exp"] = e + 1
-            config["subjects"] = [
-                3,
-                4,
-                6,
-                8,
-                9,
-                10,
-                12,
-                14,
-                15,
-                17,
-                18,
-                19,
-                20,
-                21,
-                22,
-                24,
-                25,
-                26,
-                27,
-                28,
-                29,
-                30,
-                31,
-            ]
+            config["subjects"] = [3,4,6, 8,9,10,12,14,15,17,18,19,20,21,22,24,25,26,27,28,29,30,31]
             Model = run.train_models(config, save=True)
     pass
 
 
 def test_dataset():
-    Xdata = Dataset(experiment="sc1", glm=7, roi="cerebellum_grey", sn=2)
+    Xdata = Dataset(experiment="sc1", glm="glm7", roi="cerebellum_grey", subj_id="s02")
     Xdata.load_mat()  # Import the data from Matlab
     T = Xdata.get_info_run()
     X, S = Xdata.get_data(averaging="exp")
     X1, S1 = Xdata.get_data(averaging="exp", subset=T.cond < 5)
     pass
 
+def test_mapping_cerebellum():
+    """
+        Test the mapping to the cerebellar volume + surface + surface plotting
+    """
+    Xdata = Dataset(experiment="sc1", glm="glm7", roi="cerebellum_grey", subj_id="s02")
+    Xdata.load_mat()  # Import the data from Matlab
+    X, S = Xdata.get_data(averaging="exp")
+    pass
 
 if __name__ == "__main__":
-    test_dataset()
+    test_mapping_cerebellum()
