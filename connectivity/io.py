@@ -2,41 +2,49 @@
 from pathlib import Path
 import scipy.io as sio
 import pandas as pd
+import numpy as np
 import h5py
 import deepdish as dd
 import shutil
 import json
 import nibabel as nib
+from nilearn.image import mean_img
 import os
+import SUITPy.flatmap as flatmap
 
 """General purpose module for loading and saving data.
 
-@authors: Maedbh King 
+@authors: Maedbh King
 """
 
 
-def read_mat_as_hdf5(fpath):
+def read_mat_as_hdf5(fpath, save_to_h5=False):
     """imports mat files and returns HDF5 file object
     Args:
         fpath (str): full path to mat file
+        save_to_h5 (bool): default is False
     Returns:
         mat file as HDF5 object
     """
     try:
         # try loading with h5py (mat files saved as -v7.3)
         f = h5py.File(fpath, "r")
-        hf5_file = fpath.replace(".mat", ".h5")
-        shutil.copyfile(fpath, hf5_file)
-        return h5py.File(hf5_file, "r")
+        if save_to_h5:
+            hf5_file = fpath.replace(".mat", ".h5")
+            shutil.copyfile(fpath, hf5_file)
+            f = h5py.File(hf5_file, "r")
+        return f
 
     except OSError:
         # load mat struct with scipy
-        data_dict = sio.loadmat(fpath, struct_as_record=False, squeeze_me=True)
+        f = sio.loadmat(fpath, struct_as_record=False, squeeze_me=True)
 
         # save dict to hdf5
-        hf5_file = fpath.replace(".mat", ".h5")
-        save_dict_as_hdf5(fpath=hf5_file, data_dict=data_dict)
-        return dd.io.load(hf5_file)
+        if save_to_h5:
+            hf5_file = fpath.replace(".mat", ".h5")
+            save_dict_as_hdf5(fpath=hf5_file, data_dict=f)
+            f = dd.io.load(hf5_file)
+        return f
 
 
 def read_hdf5(fpath):
@@ -106,29 +114,15 @@ def convert_to_dataframe(file_obj, cols):
 
     return dataframe
 
-
-def save_nifti_obj(nib_obj, fpath):
-    """saves nib obj to nifti file
-    Args:
-        nib_obj (Niimg-like object): contains vol data in nib obj
-        fpath (str): full path to nib_obj
-    Returns:
-        saves nifti file to fpath
-    """
-
-    nib.save(nib_obj, fpath)
-    print(f"saved {fpath}")
+# These are REALLY NOT NECESSARY
+# Why would you every use this, rather than calling directly?
+def nib_load(fpath):
+    return nib.load(fpath)
 
 
-def make_nifti_obj(vol_data, affine_mat):
-    """makes nifti obj
-    Args:
-        vol_data (numpy array): data in vol space (xyz)
-        affine_mat (numpy array): affine transformation matrix
-    Returns:
-        Nib Obj
-    """
-    return nib.Nifti1Image(vol_data, affine_mat)
+def nib_save(img, fpath):
+    nib.save(img, fpath)
+
 
 
 def _convertobj(file_obj, key):

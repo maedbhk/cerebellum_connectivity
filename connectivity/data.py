@@ -9,6 +9,8 @@ import scipy
 import scipy.io as sio
 from collections import defaultdict
 import h5py
+import SUITPy as suit
+import nibabel as nib
 
 # Import module as such - no need to make them a class
 import connectivity.constants as const
@@ -19,7 +21,7 @@ from numpy.linalg import solve
 
 """Main module for getting data to be used for running connectivity models.
 
-   @authors: Maedbh King, Ladan Shahshahani, Jörn Diedrichsen  
+   @authors: Maedbh King, Ladan Shahshahani, Jörn Diedrichsen
 
   Typical usage example:
 
@@ -47,6 +49,7 @@ class Dataset:
         self.subj_id = subj_id
         self.data = None
 
+
     def load_mat(self):
         """Reads a data set from the Y_info file and corresponding GLM file from matlab."""
         dirs = const.Dirs(exp_name=self.exp, glm=self.glm)
@@ -66,6 +69,7 @@ class Dataset:
         self.run = np.array(file["run"]).reshape(-1).astype(int)
         return self
 
+
     def save(self, filename=None):
         """Save the content of the data set in a dict as a hpf5 file.
 
@@ -81,6 +85,7 @@ class Dataset:
 
         dd.io.save(fdir / fname, vars(self), compression=None)
 
+
     def load(self, filename=None):
         """Load the content of a data set object from a hpf5 file.
         Args:
@@ -95,6 +100,7 @@ class Dataset:
 
         return dd.io.load(fdir / fname, self, compression=None)
 
+
     def get_info(self):
         """Return info for data set in a dataframe."""
         d = {
@@ -107,6 +113,7 @@ class Dataset:
         }
 
         return pd.DataFrame(d)
+
 
     def get_info_run(self):
         """Returns info for a typical run only."""
@@ -178,3 +185,149 @@ class Dataset:
             data = np.nan_to_num(data)
 
         return data, data_info
+
+def convert_to_vol(data, xyz, voldef):
+    """
+    This function converts 1D numpy array data to 3D vol space, and returns nib obj
+    that can then be saved out as a nifti file
+    Args:
+        data (list or 1d numpy array)
+            voxel data, shape (num_vox, )
+        xyz (nd-array)
+            3 x P array world coordinates of voxels
+        voldef (nib obj)
+            nib obj with affine
+    Returns:
+        list of Nib Obj
+
+    """
+    # get dat, mat, and dim from the mask
+    dim = voldef.shape
+    mat = voldef.affine
+
+    # xyz to ijk
+    ijk = suit.flatmap.coords_to_voxelidxs(xyz, voldef)
+    ijk = ijk.astype(int)
+
+    vol_data = np.zeros(dim)
+    vol_data[ijk[0],ijk[1],ijk[2]] = data
+
+    # convert to nifti
+    nib_obj = nib.Nifti2Image(vol_data, mat)
+    return nib_obj
+
+def convert_cerebellum_to_nifti(data):
+    """
+    INPUT:
+        data (np-arrray):
+            N x 6937 length data array
+            or 1-d (6937,) array
+    OUTPUT:
+        nifti (List of nifti2image):
+            N output images
+    """
+    # Load the region file
+    dirs = const.Dirs(exp_name="sc1")
+    group_dir = os.path.join(dirs.reg_dir, 'data','group')
+    reg_file = os.path.join(group_dir,'regions_cerebellum_suit.mat')
+    region = cio.read_mat_as_hdf5(fpath=reg_file)["R"]
+
+    # NII File for volume definition
+    suit_file = os.path.join(group_dir,'cerebellarGreySUIT3mm.nii')
+    nii_suit = nib.load(suit_file)
+
+    # Map the data
+    nii_mapped = []
+    if data.ndim == 2:
+        for i in range(data.shape[0]):
+            nii_mapped.append(convert_to_vol(data[i],region.data.T,nii_suit))
+    elif data.ndim ==1:
+        nii_mapped.append(convert_to_vol(data,region.data.T,nii_suit))
+    else:
+        raise(NameError('data needs to be 1 or 2-dimensional'))
+    return nii_mapped
+
+
+def convert_cortex_to_gifti(data, roi_name):
+    """
+    INPUT:
+        data (np-arrray): data array
+        roi_name     -   cortical roi name
+    OUTPUT:
+        gifti (List of giftiImages)
+    """
+    # get the shape of the data array
+    ## r is the number of regions
+    ## c is the number of maps (for pls for example, the map for each loading is in one column)
+    [r, c] = data_array.shape
+
+    # % Make column_names if empty
+    if not column_names:
+        for i in range(c):
+            column_names.append('col_%d'% i)
+
+    # preparing the gifti object
+    # create the name of the structure
+    anat_struct = f"Cortex{hemi}"
+
+    # create the meta data for the gifti file
+    img_meta = {}
+    img_meta['AnatomicalStructurePrimary'] = anat_struct
+    img_meta['encoding'] = 'XML_BASE64_GZIP'
+    meta_ = nib.gifti.GiftiMetaData.from_dict(img_meta)
+
+    # fix the label ???????????????????????
+    img_label      = nib.gifti.gifti.GiftiLabel(key=0, red=1, green=1, blue=1, alpha=0)
+    img_labelTable = nib.gifti.gifti.GiftiLabelTable()
+
+    gifti_img = nib.GiftiImage(meta = meta_, labeltable = img_labelTable)
+
+    # 1. load the label file. for tesselation it will be IcosahedranXXX.
+    ## 1.1 the gifti file is in fs_LR directory
+    dirs = const.Dirs(exp_name='sc1')
+    fs_lr_dir = dirs.fs_lr_dir
+    ## 1.2. load the gifti file
+    label_gifti = nib.load(os.path.join(fs_lr_dir, f"{label_name}.{hemi}.label.gii"))
+    ## 1.3. get the label assignments for each vertices
+    vertex_label = label_gifti.agg_data()
+    ## 1.4 delete the medial wall info
+    label_names = label_gifti.labeltable.get_labels_as_dict()
+    del label_names[0] # assuming that the medial wall is the first label
+    ## 1.5 create label numbers
+    ### labels for left hemi come first!
+    if hemi == 'Left':
+        label_nums = np.arange(len(label_names.keys()))
+    elif hemi == 'Right':
+        label_nums = np.arange(len(label_names.keys()), r)
+
+    # 2. map the array to vertices
+    data_vertex = np.nan * np.ones((vertex_label.shape[0], c)) # initializing output to be all nans
+    for ic in range(c): # create a map corresponding to each label
+        # get the map for the current component
+        map_ic = data_array[:, ic]
+
+        # preparing different fields of the gifti
+        mmeta = {}
+        mmeta['name']  = 'Name'
+        mmeta['value'] = column_names[i]
+        mmeta_ = nib.gifti.GiftiMetaData.from_dict(mmeta)
+        coord_ = nib.gifti.gifti.GiftiCoordSystem(dataspace=0, xformspace=0, xform=None)
+
+        # loop through regions
+        ihemi = 0 # this index is always starting from zero and is used to read from the parcellation
+        for i in label_nums:
+            # get the value
+            region_val = map_ic[i]
+
+            # find the indices for the vertices of the parcel and
+            # set their corresponding value equal to the value for that region
+            data_vertex[vertex_label == ihemi+1, ic] = region_val
+
+            gifti_img.add_gifti_data_array(nib.gifti.GiftiDataArray(data = data_vertex[:, ic], meta = mmeta_,
+                                            intent = 'NIFTI_INTENT_NONE',
+                                            datatype = 'NIFTI_TYPE_FLOAT32',
+                                            coordsys = coord_))
+
+            ihemi = ihemi +1
+
+    return gifti_img
