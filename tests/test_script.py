@@ -4,18 +4,20 @@ import connectivity.model as model
 import connectivity.run as run
 import numpy as np
 import SUITPy as suit
+from sklearn.linear_model import Ridge
 
 
 def test_single_fit():
-    Ydata = Dataset(glm="glm7", sn="s02", roi="cerebellum_grey")
+    # Get task by voxel data for cerebellum 
+    Ydata = Dataset(glm="glm7", sn="s02", roi="cerebellum_suit")
     Ydata.load_mat()
     Y, T = Ydata.get_data(averaging="sess")
+    # Get task by voxel data for cortex 
     Xdata = Dataset(glm=7, sn=2, roi="tesselsWB162")
     Xdata.load_mat()
     X, T = Xdata.get_data(averaging="sess")
-    from sklearn.base import BaseEstimator
-    from sklearn.linear_model import Ridge
 
+    # Run the Ridge estimation model 
     R = model.L2regression(alpha=1)
     R.fit(X, Y)
 
