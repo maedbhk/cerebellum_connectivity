@@ -6,42 +6,22 @@ import re
 """Main module for setting defaults for running and visualizing connectivity models
    Defaults contain global variables. They can be changed from outside with global keyboard as constants.return_subjects.
 
-   @authors: Maedbh King, Jörn Diedrichsen  
+   @authors: Maedbh King, Jörn Diedrichsen
 
   Typical usage example:
 
   dirs = Dirs()
 """
 
-return_subjs = [
-    "s02",
-    "s03",
-    "s04",
-    "s06",
-    "s08",
-    "s09",
-    "s10",
-    "s12",
-    "s14",
-    "s15",
-    "s17",
-    "s18",
-    "s19",
-    "s20",
-    "s21",
-    "s22",
-    "s24",
-    "s25",
-    "s26",
-    "s27",
-    "s28",
-    "s29",
-    "s30",
-    "s31",
-]
+return_subjs = ["s02","s03","s04","s06","s08",
+        "s09","s10","s12","s14","s15","s17","s18",
+        "s19","s20","s21","s22","s24","s25","s26",
+        "s27","s28","s29","s30","s31"]
+
 # Set the local path here...
 # When committing, leave other people's path in here.
 base_dir = Path("/Volumes/diedrichsen_data$/data/super_cerebellum")
+base_dir = Path('/Users/jdiedrichsen/Dropbox (Diedrichsenlab)/projects/SuperCerebellum')
 #base_dir = Path("global/scratch/maedbhking/projects/cerebellum_connectivity/data")
 #base_dir = Path("/Users/maedbhking/Documents/cerebellum_connectivity/data")
 

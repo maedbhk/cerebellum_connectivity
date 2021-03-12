@@ -191,72 +191,61 @@ def convert_to_vol(data, xyz, voldef):
     This function converts 1D numpy array data to 3D vol space, and returns nib obj
     that can then be saved out as a nifti file
     Args:
-        data (list of 1d numpy array): voxel data, shape (num_vox, )
-        xyz (int): world coordinates corresponding to grey matter voxels for group
-        voldef (nib obj): nib obj with affine
+        data (list or 1d numpy array)
+            voxel data, shape (num_vox, )
+        xyz (nd-array)
+            3 x P array world coordinates of voxels
+        voldef (nib obj)
+            nib obj with affine
     Returns:
         list of Nib Obj
 
     """
     # get dat, mat, and dim from the mask
-    dat = mask.get_fdata()
-    dim = dat.shape
-    mat = mask.affine
+    dim = voldef.shape
+    mat = voldef.affine
 
     # xyz to ijk
-    ijk = flatmap.coords_to_voxelidxs(xyz, mask)
+    ijk = suit.flatmap.coords_to_voxelidxs(xyz, voldef)
     ijk = ijk.astype(int)
 
-    nib_objs = []
-    for y in data:
-        num_vox = len(y)
-        # initialise xyz voxel data
-        vol_data = np.zeros((dim[0], dim[1], dim[2]))
-        for i in range(num_vox):
-            vol_data[ijk[0][i], ijk[1][i], ijk[2][i]] = y[i]
+    vol_data = np.zeros(dim)
+    vol_data[ijk[0],ijk[1],ijk[2]] = data
 
-        # convert to nifti
-        nib_obj = nib.Nifti2Image(vol_data, mat)
-        nib_objs.append(nib_obj)
-    return nib_objs
+    # convert to nifti
+    nib_obj = nib.Nifti2Image(vol_data, mat)
+    return nib_obj
 
 def convert_cerebellum_to_nifti(data):
     """
     INPUT:
-        data (np-arrray): 67xx length data array
+        data (np-arrray):
+            N x 6937 length data array
+            or 1-d (6937,) array
     OUTPUT:
-        nifti (nifti2image):
+        nifti (List of nifti2image):
+            N output images
     """
-    def load_regions_cerebellum(self):
-        """load cerebellum suit regions from mat file
+    # Load the region file
+    dirs = const.Dirs(exp_name="sc1")
+    group_dir = os.path.join(dirs.reg_dir, 'data','group')
+    reg_file = os.path.join(group_dir,'regions_cerebellum_suit.mat')
+    region = cio.read_mat_as_hdf5(fpath=reg_file)["R"]
 
-        Returns:
-            regions (dict)
-        """
-        dirs = const.Dirs(exp_name="sc1")
-        os.chdir(os.path.join(dirs.reg_dir, "data/group"))
-        regions = cio.read_mat_as_hdf5(fpath="regions_cerebellum_suit.mat")["R"]
+    # NII File for volume definition
+    suit_file = os.path.join(group_dir,'cerebellarGreySUIT3mm.nii')
+    nii_suit = nib.load(suit_file)
 
-        return regions
-
-
-def load_gifti_cerebellum(self, nib_obj, column_name):
-        """maps nib obj to surface and returns gifti image
-
-        Args:
-            nib_obj (nib obj):
-            column_names (str): column name
-        Returns:
-            gifti image
-        """
-        # map volume to surface
-        surf_data = flatmap.vol_to_surf([nib_obj], space="SUIT")
-
-        # make gifti images
-        gifti_img = flatmap.make_func_gifti(data=surf_data, column_names=column_name)
-
-        return gifti_img
-
+    # Map the data
+    nii_mapped = []
+    if data.ndim == 2:
+        for i in range(data.shape[0]):
+            nii_mapped.append(convert_to_vol(data[i],region.data.T,nii_suit))
+    elif data.ndim ==1:
+        nii_mapped.append(convert_to_vol(data,region.data.T,nii_suit))
+    else:
+        raise(NameError('data needs to be 1 or 2-dimensional'))
+    return nii_mapped
 
 
 def convert_cortex_to_gifti(data, roi_name):

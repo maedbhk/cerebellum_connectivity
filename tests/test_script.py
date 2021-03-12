@@ -3,6 +3,7 @@ import connectivity.data as data
 import connectivity.model as model
 import connectivity.run as run
 import numpy as np
+import SUITPy as suit
 
 
 def test_single_fit():
@@ -62,7 +63,7 @@ def run_ridge():
 
 
 def test_dataset():
-    Xdata = Dataset(experiment="sc1", glm="glm7", roi="cerebellum_grey", subj_id="s02")
+    Xdata = Dataset(experiment="sc1", glm="glm7", roi="cerebellum_suit", subj_id="s02")
     Xdata.load_mat()  # Import the data from Matlab
     T = Xdata.get_info_run()
     X, S = Xdata.get_data(averaging="exp")
@@ -73,9 +74,15 @@ def test_mapping_cerebellum():
     """
         Test the mapping to the cerebellar volume + surface + surface plotting
     """
-    Xdata = Dataset(experiment="sc1", glm="glm7", roi="cerebellum_grey", subj_id="s02")
+    Xdata = Dataset(experiment="sc1", glm="glm7", roi="cerebellum_suit", subj_id="s02")
     Xdata.load_mat()  # Import the data from Matlab
     X, S = Xdata.get_data(averaging="exp")
+    # Map to volume
+    nii_func = data.convert_cerebellum_to_nifti(X[4,:])
+    # Map to surface
+    map_func = suit.flatmap.vol_to_surf(nii_func)
+    # Plot the flatmap
+    suit.flatmap.plot(map_func)
     pass
 
 if __name__ == "__main__":

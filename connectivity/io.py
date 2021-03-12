@@ -14,7 +14,7 @@ import SUITPy.flatmap as flatmap
 
 """General purpose module for loading and saving data.
 
-@authors: Maedbh King 
+@authors: Maedbh King
 """
 
 
@@ -114,7 +114,8 @@ def convert_to_dataframe(file_obj, cols):
 
     return dataframe
 
-
+# These are REALLY NOT NECESSARY
+# Why would you every use this, rather than calling directly?
 def nib_load(fpath):
     return nib.load(fpath)
 
@@ -122,51 +123,6 @@ def nib_load(fpath):
 def nib_save(img, fpath):
     nib.save(img, fpath)
 
-
-def convert_to_vol(data, xyz, mask):
-    """
-    This function converts 1D numpy array data to 3D vol space, and returns nib obj
-    that can then be saved out as a nifti file
-    Args:
-        data (list of 1d numpy array): voxel data, shape (num_vox, )
-        xyz (int): world coordinates corresponding to grey matter voxels for group
-        mask (nib obj): nib obj with affine
-    Returns:
-        list of Nib Obj
-
-    """
-    # get dat, mat, and dim from the mask
-    dat = mask.get_fdata()
-    dim = dat.shape
-    mat = mask.affine
-
-    # xyz to ijk
-    ijk = flatmap.coords_to_voxelidxs(xyz, mask)
-    ijk = ijk.astype(int)
-
-    nib_objs = []
-    for y in data:
-        num_vox = len(y)
-        # initialise xyz voxel data
-        vol_data = np.zeros((dim[0], dim[1], dim[2]))
-        for i in range(num_vox):
-            vol_data[ijk[0][i], ijk[1][i], ijk[2][i]] = y[i]
-
-        # convert to nifti
-        nib_obj = nib.Nifti2Image(vol_data, mat)
-        nib_objs.append(nib_obj)
-    return nib_objs
-
-
-def nib_mean(nib_objs):
-    """get mean image of list of nib objs
-
-    Args:
-        nib_objs (list): list of nib objs
-    Returns:
-        mean nib obj
-    """
-    return mean_img(nib_objs)
 
 
 def _convertobj(file_obj, key):
