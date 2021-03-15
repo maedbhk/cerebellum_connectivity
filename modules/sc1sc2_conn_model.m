@@ -26,7 +26,8 @@ returnSubjs=[2,3,4,6,8,9,10,12,14,15,17,18,19,20,21,22,24,25,26,27,28,29,30,31];
 
 %==========================================================================
 % ROIs
-corticalParcels    = {'yeo_7', 'yeo_17', 'desikan','tessel0042','tessel0162','tessel0342'};
+corticalParcels    = {'yeo7', 'yeo17','tessels0042','tessels0162','tessels0362',...
+    'tessels0642','tessels1002','tessels1442'};
 cerebellarParcels = {'cerebellum_suit'};
 
 hemI    = {'L', 'R'}; % left and right hemisphere
@@ -68,11 +69,10 @@ switch what
         atlas = varargin{1};    % Name of the atlas label file 
         name  = varargin{2};    % Name of the resultant group label file 
         sep_hem = varargin{3}; % Separate hemispheres? 
-        hem = {'L','R'}; 
         offset = 0; 
         for h=1:2 
-            in_name{h}=fullfile(atlasDir,sprintf('%s.%s.label.gii',atlas,hem{h}));
-            out_name{h}=fullfile(baseDir,'sc1',regDir,'data','group',sprintf('%s.%s.label.gii',name,hem{h}));
+            in_name{h}=fullfile(atlasDir,sprintf('%s.%s.label.gii',atlas,hemI{h}));
+            out_name{h}=fullfile(baseDir,'sc1',regDir,'data','group',sprintf('%s.%s.label.gii',name,hemI{h}));
             G{h}=gifti(in_name{h}); 
             [numVert,key]=pivottable(G{h}.cdata,[],G{h}.cdata,'length');
             highestROI= max(G{h}.cdata);
@@ -106,8 +106,7 @@ switch what
         parcelName     = 'tessels0162'; %% set it to 'tesselsWB', 'yeo_7', or 'yeo_17'
         
         vararginoptions(varargin, {'sn', 'glm', 'parcelName'});
-        
-        experiment = sprintf('sc%d', experiment_num);
+
         
         % setting glm directory
         %         glmDir = fullfile(baseDir, experiment, sprintf('GLM_firstlevel_%d', glm));
@@ -115,42 +114,51 @@ switch what
         
         for s = sn
             fprintf('Defining %s for %s \n', parcelName, subj_name{s})
-            R = []; %% initializing the R variable which will contain the data for the subject's ROI
             
             %             mask = fullfile(glmDir, subj_name{s}, 'mask.nii');
             mask = fullfile(baseDir, 'sc1', regDir,'data',subj_name{s}, 'cortical_mask_grey_corr.nii');
-            subjWbDir = fullfile(wbDir, 'data',subj_name{s});
+            subjWbDir = fullfile(wbDir,subj_name{s});
                 
             for h = 1:2 % two hemispheres
-                    switch parcelType
-                        case 'tesselsWB'
-                            G          = gifti(fullfile(surfDir,sprintf('Icosahedron-%d.%dk.%s.label.gii', xres, atlas_res, hemI{h})));
-                        case 'yeo_17WB'
-                            G          = gifti(fullfile(surfDir, sprintf('Yeo_JNeurophysiol11_17Networks.%dk.%s.label.gii', atlas_res, hemI{h})));
-                        case 'yeo_7WB'
-                            G          = gifti(fullfile(surfDir, sprintf('Yeo_JNeurophysiol11_7Networks.%dk.%s.label.gii', atlas_res, hemI{h})));
-                        case 'cortex_cole'
-                            G          = gifti(fullfile(surfDir, sprintf('%s.%dk.%s.label.gii', parcelType, atlaas_res, hemI{h})));
-            end % switch type
-                    
-                    nReg = numel(unique(G.cdata))-1; % exclude 0 - medial wall
-                    for r=1:nReg
-                        R{idx}.type     = 'surf_nodes_wb';
-                        R{idx}.location = find(G.cdata(:,1) == r);
-                        R{idx}.white    = fullfile(subjWbDir,sprintf('%s.%s.white.%dk.surf.gii',subj_name{s},hemI{h}, atlas_res));
-                        R{idx}.pial     = fullfile(subjWbDir,sprintf('%s.%s.pial.%dk.surf.gii',subj_name{s},hemI{h}, atlas_res));
-                        R{idx}.linedef  = [5, 0, 1];
-                        R{idx}.image    = mask;
-                        R{idx}.name     = sprintf('%s.parcel-%0.2d', hemI{h}, r);
-                        
-                        idx = idx + 1;
-                    end
-                    R = region_calcregions(R);
-                end % h (hemi)
-            end
-            save(fullfile(baseDir, 'sc1', regDir, 'data', subj_name{s}, roi_name),'R', '-v7.3');
+                RR = []; %% initializing the R variable which will contain the data for the subject's ROI
+
+                G = gifti(fullfile(baseDir,'sc1',regDir,'data','group',sprintf('%s.%s.label.gii',parcelName,hemI{h}))); 
+                regs = unique(G.cdata)';  % exclude 0 - medial wall
+                regs(regs==0)=[]; 
+                for r=regs
+                    RR{r}.type     = 'surf_nodes_wb';
+                    RR{r}.location = find(G.cdata(:,1) == r);
+                    RR{r}.white    = fullfile(subjWbDir,sprintf('%s.%s.white.%dk.surf.gii',subj_name{s},hemI{h}, atlas_res));
+                    RR{r}.pial     = fullfile(subjWbDir,sprintf('%s.%s.pial.%dk.surf.gii',subj_name{s},hemI{h}, atlas_res));
+                    RR{r}.linedef  = [5, 0, 1];
+                    RR{r}.image    = mask;
+                    RR{r}.name     = sprintf('%s.parcel-%0.2d', hemI{h}, r);
+                end
+                Rreg{h} = region_calcregions(RR);
+            end % h (hemi)
+            
+            % Combine the regions across hemispheres 
+            R = []; 
+            for i=1:length(Rreg{2})
+                if (length(Rreg{1})<i || isempty(Rreg{1}{i}))
+                    R{i}=Rreg{2}{i}; 
+                elseif (length(Rreg{1})<i || isempty(Rreg{2}{i})) 
+                    R{i}=Rreg{1}{i};               
+                else
+                    R{i}=Rreg{1}{i};
+                    R{i}.type='surf_nodes_bilateral';
+                    R{i}.name = sprintf('parcel-%0.2d', r);
+                    R{i}.data = [Rreg{1}{i}.data;Rreg{2}{i}.data];
+                    R{i}.linvoxidxs = [Rreg{1}{i}.linvoxidxs;Rreg{2}{i}.linvoxidxs];
+                end
+            end 
+            save(fullfile(baseDir, 'sc1', regDir, 'data', subj_name{s}, sprintf('regions_%s.mat',parcelName)),'R', '-v7.3');
             fprintf('\n');
         end % sn (subject)
+    case 'ROI:define_cortical_all' 
+        for i=1:length(corticalParcels)
+            sc1sc2_conn_model('ROI:define_cortical','parcelName',corticalParcels{i});
+        end
     case 'ROI:MDTB:beta_unn'
         % Calculate BetaUW for regions
         % univariately normalizes beta values and saves both the normalized
