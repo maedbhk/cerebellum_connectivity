@@ -123,7 +123,7 @@ def nib_save(img, fpath):
     nib.save(img, fpath)
 
 
-def convert_to_vol(data, xyz, mask):
+def convert_to_vol(data, xyz, mask, threshold):
     """
     This function converts 1D numpy array data to 3D vol space, and returns nib obj
     that can then be saved out as a nifti file
@@ -140,20 +140,28 @@ def convert_to_vol(data, xyz, mask):
     dim = dat.shape
     mat = mask.affine
 
+    # get ijk coords
+    # dat = dat.flatten()
+    # vol_indx = np.argwhere(dat>threshold)
+
+    # (x, y, z)= np.unravel_index(vol_indx, mask.shape, 'F')
     # xyz to ijk
-    ijk = flatmap.coords_to_voxelidxs(xyz, mask)
-    ijk = ijk.astype(int)
+    # ijk = flatmap.coords_to_voxelidxs(xyz, mask)
+    # ijk = ijk.astype(int)
+
+    xyz = np.argwhere(dat>threshold)
 
     nib_objs = []
-    for y in data:
-        num_vox = len(y)
+    for arr in data:
+        num_vox = len(arr)
         # initialise xyz voxel data
         vol_data = np.zeros((dim[0], dim[1], dim[2]))
         for i in range(num_vox):
-            vol_data[ijk[0][i], ijk[1][i], ijk[2][i]] = y[i]
+            # vol_data[x[i], y[i], z[i]] = arr[i]
+            vol_data[xyz[i,0], xyz[i,1], xyz[i,2]] = arr[i]
 
         # convert to nifti
-        nib_obj = nib.Nifti2Image(vol_data, mat)
+        nib_obj = nib.Nifti1Image(vol_data, mat) # Nifti2Image
         nib_objs.append(nib_obj)
     return nib_objs
 

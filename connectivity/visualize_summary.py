@@ -171,7 +171,8 @@ def plot_map(gifti_func="group_R_vox", exp="sc1", model=None, cscale=None):
 
     # plot map
     surf_data = cio.nib_load(os.path.join(dirs.conn_eval_dir, model, f"{gifti_func}.func.gii"))
-    return flatmap.plot(surf_data.agg_data(), symmetric_cmap=False, cscale=cscale)
+    view = flatmap.plot(surf_data.darrays[0].data, symmetric_cmap=False, cscale=cscale)
+    return view
 
 
 def get_best_model(train_exp):

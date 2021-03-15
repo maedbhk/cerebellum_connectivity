@@ -306,11 +306,16 @@ def save_maps(voxels, fpath):
 
     # transform voxel data to gifti data
     for k, v in voxels.items():
-        nib_objs = cio.convert_to_vol(data=v, xyz=regions.data.T, mask=cio.nib_load(regions.file))
+        nib_objs = cio.convert_to_vol(data=v, xyz=regions.data.T, mask=cio.nib_load(regions.file), threshold=regions.threshold)
+        
         # get mean of nifti objs
         nib_mean = cio.nib_mean(nib_objs)
+        nib_fpath = os.path.join(fpath, f"group_{k}.nii")
+        cio.nib_save(img=nib_mean, fpath=os.path.join(fpath, f"group_{k}.nii"))
+
         # map volume to surface
-        surf_data = flatmap.vol_to_surf([nib_mean], space="SUIT")
+        surf_data = flatmap.vol_to_surf([nib_fpath], space="SUIT")
+
         # make and save gifti image
         gii_img = flatmap.make_func_gifti(data=surf_data, column_names=[k])
         cio.nib_save(img=gii_img, fpath=os.path.join(fpath, f"group_{k}.func.gii"))
@@ -322,13 +327,13 @@ def save_maps(voxels, fpath):
 
 
 def run(cortex="tesselsWB642", model_type="WTA"):
-    # train models
-    for exp in range(2):
-        if model_type=="ridge":
-            # train ridge
-            train_ridge(hyperparameter=[0], train_exp=f"sc{exp+1}", cortex=cortex)
-        elif model_type=="WTA":
-            train_WTA(train_exp=f"sc{exp+1}", cortex=cortex)
+    #train models
+    # for exp in range(2):
+    #     if model_type=="ridge":
+    #         # train ridge
+    #         train_ridge(hyperparameter=[0], train_exp=f"sc{exp+1}", cortex=cortex)
+    #     elif model_type=="WTA":
+    #         train_WTA(train_exp=f"sc{exp+1}", cortex=cortex)
 
     # eval models
     for exp in range(2):
