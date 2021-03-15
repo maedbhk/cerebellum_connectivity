@@ -4,9 +4,9 @@ function [ varargout ] = sc1sc2_conn_model( what, varargin )
 
 %==========================================================================
 % setting directories
-% baseDir         = '/Volumes/MotorControl/data/super_cerebellum_new';
-baseDir         = '/Users/ladan/Documents/Project-Cerebellum/Cerebellum_Data';
-baseDir         = '/srv/diedrichsen/data/super_cerebellum';
+baseDir         = '/Volumes/MotorControl/data/super_cerebellum_new';
+% baseDir         = '/Users/ladan/Documents/Project-Cerebellum/Cerebellum_Data';
+% baseDir         = '/srv/diedrichsen/data/super_cerebellum';
 wbDir           = fullfile(baseDir,'sc1','surfaceWB');
 behavDir        = 'data';
 imagingDir      = 'imaging_data';
@@ -45,12 +45,12 @@ switch what
         R{1}.name  = sprintf('cerebellum_suit');
         R{1}.threshold = 0.25;
         R=region_calcregions(R);
-        save(fullfile(baseDir,'sc1','RegionOfInterest','data','regions_cerebellum_suit.mat'),'R');
-    case 'ROI:MDTB:define_suit'  % Defines individual regions from the suit ROI
+        save(fullfile(baseDir,'sc1','RegionOfInterest','data','group','regions_cerebellum_suit.mat'),'R');
+    case 'ROI:MDTB:define_suit'                     % Defines individual regions from the suit ROI
         sn = returnSubjs;
         saveasimg = 0; % Automatixally save the ROI as an image?
         vararginoptions(varargin, {'sn','saveasimg'});
-        load(fullfile(baseDir,'sc1','RegionOfInterest','data','regions_cerebellum_suit.mat'));
+        load(fullfile(baseDir,'sc1','RegionOfInterest','data','group','regions_cerebellum_suit.mat'));
         for s=sn
             suitDir=fullfile(baseDir,'sc1','suit','anatomicals',subj_name{s});
             [defs,mat]=spmdefs_get_dartel(fullfile(suitDir,'u_a_c_anatomical_seg1.nii'),fullfile(suitDir,'Affine_c_anatomical_seg1.mat'));
@@ -63,20 +63,16 @@ switch what
                 region_saveasimg(R{1},V,'name',name);
             end
         end
-    case 'ROI:MDTB:define'                    % Create region files
+    case 'ROI:MDTB:define_cortical'                 % Creates individual regions from cortical label files. 
         % defines the cortical ROIs using atlases' workbench gifti files for each subject
-        % For the cerebellar parcels, you may need to run
-        % 'SUIT:mdtb:suit_parcel2native' first!
-        % Example: sc1sc2_conn_model('ROI:MDTB:define', 'sn', [3])
         
         sn             = returnSubjs;
         atlas_res      = 32;        %% atlas resolution set to 32 or 164
-        xres           = 162;       %% options: 162, 362, 642, 1002, 1442
         experiment_num = 1;
         glm            = 7;
-        parcelType     = 'tesselsWB'; %% set it to 'tesselsWB', 'yeo_7WB', or 'yeo_17WB', 'Buckner_7', 'Buckner_17' (type of the parcels you want to use), 'cortex_cole'
+        parcelType     = 'tesselsWB162'; %% set it to 'tesselsWB', 'yeo_7', or 'yeo_17'
         
-        vararginoptions(varargin, {'sn', 'atlas', 'xres', 'experiment_num', 'glm', 'parcelType'});
+        vararginoptions(varargin, {'sn', 'atlas', 'experiment_num', 'glm', 'parcelType'});
         
         experiment = sprintf('sc%d', experiment_num);
         
@@ -91,7 +87,6 @@ switch what
             %             mask = fullfile(glmDir, subj_name{s}, 'mask.nii');
             mask = fullfile(baseDir, 'sc1', regDir,'data',subj_name{s}, 'cortical_mask_grey_corr.nii');
             
-            %             dircheck(fullfile(baseDir, experiment,regDir,'data',subj_name{s}));
             
             if ismember(parcelType, corticalParcels)
                 idx       = 1;  %% parcel index
@@ -123,36 +118,6 @@ switch what
                     end
                     R = region_calcregions(R);
                 end % h (hemi)
-            elseif ismember(parcelType, cerebellarParcels)
-                parcelDir  = fullfile(suitToolDir, 'atlasesSUIT'); %% directory where the nifti image is stored
-                
-                switch parcelType
-                    case 'Buckner_7'
-                        CV          = spm_vol(fullfile(parcelDir, sprintf('%sNetworks.nii', parcelType)));
-                    case 'Buckner_17'
-                        CV          = spm_vol(fullfile(parcelDir, sprintf('%sNetworks.nii', parcelType)));
-                    case 'Cerebellum_cole'
-                        CV          = spm_vol(fullfile(parcelDir, sprintf('%s.nii', parcelType)));
-                end % switch parcelType for cerebellum
-                CX          = spm_read_vols(CV);
-                nparcel     = length(unique(CX)) - 1; % 0 will also be discarded
-                
-                for r = 1:nparcel
-                    file = fullfile(baseDir, experiment, suitDir, 'anatomicals', subj_name{s}, sprintf('iw_%sNetworks_u_a_c_anatomical_seg1.nii', parcelType));
-                    R{r}.type  = 'roi_image';
-                    R{r}.file  = file;
-                    R{r}.name  = sprintf('cereb_parcel-%0.2d', r);
-                    R{r}.value = r;
-                    %                         R{r}.image = mask;
-                end % i(regions/parcels)
-                R = region_calcregions(R);
-            end % cortex or cerebellum
-            
-            if strcmp(parcelType, 'tesselsWB')
-                % tesselsWB has different resolutions
-                roi_name = sprintf('regions_%s%d.mat',parcelType, xres);
-            else
-                roi_name = sprintf('regions_%s.mat',parcelType);
             end
             save(fullfile(baseDir, 'sc1', regDir, 'data', subj_name{s}, roi_name),'R', '-v7.3');
             fprintf('\n');
@@ -167,8 +132,10 @@ switch what
         experiment_num = 1;
         parcelType     = 'tesselsWB162';  %% other options are 'cerebellum_suit', 'yeo_7WB', and 'yeo_17WB'
         glm            = 7;
+        ignore_nan     = 1; % Set Nans to zero for sampling? 
+        interp         = 1; % Interpolation for sampling 
         
-        vararginoptions(varargin, {'sn', 'experiment_num', 'glm', 'parcelType', 'oparcel', 'discardp', 'which', 'xres'});
+        vararginoptions(varargin, {'sn', 'experiment_num', 'glm', 'parcelType', 'oparcel', 'discardp', 'which', 'xres','ignore_nan','interp'});
         
         experiment = sprintf('sc%d', experiment_num);
         
@@ -203,7 +170,7 @@ switch what
             V(end+1)=SPM.VResMS;
             cd(glmDir);
             tic;
-            Y = region_getdata(V,R,'interp',1,'ignore_nan',1);  % Data is N x P
+            Y = region_getdata(V,R,'interp',interp,'ignore_nan',ignore_nan);  % Data is N x P
             B=[];
             for r = 1:numel(R) % R is the output 'regions' structure from 'ROI_define'
                 % Get betas (univariately prewhitened)
@@ -212,8 +179,11 @@ switch what
 
                 B_tmp.betasNW{1, 1} = beta; 
                 B_tmp.betasUW{1, 1} = bsxfun(@rdivide,beta,sqrt(resMS));
-                B_tmp.mbetasNW  = mean(B_tmp.betasNW{1},2)';
-                B_tmp.mbetasUW  = mean(B_tmp.betasUW{1},2)';
+                if (ignore_nan) 
+                    B_tmp.betasUW{1}(:,resMS==0)=0
+                end
+                B_tmp.mbetasNW  = nanmean(B_tmp.betasNW{1},2)';
+                B_tmp.mbetasUW  = nanmean(B_tmp.betasUW{1},2)';
                 B_tmp.region_num    = r;
                 B_tmp.region_name   = {R{r}.name};
                 B_tmp.SN            = s;
@@ -229,7 +199,7 @@ switch what
         end % sn
     case 'ROI:MDTB:add_to_beta'               % creates a new structure using beta_region files.
         % The structure will be uesd in connectivity project only
-        % Example: sc1sc2_conn_model('ROI:MDTB:add_to_beta', 'experiment_num', 1, 'parcelType', 'cerebellum_grey', 'glm', 7)
+        % Example: sc1sc2_conn_model('ROI:MDTB:add_to_beta', 'experiment_num', 1, 'parcelType', 'yeo_7WB', 'glm', 7)
         
         sn             = returnSubjs;
         experiment_num = 1;
