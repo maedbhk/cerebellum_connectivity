@@ -4,9 +4,10 @@ function [ varargout ] = sc1sc2_conn_model( what, varargin )
 
 %==========================================================================
 % setting directories
-baseDir         = '/Volumes/MotorControl/data/super_cerebellum_new';
+% baseDir         = '/Volumes/MotorControl/data/super_cerebellum_new';
 % baseDir         = '/Users/ladan/Documents/Project-Cerebellum/Cerebellum_Data';
-% baseDir         = '/srv/diedrichsen/data/super_cerebellum';
+baseDir         = '/srv/diedrichsen/data/super_cerebellum';
+atlasDir        = '/srv/diedrichsen/data/Atlas_templates/fs_LR_32';
 wbDir           = fullfile(baseDir,'sc1','surfaceWB');
 behavDir        = 'data';
 imagingDir      = 'imaging_data';
@@ -25,8 +26,9 @@ returnSubjs=[2,3,4,6,8,9,10,12,14,15,17,18,19,20,21,22,24,25,26,27,28,29,30,31];
 
 %==========================================================================
 % ROIs
-corticalParcels    = {'yeo_7WB', 'yeo_17WB', 'tesselsWB', 'desikan', 'cortex_grey', 'cortex'};
-cerebellarParcels = {'Buckner_7', 'Buckner_17', 'cerebellum_grey', 'cerebellum_MDTB'};
+corticalParcels    = {'yeo7', 'yeo17','tessels0042','tessels0162','tessels0362',...
+    'tessels0642','tessels1002','tessels1442'};
+cerebellarParcels = {'cerebellum_suit'};
 
 hemI    = {'L', 'R'}; % left and right hemisphere
 hemName = {'CortexLeft', 'CortexRight'};
@@ -37,7 +39,7 @@ runLst  = 1:16;    %% run numbers to use in GLM
 % ntp     = 598;     %% number of time points after eliminating the dummy scans
 
 switch what
-    case 'ROI:MDTB:define_suit_group'               % Defines group suit ROI
+    case 'ROI:define_suit_group'               % Defines group suit ROI
         cd(fullfile(baseDir,'sc1','suit','anatomicals'));
         spmj_resample('cerebellarGreySUIT_corrected.nii','cerebellarGreySUIT3mm.nii',2/3); % REssample to 3mm
         R{1}.type  = 'image';
@@ -46,7 +48,7 @@ switch what
         R{1}.threshold = 0.25;
         R=region_calcregions(R);
         save(fullfile(baseDir,'sc1','RegionOfInterest','data','group','regions_cerebellum_suit.mat'),'R');
-    case 'ROI:MDTB:define_suit'                     % Defines individual regions from the suit ROI
+    case 'ROI:define_suit'                     % Defines individual regions from the suit ROI
         sn = returnSubjs;
         saveasimg = 0; % Automatixally save the ROI as an image?
         vararginoptions(varargin, {'sn','saveasimg'});
@@ -63,65 +65,100 @@ switch what
                 region_saveasimg(R{1},V,'name',name);
             end
         end
-    case 'ROI:MDTB:define_cortical'                 % Creates individual regions from cortical label files. 
+    case 'ROI:define_labels'                   % Make group label files for the cortical ROIs
+        atlas = varargin{1};    % Name of the atlas label file 
+        name  = varargin{2};    % Name of the resultant group label file 
+        sep_hem = varargin{3}; % Separate hemispheres? 
+        offset = 0; 
+        for h=1:2 
+            in_name{h}=fullfile(atlasDir,sprintf('%s.%s.label.gii',atlas,hemI{h}));
+            out_name{h}=fullfile(baseDir,'sc1',regDir,'data','group',sprintf('%s.%s.label.gii',name,hemI{h}));
+            G{h}=gifti(in_name{h}); 
+            [numVert,key]=pivottable(G{h}.cdata,[],G{h}.cdata,'length');
+            highestROI= max(G{h}.cdata);
+            if sum(key>0)<highestROI
+                error('Labeling is not continous');
+            end
+            data = G{h}.cdata; 
+            data(data>0) = data(data>0)+offset; 
+            names = G{h}.labels.name;  
+            G{h} = surf_makeLabelGifti(data,'labelNames',names,'labelRGBA',G{h}.labels.rgba,...
+                'anatomicalStruct',surf_getGiftiAnatomicalStruct(G{h}));
+            save(G{h},out_name{h});
+            if sep_hem 
+                offset = offset + highestROI;
+            end 
+        end
+    case 'ROI:define_labels_all'
+        sc1sc2_conn_model('ROI:define_labels','Icosahedron-42.32k','tessels0042',1);
+        sc1sc2_conn_model('ROI:define_labels','Icosahedron-162.32k','tessels0162',1);
+        sc1sc2_conn_model('ROI:define_labels','Icosahedron-362.32k','tessels0362',1);
+        sc1sc2_conn_model('ROI:define_labels','Icosahedron-642.32k','tessels0642',1);
+        sc1sc2_conn_model('ROI:define_labels','Icosahedron-1002.32k','tessels1002',1);
+        sc1sc2_conn_model('ROI:define_labels','Icosahedron-1442.32k','tessels1442',1);
+        sc1sc2_conn_model('ROI:define_labels','Yeo_JNeurophysiol11_7Networks.32k','yeo7',0);
+        sc1sc2_conn_model('ROI:define_labels','Yeo_JNeurophysiol11_17Networks.32k','yeo17',0);
+
+    case 'ROI:define_cortical'                 % Creates individual regions from cortical label files. 
         % defines the cortical ROIs using atlases' workbench gifti files for each subject
-        
+        atlas_res      = 32; 
         sn             = returnSubjs;
-        atlas_res      = 32;        %% atlas resolution set to 32 or 164
-        experiment_num = 1;
-        glm            = 7;
-        parcelType     = 'tesselsWB162'; %% set it to 'tesselsWB', 'yeo_7', or 'yeo_17'
+        parcelName     = 'tessels0162'; %% set it to 'tesselsWB', 'yeo_7', or 'yeo_17'
         
-        vararginoptions(varargin, {'sn', 'atlas', 'experiment_num', 'glm', 'parcelType'});
-        
-        experiment = sprintf('sc%d', experiment_num);
+        vararginoptions(varargin, {'sn', 'glm', 'parcelName'});
+
         
         % setting glm directory
         %         glmDir = fullfile(baseDir, experiment, sprintf('GLM_firstlevel_%d', glm));
         surfDir = fullfile(baseDir, 'sc1', sprintf('fs_LR_%d', atlas_res)); %% the directory where the atlas is located
         
         for s = sn
-            fprintf('Defining %s for %s \n', parcelType, subj_name{s})
-            R = []; %% initializing the R variable which will contain the data for the subject's ROI
+            fprintf('Defining %s for %s \n', parcelName, subj_name{s})
             
             %             mask = fullfile(glmDir, subj_name{s}, 'mask.nii');
             mask = fullfile(baseDir, 'sc1', regDir,'data',subj_name{s}, 'cortical_mask_grey_corr.nii');
-            
-            
-            if ismember(parcelType, corticalParcels)
-                idx       = 1;  %% parcel index
-                subjWbDir = fullfile(wbDir, 'data',subj_name{s});
+            subjWbDir = fullfile(wbDir,subj_name{s});
                 
-                for h = 1:2 % two hemispheres
-                    switch parcelType
-                        case 'tesselsWB'
-                            G          = gifti(fullfile(surfDir,sprintf('Icosahedron-%d.%dk.%s.label.gii', xres, atlas_res, hemI{h})));
-                        case 'yeo_17WB'
-                            G          = gifti(fullfile(surfDir, sprintf('Yeo_JNeurophysiol11_17Networks.%dk.%s.label.gii', atlas_res, hemI{h})));
-                        case 'yeo_7WB'
-                            G          = gifti(fullfile(surfDir, sprintf('Yeo_JNeurophysiol11_7Networks.%dk.%s.label.gii', atlas_res, hemI{h})));
-                        case 'cortex_cole'
-                            G          = gifti(fullfile(surfDir, sprintf('%s.%dk.%s.label.gii', parcelType, atlaas_res, hemI{h})));
-                    end % switch type
-                    
-                    nReg = numel(unique(G.cdata))-1; % exclude 0 - medial wall
-                    for r=1:nReg
-                        R{idx}.type     = 'surf_nodes_wb';
-                        R{idx}.location = find(G.cdata(:,1) == r);
-                        R{idx}.white    = fullfile(subjWbDir,sprintf('%s.%s.white.%dk.surf.gii',subj_name{s},hemI{h}, atlas_res));
-                        R{idx}.pial     = fullfile(subjWbDir,sprintf('%s.%s.pial.%dk.surf.gii',subj_name{s},hemI{h}, atlas_res));
-                        R{idx}.linedef  = [5, 0, 1];
-                        R{idx}.image    = mask;
-                        R{idx}.name     = sprintf('%s.parcel-%0.2d', hemI{h}, r);
-                        
-                        idx = idx + 1;
-                    end
-                    R = region_calcregions(R);
-                end % h (hemi)
-            end
-            save(fullfile(baseDir, 'sc1', regDir, 'data', subj_name{s}, roi_name),'R', '-v7.3');
+            for h = 1:2 % two hemispheres
+                RR = []; %% initializing the R variable which will contain the data for the subject's ROI
+
+                G = gifti(fullfile(baseDir,'sc1',regDir,'data','group',sprintf('%s.%s.label.gii',parcelName,hemI{h}))); 
+                regs = unique(G.cdata)';  % exclude 0 - medial wall
+                regs(regs==0)=[]; 
+                for r=regs
+                    RR{r}.type     = 'surf_nodes_wb';
+                    RR{r}.location = find(G.cdata(:,1) == r);
+                    RR{r}.white    = fullfile(subjWbDir,sprintf('%s.%s.white.%dk.surf.gii',subj_name{s},hemI{h}, atlas_res));
+                    RR{r}.pial     = fullfile(subjWbDir,sprintf('%s.%s.pial.%dk.surf.gii',subj_name{s},hemI{h}, atlas_res));
+                    RR{r}.linedef  = [5, 0, 1];
+                    RR{r}.image    = mask;
+                    RR{r}.name     = sprintf('%s.parcel-%0.2d', hemI{h}, r);
+                end
+                Rreg{h} = region_calcregions(RR);
+            end % h (hemi)
+            
+            % Combine the regions across hemispheres 
+            R = []; 
+            for i=1:length(Rreg{2})
+                if (length(Rreg{1})<i || isempty(Rreg{1}{i}))
+                    R{i}=Rreg{2}{i}; 
+                elseif (length(Rreg{1})<i || isempty(Rreg{2}{i})) 
+                    R{i}=Rreg{1}{i};               
+                else
+                    R{i}=Rreg{1}{i};
+                    R{i}.type='surf_nodes_bilateral';
+                    R{i}.name = sprintf('parcel-%0.2d', r);
+                    R{i}.data = [Rreg{1}{i}.data;Rreg{2}{i}.data];
+                    R{i}.linvoxidxs = [Rreg{1}{i}.linvoxidxs;Rreg{2}{i}.linvoxidxs];
+                end
+            end 
+            save(fullfile(baseDir, 'sc1', regDir, 'data', subj_name{s}, sprintf('regions_%s.mat',parcelName)),'R', '-v7.3');
             fprintf('\n');
         end % sn (subject)
+    case 'ROI:define_cortical_all' 
+        for i=1:length(corticalParcels)
+            sc1sc2_conn_model('ROI:define_cortical','parcelName',corticalParcels{i});
+        end
     case 'ROI:MDTB:beta_unn'
         % Calculate BetaUW for regions
         % univariately normalizes beta values and saves both the normalized
@@ -494,63 +531,6 @@ switch what
                 clear B R Y
             end % hemi
         end % sn
-    case 'PREP:MDTB:cortex:parcels'           % creates Y_info file for cortical parcels
-        % Example: sc1sc2_conn_model('PREP:MDTB:cortex:parcels', 'experiment_num', 1, 'glm', 7)
-        
-        sn             = returnSubjs;
-        experiment_num = 1;
-        glm            = 7;
-        parcelType     = 'tesselsWB'; % other options: 'yeo_7WB', 'yeo_17WB'
-        xres           = 162;         % only for tessselsWB:options: 162, 362, 642, 1002, 1442. For yeo: 7, 17
-        
-        vararginoptions(varargin, {'sn', 'experiment_num', 'glm', 'parcelType', 'xres'});
-        
-        experiment = sprintf('sc%d', experiment_num);
-        
-        % setting directories
-        encodingDir = fullfile(baseDir, experiment, encodeDir, sprintf('glm%d', glm));
-        
-        for s = sn
-            
-            if strcmp(parcelType, 'tesselsWB')
-                regionName = sprintf('regions_tesselsWB%d.mat', xres);
-            elseif strcmp(parcelType, 'yeo')
-                regionName = sprintf('regions_yeo_%dWB.mat', xres);
-            end
-            
-            load(fullfile(baseDir, 'sc1', regDir, 'data', subj_name{s},regionName)); % loads R into workspace
-            regs = [1:length(R)/2;length(R)/2+1:length(R)];
-            
-            for h = 1:2
-                encodeSubjDir = fullfile(encodingDir, subj_name{s});
-                load(fullfile(encodeSubjDir,sprintf('Y_info_glm%d_cortex_%s.mat',glm,hemI{h})));
-                
-                switch parcelType
-                    case 'tesselsWB'
-                        for t = regs(h,:)
-                            idx = R{t}.location;
-                            data(:,t) = nanmean(Y.data(:,idx),2);
-                        end % t (region numbers)
-                    case 'yeo'
-                        for t = regs(h,:)
-                            idx = R{t}.location;
-                            data(:,t) = nanmean(Y.data(:,idx),2);
-                        end % t (region numbers)
-                end
-            end % h (hemisphere)
-            Y.data = data;
-            %             Y      = rmfield(Y,'nonZeroInd');
-            
-            if strcmp(parcelType, 'tesselsWB')
-                YoutName = sprintf('Y_info_glm%d_tesselsWB%d.mat', glm, xres);
-            elseif strcmp(parcelType, 'yeo')
-                YoutName = sprintf('Y_info_glm%d_yeo_%dWB.mat', glm, xres);
-            end
-            
-            outName = fullfile(encodeSubjDir, YoutName);
-            save(outName, 'Y', '-v7.3');
-            fprintf('%s vertices: (Y data) computed for %s \n', parcelType, subj_name{s});
-        end % s (sn)
     case 'PREP:MDTB:Y_allsubjs'               % Make a structure of activity profiles of all subject
         % B, mean betas, and zero-meaned betas are stored
         % Example: sc1sc2_conn_model('PREP:MDTB:Y_allsubjs' , 'experiment_num', 1, 'glm', 7)
@@ -601,113 +581,6 @@ switch what
         else
             save(fullfile(encodingDir,sprintf('Y_%s_all.mat',type)), 'B', 'Bm', 'Bzc', '-v7.3');
         end
-    case 'PREP:MDTB:get_meanBeta'             % Take the structure and extract mean beta for cross-session modeling
-        % THIS CASE SHOULD RUN WITH ALL THE SUBJECTS YOU WANT TO DO THE
-        % ANALYSIS FOR!
-        % borrowed from sc1sc2_connectivity('get_meanBeta_cerebellum')
-        % calculates the per-subject average betas across runs for each session
-        % Example: sc1sc2_conn_model('PREP:MDTB:get_meanBeta' , 'experStr', {'sc1'}, 'glm', 7)
-        % This stores the betas like the occurr in the GLM
-        
-        sn       = returnSubjs;
-        type     = 'grey_nan';    % 'grey_nan' for the cerebellum, 'tesselsWB162', 'tesselsWB362', 'tesselsWB642'
-        experStr = {'sc1','sc2'}; % cell array containing strings that represents experiments
-        glm      = 7;
-        which    = 'cond';        % 'cond' or 'task' (task for glm 8)
-        
-        vararginoptions(varargin,{'sn','glm','type', 'experStr', 'which'});
-        
-        % Loop over experiments
-        for e = 1:length(experStr)
-            fprintf('%s study %s: \n', type, experStr{e})
-            % setting directories
-            glmDir      = fullfile(baseDir, experStr{e}, sprintf('GLM_firstlevel_%d', glm));
-            encodingDir = fullfile(baseDir, experStr{e}, encodeDir, sprintf('glm%d', glm));
-            for si = 1:length(sn)
-                fprintf('%s\n',subj_name{sn(si)});
-                filename   = fullfile(encodingDir,subj_name{sn(si)},sprintf('Y_info_glm%d_%s.mat', glm, type));
-                D          = load(filename);
-                D          = D.Y;
-                T          = load(fullfile(glmDir, subj_name{sn(si)}, 'SPM_info.mat'));
-                
-                %                 if (strcmp(type,'162_tessellation_hem'))
-                %                     Tcort=load(fullfile(rootDir,'sc1',regDir,'data','162_reorder.mat'));
-                %                     Tcort=getrow(Tcort,Tcort.good==1);
-                %                     D.B = D.B(:,Tcort.regIndx);
-                %                     D.Yres = D.Yres(:,Tcort.regIndx);
-                %                 end;
-                
-                % Now generate mean estimates per session
-                % Note that in the new SPM_info Instruction is coded as cond =0
-                T.(which)=T.(which)+1;            % This is only for generating the avergaging matrix
-                for se = 1:2
-                    X          = indicatorMatrix('identity_p', T.(which).*(T.sess==se));
-                    B{si,se}   = pinv(X) * D.data(1:size(X,1),:);  % This calculates average beta across runs, skipping intercepts, for each session
-                end % se (session)
-            end % s )
-            save(fullfile(encodingDir,sprintf('mbeta_%s_all.mat',type)),'B');
-        end % e (experiments)
-    case 'PREP:MDTB:get_wcon'                 % Gets the standardized activation maps for each session and experiment
-        % Borrowed from sc1sc2_connectivity('get_wcon_cerebellum')
-        % Example: sc1sc2_conn_model('PREP:MDTB:get_wcon', 'experStr', {'sc1'});
-        
-        experStr  = {'sc1','sc2'};
-        glm       = 7;
-        type      = 'grey_nan';
-        %         inclInstr = 1;                           % Include instruction?
-        vararginoptions(varargin,{'experStr', 'glm', 'type', 'inclInstr'});
-        
-        % Load the betas for all the tasks
-        for e = 1:length(experStr)
-            % setting directories
-            %             glmDir      = fullfile(baseDir, experStr{e}, sprintf('GLM_firstlevel_%d', glm));
-            encodingDir = fullfile(baseDir, experStr{e}, encodeDir, sprintf('glm%d', glm));
-            YD{e}       = load(fullfile(encodingDir,sprintf('mbeta_%s_all.mat',type)));
-        end % e (experStr)
-        
-        % Make an integrated structure, either including instruction or
-        % rest
-        T = dload(fullfile(baseDir,'sc1_sc2_taskConds2.txt'));
-        
-        %         % from sc1sc2_connectivity: Make an integrated Structure
-        %         T1=T;
-        %         T2=T;
-        %         T1.sess=ones(length(T.condNum),1)*1;
-        %         T2.sess=ones(length(T.condNum),1)*2;
-        %         T=addstruct(T1,T2);
-        
-        % Make an integrated Structure
-        S = [];
-        for e = 1:length(experStr)
-            Ti = getrow(T, T.StudyNum == e);
-            T1 = Ti;
-            T2 = Ti;
-            
-            T1.sess = ones(length(Ti.condNum), 1);
-            T2.sess = 2*ones(length(Ti.condNum), 1);
-            
-            Ti = addstruct(T1, T2);
-            S  = addstruct(S, Ti);
-        end % e (experiments)
-        
-        
-        % preallocating
-        Y = cell(1, size(YD{1}.B,1));
-        for si = 1:size(YD{1}.B,1)
-            Y{si} = [];
-            for se = 1:2
-                % for each session, it gets the two experiments and
-                % concatenates them.
-                for e = 1:length(experStr)
-                    %                     YD{e}.B{si,se}=[YD{e}.B{si, se}(2:end,:);zeros(1,size(YD{e}.B{si,se},2))];
-                    YD{e}.B{si,se}=bsxfun(@minus,YD{e}.B{si,se},mean(YD{e}.B{si,se}));
-                    Y{si} = [Y{si};YD{e}.B{si,se}];
-                end % e (experiments)
-                %                 Y{si} = [Y{si};YD{1}.B{si,se};YD{2}.B{si,se}]; % changed this!
-            end % se (session)
-        end % si (subjects)
-        varargout = {Y,S};
-        
     case 'CONN:MDTB:CortCov'                  % Calculates and plots variance inflation factor
         % borrowed from sc1sc2_connectivity('cortical_covariances' )
         % Example: sc1sc2_conn_model('CONN:MDTB:CortCov', 'sn', 6, 'glm', 7, 'experiment_num', 1, 'xres', 162)
