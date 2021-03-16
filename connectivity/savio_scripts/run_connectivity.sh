@@ -12,12 +12,14 @@
 #SBATCH --qos=savio_normal
 #
 # Wall clock limit:
-#SBATCH --time=1:00:00
+#SBATCH --time=05:00:00
 #
 ## Command(s) to run:
 module load python/3.7
-. /global/home/users/maedbhking/.local/share/virtualenvs/cerebellum_connectivity-DQHkR575/bin/activate
-cd /global/scratch/maedbhking/projects/cerebellum_connectivity/connectivity/savio_scripts
+source $(pipenv --venv)/bin/activate
+cd /global/scratch/maedbhking/projects/cerebellum_connectivity/connectivity/scripts
 
 # run connectivity models
-python3 script_ridge_mk.py --model=train
+python3 script_mk.py --cortex="tesselsWB162" --model_type="ridge"
+python3 script_mk.py --cortex="tesselsWB362" --model_type="ridge"
+python3 script_mk.py --cortex="tesselsWB642" --model_type="ridge"

@@ -150,7 +150,7 @@ def plot_eval_predictions(dataframe, exp="sc1"):
         )
 
 
-def plot_map(gifti_func="group_R_vox", exp="sc1", model=None, cscale=None):
+def plot_eval_map(gifti_func="group_R_vox", exp="sc1", model=None, cscale=None):
     """plot surface map for best model
 
     Args:
@@ -173,6 +173,23 @@ def plot_map(gifti_func="group_R_vox", exp="sc1", model=None, cscale=None):
 
     # plot map
     surf_data = nio.nib_load(os.path.join(dirs.conn_eval_dir, model, f"{gifti_func}.func.gii"))
+    view = nilearn_flatmap(surf_data.darrays[0].data, cscale=cscale) #symmetric_cmap=False,
+    return view
+
+
+def plot_train_map(gifti_func='group_weights_cerebellum', exp='sc1', model=None, cscale=None):
+    # initialise directories
+    dirs = const.Dirs(exp_name=exp)
+
+    # get evaluation
+    df_eval = eval_summary()
+
+    # get best model
+    if not model:
+        model = get_best_model(train_exp=exp)
+    
+    # plot map
+    surf_data = nio.nib_load(os.path.join(dirs.conn_train_dir, model, f"{gifti_func}.func.gii"))
     view = nilearn_flatmap(surf_data.darrays[0].data, cscale=cscale) #symmetric_cmap=False,
     return view
 

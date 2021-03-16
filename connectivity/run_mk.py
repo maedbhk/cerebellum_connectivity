@@ -15,6 +15,8 @@ from connectivity.data import Dataset
 import connectivity.constants as const
 import connectivity.model as model
 import connectivity.evaluation as ev
+import connectivity.nib_utils as nio
+from connectivity.data import Dataset, convert_cerebellum_to_nifti
 
 import warnings
 
@@ -295,7 +297,7 @@ def eval_models(config):
         # append data for each subj
         for k, v in data.items():
             eval_all[k].append(v)
-
+    
     # Return list of models
     return pd.DataFrame.from_dict(eval_all), eval_voxels
 

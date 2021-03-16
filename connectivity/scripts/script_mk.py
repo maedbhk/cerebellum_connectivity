@@ -7,13 +7,12 @@ import glob
 from random import seed, sample
 from collections import defaultdict
 import neptune
-import SUITPy.flatmap as flatmap
 from pathlib import Path
 
 import connectivity.constants as const
 import connectivity.io as cio
 import connectivity.nib_utils as nio
-from connectivity.data import Dataset, convert_cerebellum_to_nifti
+from connectivity.data import Dataset
 import connectivity.run_mk as run_connect
 from connectivity import visualize_summary as summary
 
@@ -235,6 +234,41 @@ def train_WTA(
         df_all.to_csv(fpath, index=False)
 
 
+def save_weight_maps(model_name, train_exp):
+    """Save weight maps to disk for cortex and cerebellum
+
+    Args: 
+        model_name (str): model_name (folder in conn_train_dir)
+        train_exp (str): 'sc1' or 'sc2'
+    Returns: 
+        saves nifti/gifti to disk
+    """
+    # set directory
+    dirs = const.Dirs(exp_name=train_exp)
+
+    # get model path
+    fpath = os.path.join(dirs.conn_train_dir, model_name)
+
+    # get trained subject models
+    model_fnames = glob.glob(os.path.join(fpath, '*.h5'))
+
+    cereb_weights_all = []
+    cortex_weights_all = []
+    for model_fname in model_fnames:
+
+        # read model data
+        data = cio.read_hdf5(model_fname)
+        
+        # append cerebellar and cortical weights
+        cereb_weights_all.append(np.nanmean(data.coef_, axis=1))
+        cortex_weights_all.append(np.nanmean(data.coef_, axis=0))
+
+    # save maps to disk
+    nio.save_maps_cerebellum(data=cereb_weights_all, fpath=fpath, fname='group_weights_cerebellum')
+    # nio.save_maps_cortex(data=cortex_weights_all, fpath=fpath, fname='group_weights_cortex')
+    print('saving cortical and cerebellar weights to disk')
+
+
 def eval_model(
     model_name,
     train_exp="sc1",
@@ -284,7 +318,8 @@ def eval_model(
     if config["save_maps"] and config["Y_data"] == "cerebellum_suit":
         fpath = os.path.join(dirs.conn_eval_dir, model_name)
         cio.make_dirs(fpath)
-        save_maps(voxels, fpath)
+        for k, v in voxels.items():
+            nio.save_maps_cerebellum(data=v, fpath=fpath, fname=f'group_{k}')
 
     # write to neptune
     if log_online:
@@ -298,58 +333,34 @@ def eval_model(
         df.to_csv(eval_fpath, index=False)
 
 
-def save_maps(voxels, fpath):
-    """Save maps (model predictions) to disk
-
-    Args: 
-        voxels (dict): keys are 'R_vox', 'R2_vox' etc. values are N x 6937 data array
-        fpath (str): path where maps (nifti and gifti) will be saved
-    Returns: 
-        saves nifti and gifti images to disk
-    """
-    # transform voxel data to gifti data
-    for k, v in voxels.items():
-
-        # stack the list of data arrays into nd array
-        data = np.stack(v, axis=0)
-
-        # average subject data
-        group_data = np.nanmean(data, axis=0)
-
-        # convert averaged cerebellum data array to nifti
-        nib_obj = convert_cerebellum_to_nifti(data=group_data)[0]
-        
-        # save nifti to file
-        nib_fpath = os.path.join(fpath, f"group_{k}.nii")
-        nio.nib_save(img=nib_obj, fpath=nib_fpath) # this is temporary (to test bug in map)
-
-        # map volume to surface
-        surf_data = flatmap.vol_to_surf([nib_fpath], space="SUIT")
-
-        # make and save gifti image
-        gii_img = flatmap.make_func_gifti(data=surf_data, column_names=[k])
-        nio.nib_save(img=gii_img, fpath=os.path.join(fpath, f"group_{k}.func.gii"))
-
-
 @click.command()
 @click.option("--cortex")
 @click.option("--model_type")
 
 
-def run(cortex="tesselsWB642", model_type="WTA"):
+def run(cortex="tesselsWB642", model_type="ridge"):
+    """ Run connectivity routine (train and evaluate)
+
+    Args: 
+        cortex (str): 'tesselsWB162', 'tesselsWB642' etc.
+        model_type (str): 'WTA' or 'ridge'
+    """
     #train models
-    # for exp in range(2):
-    #     if model_type=="ridge":
-    #         # train ridge
-    #         train_ridge(hyperparameter=[0], train_exp=f"sc{exp+1}", cortex=cortex)
-    #     elif model_type=="WTA":
-    #         train_WTA(train_exp=f"sc{exp+1}", cortex=cortex)
+    for exp in range(2):
+        if model_type=="ridge":
+            # train ridge
+            train_ridge(hyperparameter=[-2,0,2,4,6,8,10], train_exp=f"sc{exp+1}", cortex=cortex)
+        elif model_type=="WTA":
+            train_WTA(train_exp=f"sc{exp+1}", cortex=cortex)
 
     # eval models
     for exp in range(2):
 
         # get best train model (based on train CV)
         best_model = summary.get_best_model(train_exp=f"sc{2-exp}")
+
+        # save voxel/vertex maps for best training weights
+        save_weight_maps(model_name=best_model, train_exp=f"sc{2-exp}")
 
         # delete training models that are suboptimal (save space)
         dirs = const.Dirs(exp_name=f"sc{2-exp}")
