@@ -7,13 +7,13 @@ import glob
 from random import seed, sample
 from collections import defaultdict
 import neptune
-import flatmap
+import SUITPy.flatmap as flatmap
 from pathlib import Path
 
 import connectivity.constants as const
 import connectivity.io as cio
-from connectivity.data import Dataset
-import connectivity.model as model
+import connectivity.nib_utils as nio
+from connectivity.data import Dataset, convert_cerebellum_to_nifti
 import connectivity.run_mk as run_connect
 from connectivity import visualize_summary as summary
 
@@ -299,26 +299,36 @@ def eval_model(
 
 
 def save_maps(voxels, fpath):
-    # get cerebellum_suit regions and mask
-    dirs = const.Dirs(exp_name="sc1")
-    os.chdir(os.path.join(dirs.reg_dir, "data/group"))
-    regions = cio.read_mat_as_hdf5(fpath="regions_cerebellum_suit.mat")["R"]
+    """Save maps (model predictions) to disk
 
+    Args: 
+        voxels (dict): keys are 'R_vox', 'R2_vox' etc. values are N x 6937 data array
+        fpath (str): path where maps (nifti and gifti) will be saved
+    Returns: 
+        saves nifti and gifti images to disk
+    """
     # transform voxel data to gifti data
     for k, v in voxels.items():
-        nib_objs = cio.convert_to_vol(data=v, xyz=regions.data.T, mask=cio.nib_load(regions.file), threshold=regions.threshold)
+
+        # stack the list of data arrays into nd array
+        data = np.stack(v, axis=0)
+
+        # average subject data
+        group_data = np.nanmean(data, axis=0)
+
+        # convert averaged cerebellum data array to nifti
+        nib_obj = convert_cerebellum_to_nifti(data=group_data)[0]
         
-        # get mean of nifti objs
-        nib_mean = cio.nib_mean(nib_objs)
+        # save nifti to file
         nib_fpath = os.path.join(fpath, f"group_{k}.nii")
-        cio.nib_save(img=nib_mean, fpath=os.path.join(fpath, f"group_{k}.nii"))
+        nio.nib_save(img=nib_obj, fpath=nib_fpath) # this is temporary (to test bug in map)
 
         # map volume to surface
         surf_data = flatmap.vol_to_surf([nib_fpath], space="SUIT")
 
         # make and save gifti image
         gii_img = flatmap.make_func_gifti(data=surf_data, column_names=[k])
-        cio.nib_save(img=gii_img, fpath=os.path.join(fpath, f"group_{k}.func.gii"))
+        nio.nib_save(img=gii_img, fpath=os.path.join(fpath, f"group_{k}.func.gii"))
 
 
 @click.command()

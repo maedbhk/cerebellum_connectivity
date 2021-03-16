@@ -7,10 +7,12 @@ import glob
 import deepdish as dd
 from collections import defaultdict
 import matplotlib.pyplot as plt
-import flatmap
+import SUITPy.flatmap as flatmap
+from nilearn.plotting import view_surf
+import nibabel as nib
 
 import connectivity.constants as const
-import connectivity.io as cio
+import connectivity.nib_utils as nio
 
 plt.rcParams["axes.grid"] = False
 
@@ -153,7 +155,7 @@ def plot_map(gifti_func="group_R_vox", exp="sc1", model=None, cscale=None):
 
     Args:
         gifti (str):
-        best_model (None or model name):
+        model (None or model name):
         exp (str): 'sc1' or 'sc2'
 
     """
@@ -170,8 +172,31 @@ def plot_map(gifti_func="group_R_vox", exp="sc1", model=None, cscale=None):
         model = get_best_model(train_exp=exp)
 
     # plot map
-    surf_data = cio.nib_load(os.path.join(dirs.conn_eval_dir, model, f"{gifti_func}.func.gii"))
-    view = flatmap.plot(surf_data.darrays[0].data, symmetric_cmap=False, cscale=cscale)
+    surf_data = nio.nib_load(os.path.join(dirs.conn_eval_dir, model, f"{gifti_func}.func.gii"))
+    view = nilearn_flatmap(surf_data.darrays[0].data, cscale=cscale) #symmetric_cmap=False,
+    return view
+
+
+def nilearn_flatmap(data, cmap='jet', threshold=None, bg_map=None, cscale=None):
+
+    # full path to surface
+    surf_dir = os.path.join(flatmap._surf_dir,'FLAT.surf.gii')
+
+    # load topology
+    flatsurf = nib.load(surf_dir)
+    vertices = flatsurf.darrays[0].data
+    faces    = flatsurf.darrays[1].data
+
+    # Determine underlay and assign color
+    # underlay = nib.load(underlay)
+
+    # Determine scale
+    if cscale is None:
+        cscale = [data.min(), data.max()]
+
+    # nilearn seems to
+    view = view_surf([vertices,faces], data, bg_map=bg_map, cmap=cmap,
+                        threshold=threshold, vmin=cscale[0], vmax=cscale[1])
     return view
 
 

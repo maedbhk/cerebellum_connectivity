@@ -120,6 +120,7 @@ class Dataset:
         info = self.get_info()
         return info[info.run == 1]
 
+
     def get_data(self, averaging="sess", weighting=True, subset=None):
         """Get the data using a specific aggregation.
 
@@ -186,6 +187,7 @@ class Dataset:
 
         return data, data_info
 
+
 def convert_to_vol(data, xyz, voldef):
     """
     This function converts 1D numpy array data to 3D vol space, and returns nib obj
@@ -213,18 +215,17 @@ def convert_to_vol(data, xyz, voldef):
     vol_data[ijk[0],ijk[1],ijk[2]] = data
 
     # convert to nifti
-    nib_obj = nib.Nifti2Image(vol_data, mat)
+    nib_obj = nib.Nifti1Image(vol_data, mat)
     return nib_obj
+
 
 def convert_cerebellum_to_nifti(data):
     """
-    INPUT:
-        data (np-arrray):
-            N x 6937 length data array
-            or 1-d (6937,) array
-    OUTPUT:
-        nifti (List of nifti2image):
-            N output images
+    Args:
+        data (np-arrray): N x 6937 length data array
+        or 1-d (6937,) array
+    Returns:
+        nifti (List of nifti1image): N output images
     """
     # Load the region file
     dirs = const.Dirs(exp_name="sc1")

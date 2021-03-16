@@ -272,8 +272,6 @@ def eval_models(config):
 
         # get rmse
         rmse = mean_squared_error(Y, Y_pred, squared=False)
-
-        # set up dict
         data = {"rmse_eval": rmse, "subj_id": subj}
 
         # Copy over all scalars or strings to eval_all dataframe:
