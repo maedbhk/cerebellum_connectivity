@@ -220,9 +220,6 @@ def nilearn_flatmap(data, cmap='jet', threshold=None, bg_map=None, cscale=None):
 def get_best_model(train_exp):
     """Get idx for best ridge based on either rmse_train or rmse_cv.
 
-    If rmse_cv is populated, this is used to determine best ridge.
-    Otherwise, rmse_train is used.
-
     Args:
         exp (str): 'sc1' or 'sc2
     Returns:

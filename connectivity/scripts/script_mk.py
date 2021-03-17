@@ -130,7 +130,7 @@ def train_ridge(
     # train and validate ridge models
     for param in hyperparameter:
         print(f"training param {param:.0f}")
-        name = f"ridge_{cortex}_alpha_{param:.0f}"
+        name = f"ridge_{cortex}_alpha_{param:.0f}" # important that model naming convention stays this way!
         if model_ext is not None:
             name = f"{name}_{model_ext}"
         config["name"] = name
@@ -336,41 +336,48 @@ def eval_model(
 @click.command()
 @click.option("--cortex")
 @click.option("--model_type")
+@click.option("--train_or_eval")
 
 
-def run(cortex="tesselsWB642", model_type="ridge"):
+def run(cortex="tesselsWB642", model_type="ridge", train_or_eval="train"):
     """ Run connectivity routine (train and evaluate)
 
     Args: 
         cortex (str): 'tesselsWB162', 'tesselsWB642' etc.
         model_type (str): 'WTA' or 'ridge'
+        train_or_test (str): 'train' or 'eval'
     """
-    #train models
-    for exp in range(2):
-        if model_type=="ridge":
-            # train ridge
-            train_ridge(hyperparameter=[-2,0,2,4,6,8,10], train_exp=f"sc{exp+1}", cortex=cortex)
-        elif model_type=="WTA":
-            train_WTA(train_exp=f"sc{exp+1}", cortex=cortex)
+    # run training routine
+    if train_or_eval=="train":
+        for exp in range(2):
+            if model_type=="ridge":
+                # train ridge
+                train_ridge(hyperparameter=[-2,0,2,4,6,8,10], train_exp=f"sc{exp+1}", cortex=cortex)
+            elif model_type=="WTA":
+                train_WTA(train_exp=f"sc{exp+1}", cortex=cortex)
 
-    # eval models
-    for exp in range(2):
+    # run eval routine
+    if train_or_eval=="eval":
+        
+        # eval models
+        for exp in range(2):
 
-        # get best train model (based on train CV)
-        best_model = summary.get_best_model(train_exp=f"sc{2-exp}")
+            # get best train model (based on train CV)
+            best_model = summary.get_best_model(train_exp=f"sc{2-exp}")
+            cortex = best_model.split('_')[1] # assumes that training model follows convention <model_type>_<cortex_name>_<other>
 
-        # save voxel/vertex maps for best training weights
-        save_weight_maps(model_name=best_model, train_exp=f"sc{2-exp}")
+            # save voxel/vertex maps for best training weights
+            save_weight_maps(model_name=best_model, train_exp=f"sc{2-exp}")
 
-        # delete training models that are suboptimal (save space)
-        dirs = const.Dirs(exp_name=f"sc{2-exp}")
-        model_fpaths = [f.path for f in os.scandir(dirs.conn_train_dir) if f.is_dir()]
-        for fpath in model_fpaths:
-            if best_model != Path(fpath).name:
-                shutil.rmtree(fpath)
+            # delete training models that are suboptimal (save space)
+            dirs = const.Dirs(exp_name=f"sc{2-exp}")
+            model_fpaths = [f.path for f in os.scandir(dirs.conn_train_dir) if f.is_dir()]
+            for fpath in model_fpaths:
+                if best_model != Path(fpath).name:
+                    shutil.rmtree(fpath)
 
-        # test best train model
-        eval_model(model_name=best_model, train_exp=f"sc{2-exp}", eval_exp=f"sc{exp+1}")
+            # test best train model
+            eval_model(model_name=best_model, cortex=cortex, train_exp=f"sc{2-exp}", eval_exp=f"sc{exp+1}")
 
 
 if __name__ == "__main__":
