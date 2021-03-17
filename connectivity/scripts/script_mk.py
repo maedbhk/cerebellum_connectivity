@@ -412,7 +412,7 @@ def eval_model(
 @click.option("--train_or_eval")
 
 
-def run(cortex="tesselsWB642", model_type="ridge", train_or_eval="train"):
+def run(cortex="tesselsWB642", model_type="ridge", train_or_eval="train", delete_train=False):
     """ Run connectivity routine (train and evaluate)
 
     Args: 
@@ -447,11 +447,12 @@ def run(cortex="tesselsWB642", model_type="ridge", train_or_eval="train"):
             save_weight_maps(model_name=best_model, train_exp=f"sc{2-exp}")
 
             # delete training models that are suboptimal (save space)
-            dirs = const.Dirs(exp_name=f"sc{2-exp}")
-            model_fpaths = [f.path for f in os.scandir(dirs.conn_train_dir) if f.is_dir()]
-            for fpath in model_fpaths:
-                if best_model != Path(fpath).name:
-                    shutil.rmtree(fpath)
+            if delete_train:
+                dirs = const.Dirs(exp_name=f"sc{2-exp}")
+                model_fpaths = [f.path for f in os.scandir(dirs.conn_train_dir) if f.is_dir()]
+                for fpath in model_fpaths:
+                    if best_model != Path(fpath).name:
+                        shutil.rmtree(fpath)
 
             # test best train model
             eval_model(model_name=best_model, cortex=cortex, train_exp=f"sc{2-exp}", eval_exp=f"sc{exp+1}")
