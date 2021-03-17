@@ -207,7 +207,8 @@ switch what
             V(end+1)=SPM.VResMS;
             cd(glmDir);
             tic;
-            Y = region_getdata(V,R,'interp',interp,'ignore_nan',ignore_nan);  % Data is N x P
+%             Y = region_getdata(V,R,'interp',interp,'ignore_nan',ignore_nan);  % Data is N x P
+            Y = region_getdata(V,R,'interp',interp);  % Data is N x P
             B=[];
             for r = 1:numel(R) % R is the output 'regions' structure from 'ROI_define'
                 % Get betas (univariately prewhitened)
@@ -217,7 +218,7 @@ switch what
                 B_tmp.betasNW{1, 1} = beta; 
                 B_tmp.betasUW{1, 1} = bsxfun(@rdivide,beta,sqrt(resMS));
                 if (ignore_nan) 
-                    B_tmp.betasUW{1}(:,resMS==0)=0
+                    B_tmp.betasUW{1}(:,resMS==0)=0;
                 end
                 B_tmp.mbetasNW  = nanmean(B_tmp.betasNW{1},2)';
                 B_tmp.mbetasUW  = nanmean(B_tmp.betasUW{1},2)';
@@ -299,6 +300,34 @@ switch what
             save(fullfile(betaDir, subj_name{s}, sprintf('Y_glm%d_%s.mat', glm, parcelType)), '-struct', 'Y', '-v7.3');
             fprintf('\n');
         end % s (sn)
+    case 'ROI:MDTB:beta_all' % extracts betas and add_to_beta
+        % Example usage: sc1sc2_conn_model('ROI:MDTB:beta_all')
+        
+        sn = returnSubjs;
+        glm = 7;
+        
+        vararginoptions(varargin, {'sn', 'glm'});
+        
+        
+        
+        for ex = 1:2 
+%             sc1sc2_conn_model('ROI:MDTB:beta_unn', 'sn', sn, 'experiment_num', ex, 'glm', glm, 'parcelType', 'tessels0042');
+            sc1sc2_conn_model('ROI:MDTB:beta_unn', 'sn', sn, 'experiment_num', ex, 'glm', glm, 'parcelType', 'tessels0162');
+            sc1sc2_conn_model('ROI:MDTB:beta_unn', 'sn', sn, 'experiment_num', ex, 'glm', glm, 'parcelType', 'tessels0362');
+            sc1sc2_conn_model('ROI:MDTB:beta_unn', 'sn', sn, 'experiment_num', ex, 'glm', glm, 'parcelType', 'tessels0642');
+            sc1sc2_conn_model('ROI:MDTB:beta_unn', 'sn', sn, 'experiment_num', ex, 'glm', glm, 'parcelType', 'tessels1002');
+            sc1sc2_conn_model('ROI:MDTB:beta_unn', 'sn', sn, 'experiment_num', ex, 'glm', glm, 'parcelType', 'yeo_7');
+            sc1sc2_conn_model('ROI:MDTB:beta_unn', 'sn', sn, 'experiment_num', ex, 'glm', glm, 'parcelType', 'yeo_17');
+            % add betas
+%             sc1sc2_conn_model('ROI:MDTB:add_to_beta', 'sn', sn, 'experiment_num', ex, 'glm', 'parcelType', 'tessels0042');
+            sc1sc2_conn_model('ROI:MDTB:add_to_beta', 'sn', sn, 'experiment_num', ex, 'glm', 'parcelType', 'tessels0162');
+            sc1sc2_conn_model('ROI:MDTB:add_to_beta', 'sn', sn, 'experiment_num', ex, 'glm', 'parcelType', 'tessels0362');
+            sc1sc2_conn_model('ROI:MDTB:add_to_beta', 'sn', sn, 'experiment_num', ex, 'glm', 'parcelType', 'tessels0642');
+            sc1sc2_conn_model('ROI:MDTB:add_to_beta', 'sn', sn, 'experiment_num', ex, 'glm', 'parcelType', 'tessels1002');
+            sc1sc2_conn_model('ROI:MDTB:add_to_beta', 'sn', sn, 'experiment_num', ex, 'glm', 'parcelType', 'yeo_7');
+            sc1sc2_conn_model('ROI:MDTB:add_to_beta', 'sn', sn, 'experiment_num', ex, 'glm', 'parcelType', 'yeo_17');
+            
+        end % ex (experiment)
         
     case 'PREP:MDTB:cereb:suit_betas'         % Normalize betas to SUIT space and creates 'beta_regions_cerebellum_suit.mat'
         % cerebellum_grey to create and
