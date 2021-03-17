@@ -24,7 +24,7 @@ black = "*"
 jedi = "==0.17.2"
 nilearn = "*"
 click = "*"
-neptune = "*"
+neptune-client = "*"
 
 [requires]
 python_version = "3.7"

@@ -17,7 +17,8 @@
 ## Command(s) to run:
 module load python/3.7
 source ~/.bash_profile
-source $(pipenv --venv)/bin/activate
+# source $(pipenv --venv)/bin/activate
+pipenv shell
 cd /global/scratch/maedbhking/projects/cerebellum_connectivity/connectivity/scripts
 
 # run connectivity models
