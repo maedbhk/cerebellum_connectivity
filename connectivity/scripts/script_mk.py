@@ -234,7 +234,7 @@ def train_WTA(
         df_all.to_csv(fpath, index=False)
 
 
-def train_NNLS(:
+def train_NNLS(
     alphas,
     gammas,
     train_exp="sc1",
@@ -269,12 +269,12 @@ def train_NNLS(:
     df_all = pd.DataFrame()
     # train and validate ridge models
     for (alpha, gamma) in zip(alphas, gammas):
-        print(f"training param {param:.0f}")
+        print(f"training alpha {alpha:.0f} training gamm {gamma:.0f}")
         name = f"NNLS_{cortex}_alpha_{alpha:.0f}_gamma_{gamma:.0f}" # important that model naming convention stays this way!
         if model_ext is not None:
             name = f"{name}_{model_ext}"
         config["name"] = name
-        config["param"] = {"alpha": alpha, "gamma": gamma}
+        config["param"] = {"alpha": np.exp(alpha), "gamma": gamma}
         config["model"] = "NNLS"
         config["X_data"] = cortex
         config["Y_data"] = cerebellum
@@ -430,6 +430,9 @@ def run(cortex="tesselsWB642", model_type="ridge", train_or_eval="train"):
                 train_WTA(train_exp=f"sc{exp+1}", cortex=cortex)
             elif model_type=="NNLS":
                 train_NNLS(alphas=[0, 1], gammas=[0, 1], train_exp=f"sc{exp+1}", cortex=cortex)
+            else:
+                print('please enter a model (ridge, WTA, NNLS)')
+
 
     # run eval routine
     if train_or_eval=="eval":
