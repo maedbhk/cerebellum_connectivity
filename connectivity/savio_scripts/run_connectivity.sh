@@ -16,6 +16,7 @@
 #
 ## Command(s) to run:
 module load python/3.7
+source ~/.bash_profile
 source $(pipenv --venv)/bin/activate
 cd /global/scratch/maedbhking/projects/cerebellum_connectivity/connectivity/scripts
 
