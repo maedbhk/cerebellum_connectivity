@@ -234,6 +234,34 @@ def train_WTA(
         df_all.to_csv(fpath, index=False)
 
 
+def train_NNLS(:
+    hyperparameter,
+    train_exp="sc1",
+    cortex="tesselsWB642",
+    cerebellum="cerebellum_suit",
+    log_online=False,
+    log_locally=True,
+    model_ext=None,
+    ):
+    """Train model
+
+    Optimal alpha value is returned based on R_cv.
+
+    Args:
+        hyperparameter (list): list of alpha values.
+        train_exp (str): 'sc1' or 'sc2'
+        cortex (str): cortical ROI
+        cerebellum (str): cerebellar ROI
+        log_online (bool): log results to ML tracking platform
+        log_locally (bool): log results locally
+        model_ext (str or None): add additional information to base model name
+    Returns:
+        Appends summary data for each model and subject into `train_summary.csv`
+        Returns pandas dataframe of train_summary
+    """
+
+    pass
+
 def save_weight_maps(model_name, train_exp):
     """Save weight maps to disk for cortex and cerebellum
 
