@@ -358,7 +358,6 @@ def run(cortex="tesselsWB642", model_type="ridge", train_or_eval="train"):
 
     # run eval routine
     if train_or_eval=="eval":
-        
         # eval models
         for exp in range(2):
 
