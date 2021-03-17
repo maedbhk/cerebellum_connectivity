@@ -28,5 +28,13 @@ python3 script_mk.py --cortex="tesselsWB162" --model_type="ridge" --train_or_eva
 # python3 script_mk.py --cortex="tesselsWB362" --model_type="ridge" --train_or_eval="train"
 # python3 script_mk.py --cortex="tesselsWB642" --model_type="ridge" --train_or_eval="train"
 
+python3 script_mk.py --cortex="tesselsWB162" --model_type="WTA" --train_or_eval="train"
+python3 script_mk.py --cortex="tesselsWB362" --model_type="WTA" --train_or_eval="train"
+python3 script_mk.py --cortex="tesselsWB642" --model_type="WTA" --train_or_eval="train"
+
+python3 script_mk.py --cortex="tesselsWB162" --model_type="NNLS" --train_or_eval="train"
+python3 script_mk.py --cortex="tesselsWB362" --model_type="NNLS" --train_or_eval="train"
+python3 script_mk.py --cortex="tesselsWB642" --model_type="NNLS" --train_or_eval="train"
+
 
 python3 script_mk.py --train_or_eval="eval"

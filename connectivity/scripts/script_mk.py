@@ -235,7 +235,8 @@ def train_WTA(
 
 
 def train_NNLS(:
-    hyperparameter,
+    alphas,
+    gammas,
     train_exp="sc1",
     cortex="tesselsWB642",
     cerebellum="cerebellum_suit",
@@ -260,7 +261,51 @@ def train_NNLS(:
         Returns pandas dataframe of train_summary
     """
 
-    pass
+    train_subjs, _ = split_subjects(const.return_subjs, test_size=0.3)
+
+    # get default train parameters
+    config = run_connect.get_default_train_config()
+
+    df_all = pd.DataFrame()
+    # train and validate ridge models
+    for (alpha, gamma) in zip(alphas, gammas):
+        print(f"training param {param:.0f}")
+        name = f"NNLS_{cortex}_alpha_{alpha:.0f}_gamma_{gamma:.0f}" # important that model naming convention stays this way!
+        if model_ext is not None:
+            name = f"{name}_{model_ext}"
+        config["name"] = name
+        config["param"] = {"alpha": alpha, "gamma": gamma}
+        config["model"] = "NNLS"
+        config["X_data"] = cortex
+        config["Y_data"] = cerebellum
+        config["weighting"] = True
+        config["averaging"] = "sess"
+        config["train_exp"] = train_exp
+        config["subjects"] = train_subjs
+        config["validate_model"] = True
+        config["cv_fold"] = 4
+        config["mode"] = "crossed"
+        config["hyperparameter"] = f"{alpha:.0f}_{gamma:.0f}"
+
+        # train model
+        models, df = run_connect.train_models(config, save=log_locally)
+        df_all = pd.concat([df_all, df])
+
+        # write online to neptune
+        if log_online:
+            log_to_neptune(dataframe=df, config=config, modeltype="train")
+
+    # save out train summary
+    dirs = const.Dirs(exp_name=train_exp)
+    fpath = os.path.join(dirs.conn_train_dir, "train_summary.csv")
+
+    # concat data to model_summary (if file already exists)
+    if log_locally:
+        if os.path.isfile(fpath):
+            df_all = pd.concat([df_all, pd.read_csv(fpath)])
+        # save out train summary
+        df_all.to_csv(fpath, index=False)
+
 
 def save_weight_maps(model_name, train_exp):
     """Save weight maps to disk for cortex and cerebellum
@@ -383,6 +428,8 @@ def run(cortex="tesselsWB642", model_type="ridge", train_or_eval="train"):
                 train_ridge(hyperparameter=[-2,0,2,4,6,8,10], train_exp=f"sc{exp+1}", cortex=cortex)
             elif model_type=="WTA":
                 train_WTA(train_exp=f"sc{exp+1}", cortex=cortex)
+            elif model_type=="NNLS":
+                train_NNLS(alphas=[0, 1], gammas=[0, 1], train_exp=f"sc{exp+1}", cortex=cortex)
 
     # run eval routine
     if train_or_eval=="eval":
