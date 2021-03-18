@@ -432,15 +432,16 @@ def run(cortex="tesselsWB642", model_type="ridge", train_or_eval="train", delete
     # run training routine
     if train_or_eval=="train":
         for exp in range(2):
-            if model_type=="ridge":
-                # train ridge
-                train_ridge(hyperparameter=[-2,0,2,4,6,8,10], train_exp=f"sc{exp+1}", cortex=cortex)
-            elif model_type=="WTA":
-                train_WTA(train_exp=f"sc{exp+1}", cortex=cortex)
-            elif model_type=="NNLS":
-                train_NNLS(alphas=[0, 1], gammas=[0, 1], train_exp=f"sc{exp+1}", cortex=cortex)
-            else:
-                print('please enter a model (ridge, WTA, NNLS)')
+            if exp==1:
+                if model_type=="ridge":
+                    # train ridge
+                    train_ridge(hyperparameter=[-2,0,2,4,6,8,10], train_exp=f"sc{exp+1}", cortex=cortex)
+                elif model_type=="WTA":
+                    train_WTA(train_exp=f"sc{exp+1}", cortex=cortex)
+                elif model_type=="NNLS":
+                    train_NNLS(alphas=[0], gammas=[0], train_exp=f"sc{exp+1}", cortex=cortex)
+                else:
+                    print('please enter a model (ridge, WTA, NNLS)')
 
 
     # run eval routine
