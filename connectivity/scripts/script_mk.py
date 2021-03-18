@@ -307,11 +307,12 @@ def train_NNLS(
         df_all.to_csv(fpath, index=False)
 
 
-def save_weight_maps(model_name, train_exp):
+def save_weight_maps(model_name, cortex, train_exp):
     """Save weight maps to disk for cortex and cerebellum
 
     Args: 
         model_name (str): model_name (folder in conn_train_dir)
+        cortex (str): cortex model name (example: tesselsWB162)
         train_exp (str): 'sc1' or 'sc2'
     Returns: 
         saves nifti/gifti to disk
@@ -325,8 +326,7 @@ def save_weight_maps(model_name, train_exp):
     # get trained subject models
     model_fnames = glob.glob(os.path.join(fpath, '*.h5'))
 
-    cereb_weights_all = []
-    cortex_weights_all = []
+    cereb_weights_all = []; cortex_weights_all = []
     for model_fname in model_fnames:
 
         # read model data
@@ -336,9 +336,14 @@ def save_weight_maps(model_name, train_exp):
         cereb_weights_all.append(np.nanmean(data.coef_, axis=1))
         cortex_weights_all.append(np.nanmean(data.coef_, axis=0))
 
-    # save maps to disk
-    nio.save_maps_cerebellum(data=cereb_weights_all, fpath=fpath, fname='group_weights_cerebellum')
-    # nio.save_maps_cortex(data=cortex_weights_all, fpath=fpath, fname='group_weights_cortex')
+    # save maps to disk for cerebellum and cortex
+    nio.save_maps_cerebellum(data=np.stack(cereb_weights_all, axis=0), 
+                            fpath=os.path.join(fpath, 'group_weights_cerebellum'))
+
+    nio.save_maps_cortex(data=np.stack(cortex_weights_all, axis=0), 
+                        fpath=os.path.join(fpath, 'group_weights_cortex'),
+                        atlas=cortex)
+
     print('saving cortical and cerebellar weights to disk')
 
 
@@ -392,7 +397,8 @@ def eval_model(
         fpath = os.path.join(dirs.conn_eval_dir, model_name)
         cio.make_dirs(fpath)
         for k, v in voxels.items():
-            nio.save_maps_cerebellum(data=v, fpath=fpath, fname=f'group_{k}')
+            nio.save_maps_cerebellum(data=np.stack(v, axis=0), 
+                                    fpath=os.path.join(fpath, f'group_{k}'))
 
     # write to neptune
     if log_online:
@@ -444,7 +450,7 @@ def run(cortex="tesselsWB642", model_type="ridge", train_or_eval="train", delete
             cortex = best_model.split('_')[1] # assumes that training model follows convention <model_type>_<cortex_name>_<other>
 
             # save voxel/vertex maps for best training weights
-            save_weight_maps(model_name=best_model, train_exp=f"sc{2-exp}")
+            save_weight_maps(model_name=best_model, cortex=cortex, train_exp=f"sc{2-exp}")
 
             # delete training models that are suboptimal (save space)
             if delete_train:

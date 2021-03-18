@@ -79,7 +79,7 @@ def eval_summary(summary_name="eval_summary"):
     return df_concat
 
 
-def plot_train_predictions(dataframe, hue=None):
+def plot_train_predictions(dataframe, x='train_name', hue=None):
     """plots training predictions (R CV) for all models in dataframe.
 
     Args:
@@ -88,7 +88,7 @@ def plot_train_predictions(dataframe, hue=None):
     """
     plt.figure(figsize=(15, 10))
     # R
-    sns.factorplot(x="train_name", y="train_R_cv", hue=hue, data=dataframe, legend=False, ci=None, size=4, aspect=2)
+    sns.factorplot(x=x, y="train_R_cv", hue=hue, data=dataframe, legend=False, ci=None, size=4, aspect=2)
     plt.title("Model Training (CV Predictions)", fontsize=20)
     plt.tick_params(axis="both", which="major", labelsize=15)
     plt.xticks(rotation="45", ha="right")
@@ -173,7 +173,7 @@ def plot_eval_map(gifti_func="group_R_vox", exp="sc1", model=None, cscale=None):
 
     # plot map
     surf_data = nio.nib_load(os.path.join(dirs.conn_eval_dir, model, f"{gifti_func}.func.gii"))
-    view = nilearn_flatmap(surf_data.darrays[0].data, cscale=cscale) #symmetric_cmap=False,
+    view = nio.suit_flatmap(surf_data.darrays[0].data, cscale=cscale) #symmetric_cmap=False,
     return view
 
 
@@ -190,30 +190,7 @@ def plot_train_map(gifti_func='group_weights_cerebellum', exp='sc1', model=None,
     
     # plot map
     surf_data = nio.nib_load(os.path.join(dirs.conn_train_dir, model, f"{gifti_func}.func.gii"))
-    view = nilearn_flatmap(surf_data.darrays[0].data, cscale=cscale) #symmetric_cmap=False,
-    return view
-
-
-def nilearn_flatmap(data, cmap='jet', threshold=None, bg_map=None, cscale=None):
-
-    # full path to surface
-    surf_dir = os.path.join(flatmap._surf_dir,'FLAT.surf.gii')
-
-    # load topology
-    flatsurf = nib.load(surf_dir)
-    vertices = flatsurf.darrays[0].data
-    faces    = flatsurf.darrays[1].data
-
-    # Determine underlay and assign color
-    # underlay = nib.load(underlay)
-
-    # Determine scale
-    if cscale is None:
-        cscale = [data.min(), data.max()]
-
-    # nilearn seems to
-    view = view_surf([vertices,faces], data, bg_map=bg_map, cmap=cmap,
-                        threshold=threshold, vmin=cscale[0], vmax=cscale[1])
+    view = nio.view_cerebellum(surf_data.darrays[0].data, cscale=cscale) #symmetric_cmap=False,
     return view
 
 
