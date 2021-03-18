@@ -172,12 +172,12 @@ def plot_eval_map(gifti_func="group_R_vox", exp="sc1", model=None, cscale=None):
         model = get_best_model(train_exp=exp)
 
     # plot map
-    surf_data = nio.nib_load(os.path.join(dirs.conn_eval_dir, model, f"{gifti_func}.func.gii"))
-    view = nio.suit_flatmap(surf_data.darrays[0].data, cscale=cscale) #symmetric_cmap=False,
+    surf_data = os.path.join(dirs.conn_eval_dir, model, f"{gifti_func}.func.gii")
+    view = nio.view_cerebellum(data=surf_data, cscale=cscale) #symmetric_cmap=False,
     return view
 
 
-def plot_train_map(gifti_func='group_weights_cerebellum', exp='sc1', model=None, cscale=None):
+def plot_train_map(gifti_func='group_weights_cerebellum', exp='sc1', model=None, cscale=None, hemisphere='R'):
     # initialise directories
     dirs = const.Dirs(exp_name=exp)
 
@@ -188,9 +188,15 @@ def plot_train_map(gifti_func='group_weights_cerebellum', exp='sc1', model=None,
     if not model:
         model = get_best_model(train_exp=exp)
     
-    # plot map
-    surf_data = nio.nib_load(os.path.join(dirs.conn_train_dir, model, f"{gifti_func}.func.gii"))
-    view = nio.view_cerebellum(surf_data.darrays[0].data, cscale=cscale) #symmetric_cmap=False,
+    # plot either cerebellum or cortex
+    if 'cerebellum' in gifti_func:
+        surf_fname = os.path.join(dirs.conn_train_dir, model, f"{gifti_func}.func.gii")
+        view = nio.view_cerebellum(data=surf_fname, cscale=cscale)
+    elif 'cortex' in gifti_func:
+        surf_fname = os.path.join(dirs.conn_train_dir, model, f"{gifti_func}.{hemisphere}.func.gii")
+        view = nio.view_cortex(data=surf_fname, cscale=cscale, hemisphere=hemisphere)
+    else:
+        print("gifti must contain either cerebellum or cortex in name")
     return view
 
 

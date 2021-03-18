@@ -340,9 +340,11 @@ def save_weight_maps(model_name, cortex, train_exp):
     nio.save_maps_cerebellum(data=np.stack(cereb_weights_all, axis=0), 
                             fpath=os.path.join(fpath, 'group_weights_cerebellum'))
 
-    nio.save_maps_cortex(data=np.stack(cortex_weights_all, axis=0), 
-                        fpath=os.path.join(fpath, 'group_weights_cortex'),
-                        atlas=cortex)
+    for hemi in ['R', 'L']:
+        nio.save_maps_cortex(data=np.stack(cortex_weights_all, axis=0), 
+                            fpath=os.path.join(fpath, 'group_weights_cortex'),
+                            atlas=cortex,
+                            hemisphere=hemi)
 
     print('saving cortical and cerebellar weights to disk')
 
@@ -426,6 +428,7 @@ def run(cortex="tesselsWB642", model_type="ridge", train_or_eval="train", delete
         model_type (str): 'WTA' or 'ridge'
         train_or_test (str): 'train' or 'eval'
     """
+    print(f'doing model {train_or_eval}')
     # run training routine
     if train_or_eval=="train":
         for exp in range(2):

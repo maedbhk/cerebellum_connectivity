@@ -10,6 +10,7 @@ from nilearn.surface import load_surf_data
 
 import connectivity.nib_utils as nio
 from connectivity.data import convert_cerebellum_to_nifti
+import connectivity.constants as const
 
 def nib_load(fpath):
     """ load nifti from disk
@@ -72,7 +73,7 @@ def save_maps_cerebellum(data, fpath, group_average=True, gifti=True, nifti=True
     # make and save gifti image
     if gifti:
         gii_img = flatmap.make_func_gifti(data=surf_data, column_names=['col'])
-        nio.nib_save(img=gii_img, fpath=fpath + '.gii')
+        nio.nib_save(img=gii_img, fpath=fpath + '.func.gii')
 
 def save_maps_cortex(data, fpath, atlas, group_average=True, hemisphere='R'):
     """Takes list of np arrays, averages list and
@@ -124,7 +125,7 @@ def save_maps_cortex(data, fpath, atlas, group_average=True, hemisphere='R'):
 
     # make gifti img
     func_gii = nio.make_func_gifti(data=texture.reshape(len(texture),1), anatomical_struct=anatomical_struct)
-    nio.nib_save(img=func_gii, fpath=fpath)
+    nio.nib_save(img=func_gii, fpath=fpath + f'.{hemisphere}.func.gii')
 
 def make_label_gifti(data, anatomical_struct='CortexLeft', label_names=None, column_names=None, label_RGBA=None):
     """
@@ -245,7 +246,7 @@ def view_cerebellum(data, cmap='jet', threshold=None, bg_map=None, cscale=None):
     """Visualize data on suit flatmap
 
     Args: 
-        data (np array): np array of shape (28935 x 1)
+        data (np array): np array of shape (28935 x 1) or str
         cmap (str): default is 'jet'
         threshold (int or None): default is None
         bg_map (str or None): default is None
@@ -253,12 +254,12 @@ def view_cerebellum(data, cmap='jet', threshold=None, bg_map=None, cscale=None):
     """
 
     # full path to surface
-    surf_dir = os.path.join(flatmap._surf_dir,'FLAT.surf.gii')
+    surf_mesh = os.path.join(flatmap._surf_dir,'FLAT.surf.gii')
 
-    # load topology
-    # flatsurf = nib.load(surf_dir)
-    # vertices = flatsurf.darrays[0].data
-    # faces    = flatsurf.darrays[1].data
+    # load surf data from file
+    if isinstance(data, str):
+        data = nio.nib_load(data)
+        data = data.darrays[0].data
 
     # Determine underlay and assign color
     # underlay = nib.load(underlay)
@@ -268,28 +269,48 @@ def view_cerebellum(data, cmap='jet', threshold=None, bg_map=None, cscale=None):
         cscale = [data.min(), data.max()]
 
     # nilearn seems to
-    view = view_surf(surf_dir, data, bg_map=bg_map, cmap=cmap,
+    view = view_surf(surf_mesh, data, bg_map=bg_map, cmap=cmap,
                         threshold=threshold, vmin=cscale[0], vmax=cscale[1])
     return view
 
-def view_cortex(surf_mesh, surf_map, bg_map=None, map_type='func'):
+def view_cortex(data, bg_map=None, cscale=None, map_type='func', hemisphere='R', atlas_type='inflated'):
     """Visualize data on inflated cortex
 
     Args: 
-        surf_mesh (str or np array): *.inflated.surf.gii
-        surf_map (str or np array): *.func.gii or *.label.gii
+        data (str or np array): *.func.gii or *.label.gii
         bg_map (str or np array or None): 
         map_type (str): 'func' or 'label'
+        hemisphere (str): 'R' or 'L'
+        atlas_type (str): 'inflated', 'very_inflated' (see fs_LR dir)
     """
+    # initialise directories
+    dirs = const.Dirs()
+
+    # get surface mesh
+    surf_mesh = os.path.join(dirs.fs_lr_dir, f'fs_LR.32k.{hemisphere}.{atlas_type}.surf.gii')
+
+    # load surf data from file
+    if isinstance(data, str):
+        data = nio.nib_load(data)
+        data = data.darrays[0].data
+
+    # Determine scale
+    if cscale is None:
+        cscale = [data.min(), data.max()]
+
     if map_type=="func":
         view = view_surf(surf_mesh=surf_mesh, 
-                        surf_map=surf_map,
+                        surf_map=data,
                         bg_map=bg_map,
+                        vmin=cscale[0], 
+                        vmax=cscale[1]
                         )
                     
     elif map_type=="label":
         view = plot_surf_roi(surf_mesh=surf_mesh, 
-                            roi_map=surf_map,
+                            roi_map=data,
                             bg_map=bg_map,
+                            vmin=cscale[0], 
+                            vmax=cscale[1]
                             )           
     return view
