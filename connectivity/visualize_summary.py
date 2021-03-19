@@ -79,7 +79,7 @@ def eval_summary(summary_name="eval_summary"):
     return df_concat
 
 
-def plot_train_predictions(dataframe, hue=None):
+def plot_train_predictions(dataframe, x='train_name', hue=None):
     """plots training predictions (R CV) for all models in dataframe.
 
     Args:
@@ -88,7 +88,7 @@ def plot_train_predictions(dataframe, hue=None):
     """
     plt.figure(figsize=(15, 10))
     # R
-    sns.factorplot(x="train_name", y="train_R_cv", hue=hue, data=dataframe, legend=False, ci=None, size=4, aspect=2)
+    sns.factorplot(x=x, y="train_R_cv", hue=hue, data=dataframe, legend=False, ci=None, size=4, aspect=2)
     plt.title("Model Training (CV Predictions)", fontsize=20)
     plt.tick_params(axis="both", which="major", labelsize=15)
     plt.xticks(rotation="45", ha="right")
@@ -172,12 +172,12 @@ def plot_eval_map(gifti_func="group_R_vox", exp="sc1", model=None, cscale=None):
         model = get_best_model(train_exp=exp)
 
     # plot map
-    surf_data = nio.nib_load(os.path.join(dirs.conn_eval_dir, model, f"{gifti_func}.func.gii"))
-    view = nilearn_flatmap(surf_data.darrays[0].data, cscale=cscale) #symmetric_cmap=False,
+    surf_data = os.path.join(dirs.conn_eval_dir, model, f"{gifti_func}.func.gii")
+    view = nio.view_cerebellum(data=surf_data, cscale=cscale) #symmetric_cmap=False,
     return view
 
 
-def plot_train_map(gifti_func='group_weights_cerebellum', exp='sc1', model=None, cscale=None):
+def plot_train_map(gifti_func='group_weights_cerebellum', exp='sc1', model=None, cscale=None, hemisphere='R'):
     # initialise directories
     dirs = const.Dirs(exp_name=exp)
 
@@ -188,40 +188,20 @@ def plot_train_map(gifti_func='group_weights_cerebellum', exp='sc1', model=None,
     if not model:
         model = get_best_model(train_exp=exp)
     
-    # plot map
-    surf_data = nio.nib_load(os.path.join(dirs.conn_train_dir, model, f"{gifti_func}.func.gii"))
-    view = nilearn_flatmap(surf_data.darrays[0].data, cscale=cscale) #symmetric_cmap=False,
-    return view
-
-
-def nilearn_flatmap(data, cmap='jet', threshold=None, bg_map=None, cscale=None):
-
-    # full path to surface
-    surf_dir = os.path.join(flatmap._surf_dir,'FLAT.surf.gii')
-
-    # load topology
-    flatsurf = nib.load(surf_dir)
-    vertices = flatsurf.darrays[0].data
-    faces    = flatsurf.darrays[1].data
-
-    # Determine underlay and assign color
-    # underlay = nib.load(underlay)
-
-    # Determine scale
-    if cscale is None:
-        cscale = [data.min(), data.max()]
-
-    # nilearn seems to
-    view = view_surf([vertices,faces], data, bg_map=bg_map, cmap=cmap,
-                        threshold=threshold, vmin=cscale[0], vmax=cscale[1])
+    # plot either cerebellum or cortex
+    if 'cerebellum' in gifti_func:
+        surf_fname = os.path.join(dirs.conn_train_dir, model, f"{gifti_func}.func.gii")
+        view = nio.view_cerebellum(data=surf_fname, cscale=cscale)
+    elif 'cortex' in gifti_func:
+        surf_fname = os.path.join(dirs.conn_train_dir, model, f"{gifti_func}.{hemisphere}.func.gii")
+        view = nio.view_cortex(data=surf_fname, cscale=cscale, hemisphere=hemisphere)
+    else:
+        print("gifti must contain either cerebellum or cortex in name")
     return view
 
 
 def get_best_model(train_exp):
     """Get idx for best ridge based on either rmse_train or rmse_cv.
-
-    If rmse_cv is populated, this is used to determine best ridge.
-    Otherwise, rmse_train is used.
 
     Args:
         exp (str): 'sc1' or 'sc2

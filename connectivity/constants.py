@@ -38,6 +38,7 @@ class Dirs:
     def __init__(self, exp_name="sc1", glm="glm7"):
         glm_num = re.findall("\d+", glm)[0]
         self.base_dir = base_dir
+        self.fs_lr_dir = base_dir / "fs_LR_32"
         self.data_dir = base_dir / exp_name
         self.behav_dir = self.data_dir / "data"
         self.imaging_dir = self.data_dir / "imaging_data"
@@ -51,5 +52,4 @@ class Dirs:
         self.conn_eval_dir = self.data_dir / "conn_models" / "eval"
         self.atlas = base_dir / "atlases"
         self.atlas_suit_flatmap = self.atlas / "suit_flatmap"
-        self.fs_lr_dir = base_dir / "fs_LR_32"
         self.figure = Path(__file__).absolute().parent.parent / "reports" / "figures"

@@ -28,6 +28,20 @@ This will automatically create a new virtual environment for you and install all
 
     $ pipenv install
 
+### Additional packages to download (not currently pipenv installable)
+
+There are two repos on Github that you will need to clone for this project:
+
+In your top-level `data` directory: 
+    $ git clone https://github.com/DiedrichsenLab/fs_LR_32.git
+
+Add the following repo to your PATH:
+    $ git clone https://github.com/DiedrichsenLab/SUITPy.git
+
+> Note: You can do the latter by adding the following to the `.env` file in the top-level directory of `cerebellum_connectivity`
+    $ PYTHONPATH=$PYTHONPATH:DIRECTORY_NAME
+    $ export PYTHONPATH
+
 ## Activating the virtual environment in terminal:
 
     $ pipenv shell
@@ -41,8 +55,7 @@ This will automatically create a new virtual environment for you and install all
 ## Running connectivity models:
 
     And example of how to run a set of connectivity models + evaluate them can be found in 
-    connectivity/scripts/script_ridge.py or script_ridge_mk.py 
-
+    connectivity/scripts/script_ridge.py or script_mk.py 
 
 Project Organization
 ------------
@@ -50,7 +63,8 @@ Project Organization
 Data Organization: 
 ------------
     ├── data
-    │   └── sc1            <- Data from study 1
+    |   └── fs_LR_32 <- freesurfer atlases
+    │   └── sc1 <- Data from study 1
     │       └── anatomicals          
     │       └── GLM_firstlevel_7
     │       └── GLM_firstlevel_8
@@ -60,7 +74,7 @@ Data Organization:
     │       └── surfaceFreesurfer
     │       └── surfaceWB
     │       └── beta_roi
-    │   └── sc2            <- Data from study 2         
+    │   └── sc2 <- Data from study 2         
     │       └── GLM_firstlevel_7
     │       └── GLM_firstlevel_8
     │       └── conn_models
@@ -70,7 +84,7 @@ Data Organization:
 Repository structure:
 ------------ 
     ├── LICENSE
-    ├── Makefile                 <- Makefile with commands like `make data` (not implemented)
+    ├── Makefile                 <- Makefile with commands like `make data` (not yet implemented)
     ├── README.md                <- The top-level README for developers using this project.
     │
     ├── docs                     <- A default Sphinx project; see sphinx-doc.org for details (not yet implemented)
