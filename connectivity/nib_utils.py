@@ -9,7 +9,7 @@ from nilearn.plotting import view_surf, plot_surf_roi
 from nilearn.surface import load_surf_data
 
 import connectivity.nib_utils as nio
-from connectivity.data import convert_cerebellum_to_nifti
+from connectivity.data import convert_cerebellum_to_nifti, convert_cortex_to_gifti
 import connectivity.constants as const
 
 def nib_load(fpath):
@@ -88,43 +88,14 @@ def save_maps_cortex(data, fpath, atlas, group_average=True, hemisphere='R'):
     Returns: 
         saves gifti image to disk
     """
-    # get anatomical structure
-    if hemisphere=="R":
-        anatomical_struct = 'CortexRight'
-    elif hemisphere=="L":
-        anatomical_struct = 'CortexLeft'
-    
     # average data
     if group_average:
         data = np.nanmean(data, axis=0)
+
+    # get functional gifti
+    func_gii = convert_cortex_to_gifti(data=data, atlas=atlas, hemisphere=hemisphere)
     
-    # mesh surfaces
-    dirs = const.Dirs()
-    inflated_fpath = os.path.join(dirs.fs_lr_dir,f'fs_LR.32k.{hemisphere}.inflated.surf.gii')
-
-    # get texture
-    gii_path = os.path.join(dirs.reg_dir, 'data', 'group', f'{atlas}.{hemisphere}.label.gii')
-    gii_data = nib.load(gii_path)
-    texture = gii_data.darrays[0].data[:]
-
-    # get start and end labels
-    start_label = texture[texture!=0].min()
-    end_label = texture[texture!=0].max()
-    labels_all = np.arange(1, len(data)+1)
-
-    # get relevant data
-    data_hemi = data[start_label-1:end_label]
-    labels = labels_all[start_label-1:end_label]
-
-    # get texture
-    texture = texture.astype(float)
-    for vert in np.arange(len(texture)):
-        label = texture[vert]
-        if label != 0:
-            texture[vert] = data_hemi[labels==label]
-
-    # make gifti img
-    func_gii = nio.make_func_gifti(data=texture.reshape(len(texture),1), anatomical_struct=anatomical_struct)
+    # save gifti to file
     nio.nib_save(img=func_gii, fpath=fpath + f'.{hemisphere}.func.gii')
 
 def make_label_gifti(data, anatomical_struct='CortexLeft', label_names=None, column_names=None, label_RGBA=None):
