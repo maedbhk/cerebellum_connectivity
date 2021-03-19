@@ -159,12 +159,15 @@ def train_ridge(
     dirs = const.Dirs(exp_name=train_exp)
     fpath = os.path.join(dirs.conn_train_dir, "train_summary.csv")
 
+    # save out weight maps
+    save_weight_maps(model_name=name, cortex=cortex, train_exp=train_exp)
+
     # concat data to model_summary (if file already exists)
-    if log_locally:
-        if os.path.isfile(fpath):
-            df_all = pd.concat([df_all, pd.read_csv(fpath)])
-        # save out train summary
-        df_all.to_csv(fpath, index=False)
+    # if log_locally:
+    #     if os.path.isfile(fpath):
+    #         df_all = pd.concat([df_all, pd.read_csv(fpath)])
+    #     # save out train summary
+    #     df_all.to_csv(fpath, index=False)
 
 
 def train_WTA(
@@ -226,12 +229,15 @@ def train_WTA(
     dirs = const.Dirs(exp_name=train_exp)
     fpath = os.path.join(dirs.conn_train_dir, "train_summary.csv")
 
+    # save out weight maps
+    save_weight_maps(model_name=name, cortex=cortex, train_exp=train_exp)
+
     # concat data to model_summary (if file already exists)
-    if log_locally:
-        if os.path.isfile(fpath):
-            df_all = pd.concat([df_all, pd.read_csv(fpath)])
-        # save out train summary
-        df_all.to_csv(fpath, index=False)
+    # if log_locally:
+    #     if os.path.isfile(fpath):
+    #         df_all = pd.concat([df_all, pd.read_csv(fpath)])
+    #     # save out train summary
+    #     df_all.to_csv(fpath, index=False)
 
 
 def train_NNLS(
@@ -298,6 +304,9 @@ def train_NNLS(
     # save out train summary
     dirs = const.Dirs(exp_name=train_exp)
     fpath = os.path.join(dirs.conn_train_dir, "train_summary.csv")
+
+    # save out weight maps
+    save_weight_maps(model_name=name, cortex=cortex, train_exp=train_exp)
 
     # concat data to model_summary (if file already exists)
     if log_locally:
@@ -432,16 +441,15 @@ def run(cortex="tesselsWB642", model_type="ridge", train_or_eval="train", delete
     # run training routine
     if train_or_eval=="train":
         for exp in range(2):
-            if exp==1:
-                if model_type=="ridge":
-                    # train ridge
-                    train_ridge(hyperparameter=[-2,0,2,4,6,8,10], train_exp=f"sc{exp+1}", cortex=cortex)
-                elif model_type=="WTA":
-                    train_WTA(train_exp=f"sc{exp+1}", cortex=cortex)
-                elif model_type=="NNLS":
-                    train_NNLS(alphas=[0], gammas=[0], train_exp=f"sc{exp+1}", cortex=cortex)
-                else:
-                    print('please enter a model (ridge, WTA, NNLS)')
+            if model_type=="ridge":
+                # train ridge
+                train_ridge(hyperparameter=[-2,0,2,4,6,8,10], train_exp=f"sc{exp+1}", cortex=cortex)
+            elif model_type=="WTA":
+                train_WTA(train_exp=f"sc{exp+1}", cortex=cortex)
+            elif model_type=="NNLS":
+                train_NNLS(alphas=[0], gammas=[0], train_exp=f"sc{exp+1}", cortex=cortex)
+            else:
+                print('please enter a model (ridge, WTA, NNLS)')
 
 
     # run eval routine
@@ -453,8 +461,8 @@ def run(cortex="tesselsWB642", model_type="ridge", train_or_eval="train", delete
             best_model = summary.get_best_model(train_exp=f"sc{2-exp}")
             cortex = best_model.split('_')[1] # assumes that training model follows convention <model_type>_<cortex_name>_<other>
 
-            # save voxel/vertex maps for best training weights
-            save_weight_maps(model_name=best_model, cortex=cortex, train_exp=f"sc{2-exp}")
+            # # save voxel/vertex maps for best training weights
+            # save_weight_maps(model_name=best_model, cortex=cortex, train_exp=f"sc{2-exp}")
 
             # delete training models that are suboptimal (save space)
             if delete_train:
