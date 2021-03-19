@@ -307,7 +307,7 @@ switch what
         experiment_num = 1;
         
         
-        vararginoptions(varargin, {'sn', 'glm', 'experiment_num', 1});
+        vararginoptions(varargin, {'sn', 'glm', 'experiment_num'});
         
         sc1sc2_conn_model('ROI:MDTB:beta_unn', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0042');
         sc1sc2_conn_model('ROI:MDTB:beta_unn', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0162');
