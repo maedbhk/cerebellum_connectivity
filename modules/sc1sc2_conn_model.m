@@ -106,7 +106,6 @@ switch what
         parcelName     = 'tessels0162'; %% set it to 'tesselsWB', 'yeo_7', or 'yeo_17'
         
         vararginoptions(varargin, {'sn', 'glm', 'parcelName'});
-
         
         % setting glm directory
         %         glmDir = fullfile(baseDir, experiment, sprintf('GLM_firstlevel_%d', glm));
@@ -303,31 +302,29 @@ switch what
     case 'ROI:MDTB:beta_all' % extracts betas and add_to_beta
         % Example usage: sc1sc2_conn_model('ROI:MDTB:beta_all')
         
-        sn = returnSubjs;
+        sn  = returnSubjs;
         glm = 7;
-        
-        vararginoptions(varargin, {'sn', 'glm'});
-        
+        experiment_num = 1;
         
         
-        for ex = 1:2 
-%             sc1sc2_conn_model('ROI:MDTB:beta_unn', 'sn', sn, 'experiment_num', ex, 'glm', glm, 'parcelType', 'tessels0042');
-            sc1sc2_conn_model('ROI:MDTB:beta_unn', 'sn', sn, 'experiment_num', ex, 'glm', glm, 'parcelType', 'tessels0162');
-            sc1sc2_conn_model('ROI:MDTB:beta_unn', 'sn', sn, 'experiment_num', ex, 'glm', glm, 'parcelType', 'tessels0362');
-            sc1sc2_conn_model('ROI:MDTB:beta_unn', 'sn', sn, 'experiment_num', ex, 'glm', glm, 'parcelType', 'tessels0642');
-            sc1sc2_conn_model('ROI:MDTB:beta_unn', 'sn', sn, 'experiment_num', ex, 'glm', glm, 'parcelType', 'tessels1002');
-            sc1sc2_conn_model('ROI:MDTB:beta_unn', 'sn', sn, 'experiment_num', ex, 'glm', glm, 'parcelType', 'yeo_7');
-            sc1sc2_conn_model('ROI:MDTB:beta_unn', 'sn', sn, 'experiment_num', ex, 'glm', glm, 'parcelType', 'yeo_17');
-            % add betas
-%             sc1sc2_conn_model('ROI:MDTB:add_to_beta', 'sn', sn, 'experiment_num', ex, 'glm', 'parcelType', 'tessels0042');
-            sc1sc2_conn_model('ROI:MDTB:add_to_beta', 'sn', sn, 'experiment_num', ex, 'glm', 'parcelType', 'tessels0162');
-            sc1sc2_conn_model('ROI:MDTB:add_to_beta', 'sn', sn, 'experiment_num', ex, 'glm', 'parcelType', 'tessels0362');
-            sc1sc2_conn_model('ROI:MDTB:add_to_beta', 'sn', sn, 'experiment_num', ex, 'glm', 'parcelType', 'tessels0642');
-            sc1sc2_conn_model('ROI:MDTB:add_to_beta', 'sn', sn, 'experiment_num', ex, 'glm', 'parcelType', 'tessels1002');
-            sc1sc2_conn_model('ROI:MDTB:add_to_beta', 'sn', sn, 'experiment_num', ex, 'glm', 'parcelType', 'yeo_7');
-            sc1sc2_conn_model('ROI:MDTB:add_to_beta', 'sn', sn, 'experiment_num', ex, 'glm', 'parcelType', 'yeo_17');
+        vararginoptions(varargin, {'sn', 'glm', 'experiment_num'});
+        
+        sc1sc2_conn_model('ROI:MDTB:beta_unn', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0042');
+        sc1sc2_conn_model('ROI:MDTB:beta_unn', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0162');
+        sc1sc2_conn_model('ROI:MDTB:beta_unn', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0362');
+        sc1sc2_conn_model('ROI:MDTB:beta_unn', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0642');
+        sc1sc2_conn_model('ROI:MDTB:beta_unn', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels1002');
+        sc1sc2_conn_model('ROI:MDTB:beta_unn', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'yeo7');
+        sc1sc2_conn_model('ROI:MDTB:beta_unn', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'yeo17');
+        % add betas
+        sc1sc2_conn_model('ROI:MDTB:add_to_beta', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0042');
+        sc1sc2_conn_model('ROI:MDTB:add_to_beta', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0162');
+        sc1sc2_conn_model('ROI:MDTB:add_to_beta', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0362');
+        sc1sc2_conn_model('ROI:MDTB:add_to_beta', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0642');
+        sc1sc2_conn_model('ROI:MDTB:add_to_beta', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels1002');
+        sc1sc2_conn_model('ROI:MDTB:add_to_beta', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'yeo7');
+        sc1sc2_conn_model('ROI:MDTB:add_to_beta', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'yeo17');
             
-        end % ex (experiment)
         
     case 'PREP:MDTB:cereb:suit_betas'         % Normalize betas to SUIT space and creates 'beta_regions_cerebellum_suit.mat'
         % cerebellum_grey to create and
@@ -1189,7 +1186,7 @@ switch what
             end
             
             keyboard
-        end % s (sn)
+        end % s (s
         
     case 'CONN:MDTB:ols'                      % OLS regression for tessels, all MDTB
         % Example:sc1sc2_conn_model('CONN:MDTB:ols')
@@ -1940,13 +1937,13 @@ switch what
             varargout{1} = SPM;
         end % s (sn)
     case 'Houskeeping:move_files'             % moving files
-        % Example: sc1sc2_conn_model('Houskeeping:move_files')
+        % Example: sc1sc2_conn_model('Houskeeping:move_files', 'experiment_num', 2, 'copywhich', 'SPM_info')
         
         sn             = returnSubjs;
         experiment_num = 1;
         glm            = 7;
         copywhich      = 'GLM';
-        serverDir      = '/Volumes/MotorControl/data/super_cerebellum_new';
+        serverDir      = 'smb://129.100.119.43/motorcontrol/data/super_cerebellum_new';
         roi_name       = 'cerebellum_grey'; % options: cerebellum_grey, 'tesselsWB162';
         
         vararginoptions(varargin, {'sn', 'glm', 'experiment_num', 'con_vs', 'nTrans', 'copywhich', 'roi_name'});
