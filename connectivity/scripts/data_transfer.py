@@ -1,5 +1,4 @@
 import os
-from connectivity import visualize_summary as summary
 
 def from_savio():
     # transfer eval data from savio to local

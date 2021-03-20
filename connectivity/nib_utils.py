@@ -22,16 +22,17 @@ def nib_load(fpath):
     """
     return nib.load(fpath)
 
-def nib_save(img, fpath):
+def nib_save(imgs, fpaths):
     """Save nifti to disk
     
     Args: 
-        img (nib obj): 
-        fpath (str): full path to nifti
+        imgs (list of nib obj): 
+        fpaths (list of str): full path(s) to nifti
     Returns: 
-        Saves img to disk
+        Saves imgs to disk
     """
-    nib.save(img, fpath)
+    for (img, fpath) in zip(imgs, fpaths):
+        nib.save(img, fpath)
 
 def nib_mean(imgs):
     """ Get mean of nifti objs
@@ -43,7 +44,7 @@ def nib_mean(imgs):
     """
     return mean_img(imgs)
 
-def save_maps_cerebellum(data, fpath, group_average=True, gifti=True, nifti=True):
+def save_maps_cerebellum(data, fpath='/', group_average=True, gifti=True, nifti=True, column_names=None):
     """Takes list of np arrays, averages list and
     saves nifti and gifti map to disk
 
@@ -54,26 +55,42 @@ def save_maps_cerebellum(data, fpath, group_average=True, gifti=True, nifti=True
         gifti (bool): default is True, saves gifti to fpath
         nifti (bool): default is True, saves nifti to fpath
     Returns: 
-        saves nifti and/or gifti image to disk
+        saves nifti and/or gifti image to disk, returns gifti
     """
+    num_cols, num_vox = data.shape
+
     # average data
     if group_average:
         data = np.nanmean(data, axis=0)
 
-    # convert averaged cerebellum data array to nifti
-    nib_obj = convert_cerebellum_to_nifti(data=data)[0]
+    # get col names
+    if column_names is None:
+        column_names = []
+        for i in range(num_cols):
+            column_names.append("col_{:02d}".format(i+1))
     
-    # save nifti to disk
+    # get filenames
+    fnames = []
+    for col in column_names:
+        fnames.append(fpath + '_' + col)
+
+    # convert averaged cerebellum data array to nifti
+    nib_objs = convert_cerebellum_to_nifti(data=data)
+    
+    # save nifti(s) to disk
     if nifti:
-        nio.nib_save(img=nib_obj, fpath=fpath + '.nii') # this is temporary (to test bug in map)
+        fnames = [name + '.nii' for name in fnames]
+        nio.nib_save(img=nib_objs, fpath=fnames) # this is temporary (to test bug in map)
 
     # map volume to surface
-    surf_data = flatmap.vol_to_surf([fpath + '.nii'], space="SUIT")
+    surf_data = flatmap.vol_to_surf(nib_objs, space="SUIT")
 
-    # make and save gifti image
+    # # make and save gifti image
+    gii_img = flatmap.make_func_gifti(data=surf_data, column_names=column_names)
     if gifti:
-        gii_img = flatmap.make_func_gifti(data=surf_data, column_names=['col'])
-        nio.nib_save(img=gii_img, fpath=fpath + '.func.gii')
+        nio.nib_save(img=[gii_img], fpath=[fpath + '.func.gii'])
+    
+    return gii_img
 
 def save_maps_cortex(data, fpath, atlas, group_average=True, hemisphere='R'):
     """Takes list of np arrays, averages list and

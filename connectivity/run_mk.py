@@ -16,7 +16,6 @@ import connectivity.constants as const
 import connectivity.model as model
 import connectivity.evaluation as ev
 import connectivity.nib_utils as nio
-from connectivity.data import Dataset, convert_cerebellum_to_nifti
 
 import warnings
 
