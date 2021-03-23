@@ -80,6 +80,7 @@ def test_mapping_cerebellum():
     Xdata.load_mat()  # Import the data from Matlab
     X, S = Xdata.get_data(averaging="exp")
     # Map to volume
+
     nii_func = data.convert_cerebellum_to_nifti(X[4,:])
     # Map to surface
     map_func = suit.flatmap.vol_to_surf(nii_func)
