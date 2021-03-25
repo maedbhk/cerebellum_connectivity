@@ -62,6 +62,7 @@ class Dataset:
         # this is the row info
         self.XX = np.array(file["XX"])
         self.TN = cio._convertobj(file, "TN")
+        # self.CN = cio._convertobj(file, "CN")
         self.cond = np.array(file["cond"]).reshape(-1).astype(int)
         self.inst = np.array(file["inst"]).reshape(-1).astype(int)
         self.task = np.array(file["task"]).reshape(-1).astype(int)
@@ -105,6 +106,7 @@ class Dataset:
         """Return info for data set in a dataframe."""
         d = {
             "TN": self.TN,
+            # "CN": self.CN,
             "sess": self.sess,
             "run": self.run,
             "inst": self.inst,
