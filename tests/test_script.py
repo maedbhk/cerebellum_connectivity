@@ -88,5 +88,13 @@ def test_mapping_cerebellum():
     suit.flatmap.plot(map_func)
     pass
 
+def test_distance():
+    """
+        Test the mapping to the cerebellar volume + surface + surface plotting
+    """
+    D1 = data.get_distance_matrix('cerebellum_suit')
+    D2 = data.get_distance_matrix('tessels0042')
+    pass
+
 if __name__ == "__main__":
-    test_mapping_cerebellum()
+    test_dataset()

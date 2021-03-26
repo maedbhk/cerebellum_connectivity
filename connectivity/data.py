@@ -41,7 +41,7 @@ class Dataset:
         data: None
     """
 
-    def __init__(self, experiment="sc1", glm="glm7", roi="cerebellum_grey", subj_id="s03"):
+    def __init__(self, experiment="sc1", glm="glm7", roi="cerebellum_suit", subj_id="s03"):
         """Inits Dataset."""
         self.exp = experiment
         self.glm = glm
@@ -62,7 +62,7 @@ class Dataset:
         # this is the row info
         self.XX = np.array(file["XX"])
         self.TN = cio._convertobj(file, "TN")
-        # self.CN = cio._convertobj(file, "CN")
+        self.CN = cio._convertobj(file, "CN")
         self.cond = np.array(file["cond"]).reshape(-1).astype(int)
         self.inst = np.array(file["inst"]).reshape(-1).astype(int)
         self.task = np.array(file["task"]).reshape(-1).astype(int)
@@ -106,14 +106,13 @@ class Dataset:
         """Return info for data set in a dataframe."""
         d = {
             "TN": self.TN,
-            # "CN": self.CN,
+            "CN": self.CN,
             "sess": self.sess,
             "run": self.run,
             "inst": self.inst,
             "task": self.task,
             "cond": self.cond,
         }
-
         return pd.DataFrame(d)
 
 
@@ -183,7 +182,7 @@ class Dataset:
                 idx = data_info.run == r
                 data[idx, :] = XXs @ data[idx, :]
 
-        # there are NaN values in cerebellum_suit, which causes problems later on in fitting model.
+        # There are NaN values in cerebellum_suit, which causes problems later on in fitting model.
         if self.roi == "cerebellum_suit":
             data = np.nan_to_num(data)
 
@@ -291,3 +290,66 @@ def convert_cortex_to_gifti(data, atlas, hemisphere):
 
     # return  gifti img
     return nio.make_func_gifti(data=texture.reshape(len(texture),1), anatomical_struct=anatomical_struct)
+
+def get_distance_matrix(roi):
+    """
+    Args:
+        roi (string)
+            Region of interest ('cerebellum_suit','tessels0042','yeo7')
+    Returns
+        distance (numpy.ndarray)
+            PxP array of distance between different ROIs / voxels
+    """
+    dirs = const.Dirs(exp_name="sc1")
+    group_dir = os.path.join(dirs.reg_dir, 'data','group')
+    if (roi=='cerebellum_suit'):
+        reg_file = os.path.join(group_dir,'regions_cerebellum_suit.mat')
+        region = cio.read_mat_as_hdf5(fpath=reg_file)["R"]
+        D = eucl_distance(region.data)
+    else:
+        Dist = []
+        parcels = [] 
+        for h,hem in enumerate(['L','R']):
+            # Load the corresponding label file 
+            label_file = os.path.join(group_dir,roi + '.' + hem + '.label.gii')
+            labels = nib.load(label_file)
+            roi_label = labels.darrays[0].data
+
+            # Load the spherical gifti 
+            sphere_file = os.path.join(group_dir,'fs_LR.32k.' + hem + '.sphere.surf.gii')
+            sphere = nib.load(sphere_file)
+            vertex = sphere.darrays[0].data
+        
+            # Loop over the regions > 0 and find the average coordinate 
+            parcels.append(np.unique(roi_label[roi_label>0]))
+            num_parcels = parcels[h].shape[0]
+            coord = np.zeros((num_parcels,3))
+            for i,par in enumerate(parcels[h]):
+                if par>0:
+                    coord[i,:] = vertex[roi_label==par,:].mean(axis=0)
+            
+            # Calculate the distances over these 
+            Dist.append(eucl_distance(coord))
+        # Concatinate these.  
+        num_regions = Dist[0].shape[0]+Dist[1].shape[0]
+        D = np.zeros((num_regions,num_regions))
+        # Still needs fixing: 
+        # D[parcels[0],parcels[0]]=Dist[h]
+        # D[parcels[1],parcels[1]]=Dist[h]
+    return D
+
+def eucl_distance(coord):
+    """
+    Calculates euclediand distances over some cooordinates 
+    Args:
+        coord (ndarray)
+            Nx3 array of x,y,z coordinates 
+    Returns: 
+        dist (ndarray) 
+            NxN array pf distances 
+    """
+    num_points = coord.shape[0]
+    D = np.zeros((num_points,num_points))
+    for i in range(2):
+        D = D + (coord[:,i].reshape(-1,1)-coord[:,i])**2
+    return np.sqrt(D)
