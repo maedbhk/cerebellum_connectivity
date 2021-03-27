@@ -2,10 +2,10 @@ from connectivity.data import Dataset
 import connectivity.data as data
 import connectivity.model as model
 import connectivity.run as run
+import connectivity.nib_utils as nio
 import numpy as np
 import SUITPy as suit
 from sklearn.linear_model import Ridge
-
 
 def test_single_fit():
     # Get task by voxel data for cerebellum 
@@ -72,11 +72,25 @@ def test_dataset():
     X1, S1 = Xdata.get_data(averaging="exp", subset=T.cond < 5)
     pass
 
+def test_mapping_cortex():
+    """
+        Test the mapping to the cerebellar volume + surface + surface plotting
+    """
+    Xdata = Dataset(experiment="sc1", glm="glm7", roi="tessels0162", subj_id="s02")
+    Xdata.load_mat()  # Import the data from Matlab
+    X, S = Xdata.get_data(averaging="exp")
+    # Map to surface
+    Xavr =  np.mean(X[S.cond==29,:],axis=0)
+    Xavr = Xavr - np.mean(X[S.inst==0,:],axis=0)
+    # Map to surface
+    gii_func = data.convert_cortex_to_gifti(Xavr,'tessels0162')
+    pass
+
 def test_mapping_cerebellum():
     """
         Test the mapping to the cerebellar volume + surface + surface plotting
     """
-    Xdata = Dataset(experiment="sc1", glm="glm7", roi="cerebellum_suit", subj_id="s02")
+    Xdata = Dataset(experiment="sc2", glm="glm7", roi="cerebellum_suit", subj_id="s02")
     Xdata.load_mat()  # Import the data from Matlab
     X, S = Xdata.get_data(averaging="exp")
     # Map to volume
@@ -88,13 +102,14 @@ def test_mapping_cerebellum():
     suit.flatmap.plot(map_func)
     pass
 
+
 def test_distance():
     """
         Test the mapping to the cerebellar volume + surface + surface plotting
     """
-    D1 = data.get_distance_matrix('cerebellum_suit')
-    D2 = data.get_distance_matrix('tessels0042')
+    D1,c1 = data.get_distance_matrix('cerebellum_suit')
+    D2,c2 = data.get_distance_matrix('tessels0042')
     pass
 
 if __name__ == "__main__":
-    test_dataset()
+    test_mapping_cortex()

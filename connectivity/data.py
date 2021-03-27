@@ -17,6 +17,7 @@ import connectivity.constants as const
 import connectivity.io as cio
 from connectivity.helper_functions import AutoVivification
 import connectivity.matrix as matrix
+import connectivity.nib_utils as nio
 from numpy.linalg import solve
 
 """Main module for getting data to be used for running connectivity models.
@@ -250,46 +251,32 @@ def convert_cerebellum_to_nifti(data):
     return nii_mapped
 
 
-def convert_cortex_to_gifti(data, atlas, hemisphere):
+def convert_cortex_to_gifti(data, atlas):
     """
     Args:
-        data (np-arrray): 1 x 39876 length data array
+        data (np-arrray): 1d-array
         atlas (str): cortical atlas name (e.g. tessels0162)
-        hemisphere (str): 'R' or 'L'
     Returns:
-        gifti img
+        List of gifti-img (left + right hemisphere)
     """
     dirs = const.Dirs()
-
+    hemName = ['L','R']
+    anatomical_struct = ['CortexLeft','CortexRight']
     # get texture
-    gii_path = os.path.join(dirs.reg_dir, 'data', 'group', f'{atlas}.{hemisphere}.label.gii')
-    gii_data = nib.load(gii_path)
-    texture = gii_data.darrays[0].data[:]
+    gifti_img = []
+    for h,hem in enumerate(hemName):
+        # Load the labels (roi-numbers) from the label.gii files 
+        gii_path = os.path.join(dirs.reg_dir, 'data', 'group', f'{atlas}.{hem}.label.gii')
+        gii_data = nib.load(gii_path)
+        labels = gii_data.darrays[0].data[:]
 
-    # get start and end labels
-    start_label = texture[texture!=0].min()
-    end_label = texture[texture!=0].max()
-    labels_all = np.arange(1, len(data)+1)
-
-    # get relevant data
-    data_hemi = data[start_label-1:end_label]
-    labels = labels_all[start_label-1:end_label]
-
-    # get texture
-    texture = texture.astype(float)
-    for vert in np.arange(len(texture)):
-        label = texture[vert]
-        if label != 0:
-            texture[vert] = data_hemi[labels==label]
-    
-    # get anatomical structure
-    if hemisphere=="R":
-        anatomical_struct = 'CortexRight'
-    elif hemisphere=="L":
-        anatomical_struct = 'CortexLeft'
-
-    # return  gifti img
-    return nio.make_func_gifti(data=texture.reshape(len(texture),1), anatomical_struct=anatomical_struct)
+        # Fill the corresponding vertices
+        # Fastest way: prepend a NaN for ROI 0 (medial wall) 
+        c_data = np.insert(data,0,np.nan)
+        mapped_data = c_data[labels]
+        # Make the gifti imae   gifti img
+        gifti_img.append(nio.make_func_gifti(data=mapped_data[:,None], anatomical_struct=anatomical_struct[h]))
+    return gifti_img
 
 def get_distance_matrix(roi):
     """
@@ -305,10 +292,10 @@ def get_distance_matrix(roi):
     if (roi=='cerebellum_suit'):
         reg_file = os.path.join(group_dir,'regions_cerebellum_suit.mat')
         region = cio.read_mat_as_hdf5(fpath=reg_file)["R"]
-        D = eucl_distance(region.data)
+        coord = region.data
     else:
-        Dist = []
-        parcels = [] 
+        coordHem = []
+        parcels = []
         for h,hem in enumerate(['L','R']):
             # Load the corresponding label file 
             label_file = os.path.join(group_dir,roi + '.' + hem + '.label.gii')
@@ -319,24 +306,29 @@ def get_distance_matrix(roi):
             sphere_file = os.path.join(group_dir,'fs_LR.32k.' + hem + '.sphere.surf.gii')
             sphere = nib.load(sphere_file)
             vertex = sphere.darrays[0].data
-        
+
+            # To achieve a large seperation between the hemispheres, just move the hemispheres apart 50 cm in the x-coordinate
+            vertex[:,0] = vertex[:,0]+(h*2-1)*500
+
             # Loop over the regions > 0 and find the average coordinate 
             parcels.append(np.unique(roi_label[roi_label>0]))
             num_parcels = parcels[h].shape[0]
-            coord = np.zeros((num_parcels,3))
+            coordHem.append(np.zeros((num_parcels,3)))
             for i,par in enumerate(parcels[h]):
-                if par>0:
-                    coord[i,:] = vertex[roi_label==par,:].mean(axis=0)
+                coordHem[h][i,:] = vertex[roi_label==par,:].mean(axis=0)
             
-            # Calculate the distances over these 
-            Dist.append(eucl_distance(coord))
-        # Concatinate these.  
-        num_regions = Dist[0].shape[0]+Dist[1].shape[0]
-        D = np.zeros((num_regions,num_regions))
-        # Still needs fixing: 
-        # D[parcels[0],parcels[0]]=Dist[h]
-        # D[parcels[1],parcels[1]]=Dist[h]
-    return D
+        # Concatinate these to a full matrix 
+        num_regions = max(map(np.max,parcels))
+        coord = np.zeros((num_regions,3))
+        # Assign the coordinates - note that the 
+        # Indices in the label files are 1-based [Matlab-style]
+        # 0-label is the medial wall and ignored! 
+        coord[parcels[0]-1,:]=coordHem[0]
+        coord[parcels[1]-1,:]=coordHem[1]
+
+    # Now get the distances from the coordinates and return
+    Dist = eucl_distance(coord)
+    return D, coord 
 
 def eucl_distance(coord):
     """
