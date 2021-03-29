@@ -9,7 +9,7 @@ from nilearn.plotting import view_surf, plot_surf_roi
 from nilearn.surface import load_surf_data
 
 import connectivity.nib_utils as nio
-from connectivity.data import convert_cerebellum_to_nifti, convert_cortex_to_gifti
+import connectivity.data as cdata
 import connectivity.constants as const
 
 def nib_load(fpath):
@@ -75,7 +75,7 @@ def save_maps_cerebellum(data, fpath='/', group_average=True, gifti=True, nifti=
         fnames.append(fpath + '_' + col)
 
     # convert averaged cerebellum data array to nifti
-    nib_objs = convert_cerebellum_to_nifti(data=data)
+    nib_objs = cdata.convert_cerebellum_to_nifti(data=data)
     
     # save nifti(s) to disk
     if nifti:
@@ -110,7 +110,7 @@ def save_maps_cortex(data, fpath, atlas, group_average=True, hemisphere='R'):
         data = np.nanmean(data, axis=0)
 
     # get functional gifti
-    func_gii = convert_cortex_to_gifti(data=data, atlas=atlas, hemisphere=hemisphere)
+    func_gii = cdata.convert_cortex_to_gifti(data=data, atlas=atlas, hemisphere=hemisphere)
     
     # save gifti to file
     nio.nib_save(img=func_gii, fpath=fpath + f'.{hemisphere}.func.gii')
