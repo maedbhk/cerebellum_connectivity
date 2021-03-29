@@ -300,7 +300,7 @@ switch what
             save(fullfile(betaDir, subj_name{s}, sprintf('Y_glm%d_%s.mat', glm, parcelType)), '-struct', 'Y', '-v7.3');
             fprintf('\n');
         end % s (sn)
-    case 'ROI:MDTB:beta_all' % extracts betas and add_to_beta
+    case 'ROI:beta_all' % extracts betas and add_to_beta
         % Example usage: sc1sc2_conn_model('ROI:MDTB:beta_all')
         
         sn  = returnSubjs;
