@@ -53,11 +53,13 @@ switch what
         saveasimg = 0; % Automatixally save the ROI as an image?
         vararginoptions(varargin, {'sn','saveasimg'});
         load(fullfile(baseDir,'sc1','RegionOfInterest','data','group','regions_cerebellum_suit.mat'));
+        Rsuit = R{1}; 
         for s=sn
             suitDir=fullfile(baseDir,'sc1','suit','anatomicals',subj_name{s});
+            fprintf([suitDir '\n']);
             [defs,mat]=spmdefs_get_dartel(fullfile(suitDir,'u_a_c_anatomical_seg1.nii'),fullfile(suitDir,'Affine_c_anatomical_seg1.mat'));
             % Deform the group region
-            [R{1}.data(:,1),R{1}.data(:,2),R{1}.data(:,3)]=spmdefs_transform(defs,mat,R{1}.data(:,1),R{1}.data(:,2),R{1}.data(:,3));
+            [R{1}.data(:,1),R{1}.data(:,2),R{1}.data(:,3)]=spmdefs_transform(defs,mat,Rsuit.data(:,1),Rsuit.data(:,2),Rsuit.data(:,3));
             save(fullfile(baseDir,'sc1','RegionOfInterest','data',subj_name{s},'regions_cerebellum_suit.mat'),'R');
             if (saveasimg)
                 V=spm_vol(fullfile(baseDir,'sc1','imaging_data',subj_name{s},'rmeanepi.nii'));
@@ -158,7 +160,7 @@ switch what
         for i=1:length(corticalParcels)
             sc1sc2_conn_model('ROI:define_cortical','parcelName',corticalParcels{i});
         end
-    case 'ROI:MDTB:beta_unn'
+    case 'ROI:beta_unn'
         % Calculate BetaUW for regions
         % univariately normalizes beta values and saves both the normalized
         % and non-normalized beta values in a new structure.
@@ -166,12 +168,12 @@ switch what
         % for sc1, there are 88 beta values per subject.
         sn             = returnSubjs;
         experiment_num = 1;
-        parcelType     = 'tesselsWB162';  %% other options are 'cerebellum_suit', 'yeo_7WB', and 'yeo_17WB'
+        parcelType     = 'tessels0162';  %% other options are 'cerebellum_suit', 'yeo_7WB', and 'yeo_17WB'
         glm            = 7;
         ignore_nan     = 1; % Set Nans to zero for sampling? 
         interp         = 1; % Interpolation for sampling 
         
-        vararginoptions(varargin, {'sn', 'experiment_num', 'glm', 'parcelType', 'oparcel', 'discardp', 'which', 'xres','ignore_nan','interp'});
+        vararginoptions(varargin, {'sn', 'experiment_num', 'glm', 'parcelType', 'ignore_nan','interp'});
         
         experiment = sprintf('sc%d', experiment_num);
         
@@ -195,7 +197,6 @@ switch what
             else
                 load(fullfile(glmDir, 'SPM.mat'));
             end
-            
             
             % load in ROI file
             roi_name=sprintf('regions_%s.mat',parcelType);
@@ -234,13 +235,13 @@ switch what
             save(fullfile(betaDir, sprintf('beta_regions_%s.mat', roi_name)), 'B', '-v7.3');
             fprintf('\n');
         end % sn
-    case 'ROI:MDTB:add_to_beta'               % creates a new structure using beta_region files.
+    case 'ROI:add_to_beta'               % creates a new structure using beta_region files.
         % The structure will be uesd in connectivity project only
         % Example: sc1sc2_conn_model('ROI:MDTB:add_to_beta', 'experiment_num', 1, 'parcelType', 'yeo_7WB', 'glm', 7)
         
         sn             = returnSubjs;
         experiment_num = 1;
-        parcelType     = 'tesselsWB162';  %% other options are 'Buckner_17', 'yeo_7WB', and 'yeo_17WB'
+        parcelType     = 'tessels0162';  %% other options are 'cerebellum_suit', 'yeo_7WB', and 'yeo_17WB'
         glm            = 7;
         %%% run 'ROI:mdtb:empty_parcel' to get oparcel.
         
@@ -281,7 +282,7 @@ switch what
             load(fullfile(betaDir, subj_name{s}, sprintf('beta_regions_%s', parcelType)));
             
             % discarding the intercepts
-            if length(B.betasUW) == 1 % Single region, preserve each voxel 
+           if length(B.betasUW) == 1 % Single region, preserve each voxel 
                 myfield = 'betasUW';
                 Y.data = B.(myfield){1}(1:end - 16, :); % discarding the intercepts
             else % Many regions - take the mean of each region 
@@ -299,7 +300,7 @@ switch what
             save(fullfile(betaDir, subj_name{s}, sprintf('Y_glm%d_%s.mat', glm, parcelType)), '-struct', 'Y', '-v7.3');
             fprintf('\n');
         end % s (sn)
-    case 'ROI:MDTB:beta_all' % extracts betas and add_to_beta
+    case 'ROI:beta_all' % extracts betas and add_to_beta
         % Example usage: sc1sc2_conn_model('ROI:MDTB:beta_all')
         
         sn  = returnSubjs;
@@ -309,178 +310,23 @@ switch what
         
         vararginoptions(varargin, {'sn', 'glm', 'experiment_num'});
         
-        sc1sc2_conn_model('ROI:MDTB:beta_unn', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0042');
-        sc1sc2_conn_model('ROI:MDTB:beta_unn', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0162');
-        sc1sc2_conn_model('ROI:MDTB:beta_unn', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0362');
-        sc1sc2_conn_model('ROI:MDTB:beta_unn', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0642');
-        sc1sc2_conn_model('ROI:MDTB:beta_unn', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels1002');
-        sc1sc2_conn_model('ROI:MDTB:beta_unn', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'yeo7');
-        sc1sc2_conn_model('ROI:MDTB:beta_unn', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'yeo17');
+        sc1sc2_conn_model('ROI:beta_unn', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0042');
+        sc1sc2_conn_model('ROI:beta_unn', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0162');
+        sc1sc2_conn_model('ROI:beta_unn', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0362');
+        sc1sc2_conn_model('ROI:beta_unn', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0642');
+        sc1sc2_conn_model('ROI:beta_unn', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels1002');
+        sc1sc2_conn_model('ROI:beta_unn', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'yeo7');
+        sc1sc2_conn_model('ROI:beta_unn', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'yeo17');
         % add betas
-        sc1sc2_conn_model('ROI:MDTB:add_to_beta', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0042');
-        sc1sc2_conn_model('ROI:MDTB:add_to_beta', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0162');
-        sc1sc2_conn_model('ROI:MDTB:add_to_beta', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0362');
-        sc1sc2_conn_model('ROI:MDTB:add_to_beta', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0642');
-        sc1sc2_conn_model('ROI:MDTB:add_to_beta', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels1002');
-        sc1sc2_conn_model('ROI:MDTB:add_to_beta', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'yeo7');
-        sc1sc2_conn_model('ROI:MDTB:add_to_beta', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'yeo17');
+        sc1sc2_conn_model('ROI:add_to_beta', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0042');
+        sc1sc2_conn_model('ROI:add_to_beta', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0162');
+        sc1sc2_conn_model('ROI:add_to_beta', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0362');
+        sc1sc2_conn_model('ROI:add_to_beta', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0642');
+        sc1sc2_conn_model('ROI:add_to_beta', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels1002');
+        sc1sc2_conn_model('ROI:add_to_beta', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'yeo7');
+        sc1sc2_conn_model('ROI:add_to_beta', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'yeo17');
             
         
-    case 'PREP:MDTB:cereb:suit_betas'         % Normalize betas to SUIT space and creates 'beta_regions_cerebellum_suit.mat'
-        % cerebellum_grey to create and
-        % reslice betas as volumes into suit space
-        % Example: sc1sc2_conn_model('PREP:MDTB:cereb:suit_betas', 'experiment_num', 1, 'glm', 7)
-        
-        sn             = returnSubjs;
-        experiment_num = 1;
-        glm            = 7;
-        
-        vararginoptions(varargin, {'sn', 'experiment_num', 'glm'});
-        
-        experiment = sprintf('sc%d', experiment_num);
-        
-        % setting directories
-        betaDir     = fullfile(baseDir, experiment, sprintf('Beta_GLM_%d', glm));
-        suitAnatDir = fullfile(baseDir, 'sc1', suitDir, 'anatomicals');
-        suitGlmDir  = fullfile(baseDir, experiment, suitDir, sprintf('glm%d', glm));
-        glmDir      = fullfile(baseDir, experiment, sprintf('GLM_firstlevel_%d', glm));
-        
-        for s = sn
-            
-            % load betas (grey) from cerebellum
-            load(fullfile(betaDir, subj_name{s}, 'beta_regions_cerebellum_grey.mat'));
-            
-            % load cerebellar mask in individual func space
-            Vi   = spm_vol(fullfile(suitAnatDir, subj_name{s},'maskbrainSUITGrey.nii'));
-            X    = spm_read_vols(Vi);
-            indx = find(X > 0); % indx where my cerebellar grey matter voxels at? linear indices of grey matter voxels
-            % ^^^the number of cerebellar grey matter voxels (size(indx, 1)) should be matching size(B.betasUW{1}, 2)
-            
-            filenames = cell(1, size(B.betasUW{1},1));
-            % make volume (betas)
-            for b = 1:size(B.betasUW{1},1)
-                Yy = zeros(1,Vi.dim(1)*Vi.dim(2)*Vi.dim(3));
-                Yy(1,indx) = B.betasUW{1}(b,:);
-                
-                Yy   = reshape(Yy,[Vi.dim(1),Vi.dim(2),Vi.dim(3)]);
-                Yy(Yy==0)=NaN; % non cerebellar grey matter voxels are set to NaN
-                
-                Vi.fname = fullfile(glmDir, subj_name{s},sprintf('temp_cereb_beta_%2.4d.nii',b));
-                spm_write_vol(Vi,Yy);
-                clear Yy
-                filenames{b} = Vi.fname;
-                fprintf('beta %d done \n',b)
-            end
-            % reslice univar prewhitened betas into suit space
-            job.subj.affineTr  = {fullfile(suitAnatDir,subj_name{s},'Affine_c_anatomical_seg1.mat')};
-            job.subj.flowfield = {fullfile(suitAnatDir,subj_name{s},'u_a_c_anatomical_seg1.nii')};
-            job.subj.resample  = filenames';
-            job.subj.mask      = {fullfile(suitAnatDir, subj_name{s}, 'cereb_prob_corr_grey.nii')};
-            job.vox            = [2 2 2];
-            job.outFile        = 'mat';
-            
-            D = suit_reslice_dartel(job);
-            
-            % delete temporary files
-            deleteFiles = dir(fullfile(glmDir, subj_name{s},'*temp*'));
-            for b = 1:length(deleteFiles)
-                delete(char(fullfile(glmDir, subj_name{s},deleteFiles(b).name)));
-            end
-            save(fullfile(suitGlmDir,subj_name{s},'wdBetas_UW.mat'),'D');
-            %             save(fullfile(suitGlmDir,subj_name{s},'wdBetas_UW.mat'),'D', '-v7');
-            fprintf('UW betas resliced into suit space for %s \n',subj_name{s});
-        end % s (sn)
-    case 'PREP:MDTB:cereb:voxels'             % creates Y_info file for the cerebelalr voxels
-        % univariate prewhitening of beta values in the cerebellum.
-        % run this case with 'grey_nan' option cause otherwise the matrices
-        % for different subjects have different dimensions
-        % Example: sc1sc2_conn_model('PREP:MDTB:cereb:voxels', 'experiment_num', 1, 'glm', 7, 'data', 'grey_nan')
-        sn             = returnSubjs;
-        experiment_num = 1;
-        glm            = 7;
-        data           = 'grey_nan'; % 'grey_white' or 'grey' or 'grey_nan'
-        which          = 'cond';
-        
-        vararginoptions(varargin, {'sn', 'experiment_num', 'glm', 'data', 'which'});
-        
-        experiment = sprintf('sc%d', experiment_num);
-        
-        % setting directories
-        glmDirSuit = fullfile(baseDir, experiment, suitDir, sprintf('glm%d', glm));
-        glmDir     = fullfile(baseDir, experiment, sprintf('GLM_firstlevel_%d', glm));
-        
-        numRuns = length(runLst);
-        
-        for s = sn
-            Y = []; % new structure with prewhitened betas
-            
-            VresMS = spm_vol(fullfile(glmDirSuit, subj_name{s},'wdResMS.nii'));
-            ResMS  = spm_read_vols(VresMS);
-            ResMS(ResMS==0) = NaN;
-            
-            % Load over all grey matter mask
-            if strcmp(data,'grey')
-                V = spm_vol(fullfile(baseDir, 'sc1', 'suit','anatomicals',subj_name{s},'wdc1anatomical.nii')); % call from sc1
-            else
-                V = spm_vol(fullfile(baseDir, 'sc1', 'suit','anatomicals','cerebellarGreySUIT.nii')); % call from sc1
-            end
-            
-            X = spm_read_vols(V);
-            % Check if V.mat is the the same as wdResMS!!!
-            grey_threshold = 0.1; % grey matter threshold
-            indx           = find(X > grey_threshold);
-            [i,j,k]        = ind2sub(size(X),indx');
-            
-            encodeSubjDir = fullfile(baseDir, experiment,encodeDir,sprintf('glm%d',glm),subj_name{s}); dircheck(encodeSubjDir);
-            glmSubjDir    = fullfile(glmDir, subj_name{s});
-            T             = load(fullfile(glmSubjDir,'SPM_info.mat'));
-            
-            switch data
-                case 'grey'
-                    % univariately pre-whiten cerebellar voxels
-                    nam={};
-                    for b = 1:length(T.SN)+16 % also prewhitening the intercepts
-                        nam{1}  = fullfile(glmDirSuit,subj_name{s},sprintf('wdbeta_%2.4d.nii',b));
-                        V       = spm_vol(nam{1});
-                        B1(b,:) = spm_sample_vol(V,i,j,k,0);
-                        B1(b,:) = bsxfun(@rdivide,B1(b,:),sqrt(ResMS(indx)')); % univariate noise normalisation
-                    end % b
-                    for b = 1:length(T.SN)+16
-                        Yy         = zeros(1,V.dim(1)*V.dim(2)*V.dim(3));
-                        Yy(1,indx) = B1(b,:);
-                        Yy         = reshape(Yy,[V.dim(1),V.dim(2),V.dim(3)]);
-                        Yy(Yy==0)  = NaN;
-                        idx        = find(~isnan(Yy));
-                        Yy         = Yy(:);
-                        %                         Bb(b,:)    = Yy(idx,:);
-                    end % b
-                    clear B1 indx
-                    B1   = Bb;
-                    indx = idx;
-                case 'grey_nan'
-                    load(fullfile(glmDirSuit, subj_name{s},'wdBetas_UW.mat'));
-                    for b = 1:size(D,1)
-                        dat     = squeeze(D(b, :, :, :));
-                        Vi.dat  = reshape(dat,[ V.dim(1), V.dim(2), V.dim(3)]);
-                        B1(b,:) = spm_sample_vol(Vi, i, j, k, 0);
-                    end % b
-            end % switch data
-            
-            % write out new structure ('Y_info')
-            Y.data = B1;
-            Y.data(end-numRuns+1:end,:) = []; % deleting the intercepts
-            Y.identity   = indicatorMatrix('identity',T.(which));
-            Y.nonZeroInd = repmat(indx',size(B1,1),1);
-            Y.nonZeroInd(end-numRuns+1:end,:) = [];
-            
-            Y = addstruct(Y, T);
-            
-            outName = fullfile(encodeSubjDir,sprintf('Y_info_glm%d_%s.mat', glm, data));
-            save(outName,'Y','-v7.3');
-            %             save(outName,'Y','-v7');
-            fprintf('cerebellar voxels (%s) computed for %s \n', data, subj_name{s});
-            clear B1 idx Bb indx
-        end % s (sn)
     case 'PREP:MDTB:cortex:surface'           % creates Y_info file for the cortical surfaces
         % gets the betas on the surface and univariately prewhiten them. It
         % saves the beta values for the cortex in a new structure that also
