@@ -1,4 +1,4 @@
-
+import os
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -11,6 +11,12 @@ import connectivity.constants as const
 import warnings
 warnings.filterwarnings("ignore")
 
+
+def save_fig(plt, fname):
+    dirs = const.Dirs()
+    fpath = os.path.join(dirs.figure, fname)
+
+    plt.savefig(fpath)
 
 def get_betas(roi, glm, exp, averaging='sess', weighting=True):
     """Get betas for all subjects for `roi`, `glm`, `exp` 
@@ -103,7 +109,7 @@ def get_betas_summary(rois, exps, glm='glm7', save=True, averaging="none"):
     
     return dataframe_all
 
-def plot_task_scatterplot(dataframe, exp='sc1'): 
+def plot_task_scatterplot(dataframe, exp='sc1', save=True): 
     """plot scatterplot of beta weights between two rois. 
 
     Args:   
@@ -135,6 +141,9 @@ def plot_task_scatterplot(dataframe, exp='sc1'):
         plt.text(df.betas_x[line]+0.002, df.betas_y[line], df.TN[line], horizontalalignment='left', size='medium', color='black', weight='regular')
 
     plt.show()
+
+    if save:
+        save_fig(plt, f'task_scatterplot_{exp}.png')
 
 def plot_task_maps_cerebellum(data, data_info, task='Instruct'):
     """plot task maps 
