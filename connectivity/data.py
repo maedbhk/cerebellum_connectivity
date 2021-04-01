@@ -328,7 +328,7 @@ def get_distance_matrix(roi):
 
     # Now get the distances from the coordinates and return
     Dist = eucl_distance(coord)
-    return D, coord 
+    return Dist, coord 
 
 def eucl_distance(coord):
     """
