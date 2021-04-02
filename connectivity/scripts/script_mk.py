@@ -358,7 +358,7 @@ def save_weight_maps(model_name, cortex, train_exp):
     print('saving cortical and cerebellar weights to disk')
 
 
-def save_maps_cerebellum(data, fpath='/', group_average=True, gifti=True, nifti=True, column_names=None):
+def save_maps_cerebellum(data, fpath='/', group_average=True, gifti=True, nifti=False, column_names=None):
     """Takes data (np array), averages along first dimension
     saves nifti and gifti map to disk
 
@@ -367,7 +367,7 @@ def save_maps_cerebellum(data, fpath='/', group_average=True, gifti=True, nifti=
         fpath (str): save path for output file
         group_average (bool): default is True, averages data np arrays 
         gifti (bool): default is True, saves gifti to fpath
-        nifti (bool): default is True, saves nifti to fpath
+        nifti (bool): default is False, saves nifti to fpath
         column_names (bool or list):
     Returns: 
         saves nifti and/or gifti image to disk, returns gifti
