@@ -398,7 +398,7 @@ def save_maps_cerebellum(data, fpath='/', group_average=True, gifti=True, nifti=
     # save nifti(s) to disk
     if nifti:
         fnames = [name + '.nii' for name in fnames]
-        for (nib_obj, fname) in zip(nib_objs, fnames)::
+        for (nib_obj, fname) in zip(nib_objs, fnames):
             nib.save(nib_obj, fname) # this is temporary (to test bug in map)
 
     # map volume to surface
