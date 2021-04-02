@@ -48,12 +48,14 @@ class L2regression(Ridge, ModelMixin):
         super().__init__(alpha=alpha, fit_intercept=False)
 
     def fit(self, X, Y):
-        self.scale_ = np.sqrt(np.sum(X ** 2, 0) / X.shape[0])
+        self.scale_ = np.sqrt(np.nansum(X ** 2, 0) / X.shape[0])
         Xs = X / self.scale_
+        Xs = np.nan_to_num(Xs) # there are 0 values after scaling
         return super().fit(Xs, Y)
 
     def predict(self, X):
         Xs = X / self.scale_
+        Xs = np.nan_to_num(Xs) # there are 0 values after scaling
         return Xs @ self.coef_.T  # weights need to be transposed (throws error otherwise)
 
 
@@ -72,6 +74,7 @@ class WTA(LinearRegression, ModelMixin):
     def fit(self, X, Y):
         self.scale_ = np.sqrt(np.sum(X ** 2, 0) / X.shape[0])
         Xs = X / self.scale_
+        Xs = np.nan_to_num(Xs) # there are 0 values after scaling
         super().fit(Xs, Y)
         wta_labels = np.argmax(self.coef_, axis=1)
         wta_coef_ = np.amax(self.coef_, axis=1)
@@ -83,6 +86,7 @@ class WTA(LinearRegression, ModelMixin):
 
     def predict(self, X):
         Xs = X / self.scale_
+        Xs = np.nan_to_num(Xs) # there are 0 values after scaling
         return Xs @ self.coef_.T  # weights need to be transposed (throws error otherwise)
 
 
@@ -113,6 +117,7 @@ class NNLS(BaseEstimator, ModelMixin):
         P2 = Y.shape[1]
         self.scale_ = np.sqrt(np.sum(X ** 2, 0) / X.shape[0])
         Xs = X / self.scale_
+        Xs = np.nan_to_num(Xs) # there are 0 values after scaling
         G = Xs.T @ Xs + np.eye(P1) * self.alpha
         a = Xs.T @ Y - self.gamma
         C = np.eye(P1)
@@ -124,4 +129,5 @@ class NNLS(BaseEstimator, ModelMixin):
 
     def predict(self, X):
         Xs = X / self.scale_
+        Xs = np.nan_to_num(Xs) # there are 0 values after scaling
         return Xs @ self.coef_

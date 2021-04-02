@@ -524,13 +524,13 @@ def eval_model(
         df.to_csv(eval_fpath, index=False)
 
 
-@click.command()
-@click.option("--cortex")
-@click.option("--model_type")
-@click.option("--train_or_eval")
+# @click.command()
+# @click.option("--cortex")
+# @click.option("--model_type")
+# @click.option("--train_or_eval")
 
 
-def run(cortex="tessels0642", 
+def run(cortex="tessels0362", 
         model_type="ridge", 
         train_or_eval="train", 
         delete_train=False):
@@ -580,5 +580,5 @@ def run(cortex="tessels0642",
             eval_model(model_name=best_model, cortex=cortex, train_exp=f"sc{2-exp}", eval_exp=f"sc{exp+1}")
 
 
-if __name__ == "__main__":
-    run()
+# if __name__ == "__main__":
+#     run()
