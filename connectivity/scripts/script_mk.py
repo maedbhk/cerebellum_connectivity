@@ -36,7 +36,10 @@ def delete_conn_files():
     print("deleting training and evaluation connectivity data")
 
 
-def split_subjects(subj_ids, test_size=0.3):
+def split_subjects(
+    subj_ids, 
+    test_size=0.3
+    ):
     """Randomly divide subject list into train and test subsets.
 
     Train subjects are used to train, validate, and test models(s).
@@ -62,7 +65,11 @@ def split_subjects(subj_ids, test_size=0.3):
     return train_subjs, test_subjs
 
 
-def log_to_neptune(dataframe, config, modeltype="train"):
+def log_to_neptune(
+    dataframe, 
+    config, 
+    modeltype="train"
+    ):
     """log training and evaluation data to neptune (ML experiment tracker)
 
     This case won't work unless you have registered with neptune and get your own api_token
@@ -321,7 +328,11 @@ def train_NNLS(
         df_all.to_csv(fpath, index=False)
 
 
-def save_weight_maps(model_name, cortex, train_exp):
+def save_weight_maps(
+        model_name, 
+        cortex, 
+        train_exp
+        ):
     """Save weight maps to disk for cortex and cerebellum
 
     Args: 
@@ -361,7 +372,14 @@ def save_weight_maps(model_name, cortex, train_exp):
     print('saving cortical and cerebellar weights to disk')
 
 
-def save_maps_cerebellum(data, fpath='/', group_average=True, gifti=True, nifti=False, column_names=None):
+def save_maps_cerebellum(
+    data, 
+    fpath='/',
+    group_average=True, 
+    gifti=True, 
+    nifti=False, 
+    column_names=None
+    ):
     """Takes data (np array), averages along first dimension
     saves nifti and gifti map to disk
 
@@ -412,7 +430,12 @@ def save_maps_cerebellum(data, fpath='/', group_average=True, gifti=True, nifti=
     return gii_img
 
 
-def save_maps_cortex(data, atlas, fpath='/', group_average=True):
+def save_maps_cortex(
+    data, 
+    atlas, 
+    fpath='/', 
+    group_average=True
+    ):
     """Takes list of np arrays, averages list and
     saves gifti map to disk
 
