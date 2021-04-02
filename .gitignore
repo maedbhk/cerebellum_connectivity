@@ -82,7 +82,7 @@ target/
 /reports/
 
 # exclude savio scripts (Berkeley-specific)
-savio_scripts/
+#savio_scripts/
 
 # Mac OS-specific storage files
 .DS_Store

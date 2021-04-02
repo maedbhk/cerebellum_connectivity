@@ -7,10 +7,7 @@ import h5py
 import deepdish as dd
 import shutil
 import json
-import nibabel as nib
-from nilearn.image import mean_img
 import os
-import SUITPy.flatmap as flatmap
 
 """General purpose module for loading and saving data.
 
@@ -113,17 +110,7 @@ def convert_to_dataframe(file_obj, cols):
     dataframe = pd.DataFrame.from_records(dict_all)
 
     return dataframe
-
-# These are REALLY NOT NECESSARY
-# Why would you every use this, rather than calling directly?
-def nib_load(fpath):
-    return nib.load(fpath)
-
-
-def nib_save(img, fpath):
-    nib.save(img, fpath)
-
-
+    
 
 def _convertobj(file_obj, key):
     """converts object reference for `key` in `file_obj`"""

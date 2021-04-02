@@ -15,8 +15,8 @@ import nibabel as nib
 # Import module as such - no need to make them a class
 import connectivity.constants as const
 import connectivity.io as cio
-from connectivity.helper_functions import AutoVivification
 import connectivity.matrix as matrix
+import connectivity.nib_utils as nio
 from numpy.linalg import solve
 
 """Main module for getting data to be used for running connectivity models.
@@ -41,7 +41,7 @@ class Dataset:
         data: None
     """
 
-    def __init__(self, experiment="sc1", glm="glm7", roi="cerebellum_grey", subj_id="s03"):
+    def __init__(self, experiment="sc1", glm="glm7", roi="cerebellum_suit", subj_id="s03"):
         """Inits Dataset."""
         self.exp = experiment
         self.glm = glm
@@ -62,6 +62,7 @@ class Dataset:
         # this is the row info
         self.XX = np.array(file["XX"])
         self.TN = cio._convertobj(file, "TN")
+        # self.CN = cio._convertobj(file, "CN")
         self.cond = np.array(file["cond"]).reshape(-1).astype(int)
         self.inst = np.array(file["inst"]).reshape(-1).astype(int)
         self.task = np.array(file["task"]).reshape(-1).astype(int)
@@ -105,13 +106,13 @@ class Dataset:
         """Return info for data set in a dataframe."""
         d = {
             "TN": self.TN,
+            # "CN": self.CN,
             "sess": self.sess,
             "run": self.run,
             "inst": self.inst,
             "task": self.task,
             "cond": self.cond,
         }
-
         return pd.DataFrame(d)
 
 
@@ -119,6 +120,7 @@ class Dataset:
         """Returns info for a typical run only."""
         info = self.get_info()
         return info[info.run == 1]
+
 
     def get_data(self, averaging="sess", weighting=True, subset=None):
         """Get the data using a specific aggregation.
@@ -180,7 +182,7 @@ class Dataset:
                 idx = data_info.run == r
                 data[idx, :] = XXs @ data[idx, :]
 
-        # there are NaN values in cerebellum_suit, which causes problems later on in fitting model.
+        # There are NaN values in cerebellum_suit, which causes problems later on in fitting model.
         if self.roi == "cerebellum_suit":
             data = np.nan_to_num(data)
 
@@ -213,18 +215,16 @@ def convert_to_vol(data, xyz, voldef):
     vol_data[ijk[0],ijk[1],ijk[2]] = data
 
     # convert to nifti
-    nib_obj = nib.Nifti2Image(vol_data, mat)
+    nib_obj = nib.Nifti1Image(vol_data, mat)
     return nib_obj
 
 def convert_cerebellum_to_nifti(data):
     """
-    INPUT:
-        data (np-arrray):
-            N x 6937 length data array
-            or 1-d (6937,) array
-    OUTPUT:
-        nifti (List of nifti2image):
-            N output images
+    Args:
+        data (np-arrray): N x 6937 length data array
+        or 1-d (6937,) array
+    Returns:
+        nifti (List of nifti1image): N output images
     """
     # Load the region file
     dirs = const.Dirs(exp_name="sc1")
@@ -247,87 +247,98 @@ def convert_cerebellum_to_nifti(data):
         raise(NameError('data needs to be 1 or 2-dimensional'))
     return nii_mapped
 
-
-def convert_cortex_to_gifti(data, roi_name):
+def convert_cortex_to_gifti(data, atlas):
     """
-    INPUT:
-        data (np-arrray): data array
-        roi_name     -   cortical roi name
-    OUTPUT:
-        gifti (List of giftiImages)
+    Args:
+        data (np-arrray): 1d-array
+        atlas (str): cortical atlas name (e.g. tessels0162)
+    Returns:
+        List of gifti-img (left + right hemisphere)
+        anatomical_structure (list of hemisphere names)
     """
-    # get the shape of the data array
-    ## r is the number of regions
-    ## c is the number of maps (for pls for example, the map for each loading is in one column)
-    [r, c] = data_array.shape
+    dirs = const.Dirs()
+    hemName = ['L','R']
+    anatomical_struct = ['CortexLeft','CortexRight']
+    # get texture
+    gifti_img = []
+    for h,hem in enumerate(hemName):
+        # Load the labels (roi-numbers) from the label.gii files 
+        gii_path = os.path.join(dirs.reg_dir, 'data', 'group', f'{atlas}.{hem}.label.gii')
+        gii_data = nib.load(gii_path)
+        labels = gii_data.darrays[0].data[:]
 
-    # % Make column_names if empty
-    if not column_names:
-        for i in range(c):
-            column_names.append('col_%d'% i)
+        # Fill the corresponding vertices
+        # Fastest way: prepend a NaN for ROI 0 (medial wall) 
+        c_data = np.insert(data,0,np.nan)
+        mapped_data = c_data[labels]
+        # Make the gifti imae   gifti img
+        gifti_img.append(nio.make_func_gifti_cortex(data=mapped_data[:,None], anatomical_struct=anatomical_struct[h]))
+    return gifti_img, anatomical_struct
 
-    # preparing the gifti object
-    # create the name of the structure
-    anat_struct = f"Cortex{hemi}"
+def get_distance_matrix(roi):
+    """
+    Args:
+        roi (string)
+            Region of interest ('cerebellum_suit','tessels0042','yeo7')
+    Returns
+        distance (numpy.ndarray)
+            PxP array of distance between different ROIs / voxels
+    """
+    dirs = const.Dirs(exp_name="sc1")
+    group_dir = os.path.join(dirs.reg_dir, 'data','group')
+    if (roi=='cerebellum_suit'):
+        reg_file = os.path.join(group_dir,'regions_cerebellum_suit.mat')
+        region = cio.read_mat_as_hdf5(fpath=reg_file)["R"]
+        coord = region.data
+    else:
+        coordHem = []
+        parcels = []
+        for h,hem in enumerate(['L','R']):
+            # Load the corresponding label file 
+            label_file = os.path.join(group_dir,roi + '.' + hem + '.label.gii')
+            labels = nib.load(label_file)
+            roi_label = labels.darrays[0].data
 
-    # create the meta data for the gifti file
-    img_meta = {}
-    img_meta['AnatomicalStructurePrimary'] = anat_struct
-    img_meta['encoding'] = 'XML_BASE64_GZIP'
-    meta_ = nib.gifti.GiftiMetaData.from_dict(img_meta)
+            # Load the spherical gifti 
+            sphere_file = os.path.join(group_dir,'fs_LR.32k.' + hem + '.sphere.surf.gii')
+            sphere = nib.load(sphere_file)
+            vertex = sphere.darrays[0].data
 
-    # fix the label ???????????????????????
-    img_label      = nib.gifti.gifti.GiftiLabel(key=0, red=1, green=1, blue=1, alpha=0)
-    img_labelTable = nib.gifti.gifti.GiftiLabelTable()
+            # To achieve a large seperation between the hemispheres, just move the hemispheres apart 50 cm in the x-coordinate
+            vertex[:,0] = vertex[:,0]+(h*2-1)*500
 
-    gifti_img = nib.GiftiImage(meta = meta_, labeltable = img_labelTable)
+            # Loop over the regions > 0 and find the average coordinate 
+            parcels.append(np.unique(roi_label[roi_label>0]))
+            num_parcels = parcels[h].shape[0]
+            coordHem.append(np.zeros((num_parcels,3)))
+            for i,par in enumerate(parcels[h]):
+                coordHem[h][i,:] = vertex[roi_label==par,:].mean(axis=0)
+            
+        # Concatinate these to a full matrix 
+        num_regions = max(map(np.max,parcels))
+        coord = np.zeros((num_regions,3))
+        # Assign the coordinates - note that the 
+        # Indices in the label files are 1-based [Matlab-style]
+        # 0-label is the medial wall and ignored! 
+        coord[parcels[0]-1,:]=coordHem[0]
+        coord[parcels[1]-1,:]=coordHem[1]
 
-    # 1. load the label file. for tesselation it will be IcosahedranXXX.
-    ## 1.1 the gifti file is in fs_LR directory
-    dirs = const.Dirs(exp_name='sc1')
-    fs_lr_dir = dirs.fs_lr_dir
-    ## 1.2. load the gifti file
-    label_gifti = nib.load(os.path.join(fs_lr_dir, f"{label_name}.{hemi}.label.gii"))
-    ## 1.3. get the label assignments for each vertices
-    vertex_label = label_gifti.agg_data()
-    ## 1.4 delete the medial wall info
-    label_names = label_gifti.labeltable.get_labels_as_dict()
-    del label_names[0] # assuming that the medial wall is the first label
-    ## 1.5 create label numbers
-    ### labels for left hemi come first!
-    if hemi == 'Left':
-        label_nums = np.arange(len(label_names.keys()))
-    elif hemi == 'Right':
-        label_nums = np.arange(len(label_names.keys()), r)
+    # Now get the distances from the coordinates and return
+    Dist = eucl_distance(coord)
+    return Dist, coord 
 
-    # 2. map the array to vertices
-    data_vertex = np.nan * np.ones((vertex_label.shape[0], c)) # initializing output to be all nans
-    for ic in range(c): # create a map corresponding to each label
-        # get the map for the current component
-        map_ic = data_array[:, ic]
-
-        # preparing different fields of the gifti
-        mmeta = {}
-        mmeta['name']  = 'Name'
-        mmeta['value'] = column_names[i]
-        mmeta_ = nib.gifti.GiftiMetaData.from_dict(mmeta)
-        coord_ = nib.gifti.gifti.GiftiCoordSystem(dataspace=0, xformspace=0, xform=None)
-
-        # loop through regions
-        ihemi = 0 # this index is always starting from zero and is used to read from the parcellation
-        for i in label_nums:
-            # get the value
-            region_val = map_ic[i]
-
-            # find the indices for the vertices of the parcel and
-            # set their corresponding value equal to the value for that region
-            data_vertex[vertex_label == ihemi+1, ic] = region_val
-
-            gifti_img.add_gifti_data_array(nib.gifti.GiftiDataArray(data = data_vertex[:, ic], meta = mmeta_,
-                                            intent = 'NIFTI_INTENT_NONE',
-                                            datatype = 'NIFTI_TYPE_FLOAT32',
-                                            coordsys = coord_))
-
-            ihemi = ihemi +1
-
-    return gifti_img
+def eucl_distance(coord):
+    """
+    Calculates euclediand distances over some cooordinates 
+    Args:
+        coord (ndarray)
+            Nx3 array of x,y,z coordinates 
+    Returns: 
+        dist (ndarray) 
+            NxN array pf distances 
+    """
+    num_points = coord.shape[0]
+    D = np.zeros((num_points,num_points))
+    for i in range(2):
+        D = D + (coord[:,i].reshape(-1,1)-coord[:,i])**2
+    return np.sqrt(D)

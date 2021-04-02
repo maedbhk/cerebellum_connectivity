@@ -11,10 +11,11 @@ from sklearn.model_selection import cross_val_score
 from sklearn.metrics import mean_squared_error
 
 import connectivity.io as cio
-from connectivity.data import Dataset
+from connectivity import data as cdata
 import connectivity.constants as const
 import connectivity.model as model
 import connectivity.evaluation as ev
+import connectivity.nib_utils as nio
 
 import warnings
 
@@ -83,7 +84,8 @@ def get_default_train_config():
             "s30",
             "s31",
         ],
-        "mode": "crossed",  # Training mode
+        "mode": "crossed",  
+        "save_weights": False, #Training mode
     }
     return config
 
@@ -272,8 +274,6 @@ def eval_models(config):
 
         # get rmse
         rmse = mean_squared_error(Y, Y_pred, squared=False)
-
-        # set up dict
         data = {"rmse_eval": rmse, "subj_id": subj}
 
         # Copy over all scalars or strings to eval_all dataframe:
@@ -297,7 +297,7 @@ def eval_models(config):
         # append data for each subj
         for k, v in data.items():
             eval_all[k].append(v)
-
+    
     # Return list of models
     return pd.DataFrame.from_dict(eval_all), eval_voxels
 
@@ -339,8 +339,8 @@ def _get_eval(Y, Y_pred, Y_info, X_info):
     ) = ev.calculate_reliability(Y=Y_pred, dataframe=X_info)
 
     # calculate noise ceiling
-    data["noise_ceiling_Y"] = np.sqrt(data["noise_Y_R_vox"])
-    data["noise_ceiling_XY"] = np.sqrt(data["noise_Y_R_vox"] * np.sqrt(data["noise_X_R_vox"]))
+    data["noiseceiling_Y_R_vox"] = np.sqrt(data["noise_Y_R_vox"])
+    data["noiseceiling_XY_R_vox"] = np.sqrt(data["noise_Y_R_vox"] * np.sqrt(data["noise_X_R_vox"]))
 
     # # Noise ceiling for cortex (squared)
     #     pass
@@ -359,7 +359,7 @@ def _get_data(config, exp, subj):
         Y (nd array), Y_info (pd dataframe), X (nd array), X_info (pd dataframe)
     """
     # Get the data
-    Ydata = Dataset(
+    Ydata = cdata.Dataset(
         experiment=exp,
         glm=config["glm"],
         subj_id=subj,
@@ -371,7 +371,7 @@ def _get_data(config, exp, subj):
 
     Y, Y_info = Ydata.get_data(averaging=config["averaging"], weighting=config["weighting"])
 
-    Xdata = Dataset(
+    Xdata = cdata.Dataset(
         experiment=exp,
         glm=config["glm"],
         subj_id=subj,

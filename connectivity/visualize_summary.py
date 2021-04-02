@@ -7,10 +7,12 @@ import glob
 import deepdish as dd
 from collections import defaultdict
 import matplotlib.pyplot as plt
-import flatmap
+import SUITPy.flatmap as flatmap
+from nilearn.plotting import view_surf
+import nibabel as nib
 
 import connectivity.constants as const
-import connectivity.io as cio
+import connectivity.nib_utils as nio
 
 plt.rcParams["axes.grid"] = False
 
@@ -77,7 +79,7 @@ def eval_summary(summary_name="eval_summary"):
     return df_concat
 
 
-def plot_train_predictions(dataframe, hue=None):
+def plot_train_predictions(dataframe, x='train_name', hue=None):
     """plots training predictions (R CV) for all models in dataframe.
 
     Args:
@@ -86,7 +88,7 @@ def plot_train_predictions(dataframe, hue=None):
     """
     plt.figure(figsize=(15, 10))
     # R
-    sns.factorplot(x="train_name", y="train_R_cv", hue=hue, data=dataframe, legend=False, ci=None, size=4, aspect=2)
+    sns.factorplot(x=x, y="train_R_cv", hue=hue, data=dataframe, legend=False, ci=None, size=4, aspect=2)
     plt.title("Model Training (CV Predictions)", fontsize=20)
     plt.tick_params(axis="both", which="major", labelsize=15)
     plt.xticks(rotation="45", ha="right")
@@ -148,12 +150,12 @@ def plot_eval_predictions(dataframe, exp="sc1"):
         )
 
 
-def plot_map(gifti_func="group_R_vox", exp="sc1", model=None, cscale=None):
+def plot_eval_map(gifti_func="group_R_vox", exp="sc1", model=None, cscale=None):
     """plot surface map for best model
 
     Args:
         gifti (str):
-        best_model (None or model name):
+        model (None or model name):
         exp (str): 'sc1' or 'sc2'
 
     """
@@ -170,15 +172,36 @@ def plot_map(gifti_func="group_R_vox", exp="sc1", model=None, cscale=None):
         model = get_best_model(train_exp=exp)
 
     # plot map
-    surf_data = cio.nib_load(os.path.join(dirs.conn_eval_dir, model, f"{gifti_func}.func.gii"))
-    return flatmap.plot(surf_data.agg_data(), symmetric_cmap=False, cscale=cscale)
+    surf_data = os.path.join(dirs.conn_eval_dir, model, f"{gifti_func}.func.gii")
+    view = nio.view_cerebellum(data=surf_data, cscale=cscale) #symmetric_cmap=False,
+    return view
+
+
+def plot_train_map(gifti_func='group_weights_cerebellum', exp='sc1', model=None, cscale=None, hemisphere='R'):
+    # initialise directories
+    dirs = const.Dirs(exp_name=exp)
+
+    # get evaluation
+    df_eval = eval_summary()
+
+    # get best model
+    if not model:
+        model = get_best_model(train_exp=exp)
+    
+    # plot either cerebellum or cortex
+    if 'cerebellum' in gifti_func:
+        surf_fname = os.path.join(dirs.conn_train_dir, model, f"{gifti_func}.func.gii")
+        view = nio.view_cerebellum(data=surf_fname, cscale=cscale)
+    elif 'cortex' in gifti_func:
+        surf_fname = os.path.join(dirs.conn_train_dir, model, f"{gifti_func}.{hemisphere}.func.gii")
+        view = nio.view_cortex(data=surf_fname, cscale=cscale, hemisphere=hemisphere)
+    else:
+        print("gifti must contain either cerebellum or cortex in name")
+    return view
 
 
 def get_best_model(train_exp):
     """Get idx for best ridge based on either rmse_train or rmse_cv.
-
-    If rmse_cv is populated, this is used to determine best ridge.
-    Otherwise, rmse_train is used.
 
     Args:
         exp (str): 'sc1' or 'sc2

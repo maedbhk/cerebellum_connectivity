@@ -20,10 +20,11 @@ return_subjs = ["s02","s03","s04","s06","s08",
 
 # Set the local path here...
 # When committing, leave other people's path in here.
-base_dir = Path("/Volumes/diedrichsen_data$/data/super_cerebellum")
+# base_dir = Path("/Volumes/diedrichsen_data$/data/super_cerebellum")
 # base_dir = Path('/Users/jdiedrichsen/Dropbox (Diedrichsenlab)/projects/SuperCerebellum')
-#base_dir = Path("global/scratch/maedbhking/projects/cerebellum_connectivity/data")
-#base_dir = Path("/Users/maedbhking/Documents/cerebellum_connectivity/data")
+# base_dir = Path("global/scratch/maedbhking/projects/cerebellum_connectivity/data")
+# base_dir = Path("/Users/maedbhking/Documents/cerebellum_connectivity/data")
+base_dir = Path(__file__).absolute().parent.parent / 'data'
 
 
 class Dirs:
@@ -37,6 +38,7 @@ class Dirs:
     def __init__(self, exp_name="sc1", glm="glm7"):
         glm_num = re.findall("\d+", glm)[0]
         self.base_dir = base_dir
+        self.fs_lr_dir = base_dir / "fs_LR_32"
         self.data_dir = base_dir / exp_name
         self.behav_dir = self.data_dir / "data"
         self.imaging_dir = self.data_dir / "imaging_data"
@@ -50,5 +52,4 @@ class Dirs:
         self.conn_eval_dir = self.data_dir / "conn_models" / "eval"
         self.atlas = base_dir / "atlases"
         self.atlas_suit_flatmap = self.atlas / "suit_flatmap"
-        self.fs_lr_dir = base_dir / "fs_LR_32"
         self.figure = Path(__file__).absolute().parent.parent / "reports" / "figures"

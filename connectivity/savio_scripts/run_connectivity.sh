@@ -12,12 +12,30 @@
 #SBATCH --qos=savio_normal
 #
 # Wall clock limit:
-#SBATCH --time=1:00:00
+#SBATCH --time=20:00:00
 #
 ## Command(s) to run:
 module load python/3.7
-. /global/home/users/maedbhking/.local/share/virtualenvs/cerebellum_connectivity-DQHkR575/bin/activate
-cd /global/scratch/maedbhking/projects/cerebellum_connectivity/connectivity/savio_scripts
+source ~/.bash_profile
+source $(pipenv --venv)/bin/activate
+PYTHONPATH=$PYTHONPATH:/global/scratch/maedbhking/bin/
+export PYTHONPATH
+
+cd /global/scratch/maedbhking/projects/cerebellum_connectivity/connectivity/scripts
 
 # run connectivity models
-python3 script_ridge_mk.py --model=train
+python3 script_mk.py --cortex="tessels0162" --model_type="ridge" --train_or_eval="train"
+python3 script_mk.py --cortex="tessels0362" --model_type="ridge" --train_or_eval="train"
+python3 script_mk.py --cortex="tessels0642" --model_type="ridge" --train_or_eval="train"
+python3 script_mk.py --cortex="tessels1002" --model_type="ridge" --train_or_eval="train"
+python3 script_mk.py --cortex="yeo17" --model_type="ridge" --train_or_eval="train"
+python3 script_mk.py --cortex="yeo7" --model_type="ridge" --train_or_eval="train"
+
+python3 script_mk.py --cortex="tessels0162" --model_type="WTA" --train_or_eval="train"
+python3 script_mk.py --cortex="tessels0362" --model_type="WTA" --train_or_eval="train"
+python3 script_mk.py --cortex="tessels0642" --model_type="WTA" --train_or_eval="train"
+python3 script_mk.py --cortex="tessels1002" --model_type="WTA" --train_or_eval="train"
+python3 script_mk.py --cortex="yeo17" --model_type="WTA" --train_or_eval="train"
+python3 script_mk.py --cortex="yeo7" --model_type="WTA" --train_or_eval="train"
+
+python3 script_mk.py --train_or_eval="eval"
