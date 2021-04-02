@@ -84,7 +84,8 @@ def get_default_train_config():
             "s30",
             "s31",
         ],
-        "mode": "crossed",  # Training mode
+        "mode": "crossed",  
+        "save_weights": False, #Training mode
     }
     return config
 
