@@ -57,6 +57,8 @@ Add the following repo to your PATH:
     And example of how to run a set of connectivity models + evaluate them can be found in 
     connectivity/scripts/script_ridge.py or script_mk.py 
 
+> NOTE: Log trained models on this shared google doc: https://docs.google.com/spreadsheets/d/1SnuGiH42E20QrcQvT5nle8aRJEvnVjMoYjZ9WuJvz0k/edit#gid=0
+
 Project Organization
 ------------
 
