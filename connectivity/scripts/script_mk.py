@@ -555,7 +555,6 @@ def run(cortex="tessels0362",
             else:
                 print('please enter a model (ridge, WTA, NNLS)')
 
-
     # run eval routine
     if train_or_eval=="eval":
         # eval models
