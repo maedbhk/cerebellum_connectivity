@@ -15,7 +15,6 @@ import nibabel as nib
 # Import module as such - no need to make them a class
 import connectivity.constants as const
 import connectivity.io as cio
-from connectivity.helper_functions import AutoVivification
 import connectivity.matrix as matrix
 import connectivity.nib_utils as nio
 from numpy.linalg import solve
