@@ -351,9 +351,9 @@ def save_weight_maps(model_name, cortex, train_exp):
     save_maps_cerebellum(data=np.stack(cereb_weights_all, axis=0), 
                         fpath=os.path.join(fpath, 'group_weights_cerebellum'))
 
-    save_maps_cortex(data=np.stack(cortex_weights_all, axis=0), 
-                    fpath=os.path.join(fpath, 'group_weights_cortex'),
-                    atlas=cortex)
+    save_maps_cortex(data=np.stack(cortex_weights_all, axis=0),
+                    atlas=cortex,
+                    fpath=os.path.join(fpath, 'group_weights_cortex'))
 
     print('saving cortical and cerebellar weights to disk')
 
@@ -409,7 +409,7 @@ def save_maps_cerebellum(data, fpath='/', group_average=True, gifti=True, nifti=
     return gii_img
 
 
-def save_maps_cortex(data, fpath='/', atlas, group_average=True):
+def save_maps_cortex(data, atlas, fpath='/', group_average=True):
     """Takes list of np arrays, averages list and
     saves gifti map to disk
 
