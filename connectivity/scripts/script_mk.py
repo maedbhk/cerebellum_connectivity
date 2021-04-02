@@ -3,16 +3,18 @@ import os, shutil
 import click
 import numpy as np
 import pandas as pd
+import nibabel as nib
 import glob
 from random import seed, sample
 from collections import defaultdict
 import neptune
 from pathlib import Path
+import SUITPy.flatmap as flatmap
 
 import connectivity.constants as const
 import connectivity.io as cio
 import connectivity.nib_utils as nio
-from connectivity.data import Dataset
+from connectivity import data as cdata
 import connectivity.run_mk as run_connect
 from connectivity import visualize_summary as summary
 
@@ -163,11 +165,11 @@ def train_ridge(
     save_weight_maps(model_name=name, cortex=cortex, train_exp=train_exp)
 
     # concat data to model_summary (if file already exists)
-    # if log_locally:
-    #     if os.path.isfile(fpath):
-    #         df_all = pd.concat([df_all, pd.read_csv(fpath)])
-    #     # save out train summary
-    #     df_all.to_csv(fpath, index=False)
+    if log_locally:
+        if os.path.isfile(fpath):
+            df_all = pd.concat([df_all, pd.read_csv(fpath)])
+        # save out train summary
+        df_all.to_csv(fpath, index=False)
 
 
 def train_WTA(
@@ -346,16 +348,89 @@ def save_weight_maps(model_name, cortex, train_exp):
         cortex_weights_all.append(np.nanmean(data.coef_, axis=0))
 
     # save maps to disk for cerebellum and cortex
-    nio.save_maps_cerebellum(data=np.stack(cereb_weights_all, axis=0), 
-                            fpath=os.path.join(fpath, 'group_weights_cerebellum'))
+    save_maps_cerebellum(data=np.stack(cereb_weights_all, axis=0), 
+                        fpath=os.path.join(fpath, 'group_weights_cerebellum'))
 
-    for hemi in ['R', 'L']:
-        nio.save_maps_cortex(data=np.stack(cortex_weights_all, axis=0), 
-                            fpath=os.path.join(fpath, 'group_weights_cortex'),
-                            atlas=cortex,
-                            hemisphere=hemi)
+    save_maps_cortex(data=np.stack(cortex_weights_all, axis=0), 
+                    fpath=os.path.join(fpath, 'group_weights_cortex'),
+                    atlas=cortex)
 
     print('saving cortical and cerebellar weights to disk')
+
+
+def save_maps_cerebellum(data, fpath='/', group_average=True, gifti=True, nifti=True, column_names=None):
+    """Takes data (np array), averages along first dimension
+    saves nifti and gifti map to disk
+
+    Args: 
+        data (np array): np array of shape (N x 6937)
+        fpath (str): save path for output file
+        group_average (bool): default is True, averages data np arrays 
+        gifti (bool): default is True, saves gifti to fpath
+        nifti (bool): default is True, saves nifti to fpath
+        column_names (bool or list):
+    Returns: 
+        saves nifti and/or gifti image to disk, returns gifti
+    """
+    num_cols, num_vox = data.shape
+
+    # average data
+    if group_average:
+        data = np.nanmean(data, axis=0)
+
+    # get col names
+    if column_names is None:
+        column_names = []
+        for i in range(num_cols):
+            column_names.append("col_{:02d}".format(i+1))
+    
+    # get filenames
+    fnames = []
+    for col in column_names:
+        fnames.append(fpath + '_' + col)
+
+    # convert averaged cerebellum data array to nifti
+    nib_objs = cdata.convert_cerebellum_to_nifti(data=data)
+    
+    # save nifti(s) to disk
+    if nifti:
+        fnames = [name + '.nii' for name in fnames]
+        for i, fname in enumerate(fnames):
+            nib.save(img=nib_objs[i], fpath=fname) # this is temporary (to test bug in map)
+
+    # map volume to surface
+    surf_data = flatmap.vol_to_surf(nib_objs, space="SUIT")
+
+    # # make and save gifti image
+    gii_img = flatmap.make_func_gifti(data=surf_data, column_names=column_names)
+    if gifti:
+        nib.save(img=gii_img, fpath=fpath + '.func.gii')
+    
+    return gii_img
+
+
+def save_maps_cortex(data, fpath='/', atlas, group_average=True):
+    """Takes list of np arrays, averages list and
+    saves gifti map to disk
+
+    Args: 
+        data (np array): np array of shape (N x 32492)
+        fpath (str): save path for output file
+        atlas (str): cortex atlas name (example: tessels0162)
+        group_average (bool): default is True, averages data np arrays 
+    Returns: 
+        saves gifti image to disk for left and right hemispheres
+    """
+    # average data
+    if group_average:
+        data = np.nanmean(data, axis=0)
+
+    # get functional gifti
+    func_giis, hem_names = cdata.convert_cortex_to_gifti(data=data, atlas=atlas)
+    
+    # save giftis to file
+    for i, hem in enumerate(hem_names):
+        nib.save(img=func_giis[i], fpath=fpath + f'.{hem}.func.gii')
 
 
 def eval_model(
@@ -408,8 +483,8 @@ def eval_model(
         fpath = os.path.join(dirs.conn_eval_dir, model_name)
         cio.make_dirs(fpath)
         for k, v in voxels.items():
-            nio.save_maps_cerebellum(data=np.stack(v, axis=0), 
-                                    fpath=os.path.join(fpath, f'group_{k}'))
+            save_maps_cerebellum(data=np.stack(v, axis=0), 
+                                fpath=os.path.join(fpath, f'group_{k}'))
 
     # write to neptune
     if log_online:
@@ -429,7 +504,10 @@ def eval_model(
 @click.option("--train_or_eval")
 
 
-def run(cortex="tesselsWB642", model_type="ridge", train_or_eval="train", delete_train=False):
+def run(cortex="tessels0642", 
+        model_type="ridge", 
+        train_or_eval="train", 
+        delete_train=False):
     """ Run connectivity routine (train and evaluate)
 
     Args: 
@@ -462,7 +540,7 @@ def run(cortex="tesselsWB642", model_type="ridge", train_or_eval="train", delete
             cortex = best_model.split('_')[1] # assumes that training model follows convention <model_type>_<cortex_name>_<other>
 
             # # save voxel/vertex maps for best training weights
-            # save_weight_maps(model_name=best_model, cortex=cortex, train_exp=f"sc{2-exp}")
+            save_weight_maps(model_name=best_model, cortex=cortex, train_exp=f"sc{2-exp}")
 
             # delete training models that are suboptimal (save space)
             if delete_train:

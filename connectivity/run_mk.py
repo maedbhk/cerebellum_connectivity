@@ -11,7 +11,7 @@ from sklearn.model_selection import cross_val_score
 from sklearn.metrics import mean_squared_error
 
 import connectivity.io as cio
-from connectivity.data import Dataset
+from connectivity import data as cdata
 import connectivity.constants as const
 import connectivity.model as model
 import connectivity.evaluation as ev
@@ -358,7 +358,7 @@ def _get_data(config, exp, subj):
         Y (nd array), Y_info (pd dataframe), X (nd array), X_info (pd dataframe)
     """
     # Get the data
-    Ydata = Dataset(
+    Ydata = cdata.Dataset(
         experiment=exp,
         glm=config["glm"],
         subj_id=subj,
@@ -370,7 +370,7 @@ def _get_data(config, exp, subj):
 
     Y, Y_info = Ydata.get_data(averaging=config["averaging"], weighting=config["weighting"])
 
-    Xdata = Dataset(
+    Xdata = cdata.Dataset(
         experiment=exp,
         glm=config["glm"],
         subj_id=subj,

@@ -3,119 +3,12 @@ from pathlib import Path
 import nibabel as nib
 import numpy as np
 from nilearn.image import mean_img
-import os
 import SUITPy.flatmap as flatmap
 from nilearn.plotting import view_surf, plot_surf_roi
 from nilearn.surface import load_surf_data
-
-import connectivity.nib_utils as nio
-import connectivity.data as cdata
 import connectivity.constants as const
 
-def nib_load(fpath):
-    """ load nifti from disk
-
-    Args: 
-        fpath (str): full path to nifti img
-    Returns: 
-        returns nib obj
-    """
-    return nib.load(fpath)
-
-def nib_save(imgs, fpaths):
-    """Save nifti to disk
-    
-    Args: 
-        imgs (list of nib obj): 
-        fpaths (list of str): full path(s) to nifti
-    Returns: 
-        Saves imgs to disk
-    """
-    for (img, fpath) in zip(imgs, fpaths):
-        nib.save(img, fpath)
-
-def nib_mean(imgs):
-    """ Get mean of nifti objs
-
-    Args: 
-        imgs (list): list of nib objs
-    Returns: 
-        mean nib obj
-    """
-    return mean_img(imgs)
-
-def save_maps_cerebellum(data, fpath='/', group_average=True, gifti=True, nifti=True, column_names=None):
-    """Takes list of np arrays, averages list and
-    saves nifti and gifti map to disk
-
-    Args: 
-        data (np array): np array of shape (N x 6937)
-        fpath (str): save path for output file
-        group_average (bool): default is True, averages data np arrays 
-        gifti (bool): default is True, saves gifti to fpath
-        nifti (bool): default is True, saves nifti to fpath
-    Returns: 
-        saves nifti and/or gifti image to disk, returns gifti
-    """
-    num_cols, num_vox = data.shape
-
-    # average data
-    if group_average:
-        data = np.nanmean(data, axis=0)
-
-    # get col names
-    if column_names is None:
-        column_names = []
-        for i in range(num_cols):
-            column_names.append("col_{:02d}".format(i+1))
-    
-    # get filenames
-    fnames = []
-    for col in column_names:
-        fnames.append(fpath + '_' + col)
-
-    # convert averaged cerebellum data array to nifti
-    nib_objs = cdata.convert_cerebellum_to_nifti(data=data)
-    
-    # save nifti(s) to disk
-    if nifti:
-        fnames = [name + '.nii' for name in fnames]
-        nio.nib_save(img=nib_objs, fpath=fnames) # this is temporary (to test bug in map)
-
-    # map volume to surface
-    surf_data = flatmap.vol_to_surf(nib_objs, space="SUIT")
-
-    # # make and save gifti image
-    gii_img = flatmap.make_func_gifti(data=surf_data, column_names=column_names)
-    if gifti:
-        nio.nib_save(img=[gii_img], fpath=[fpath + '.func.gii'])
-    
-    return gii_img
-
-def save_maps_cortex(data, fpath, atlas, group_average=True, hemisphere='R'):
-    """Takes list of np arrays, averages list and
-    saves gifti map to disk
-
-    Args: 
-        data (np array): np array of shape (N x 32492)
-        fpath (str): save path for output file
-        atlas (str): cortex atlas name (example: tesselsWB162)
-        group_average (bool): default is True, averages data np arrays 
-        hemisphere (str): 'R' or 'L'
-    Returns: 
-        saves gifti image to disk
-    """
-    # average data
-    if group_average:
-        data = np.nanmean(data, axis=0)
-
-    # get functional gifti
-    func_gii = cdata.convert_cortex_to_gifti(data=data, atlas=atlas, hemisphere=hemisphere)
-    
-    # save gifti to file
-    nio.nib_save(img=func_gii, fpath=fpath + f'.{hemisphere}.func.gii')
-
-def make_label_gifti(data, anatomical_struct='CortexLeft', label_names=None, column_names=None, label_RGBA=None):
+def make_label_gifti_cortex(data, anatomical_struct='CortexLeft', label_names=None, column_names=None, label_RGBA=None):
     """
     Generates a label GiftiImage from a numpy array
        @author joern.diedrichsen@googlemail.com, Feb 2019 (Python conversion: switt)
@@ -183,7 +76,7 @@ def make_label_gifti(data, anatomical_struct='CortexLeft', label_names=None, col
     gifti.labeltable.labels.append(E)
     return gifti
 
-def make_func_gifti(data, anatomical_struct='CortexLeft', column_names=None):
+def make_func_gifti_cortex(data, anatomical_struct='CortexLeft', column_names=None):
     """
     Generates a function GiftiImage from a numpy array
        @author joern.diedrichsen@googlemail.com, Feb 2019 (Python conversion: switt)
@@ -246,7 +139,7 @@ def view_cerebellum(data, cmap='jet', threshold=None, bg_map=None, cscale=None):
 
     # load surf data from file
     if isinstance(data, str):
-        data = nio.nib_load(data)
+        data = nib.load(data)
         data = data.darrays[0].data
 
     # Determine underlay and assign color
@@ -279,7 +172,7 @@ def view_cortex(data, bg_map=None, cscale=None, map_type='func', hemisphere='R',
 
     # load surf data from file
     if isinstance(data, str):
-        data = nio.nib_load(data)
+        data = nib.load(data)
         data = data.darrays[0].data
 
     # Determine scale

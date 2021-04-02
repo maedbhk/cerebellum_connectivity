@@ -189,7 +189,6 @@ class Dataset:
 
         return data, data_info
 
-
 def convert_to_vol(data, xyz, voldef):
     """
     This function converts 1D numpy array data to 3D vol space, and returns nib obj
@@ -220,7 +219,6 @@ def convert_to_vol(data, xyz, voldef):
     nib_obj = nib.Nifti1Image(vol_data, mat)
     return nib_obj
 
-
 def convert_cerebellum_to_nifti(data):
     """
     Args:
@@ -250,7 +248,6 @@ def convert_cerebellum_to_nifti(data):
         raise(NameError('data needs to be 1 or 2-dimensional'))
     return nii_mapped
 
-
 def convert_cortex_to_gifti(data, atlas):
     """
     Args:
@@ -258,6 +255,7 @@ def convert_cortex_to_gifti(data, atlas):
         atlas (str): cortical atlas name (e.g. tessels0162)
     Returns:
         List of gifti-img (left + right hemisphere)
+        anatomical_structure (list of hemisphere names)
     """
     dirs = const.Dirs()
     hemName = ['L','R']
@@ -275,8 +273,8 @@ def convert_cortex_to_gifti(data, atlas):
         c_data = np.insert(data,0,np.nan)
         mapped_data = c_data[labels]
         # Make the gifti imae   gifti img
-        gifti_img.append(nio.make_func_gifti(data=mapped_data[:,None], anatomical_struct=anatomical_struct[h]))
-    return gifti_img
+        gifti_img.append(nio.make_func_gifti_cortex(data=mapped_data[:,None], anatomical_struct=anatomical_struct[h]))
+    return gifti_img, anatomical_struct
 
 def get_distance_matrix(roi):
     """

@@ -3,9 +3,10 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+import SUITPy.flatmap as flatmap
 
 import connectivity.nib_utils as nio
-from connectivity.data import Dataset
+from connectivity import data as cdata
 import connectivity.constants as const
 
 import warnings
@@ -36,7 +37,7 @@ def get_betas(roi, glm, exp, averaging='sess', weighting=True):
     for subj in const.return_subjs:
         
         # Get the data
-        data = Dataset(
+        data = cdata.Dataset(
             experiment=exp,
             glm=glm,
             subj_id=subj,
@@ -109,6 +110,56 @@ def get_betas_summary(rois, exps, glm='glm7', save=True, averaging="none"):
     
     return dataframe_all
 
+def save_maps_cerebellum(data, fpath='/', group_average=True, gifti=True, nifti=True, column_names=None):
+    """Takes data (np array), averages along first dimension
+    saves nifti and gifti map to disk
+
+    Args: 
+        data (np array): np array of shape (N x 6937)
+        fpath (str): save path for output file
+        group_average (bool): default is True, averages data np arrays 
+        gifti (bool): default is True, saves gifti to fpath
+        nifti (bool): default is True, saves nifti to fpath
+        column_names (bool or list):
+    Returns: 
+        saves nifti and/or gifti image to disk, returns gifti
+    """
+    num_cols, num_vox = data.shape
+
+    # average data
+    if group_average:
+        data = np.nanmean(data, axis=0)
+
+    # get col names
+    if column_names is None:
+        column_names = []
+        for i in range(num_cols):
+            column_names.append("col_{:02d}".format(i+1))
+    
+    # get filenames
+    fnames = []
+    for col in column_names:
+        fnames.append(fpath + '_' + col)
+
+    # convert averaged cerebellum data array to nifti
+    nib_objs = cdata.convert_cerebellum_to_nifti(data=data)
+    
+    # save nifti(s) to disk
+    if nifti:
+        fnames = [name + '.nii' for name in fnames]
+        for i, fname in enumerate(fnames):
+            nib.save(img=nib_objs[i], fpath=fname) # this is temporary (to test bug in map)
+
+    # map volume to surface
+    surf_data = flatmap.vol_to_surf(nib_objs, space="SUIT")
+
+    # # make and save gifti image
+    gii_img = flatmap.make_func_gifti(data=surf_data, column_names=column_names)
+    if gifti:
+        nib.save(img=gii_img, fpath=fpath + '.func.gii')
+    
+    return gii_img
+
 def plot_task_scatterplot(dataframe, exp='sc1', save=True): 
     """plot scatterplot of beta weights between two rois. 
 
@@ -169,11 +220,11 @@ def plot_task_maps_cerebellum(data, data_info, task='Instruct'):
     betas = betas.reshape(1, len(betas))
 
     # convert betas to gifti 
-    gii_img = nio.save_maps_cerebellum(data=betas,
-                                    column_names=task,
-                                    gifti=False,
-                                    nifti=False,
-                                    group_average=False)
+    gii_img =  save_maps_cerebellum(data=betas,
+                                column_names=task,
+                                gifti=False,
+                                nifti=False,
+                                group_average=False)
 
     # plot cerebellum
     view = nio.view_cerebellum(data=gii_img.darrays[0].data)
