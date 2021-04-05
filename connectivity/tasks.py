@@ -105,8 +105,10 @@ def get_betas_summary(rois, exps, glm='glm7', save=True, averaging="none"):
             dataframe_all = pd.concat([dataframe_all, info_subjs])
             print(f'added betas for {roi} ({exp}) to summary dataframe')
     
-    if save:
-        pass
+    # reorder runs (1-32) if both exps are given
+    if len(exps)>1:
+        dataframe_all['run_new'] = dataframe_all['run']
+        dataframe_all.loc[(dataframe_all.exp == 'sc2'),'run_new']+=16
     
     return dataframe_all
 
@@ -147,8 +149,8 @@ def save_maps_cerebellum(data, fpath='/', group_average=True, gifti=True, nifti=
     # save nifti(s) to disk
     if nifti:
         fnames = [name + '.nii' for name in fnames]
-        for i, fname in enumerate(fnames):
-            nib.save(img=nib_objs[i], fpath=fname) # this is temporary (to test bug in map)
+        for (nib_obj, fname) in zip(nib_objs, fnames):
+            nib.save(img=nib_obj, fpath=fname) # this is temporary (to test bug in map)
 
     # map volume to surface
     surf_data = flatmap.vol_to_surf(nib_objs, space="SUIT")

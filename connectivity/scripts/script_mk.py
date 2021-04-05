@@ -542,7 +542,6 @@ def run(cortex="tessels0362",
         train_or_test (str): 'train' or 'eval'
     """
     print(f'doing model {train_or_eval}')
-    # run training routine
     if train_or_eval=="train":
         for exp in range(2):
             if model_type=="ridge":
@@ -555,9 +554,7 @@ def run(cortex="tessels0362",
             else:
                 print('please enter a model (ridge, WTA, NNLS)')
 
-    # run eval routine
-    if train_or_eval=="eval":
-        # eval models
+    elif train_or_eval=="eval":
         for exp in range(2):
 
             # get best train model (based on train CV)
