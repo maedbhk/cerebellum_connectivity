@@ -173,12 +173,13 @@ def view_cortex(data, bg_map=None, cscale=None, map_type='func', hemisphere='R',
 
     # load surf data from file
     if isinstance(data, str):
-        data = nib.load(data)
-        data = data.darrays[0].data
+        # data = nib.load(data)
+        # data = data.darrays[0].data
+        data = load_surf_data(data)
 
     # Determine scale
     if cscale is None:
-        cscale = [data.min(), data.max()]
+        cscale = [np.nanmin(data), np.nanmax(data)]
 
     if map_type=="func":
         view = view_surf(surf_mesh=surf_mesh, 

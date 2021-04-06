@@ -13,6 +13,7 @@ from sklearn.metrics import mean_squared_error
 import connectivity.io as cio
 from connectivity import data as cdata
 import connectivity.constants as const
+import connectivity.sparsity as csparsity
 import connectivity.model as model
 import connectivity.evaluation as ev
 import connectivity.nib_utils as nio
@@ -97,7 +98,7 @@ def get_default_eval_config():
         A dict mapping keys to evaluation parameters.
     """
     config = {
-        "name": "L2_WB162_A1",
+        "name": "L2_tessels1002_A1",
         "sessions": [1, 2],
         "glm": "glm7",
         "train_exp": "sc1",
@@ -105,7 +106,7 @@ def get_default_eval_config():
         "averaging": "sess",
         "weighting": True,  # 0: none, 1: by regr., 2: by full matrix???
         "incl_inst": True,
-        "X_data": "tesselsWB162",
+        "X_data": "tessels1002",
         "Y_data": "cerebellum_grey",
         "subjects": [
             "s01",
@@ -136,6 +137,7 @@ def get_default_eval_config():
         "mode": "crossed",
         "splitby": None,
         "save_maps": False,
+        "threshold": 0.1
     }
     return config
 
@@ -285,6 +287,10 @@ def eval_models(config):
         evals = _get_eval(Y=Y, Y_pred=Y_pred, Y_info=Y_info, X_info=X_info)
         data.update(evals)
 
+        # add sparsity metric (voxels)
+        sparsity_results = _get_sparsity(config, fitted_model)
+        data.update(sparsity_results)
+
         # add evaluation (voxels)
         if config["save_maps"]:
             for k, v in data.items():
@@ -346,6 +352,47 @@ def _get_eval(Y, Y_pred, Y_info, X_info):
     #     pass
 
     return data
+
+
+def _get_sparsity(config, fitted_model):
+    """Get sparsity metrics for fitted model
+
+    Args: 
+        config (dict): must contain 'X_data', 'threshold'
+        fitted_model (obj): must contain 'coef_'
+    Returns: 
+        data_all (dict): fields are different sparsity metrics
+    """
+
+    data_all = defaultdict(list)
+    # loop over hemispheres
+    for hem in ['L', 'R']:
+    
+        # get labels for `roi` and `hemisphere`
+        labels = csparsity.get_labels_hemisphere(roi=config['X_data'], hemisphere=hem)
+        
+        # get distances for `roi` and `hemisphere`
+        distances = cdata.get_distance_matrix(roi=config['X_data'])[0]
+        distances = distances[labels,][:, labels]
+
+        # get weights for hemisphere
+        weights = fitted_model.coef_[:, labels]
+        
+        # sort weights and return indices for top `threshold`
+        weight_indices = csparsity.threshold_weights(weights=weights, threshold=config['threshold'])
+
+        # calculate sum/var/std of distances for weights
+        sparsity_dict = csparsity.get_distance_weights(weight_indices, distances)
+
+        # append data for each hemisphere
+        for k, v in sparsity_dict.items():
+            data_all[k].append(v)
+    
+    # get average across hemispheres
+    for k, v in data_all.items():
+        data_all[k] = np.nanmean(np.stack(v, axis=1), axis=1)
+    
+    return data_all
 
 
 def _get_data(config, exp, subj):

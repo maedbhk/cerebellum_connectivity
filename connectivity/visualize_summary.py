@@ -17,7 +17,7 @@ import connectivity.nib_utils as nio
 plt.rcParams["axes.grid"] = False
 
 
-def train_summary(summary_name="train_summary"):
+def train_summary(summary_name="train_summary", save_online=True):
     """load train summary containing all metrics about training models.
 
     Summary across exps is concatenated and prefix 'train' is appended to cols.
@@ -45,6 +45,9 @@ def train_summary(summary_name="train_summary"):
             cols.append(col)
 
     df_concat.columns = cols
+
+    if save_online:
+        log_online(dataframe=df_concat)
 
     return df_concat
 
@@ -79,7 +82,15 @@ def eval_summary(summary_name="eval_summary"):
     return df_concat
 
 
-def plot_train_predictions(dataframe, x='train_name', hue=None):
+def log_online(dataframe):
+    # group df by train name and take first row (not interested in results here)
+    dataframe = dataframe.groupby('train_name').first().reset_index()[['train_name', 'train_exp', 'train_X_data', 'train_Y_data', 'train_model', 'train_glm','train_averaging']]
+
+    dirs = const.Dirs()
+    dataframe.to_csv(os.path.join(dirs.base_dir, 'model_logs.csv'))
+
+
+def plot_train_predictions(dataframe, x='train_name', hue=None, x_order=None, hue_order=None):
     """plots training predictions (R CV) for all models in dataframe.
 
     Args:
@@ -88,13 +99,13 @@ def plot_train_predictions(dataframe, x='train_name', hue=None):
     """
     plt.figure(figsize=(15, 10))
     # R
-    sns.factorplot(x=x, y="train_R_cv", hue=hue, data=dataframe, legend=False, ci=None, size=4, aspect=2)
+    sns.factorplot(x=x, y="train_R_cv", hue=hue, data=dataframe, order=x_order, hue_order=hue_order, legend=False, ci=None, size=4, aspect=2)
     plt.title("Model Training (CV Predictions)", fontsize=20)
     plt.tick_params(axis="both", which="major", labelsize=15)
     plt.xticks(rotation="45", ha="right")
     plt.xlabel("")
     plt.ylabel("R", fontsize=20)
-    plt.legend(fontsize=15)
+    plt.legend(fontsize=15, bbox_to_anchor=(1.05, 1), loc='upper left')
 
 
 def plot_eval_predictions(dataframe, exp="sc1"):
@@ -193,7 +204,11 @@ def plot_train_map(gifti_func='group_weights_cerebellum', exp='sc1', model=None,
         surf_fname = os.path.join(dirs.conn_train_dir, model, f"{gifti_func}.func.gii")
         view = nio.view_cerebellum(data=surf_fname, cscale=cscale)
     elif 'cortex' in gifti_func:
-        surf_fname = os.path.join(dirs.conn_train_dir, model, f"{gifti_func}.{hemisphere}.func.gii")
+        if hemisphere=='R':
+            hem_name = 'CortexRight'
+        elif hemisphere=='L':
+            hem_name = 'CortexLeft'
+        surf_fname = os.path.join(dirs.conn_train_dir, model, f"{gifti_func}.{hem_name}.func.gii")
         view = nio.view_cortex(data=surf_fname, cscale=cscale, hemisphere=hemisphere)
     else:
         print("gifti must contain either cerebellum or cortex in name")
