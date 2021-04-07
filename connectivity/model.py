@@ -82,7 +82,6 @@ class WTA(LinearRegression, ModelMixin):
         num_vox = self.coef_.shape[0]
         for v in range(num_vox):
             self.coef_[v, self.labels[v]] = wta_coef_[v]
-        keyboard
         return self.coef_, self.labels
 
     def predict(self, X):
