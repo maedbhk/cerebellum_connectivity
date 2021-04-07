@@ -124,7 +124,7 @@ def make_func_gifti_cortex(data, anatomical_struct='CortexLeft', column_names=No
 
     return gifti
 
-def view_cerebellum(data, cmap='jet', threshold=None, bg_map=None, cscale=None):
+def view_cerebellum(data, cmap='jet', threshold=None, bg_map=None, cscale=None, symmetric_cmap=False):
     """Visualize data on suit flatmap
 
     Args: 
@@ -140,19 +140,20 @@ def view_cerebellum(data, cmap='jet', threshold=None, bg_map=None, cscale=None):
 
     # load surf data from file
     if isinstance(data, str):
-        data = nib.load(data)
-        data = data.darrays[0].data
+        data = load_surf_data(data)
 
     # Determine underlay and assign color
     # underlay = nib.load(underlay)
 
     # Determine scale
     if cscale is None:
-        cscale = [data.min(), data.max()]
+        cscale = [np.nanmin(data), np.nanmax(data)]
 
     # nilearn seems to
     view = view_surf(surf_mesh, data, bg_map=bg_map, cmap=cmap,
-                        threshold=threshold, vmin=cscale[0], vmax=cscale[1])
+                        threshold=threshold, vmin=cscale[0], vmax=cscale[1], 
+                        symmetric_cmap=symmetric_cmap)
+    # view = flatmap.plot(data, surf=surf_mesh, cscale=cscale)
     return view
 
 def view_cortex(data, bg_map=None, cscale=None, map_type='func', hemisphere='R', atlas_type='inflated'):

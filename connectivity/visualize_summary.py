@@ -161,7 +161,7 @@ def plot_eval_predictions(dataframe, exp="sc1"):
         )
 
 
-def plot_eval_map(gifti_func="group_R_vox", exp="sc1", model=None, cscale=None):
+def plot_eval_map(gifti_func="group_R_vox", exp="sc1", model=None, cscale=None, symmetric_cmap=False):
     """plot surface map for best model
 
     Args:
@@ -184,7 +184,7 @@ def plot_eval_map(gifti_func="group_R_vox", exp="sc1", model=None, cscale=None):
 
     # plot map
     surf_data = os.path.join(dirs.conn_eval_dir, model, f"{gifti_func}.func.gii")
-    view = nio.view_cerebellum(data=surf_data, cscale=cscale) #symmetric_cmap=False,
+    view = nio.view_cerebellum(data=surf_data, cscale=cscale, symmetric_cmap=symmetric_cmap) #symmetric_cmap=False,
     return view
 
 

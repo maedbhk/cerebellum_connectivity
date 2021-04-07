@@ -66,7 +66,7 @@ def get_distance_weights(weight_indices, distances):
 
     # loop over voxels
     dist_sum_all = []; dist_var_all = []
-    dist_std_all = []
+    dist_mean_all = []
     for vox in np.arange(num_vox):
 
         # get top indices for vox
@@ -83,13 +83,11 @@ def get_distance_weights(weight_indices, distances):
         dist_var = np.nanvar(np.nanvar(dist_vox, axis=0))
 
         # get std of distances for vox
-        dist_std = np.nanstd(np.nanstd(dist_vox,axis=0))
+        dist_mean = np.nanmean(np.nanmean(dist_vox,axis=0))
 
         dist_sum_all.append(dist_sum)
         dist_var_all.append(dist_var)
-        dist_std_all.append(dist_std)
+        dist_mean_all.append(dist_mean)
 
-    return {'sum_distances_vox': dist_sum_all, 
-             'var_distances_vox': dist_var_all,
-             'std_distances_vox': dist_std_all,
-             'sum_var_distances_vox':  list(np.array(dist_sum_all) / np.array(dist_var_all))}
+        return {'mean_distances_vox': dist_mean_all,
+                'sum_var_distances_vox':  list(np.array(dist_sum_all) / np.array(dist_var_all))}
