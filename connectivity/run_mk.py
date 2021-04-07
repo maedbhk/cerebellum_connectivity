@@ -137,7 +137,7 @@ def get_default_eval_config():
         "mode": "crossed",
         "splitby": None,
         "save_maps": False,
-        "threshold": 0.2
+        "threshold": 0.1
     }
     return config
 
@@ -383,6 +383,9 @@ def _get_sparsity(config, fitted_model):
 
         # calculate sum/var/std of distances for weights
         sparsity_dict = csparsity.get_distance_weights(weight_indices, distances)
+
+        # calculate coefficients weighted by distance and add to dict
+        sparsity_dict.update(csparsity.weight_distances(weights=weights, distances=distances))
 
         # append data for each hemisphere
         for k, v in sparsity_dict.items():

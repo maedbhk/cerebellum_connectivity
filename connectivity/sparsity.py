@@ -52,6 +52,11 @@ def threshold_weights(weights, threshold=0.1):
     
     return weight_indices_thresh
 
+def weight_distances(weights, distances):
+    tmp = np.nanmean((distances @ weights.T), axis=0)
+    tmp[tmp==0]=np.nan
+    return {'weighted_distances_vox': list(tmp)}
+
 def get_distance_weights(weight_indices, distances):
     """Calculate the sum/var/std of distances for weight_indices
     
@@ -65,8 +70,7 @@ def get_distance_weights(weight_indices, distances):
     num_vox = weight_indices.shape[0]
 
     # loop over voxels
-    dist_sum_all = []; dist_var_all = []
-    dist_mean_all = []
+    dist_sum_var_all = []
     for vox in np.arange(num_vox):
 
         # get top indices for vox
@@ -82,12 +86,9 @@ def get_distance_weights(weight_indices, distances):
         # get variances of distances for vox
         dist_var = np.nanvar(np.nanvar(dist_vox, axis=0))
 
-        # get std of distances for vox
-        dist_mean = np.nanmean(np.nanmean(dist_vox,axis=0))
+        dist_sum_var_all.append((dist_sum / dist_var))
+    
+    # zeros should be nan
+    dist_sum_var_all[dist_sum_var_all==0]=np.nan
 
-        dist_sum_all.append(dist_sum)
-        dist_var_all.append(dist_var)
-        dist_mean_all.append(dist_mean)
-
-    return {'mean_distances_vox': dist_mean_all,
-            'sum_var_distances_vox':  list(np.array(dist_sum_all) / np.array(dist_var_all))}
+    return {'sum_var_distances_vox':  dist_sum_var_all}
