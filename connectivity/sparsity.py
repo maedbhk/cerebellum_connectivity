@@ -89,5 +89,5 @@ def get_distance_weights(weight_indices, distances):
         dist_var_all.append(dist_var)
         dist_mean_all.append(dist_mean)
 
-        return {'mean_distances_vox': dist_mean_all,
-                'sum_var_distances_vox':  list(np.array(dist_sum_all) / np.array(dist_var_all))}
+    return {'mean_distances_vox': dist_mean_all,
+            'sum_var_distances_vox':  list(np.array(dist_sum_all) / np.array(dist_var_all))}
