@@ -137,7 +137,7 @@ def get_default_eval_config():
         "mode": "crossed",
         "splitby": None,
         "save_maps": False,
-        "threshold": 0.05
+        "threshold": 0.2
     }
     return config
 
