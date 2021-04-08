@@ -447,31 +447,29 @@ def save_maps_cerebellum(
         data = np.nanmean(data, axis=0)
     elif group=='mode':
         data = mode(data, axis=0)
-    
-    # get filenames
-    fnames = []
-    for col in column_names:
-        fnames.append(fpath + '_' + col)
+        data = data.mode[0]
+    else:
+        print('need to group data by passing "nanmean" or "mode"')
 
     # convert averaged cerebellum data array to nifti
-    nib_objs = cdata.convert_cerebellum_to_nifti(data=data)
+    nib_obj = cdata.convert_cerebellum_to_nifti(data=data)[0]
     
     # save nifti(s) to disk
     if nifti:
-        fnames = [name + '.nii' for name in fnames]
-        for (nib_obj, fname) in zip(nib_objs, fnames):
-            nib.save(nib_obj, fname) # this is temporary (to test bug in map)
+        nib.save(nib_obj, fpath + '.nii')
 
     # map volume to surface
-    surf_data = flatmap.vol_to_surf(nib_objs, space="SUIT", stats=group)
+    surf_data = flatmap.vol_to_surf([nib_obj], space="SUIT", stats=group)
 
     # make and save gifti image
     if group=='nanmean':
         gii_img = flatmap.make_func_gifti(data=surf_data, column_names=column_names)
+        out_name = 'func'
     elif group=='mode':
         gii_img = flatmap.make_label_gifti(data=surf_data, label_names=label_names, column_names=column_names, label_RGBA=label_RGBA)
+        out_name = 'label'
     if gifti:
-        nib.save(gii_img, fpath + '.func.gii')
+        nib.save(gii_img, fpath + f'.{out_name}.gii')
     
     return gii_img
 

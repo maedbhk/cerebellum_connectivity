@@ -14,67 +14,77 @@ def make_label_gifti_cortex(data, anatomical_struct='CortexLeft', label_names=No
     Generates a label GiftiImage from a numpy array
        @author joern.diedrichsen@googlemail.com, Feb 2019 (Python conversion: switt)
 
-    Args:
-        data (np array): shape (vertices x columns) 
-        anatomical_struct (str): Anatomical Structure for the Meta-data default='CortexLeft'
-        label_names (list or None): List of label names, default is None
-        column_names (list or None): List of strings for column names, default is None
-        label_RGBA (list or None): List of colors, default is None
-    Returns:
+    INPUTS:
+        data (np.array):
+             numVert x numCol data
+        anatomical_struct (string):
+            Anatomical Structure for the Meta-data default= 'CortexLeft'
+        label_names (list): 
+            List of strings for label names
+        column_names (list):
+            List of strings for names for columns
+        label_RGBA (list):
+            List of rgba vectors
+    OUTPUTS:
         gifti (label GiftiImage)
+
     """
-    num_verts, num_cols = data.shape
-    num_labels = len(np.unique(data))
+    numVerts, numCols = data.shape
+    numLabels = len(np.unique(data))
 
     # Create naming and coloring if not specified in varargin
     # Make columnNames if empty
-    if column_names is None:
-        column_names = []
-        for i in range(num_labels):
+    if len(column_names) == 0:
+        for i in range(numLabels):
             column_names.append("col_{:02d}".format(i+1))
 
     # Determine color scale if empty
-    if label_RGBA is None:
-        hsv = plt.cm.get_cmap('hsv', num_labels)
-        color = hsv(np.linspace(0, 1, num_labels))
+    if len(label_RGBA) == 0:
+        hsv = plt.cm.get_cmap('hsv',numLabels)
+        color = hsv(np.linspace(0,1,numLabels))
         # Shuffle the order so that colors are more visible
-        color = color[np.random.permutation(num_labels)]
-        label_RGBA = np.zeros([num_labels, 4])
-        for i in range(num_labels):
+        color = color[np.random.permutation(numLabels)]
+        label_RGBA = np.zeros([numLabels,4])
+        for i in range(numLabels):
             label_RGBA[i] = color[i]
 
     # Create label names
-    if label_names is None:
-        label_names = []
-        for i in range(num_labels):
+    if len(label_names) == 0:
+        for i in range(numLabels):
             label_names.append("label-{:02d}".format(i+1))
 
     # Create label.gii structure
-    C = nib.gifti.GiftiMetaData.from_dict({
+    C = nb.gifti.GiftiMetaData.from_dict({
         'AnatomicalStructurePrimary': anatomical_struct,
         'encoding': 'XML_BASE64_GZIP'})
 
-    E = nib.gifti.gifti.GiftiLabel()
-    E.key = np.arange(label_names)
-    E.label= label_names
-    E.red = label_RGBA[:,0]
-    E.green = label_RGBA[:,1]
-    E.blue = label_RGBA[:,2]
-    E.alpha = label_RGBA[:,3]
+
+    num_labels = np.arange(numLabels)
+    E_all = []
+    for (label,rgba,name) in zip(num_labels,label_RGBA,label_names):
+        E = nb.gifti.gifti.GiftiLabel()
+        E.key = label 
+        E.label= name
+        E.red = rgba[0]
+        E.green = rgba[1]
+        E.blue = rgba[2]
+        E.alpha = rgba[3]
+        E.rgba = rgba[:]
+        E_all.append(E)
 
     D = list()
-    for i in range(Q):
-        d = nib.gifti.GiftiDataArray(
+    for i in range(numCols):
+        d = nb.gifti.GiftiDataArray(
             data=np.float32(data[:, i]),
-            intent='NIFTI_INTENT_LABEL',
-            datatype='NIFTI_TYPE_INT32',
-            meta=nib.gifti.GiftiMetaData.from_dict({'Name': column_names[i]})
+            intent='NIFTI_INTENT_LABEL', 
+            datatype='NIFTI_TYPE_INT32', # was NIFTI_TYPE_INT32
+            meta=nb.gifti.GiftiMetaData.from_dict({'Name': column_names[i]})
         )
         D.append(d)
 
     # Make and return the gifti file
-    gifti = nib.gifti.GiftiImage(meta=C, darrays=D)
-    gifti.labeltable.labels.append(E)
+    gifti = nb.gifti.GiftiImage(meta=C, darrays=D)
+    gifti.labeltable.labels.extend(E_all)
     return gifti
 
 def make_func_gifti_cortex(data, anatomical_struct='CortexLeft', column_names=None):

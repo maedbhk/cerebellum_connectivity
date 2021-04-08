@@ -80,8 +80,9 @@ class WTA(LinearRegression, ModelMixin):
         wta_coef_ = np.amax(self.coef_, axis=1)
         self.coef_ = np.zeros((self.coef_.shape))
         num_vox = self.coef_.shape[0]
-        for v in range(num_vox):
-            self.coef_[v, self.labels[v]] = wta_coef_[v]
+        # for v in range(num_vox):
+        #     self.coef_[v, self.labels[v]] = wta_coef_[v]
+        self.coef_[np.arange(num_vox), self.labels] = wta_coef_
         return self.coef_, self.labels
 
     def predict(self, X):
