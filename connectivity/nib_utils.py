@@ -134,7 +134,7 @@ def make_func_gifti_cortex(data, anatomical_struct='CortexLeft', column_names=No
 
     return gifti
 
-def view_cerebellum(data, cmap='jet', threshold=None, bg_map=None, cscale=None, symmetric_cmap=False):
+def view_cerebellum(data, cmap='CMRmap', threshold=None, bg_map=None, cscale=None, symmetric_cmap=False):
     """Visualize data on suit flatmap
 
     Args: 
@@ -166,7 +166,7 @@ def view_cerebellum(data, cmap='jet', threshold=None, bg_map=None, cscale=None, 
     # view = flatmap.plot(data, surf=surf_mesh, cscale=cscale)
     return view
 
-def view_cortex(data, bg_map=None, cscale=None, map_type='func', hemisphere='R', atlas_type='inflated'):
+def view_cortex(data, cmap='CMRmap', bg_map=None, cscale=None, hemisphere='R', atlas_type='inflated', symmetric_cmap=False):
     """Visualize data on inflated cortex
 
     Args: 
@@ -192,19 +192,12 @@ def view_cortex(data, bg_map=None, cscale=None, map_type='func', hemisphere='R',
     if cscale is None:
         cscale = [np.nanmin(data), np.nanmax(data)]
 
-    if map_type=="func":
-        view = view_surf(surf_mesh=surf_mesh, 
-                        surf_map=data,
-                        bg_map=bg_map,
-                        vmin=cscale[0], 
-                        vmax=cscale[1]
-                        )
-                    
-    elif map_type=="label":
-        view = plot_surf_roi(surf_mesh=surf_mesh, 
-                            roi_map=data,
-                            bg_map=bg_map,
-                            vmin=cscale[0], 
-                            vmax=cscale[1]
-                            )           
+    view = view_surf(surf_mesh=surf_mesh, 
+                    surf_map=data,
+                    bg_map=bg_map,
+                    vmin=cscale[0], 
+                    vmax=cscale[1],
+                    cmap=cmap,
+                    symmetric_cmap=symmetric_cmap
+                    )        
     return view

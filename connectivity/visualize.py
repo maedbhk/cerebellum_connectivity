@@ -1,304 +1,332 @@
-import os 
+import os
 import pandas as pd
 import numpy as np
+import seaborn as sns
 import re
 import glob
-import copy
-from pathlib import Path
-from dictdiffer import diff
-
-import seaborn as sns
-import matplotlib.pyplot as plt
-from collections import MutableMapping
+import deepdish as dd
 from collections import defaultdict
-from functools import partial
-import pprint
-
-from nilearn import plotting
+import matplotlib.pyplot as plt
+import SUITPy.flatmap as flatmap
+from nilearn.plotting import view_surf
 import nibabel as nib
-from nilearn import surface
 
-# import plotly.graph_objects as go
+import connectivity.constants as const
+import connectivity.nib_utils as nio
 
-import connectivity.constants as const 
-import connectivity.io as cio
+plt.rcParams["axes.grid"] = False
 
-import warnings
-warnings.filterwarnings('ignore')
 
-"""
-Created on Sep 05 07:03:32 2020
-Visualization routine for connectivity models
+def train_summary(summary_name="train_summary", save_online=True):
+    """load train summary containing all metrics about training models.
 
-@author: Maedbh King, Jörn Diedrichsen 
-"""
+    Summary across exps is concatenated and prefix 'train' is appended to cols.
 
-def convert_to_vol(Y, vox_indx, mask):
-    """
-    This function converts 1D numpy array data to 3D vol space, and returns nib obj
-    that can then be saved out as a nifti file
     Args:
-        Y (numpy array): voxel data, shape (num_vox, )
-        vox_indx (numpy array of int): non-zero indices for grey matter voxels in cerebellum, shape (num_vox, )
-        mask (nib obj): nib obj of mask
-    
-    Returns: 
-        Nib Obj
-    
+        summary_name (str): name of summary file
+    Returns:
+        pandas dataframe containing concatenated exp summary
     """
-    # get dat, mat, and dim from the mask
-    dat = mask.get_fdata()
-    dim = dat.shape
-    mat = mask.affine
-    
-    # initialise xyz voxel data
-    vol_data = np.zeros((dim[0], dim[1], dim[2], 1))
-    
-    # get the xyz of the nonZeroVoxels used in estimating connectivity weights
-    (x, y, z)= np.unravel_index(vox_indx, mask.shape, 'F')
-    
-    num_vox = len(Y)
-    for i in range(num_vox):
-        vol_data[x[i], y[i], z[i]] = Y[i]
+    # look at model summary for train results
+    df_concat = pd.DataFrame()
+    for exp in ["sc1", "sc2"]:
+        dirs = const.Dirs(exp_name=exp)
+        fpath = os.path.join(dirs.conn_train_dir, f"{summary_name}.csv")
+        df = pd.read_csv(fpath)
+        # df['train_exp'] = exp
+        df_concat = pd.concat([df_concat, df])
 
-    return make_nifti_obj(vol_data=vol_data, affine_mat=mat)
-
-def calc_nifti_average(imgs, fpath):
-    """ calculates average nifti image
-        Args: 
-            imgs (list): iterable of Niimg-like objects
-            out_path (str): full path to averaged image
-        Returns: 
-            saves averaged nifti file to disk
-    """
-    mean_img = image.mean_img(imgs) # get average of images from `filenames` list
-    # save nifti to disk
-    save_nifti_obj(nib_obj=mean_img, fpath=fpath)
-
-def get_cerebellar_mask(self, mask, glm):
-    """ converts cerebellar mask to nifti obj
-        Args: 
-            mask (str): make name
-        Returns: 
-            nifti obj of mask
-    """
-    dirs = Dirs(study_name='sc1', glm=glm)
-    return nib.load(os.path.join(dirs.SUIT_ANAT_DIR, mask))
-
-def get_all_files(self, fullpath, wildcard):
-    return glob.glob(os.path.join(fullpath, wildcard))
-
-def plot_surface_cerebellum(data, surf_mesh = g_surf_mesh, title = None):
-    """ plots data to flatmap, opens in browser (default)
-        Args: 
-            surf_map (numpy array): data to plot
-            surf_mesh (numpy array): mesh surface. default is "FLAT_SURF"
-            title (str): title of plot
-    """
-    view = plotting.view_surf(surf_mesh=g_surf_mesh, 
-                            surf_map=data, 
-                            colorbar=g_colorbar,
-                            threshold=g_surface_threshold,
-                            vmax=max(data),
-                            vmin=min(data),
-                            symmetric_cmap=g_symmetric_cmap,
-                            title=title) 
-
-    if g_view == 'browser':
-        view.open_in_browser()
-    else: 
-        view.resize(500, 500)
-
-def plot_surface_cortex(self): 
-    plotting.plot_surf_stat_map(self.inflated, self.texture,
-                                hemi=self.hem, threshold=self.config['surface_threshold'],
-                                title=self.config['title'], colorbar=self.config['colorbar'], 
-                                bg_map=self.config['bg_map'], vmax=self.config['vmax'])
-    
-    plt.show()
-                        print(f'no gifti file for {data_type} for {exp}')
-
-def visualize_group(self):
-
-    # save files to nifti first
-    self.save_data_to_nifti()
-
-    for exp in self.config['eval_on']:
-
-        # set directories for exp
-        self.dirs = Dirs(study_name=exp, glm=self.config['glm'])
-
-        # get all model dirs for `eval_name`
-        eval_name = self.config['eval_name']
-        eval_dirs = self.get_all_files(fullpath=self.dirs.SUIT_GLM_DIR, wildcard=f'*{eval_name}*')
-
-        # loop over models and visualize group
-        for eval_dir in eval_dirs:
-
-            # get gifti files for `eval_name`, `subj`, `exp`, `data_type`
-            data_type = self.config['data_type']
-            gifti_fpath = self.get_all_files(fullpath=os.path.join(eval_dir, 'group'), wildcard=f'*{data_type}_vox.gii*')[0]
-
-            if os.path.exists(gifti_fpath):
-
-                # print out param file to accompany gifti file
-                pprint.pprint(io.read_json(fpath=os.path.join(self.dirs.CONN_EVAL_DIR, Path(eval_dir).name + '.json')), compact=True)
-
-                # plot group map on surface
-                self._plot_surface_cerebellum(surf_map=surface.load_surf_data(gifti_fpath),
-                                        surf_mesh=os.path.join(self.dirs.ATLAS_SUIT_FLATMAP, self.config['surf_mesh']),
-                                        title=f'{data_type} : eval on {exp} : {Path(eval_dir).name}') 
-            else:
-                print(f'no gifti file for {data_type} for {exp}')
-
-def save_data_to_nifti(self):
-    """ saves predictions to nifti files
-        niftis need to be mapped to surf, this is done in matlab (using suit)
-        matlab engine will eventually be called from python to bypass this step
-        *** not yet implemented ***
-    """
-    # loop over exp
-    for exp in self.config['eval_on']:
-
-        self.dirs = Dirs(study_name=exp, glm=self.config['glm'])
-
-        # get fnames for eval data for `eval_name` and for `exp`
-        eval_name = self.config['eval_name']
-        fnames = self.get_all_files(fullpath=self.dirs.CONN_EVAL_DIR, wildcard=f'*{eval_name}*.h5')
-
-        # save individual subj voxel predictions
-        # and group avg. to nifti files
-        self._convert_to_nifti(files=fnames)
-
-def _convert_to_nifti(self, files):
-    """ converts outputs from `files` to nifti
-    """
-    # loop over file names for `eval_name`
-    for self.file in files:
-
-        # load prediction dict for `eval_name` and `data_type`
-        data_dict = self._load_data()
-
-        data_type = self.config['data_type']
-        data_dict = {k:v for k,v in data_dict.items() if f'{data_type}_vox' in k} 
-
-        # only convert vox data to nifti
-        if data_dict:
-
-            print(f'{self.file} contains vox data')
-
-            # loop over all prediction data
-            nib_objs = []
-            for self.name in data_dict:
-
-                # get outpath to niftis
-                nifti_subj_fpath, nifti_group_fpath = self._get_nifti_outpath()
-
-                # convert subj to nifti if it doesn't already exist
-                if not os.path.exists(nifti_subj_fpath):
-
-                    # get input data for nifti obj
-                    Y, non_zero_ind, mask = self._get_nifti_input_data(data_dict=data_dict)
-
-                    # get vox data as nib obj
-                    nib_obj = image_utils.convert_to_vol(Y=Y, vox_indx=non_zero_ind, mask=mask)
-                    nib_objs.append(nib_obj)
-
-                    # save nifti obj to disk
-                    image_utils.save_nifti_obj(nib_obj, nifti_subj_fpath)
-                    print(f'saved {nifti_subj_fpath} to nifti, please map this file surf in matlab')
-
-            # convert group to nifti if it doesn't already exist
-            if not os.path.exists(nifti_group_fpath):
-                # calculate group avg nifti of `data_type` for `eval_name` 
-                image_utils.calc_nifti_average(imgs=nib_objs, fpath=nifti_group_fpath)
-                print(f'saved {nifti_group_fpath} to nifti, please map this file surf in matlab')
-        
+    # rename cols
+    cols = []
+    for col in df_concat.columns:
+        if "train" not in col:
+            cols.append("train_" + col)
         else:
-            print(f'{self.file} does not have vox data')
+            cols.append(col)
 
-def _get_nifti_outpath(self):
-    """ returns nifti fpath for subj and group prediction maps
+    df_concat.columns = cols
+
+    if save_online:
+        log_online(dataframe=df_concat)
+
+    return df_concat
+
+
+def eval_summary(summary_name="eval_summary"):
+    """load eval summary containing all metrics about eval models.
+
+    Summary across exps is concatenated and prefix 'eval' is appended to cols.
+
+    Args:
+        summary_name (str): name of summary file
+    Returns:
+        pandas dataframe containing concatenated exp summary
     """
-    self.subj_name = re.findall('(s\d+)', self.name)[0] # extract subj name
-    nifti_fname = f'{self.name}.nii' # set nifti fname
+    # look at model summary for eval results
+    df_concat = pd.DataFrame()
+    for exp in ["sc1", "sc2"]:
+        dirs = const.Dirs(exp_name=exp)
+        fpath = os.path.join(dirs.conn_eval_dir, f"{summary_name}.csv")
+        df = pd.read_csv(fpath)
+        df_concat = pd.concat([df_concat, df])
 
-    # get model, subj, group dirs in suit
-    SUIT_MODEL_DIR = os.path.join(self.dirs.SUIT_GLM_DIR, Path(self.file).stem )
-    SUBJ_DIR = os.path.join(SUIT_MODEL_DIR, self.subj_name) # get nifti dir for subj
-    GROUP_DIR = os.path.join(SUIT_MODEL_DIR, 'group') # get nifti dir for group
+    cols = []
+    for col in df_concat.columns:
+        if any(s in col for s in ("eval", "train")):
+            cols.append(col)
+        else:
+            cols.append("eval_" + col)
 
-    # make subj and group dirs in suit if they don't already exist
-    for _dir in [SUBJ_DIR, GROUP_DIR]:
-        self._make_dir(_dir)
+    df_concat.columns = cols
 
-    # get full path to nifti fname for subj and group
-    subj_fpath = os.path.join(SUBJ_DIR, nifti_fname)
-    group_fpath = os.path.join(GROUP_DIR, re.sub('(s\d+)', 'group', nifti_fname))
+    return df_concat
 
-    # return fpath to subj and group nifti
-    return subj_fpath, group_fpath
 
-def _get_nifti_input_data(self, data_dict):
-    """ get mask, voxel_data, and vox indices to
-        be used as input for `make_nifti_obj`
-        Args: 
-            data_dict (dict): data dict containing voxel data (numpy array)
-        Returns:
-            mask (nib obj), Y (numpy array), non_zero_ind (numpy array)
+def log_online(dataframe):
+    # group df by train name and take first row (not interested in results here)
+    dataframe = dataframe.groupby('train_name').first().reset_index()[['train_name', 'train_exp', 'train_X_data', 'train_Y_data', 'train_model', 'train_glm','train_averaging']]
+
+    dirs = const.Dirs()
+    dataframe.to_csv(os.path.join(dirs.base_dir, 'model_logs.csv'))
+
+
+def plot_train_predictions(dataframe, x='train_name', hue=None, x_order=None, hue_order=None):
+    """plots training predictions (R CV) for all models in dataframe.
+
+    Args:
+        dataframe (pandas dataframe): must contain 'train_name' and 'train_R_cv'
+        hue (str or None): can be 'train_exp', 'Y_data' etc.
     """
-    # get prediction data for `name`
-    Y = data_dict[self.name][0]
+    plt.figure(figsize=(15, 10))
+    # R
+    sns.factorplot(x=x, y="train_R_cv", hue=hue, data=dataframe, order=x_order, hue_order=hue_order, legend=False, ci=None, size=4, aspect=2)
+    plt.title("Model Training (CV Predictions)", fontsize=20)
+    plt.tick_params(axis="both", which="major", labelsize=15)
+    plt.xticks(rotation="45", ha="right")
+    plt.xlabel("")
+    plt.ylabel("R", fontsize=20)
+    plt.legend(fontsize=15, bbox_to_anchor=(1.05, 1), loc='upper left')
 
-    # load in `grey_nan` indices
-    non_zero_ind_dict = io.read_json(os.path.join(self.dirs.ENCODE_DIR, 'grey_nan_nonZeroInd.json'))
-    non_zero_ind = [int(vox) for vox in non_zero_ind_dict[self.subj_name]] 
 
-    # get cerebellar mask
-    mask = self._get_cerebellar_mask(mask=self.config['mask_name'], glm=self.config['glm'])
+def plot_eval_predictions(dataframe, exp="sc1"):
+    """plots evaluation predictions (R eval) for best model in dataframe for 'sc1' or 'sc2'
 
-    return Y, non_zero_ind, mask
+    Also plots model-dependent and model-independent noise ceilings.
 
-def _load_data(self):
-    data_dict_all = {}
-    data_dict_all['all-keys'] = self._load_data_file(data_fname=self.file)
+    Args:
+        dataframe (pandas dataframe): must contain 'train_name' and 'train_R_cv'
+        exp (str): either 'sc1' or 'sc2'
+        hue (str or None): default is 'eval_name'
+    """
+    # get best model (from train CV)
+    best_model = get_best_model(train_exp=exp)
 
-    # conjoin nested keys (will form nifti filenames)
-    return self._flatten_nested_dict(data_dict_all) 
-
-def plot_interactive_surface(self):
-    view = plotting.view_surf(self.inflated, self.texture, 
-                            threshold=self.interactive_threshold, 
-                            bg_map=self.bg_map)
-
-    view.open_in_browser()
-
-def _get_surfaces(self):
-    if self.hem=="right":
-        inflated = self.fsaverage.infl_right
-        bg_map = self.fsaverage.sulc_right
-        texture = surface.vol_to_surf(self.img, self.fsaverage.pial_right)
-    elif self.hem=="left":
-        inflated = self.fsaverage.infl_left
-        bg_map = self.fsaverage.sulc_left
-        texture = surface.vol_to_surf(self.img, self.fsaverage.pial_left)
+    if exp is "sc1":
+        eval_exp = "sc2"
     else:
-        print('hemisphere not provided')
+        eval_exp = "sc1"
 
-    return inflated, bg_map, texture
+    dataframe = dataframe.query(f'eval_exp=="{eval_exp}" and eval_name=="{best_model}"')
 
-def visualize_subj_glass_brain(self):
+    # get noise ceilings
+    dataframe["eval_noiseceiling_Y"] = np.sqrt(dataframe.eval_noise_Y_R)
+    dataframe["eval_noiseceiling_XY"] = np.sqrt(dataframe.eval_noise_Y_R) * np.sqrt(dataframe.eval_noise_X_R)
 
-    # loop over subjects
-    for subj in Defaults.subjs:
+    # melt data into one column for easy plotting
+    cols = ["eval_noiseceiling_Y", "eval_noiseceiling_XY", "R_eval"]
+    df = pd.melt(dataframe, value_vars=cols, id_vars=set(dataframe.columns) - set(cols)).rename(
+        {"variable": "data_type", "value": "data"}, axis=1
+    )
 
-        # GLM_SUBJ_DIR = os.path.join(Defaults.GLM_DIR, self.config['glm'], subj)
-        os.chdir(GLM_SUBJ_DIR)
-        # fpaths = glob.glob(f'*{self.contrast_type}-{self.glm}.nii')
-        
-        for fpath in fpaths: 
-            self.img = nib.load(os.path.join(GLM_SUBJ_DIR, fpath))
-            self.title = f'{Path(fpath).stem})'
-            self.plot_glass_brain()
+    plt.figure(figsize=(8, 8))
+    splot = sns.barplot(x="data_type", y="data", data=df)
+    plt.title(f"Model Evaluation (exp={exp}: best model={best_model})", fontsize=20)
+    plt.tick_params(axis="both", which="major", labelsize=15)
+    plt.xlabel("")
+    plt.ylabel("R", fontsize=20)
+    plt.xticks(
+        [0, 1, 2], ["noise ceiling (data)", "noise ceiling (model)", "model predictions"], rotation="45", ha="right"
+    )
+    # plt.legend(fontsize=15)
+
+    # annotate barplot
+    for p in splot.patches:
+        splot.annotate(
+            format(p.get_height(), ".2f"),
+            (p.get_x() + p.get_width() / 2.0, p.get_height()),
+            ha="left",
+            va="center",
+            xytext=(0, 10),
+            textcoords="offset points",
+        )
 
 
+def plot_eval_map(gifti_func="group_R_vox", exp="sc1", model=None, cscale=None, symmetric_cmap=False):
+    """plot surface map for best model
+
+    Args:
+        gifti (str):
+        model (None or model name):
+        exp (str): 'sc1' or 'sc2'
+
+    """
+    if exp == "sc1":
+        dirs = const.Dirs(exp_name="sc2")
+    else:
+        dirs = const.Dirs(exp_name="sc1")
+
+    # get evaluation
+    df_eval = eval_summary()
+
+    # get best model
+    if not model:
+        model = get_best_model(train_exp=exp)
+
+    # plot map
+    surf_data = os.path.join(dirs.conn_eval_dir, model, f"{gifti_func}.func.gii")
+    view = nio.view_cerebellum(data=surf_data, cscale=cscale, symmetric_cmap=symmetric_cmap) #symmetric_cmap=False,
+    return view
+
+
+def plot_train_map(gifti_func='group_weights_cerebellum', exp='sc1', model=None, cscale=None, hemisphere='R'):
+    # initialise directories
+    dirs = const.Dirs(exp_name=exp)
+
+    # get evaluation
+    df_eval = eval_summary()
+
+    # get best model
+    if not model:
+        model = get_best_model(train_exp=exp)
+    
+    # plot either cerebellum or cortex
+    if 'cerebellum' in gifti_func:
+        surf_fname = os.path.join(dirs.conn_train_dir, model, f"{gifti_func}.func.gii")
+        view = nio.view_cerebellum(data=surf_fname, cscale=cscale)
+    elif 'cortex' in gifti_func:
+        if hemisphere=='R':
+            hem_name = 'CortexRight'
+        elif hemisphere=='L':
+            hem_name = 'CortexLeft'
+        surf_fname = os.path.join(dirs.conn_train_dir, model, f"{gifti_func}.{hem_name}.func.gii")
+        view = nio.view_cortex(data=surf_fname, cscale=cscale, hemisphere=hemisphere)
+    else:
+        print("gifti must contain either cerebellum or cortex in name")
+    return view
+
+
+def get_best_model(train_exp):
+    """Get idx for best ridge based on either rmse_train or rmse_cv.
+
+    Args:
+        exp (str): 'sc1' or 'sc2
+    Returns:
+        model name (str)
+    """
+    # load train summary (contains R CV of all trained models)
+    dirs = const.Dirs(exp_name=train_exp)
+    fpath = os.path.join(dirs.conn_train_dir, "train_summary.csv")
+    df = pd.read_csv(fpath)
+
+    # get mean values for each model
+    tmp = df.groupby("name").mean().reset_index()
+
+    # get best model (based on R CV)
+    best_model = tmp[tmp["R_cv"] == tmp["R_cv"].max()]["name"].values[0]
+
+    print(f"best model for {train_exp} is {best_model}")
+
+    return best_model
+
+
+def train_weights(exp="sc1", model_name="ridge_tesselsWB162_alpha_6"):
+    """gets training weights for a given model and summarizes into a dataframe
+
+    averages the weights across the cerebellar voxels (1 x cortical ROIs)
+
+    Args:
+        exp (str): 'sc1' or 'sc2'
+        model_name (str): default is 'ridge_tesselsWB162_alpha_6'
+    Returns:
+        pandas dataframe containing 'ROI', 'weights', 'subj', 'exp'
+    """
+    data_dict = defaultdict(list)
+    dirs = const.Dirs(exp_name=exp)
+    trained_models = glob.glob(os.path.join(dirs.conn_train_dir, model_name, "*.h5"))
+
+    for fname in trained_models:
+
+        # Get the model from file
+        fitted_model = dd.io.load(fname)
+        regex = r"_(s\d+)."
+        subj = re.findall(regex, fname)[0]
+        weights = np.nanmean(fitted_model.coef_, 0)
+
+        data = {
+            "ROI": np.arange(1, len(weights) + 1),
+            "weights": weights,
+            "subj": [subj] * len(weights),
+            "exp": [exp] * len(weights),
+        }
+
+        # append data for each subj
+        for k, v in data.items():
+            data_dict[k].extend(v)
+
+    return pd.DataFrame.from_dict(data_dict)
+
+
+def plot_train_weights(dataframe, hue=None):
+    """plots training weights in dataframe
+
+    Args:
+        dataframe (pandas dataframe): must contain 'ROI' and 'weights' cols
+        hue (str or None): default is None
+    """
+    plt.figure(figsize=(8, 8))
+    sns.lineplot(x="ROI", y="weights", hue=hue, data=dataframe, ci=None)
+
+    exp = dataframe["exp"].unique()[0]
+
+    plt.axhline(linewidth=2, color="r")
+    plt.title(f"Cortical weights averaged across subjects for {exp}")
+    plt.tick_params(axis="both", which="major", labelsize=15)
+    plt.xlabel("# of ROIs", fontsize=20)
+    plt.ylabel("Weights", fontsize=20)
+
+
+def plot_parcellation(parcellation='MDTB_10', anatomical_structure='cerebellum', hemisphere=None):
+    """General purpose function for plotting parcellations (cortex or cerebellum)
+
+    Args: 
+        parcellation (str):  any of the following: 'yeo7', 'yeo17', 'MDTB_10', 'tessels<num>', 'buckner7', 'buckner17'
+        anatomical_structure (str): default is 'cerebellum'. other options: 'cortex'
+        hemisphere (None or str): default is None. other options are 'L' and 'R'
+    Returns:
+        viewing object to visualize parcellations
+    """
+    # initialize directory
+    dirs = const.Dirs()
+
+    if parcellation=='MDTB_10':
+        surf_labels = os.path.join(flatmap._surf_dir,'MDTB_10Regions.label.gii')
+    elif parcellation=='yeo7':
+        surf_labels = os.path.join(dirs.fs_lr_dir, f'Yeo_JNeurophysiol11_7Networks.32k.{hemisphere}.label.gii')
+    elif parcellation=='yeo17':
+        surf_labels = os.path.join(dirs.fs_lr_dir, f'Yeo_JNeurophysiol11_17Networks.32k.{hemisphere}.label.gii')
+    elif parcellation=='buckner7':
+        surf_labels = os.path.join(flatmap._surf_dir,'Buckner_7Networks.label.gii')
+    elif parcellation=='buckner17':
+        surf_labels = os.path.join(flatmap._surf_dir,'Buckner_17Networks.label.gii')
+    elif 'tessels' in parcellation:
+        parcellation = ''.join(re.findall(r'[1-9]', parcellation))
+        surf_labels = os.path.join(dirs.fs_lr_dir, f'Icosahedron-{parcellation}.32k.{hemisphere}.label.gii')
+    else:
+        print('please provide a valid parcellation')
+    
+    if anatomical_structure=='cerebellum':
+        return nio.view_cerebellum(data=surf_labels)
+    elif anatomical_structure=='cortex':
+        return nio.view_cortex(data=surf_labels, hemisphere=hemisphere)
+    else:
+        print("please provide a valid anatomical structure, either 'cerebellum' or 'cortex'")
