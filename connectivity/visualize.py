@@ -11,6 +11,8 @@ import SUITPy.flatmap as flatmap
 from nilearn.plotting import view_surf
 import nibabel as nib
 
+import connectivity.data as cdata
+import connectivity.sparsity as csparsity
 import connectivity.constants as const
 import connectivity.nib_utils as nio
 
@@ -188,7 +190,7 @@ def plot_eval_map(gifti_func="group_R_vox", exp="sc1", model=None, cscale=None, 
     return view
 
 
-def plot_train_map(gifti_func='group_weights_cerebellum', exp='sc1', model=None, cscale=None, hemisphere='R'):
+def plot_train_map(gifti_func='group_weights_cerebellum', exp='sc1', model=None, cscale=None, hemisphere='R', symmetric_cmap=False):
     # initialise directories
     dirs = const.Dirs(exp_name=exp)
 
@@ -202,16 +204,35 @@ def plot_train_map(gifti_func='group_weights_cerebellum', exp='sc1', model=None,
     # plot either cerebellum or cortex
     if 'cerebellum' in gifti_func:
         surf_fname = os.path.join(dirs.conn_train_dir, model, f"{gifti_func}.func.gii")
-        view = nio.view_cerebellum(data=surf_fname, cscale=cscale)
+        view = nio.view_cerebellum(data=surf_fname, cscale=cscale, symmetric_cmap=symmetric_cmap)
     elif 'cortex' in gifti_func:
         if hemisphere=='R':
             hem_name = 'CortexRight'
         elif hemisphere=='L':
             hem_name = 'CortexLeft'
         surf_fname = os.path.join(dirs.conn_train_dir, model, f"{gifti_func}.{hem_name}.func.gii")
-        view = nio.view_cortex(data=surf_fname, cscale=cscale, hemisphere=hemisphere)
+        view = nio.view_cortex(data=surf_fname, cscale=cscale, hemisphere=hemisphere, symmetric_cmap=symmetric_cmap)
     else:
         print("gifti must contain either cerebellum or cortex in name")
+    return view
+
+
+def plot_winner_map(roi='tessels0042', exp='sc1', cscale=None, symmetric_cmap=False):
+    """Plot winner-take-all map for `roi` for `exp`
+
+    Args: 
+        roi (str): 'tessels0042', 'tessels1002' etc.
+        exp (str): 'sc1' or 'sc2'
+        cscale (bool): default is None
+        symmetric_cmap (bool): default is False
+    Returns: 
+        Returns view object for visualizing winner map
+    """
+    dirs = const.Dirs(exp_name=exp)
+
+    surf_fname = os.path.join(dirs.conn_train_dir, f'WTA_{roi}', "group_wta_cerebellum.label.gii")
+    view = nio.view_cerebellum(data=surf_fname, cscale=cscale, symmetric_cmap=symmetric_cmap)
+
     return view
 
 
@@ -295,7 +316,7 @@ def plot_train_weights(dataframe, hue=None):
     plt.ylabel("Weights", fontsize=20)
 
 
-def plot_parcellation(parcellation='MDTB_10', anatomical_structure='cerebellum', hemisphere=None):
+def plot_parcellation(parcellation=None, anatomical_structure='cerebellum', hemisphere=None):
     """General purpose function for plotting parcellations (cortex or cerebellum)
 
     Args: 
@@ -325,8 +346,40 @@ def plot_parcellation(parcellation='MDTB_10', anatomical_structure='cerebellum',
         print('please provide a valid parcellation')
     
     if anatomical_structure=='cerebellum':
-        return nio.view_cerebellum(data=surf_labels)
+        try:
+            return nio.view_cerebellum(data=surf_labels)
+        except:
+            surf_mesh = os.path.join(flatmap._surf_dir,'FLAT.surf.gii')
+            return view_surf(surf_mesh=surf_mesh, symmetric_cmap=False, colorbar=False)  
+
     elif anatomical_structure=='cortex':
-        return nio.view_cortex(data=surf_labels, hemisphere=hemisphere)
+        try:
+            return nio.view_cortex(data=surf_labels, hemisphere=hemisphere)
+        except:
+            surf_mesh = os.path.join(dirs.fs_lr_dir, f'fs_LR.32k.{hemisphere}.inflated.surf.gii')
+            return view_surf(surf_mesh=surf_mesh, symmetric_cmap=False, black_bg=True, colorbar=False) 
     else:
         print("please provide a valid anatomical structure, either 'cerebellum' or 'cortex'")
+
+
+def plot_distance_matrix(roi='tessels0042', hemisphere='R'):
+    """Plot matrix of distances for cortical `roi` and `hemisphere`
+
+    Args: 
+        roi (str): default is 'tessels0042'
+        hemisphere (str): 'R' or 'L'
+    Returns: 
+        plots distance matrix
+    """
+
+    # get labels for `hemisphere`
+    labels = csparsity.get_labels_hemisphere(roi, hemisphere)
+
+    # get distances for `roi` and `hemisphere`
+    distances = cdata.get_distance_matrix(roi=roi)[0]
+    distances = distances[labels,][:, labels]
+
+    # visualize matrix of distances
+    plt.imshow(distances)
+    plt.colorbar()
+    plt.show()

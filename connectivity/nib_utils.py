@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 import nibabel as nib
 import numpy as np
+from pathlib import Path
 from nilearn.image import mean_img
 import SUITPy.flatmap as flatmap
 from nilearn.plotting import view_surf, plot_surf_roi
@@ -134,7 +135,7 @@ def make_func_gifti_cortex(data, anatomical_struct='CortexLeft', column_names=No
 
     return gifti
 
-def view_cerebellum(data, cmap='CMRmap', threshold=None, bg_map=None, cscale=None, symmetric_cmap=False):
+def view_cerebellum(data, cmap='CMRmap', threshold=None, bg_map=None, cscale=None, symmetric_cmap=False, title=None):
     """Visualize data on suit flatmap
 
     Args: 
@@ -150,6 +151,8 @@ def view_cerebellum(data, cmap='CMRmap', threshold=None, bg_map=None, cscale=Non
 
     # load surf data from file
     if isinstance(data, str):
+        fname = Path(data).name
+        title = fname.split('.')[0]
         data = load_surf_data(data)
 
     # Determine underlay and assign color
@@ -162,11 +165,11 @@ def view_cerebellum(data, cmap='CMRmap', threshold=None, bg_map=None, cscale=Non
     # nilearn seems to
     view = view_surf(surf_mesh, data, bg_map=bg_map, cmap=cmap,
                         threshold=threshold, vmin=cscale[0], vmax=cscale[1], 
-                        symmetric_cmap=symmetric_cmap)
+                        symmetric_cmap=symmetric_cmap, title=title)
     # view = flatmap.plot(data, surf=surf_mesh, cscale=cscale)
     return view
 
-def view_cortex(data, cmap='CMRmap', bg_map=None, cscale=None, hemisphere='R', atlas_type='inflated', symmetric_cmap=False):
+def view_cortex(data, cmap='CMRmap', bg_map=None, cscale=None, hemisphere='R', atlas_type='inflated', symmetric_cmap=False, title=None, subset=None):
     """Visualize data on inflated cortex
 
     Args: 
@@ -184,10 +187,14 @@ def view_cortex(data, cmap='CMRmap', bg_map=None, cscale=None, hemisphere='R', a
 
     # load surf data from file
     if isinstance(data, str):
-        # data = nib.load(data)
-        # data = data.darrays[0].data
+        fname = Path(data).name
+        title = fname.split('.')[0]
         data = load_surf_data(data)
 
+    # subset data
+    if subset:
+        data = data[data==subset]
+        
     # Determine scale
     if cscale is None:
         cscale = [np.nanmin(data), np.nanmax(data)]
@@ -198,6 +205,7 @@ def view_cortex(data, cmap='CMRmap', bg_map=None, cscale=None, hemisphere='R', a
                     vmin=cscale[0], 
                     vmax=cscale[1],
                     cmap=cmap,
-                    symmetric_cmap=symmetric_cmap
+                    symmetric_cmap=symmetric_cmap,
+                    title=title
                     )        
     return view
