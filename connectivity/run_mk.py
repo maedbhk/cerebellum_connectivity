@@ -239,11 +239,9 @@ def validate_metrics(model, X, Y, cv_fold):
     """
     # get cv rmse and R
     rmse_cv_all = np.sqrt(cross_val_score(model, X, Y, scoring="neg_mean_squared_error", cv=cv_fold) * -1)
-    rmse_cv = np.nanmean(rmse_cv_all)
     r_cv_all = cross_val_score(model, X, Y, scoring=ev.calculate_R_cv, cv=cv_fold)
-    R_cv = np.nanmean(r_cv_all)
 
-    return rmse_cv, R_cv
+    return np.nanmean(rmse_cv_all), np.nanmean(r_cv_all)
 
 
 def eval_models(config):
