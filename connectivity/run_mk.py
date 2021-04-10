@@ -58,7 +58,7 @@ def get_default_train_config():
         "X_data": "tesselsWB162",
         "Y_data": "cerebellum_grey",
         "validate_model": False,
-        "cv_fold": None,
+        "cv_fold": None, #TO IMPLEMENT: "sess", "run" (None is "tasks")
         "subjects": [
             "s01",
             "s03",
@@ -180,16 +180,20 @@ def train_models(config, save=False):
         # Fit model, get train and validate metrics
         models[-1].fit(X, Y)
         models[-1].rmse_train, models[-1].R_train = train_metrics(models[-1], X, Y)
-        models[-1].rmse_cv, models[-1].R_cv = validate_metrics(models[-1], X, Y, config["cv_fold"])
-        
-        # collect rmse for each subject and each model
+
+        # collect train metrics (rmse and R)
         data = {
             "subj_id": subj,
             "rmse_train": models[-1].rmse_train,
-            "R_train": models[-1].R_train,
-            "rmse_cv": models[-1].rmse_cv,
-            "R_cv": models[-1].R_cv,
-        }
+            "R_train": models[-1].R_train
+            }
+
+        # run cross validation and collect metrics (rmse and R)
+        if config['validate_model']:
+            models[-1].rmse_cv, models[-1].R_cv = validate_metrics(models[-1], X, Y, X_info, config["cv_fold"])
+            data.update({"rmse_cv": models[-1].rmse_cv,
+                        "R_cv": models[-1].R_cv
+                        })
 
         # Copy over all scalars or strings from config to eval dict:
         for key, value in config.items():
@@ -226,7 +230,7 @@ def train_metrics(model, X, Y):
     return rmse_train, R_train
 
 
-def validate_metrics(model, X, Y, cv_fold):
+def validate_metrics(model, X, Y, X_info, cv_fold):
     """computes CV training metrics (rmse and R) on X and Y
 
     Args:
@@ -239,6 +243,7 @@ def validate_metrics(model, X, Y, cv_fold):
     """
     # get cv rmse and R
     rmse_cv_all = np.sqrt(cross_val_score(model, X, Y, scoring="neg_mean_squared_error", cv=cv_fold) * -1)
+    # TO DO: implement train/validate splits for "sess", "run"
     r_cv_all = cross_val_score(model, X, Y, scoring=ev.calculate_R_cv, cv=cv_fold)
 
     return np.nanmean(rmse_cv_all), np.nanmean(r_cv_all)
