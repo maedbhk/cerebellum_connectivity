@@ -24,10 +24,10 @@ export PYTHONPATH
 cd /global/scratch/maedbhking/projects/cerebellum_connectivity/connectivity/scripts
 
 # run connectivity models
-python3 script_mk.py --cortex="tessels0042" --model_type="WTA" --train_or_eval="train"
-python3 script_mk.py --cortex="tessels0162" --model_type="WTA" --train_or_eval="train"
-python3 script_mk.py --cortex="tessels0362" --model_type="WTA" --train_or_eval="train"
-python3 script_mk.py --cortex="tessels0642" --model_type="WTA" --train_or_eval="train"
-python3 script_mk.py --cortex="tessels1002" --model_type="WTA" --train_or_eval="train"
-python3 script_mk.py --cortex="yeo7" --model_type="WTA" --train_or_eval="train"
-python3 script_mk.py --cortex="yeo17" --model_type="WTA" --train_or_eval="train"
+python3 script_mk.py --cortex="tessels0042" --model_type="NNLS" --train_or_eval="train"
+python3 script_mk.py --cortex="tessels0162" --model_type="NNLS" --train_or_eval="train"
+python3 script_mk.py --cortex="tessels0362" --model_type="NNLS" --train_or_eval="train"
+python3 script_mk.py --cortex="tessels0642" --model_type="NNLS" --train_or_eval="train"
+python3 script_mk.py --cortex="tessels1002" --model_type="NNLS" --train_or_eval="train"
+python3 script_mk.py --cortex="yeo7" --model_type="NNLS" --train_or_eval="train"
+python3 script_mk.py --cortex="yeo17" --model_type="NNLS" --train_or_eval="train"

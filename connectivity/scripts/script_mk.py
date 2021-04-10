@@ -17,7 +17,7 @@ import connectivity.io as cio
 import connectivity.nib_utils as nio
 from connectivity import data as cdata
 import connectivity.run_mk as run_connect
-from connectivity import visualize_summary as summary
+from connectivity import visualize as summary
 
 
 def delete_conn_files():
@@ -153,7 +153,7 @@ def train_ridge(
         config["train_exp"] = train_exp
         config["subjects"] = train_subjs
         config["validate_model"] = True
-        config["cv_fold"] = 4
+        config["cv_fold"] = 4 # other options: 'sess' or 'run' or None
         config["mode"] = "crossed"
         config["hyperparameter"] = f"{param:.0f}"
 
@@ -243,9 +243,9 @@ def train_WTA(
     # save out weight maps
     if config['save_weights']:
         save_weight_maps(model_name=name, cortex=cortex, train_exp=train_exp)
-
-    # save out label maps
-    save_wta_maps(model_name=name, cortex=cortex, train_exp=train_exp)
+         # this is temporary but if we want this to be permanent,
+         # we should make a separate key 'save_wta'
+        save_wta_maps(model_name=name, cortex=cortex, train_exp=train_exp) 
 
     # concat data to model_summary (if file already exists)
     if log_locally:
@@ -582,7 +582,7 @@ def run(cortex="tessels0362",
 
     Args: 
         cortex (str): 'tesselsWB162', 'tesselsWB642' etc.
-        model_type (str): 'WTA' or 'ridge'
+        model_type (str): 'WTA' or 'ridge' or 
         train_or_test (str): 'train' or 'eval'
     """
     print(f'doing model {train_or_eval}')

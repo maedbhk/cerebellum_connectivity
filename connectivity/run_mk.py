@@ -55,10 +55,10 @@ def get_default_train_config():
         "averaging": "sess",  # Averaging scheme for X and Y (see data.py)
         "weighting": True,  # "none" "full" "diag"
         # "incl_inst": True,
-        "X_data": "tesselsWB162",
-        "Y_data": "cerebellum_grey",
-        "validate_model": False,
-        "cv_fold": None,
+        "X_data": "tessels0162",
+        "Y_data": "cerebellum_suit",
+        "validate_model": True,
+        "cv_fold": None, #TO IMPLEMENT: "sess", "run" (None is "tasks")
         "subjects": [
             "s01",
             "s03",
@@ -180,16 +180,20 @@ def train_models(config, save=False):
         # Fit model, get train and validate metrics
         models[-1].fit(X, Y)
         models[-1].rmse_train, models[-1].R_train = train_metrics(models[-1], X, Y)
-        models[-1].rmse_cv, models[-1].R_cv = validate_metrics(models[-1], X, Y, config["cv_fold"])
-        
-        # collect rmse for each subject and each model
+
+        # collect train metrics (rmse and R)
         data = {
             "subj_id": subj,
             "rmse_train": models[-1].rmse_train,
-            "R_train": models[-1].R_train,
-            "rmse_cv": models[-1].rmse_cv,
-            "R_cv": models[-1].R_cv,
-        }
+            "R_train": models[-1].R_train
+            }
+
+        # run cross validation and collect metrics (rmse and R)
+        if config['validate_model']:
+            models[-1].rmse_cv, models[-1].R_cv = validate_metrics(models[-1], X, Y, X_info, config["cv_fold"])
+            data.update({"rmse_cv": models[-1].rmse_cv,
+                        "R_cv": models[-1].R_cv
+                        })
 
         # Copy over all scalars or strings from config to eval dict:
         for key, value in config.items():
@@ -226,7 +230,7 @@ def train_metrics(model, X, Y):
     return rmse_train, R_train
 
 
-def validate_metrics(model, X, Y, cv_fold):
+def validate_metrics(model, X, Y, X_info, cv_fold):
     """computes CV training metrics (rmse and R) on X and Y
 
     Args:
@@ -239,6 +243,8 @@ def validate_metrics(model, X, Y, cv_fold):
     """
     # get cv rmse and R
     rmse_cv_all = np.sqrt(cross_val_score(model, X, Y, scoring="neg_mean_squared_error", cv=cv_fold) * -1)
+   
+    # TO DO: implement train/validate splits for "sess", "run"
     r_cv_all = cross_val_score(model, X, Y, scoring=ev.calculate_R_cv, cv=cv_fold)
 
     return np.nanmean(rmse_cv_all), np.nanmean(r_cv_all)
@@ -350,50 +356,6 @@ def _get_eval(Y, Y_pred, Y_info, X_info):
     #     pass
 
     return data
-
-
-def _get_sparsity(config, fitted_model):
-    """Get sparsity metrics for fitted model
-
-    Args: 
-        config (dict): must contain 'X_data', 'threshold'
-        fitted_model (obj): must contain 'coef_'
-    Returns: 
-        data_all (dict): fields are different sparsity metrics
-    """
-
-    data_all = defaultdict(list)
-    # loop over hemispheres
-    for hem in ['L', 'R']:
-    
-        # get labels for `roi` and `hemisphere`
-        labels = csparsity.get_labels_hemisphere(roi=config['X_data'], hemisphere=hem)
-        
-        # get distances for `roi` and `hemisphere`
-        distances = cdata.get_distance_matrix(roi=config['X_data'])[0]
-        distances = distances[labels,][:, labels]
-
-        # get weights for hemisphere
-        weights = fitted_model.coef_[:, labels]
-        
-        # sort weights and return indices for top `threshold`
-        weight_indices = csparsity.threshold_weights(weights=weights, threshold=config['threshold'])
-
-        # calculate sum/var/std of distances for weights
-        sparsity_dict = csparsity.get_distance_weights(weight_indices, distances)
-
-        # calculate coefficients weighted by distance and add to dict
-        sparsity_dict.update(csparsity.weight_distances(weights=weights, distances=distances))
-
-        # append data for each hemisphere
-        for k, v in sparsity_dict.items():
-            data_all[k].append(v)
-    
-    # get average across hemispheres
-    for k, v in data_all.items():
-        data_all[k] = np.nanmean(np.stack(v, axis=1), axis=1)
-    
-    return data_all
 
 
 def _get_data(config, exp, subj):
