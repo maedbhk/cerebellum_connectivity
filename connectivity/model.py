@@ -76,13 +76,14 @@ class WTA(LinearRegression, ModelMixin):
         Xs = X / self.scale_
         Xs = np.nan_to_num(Xs) # there are 0 values after scaling
         super().fit(Xs, Y)
-        wta_labels = np.argmax(self.coef_, axis=1)
+        self.labels = np.argmax(self.coef_, axis=1)
         wta_coef_ = np.amax(self.coef_, axis=1)
         self.coef_ = np.zeros((self.coef_.shape))
         num_vox = self.coef_.shape[0]
-        for v in range(num_vox):
-            self.coef_[v, wta_labels[v]] = wta_coef_[v]
-        return self.coef_
+        # for v in range(num_vox):
+        #     self.coef_[v, self.labels[v]] = wta_coef_[v]
+        self.coef_[np.arange(num_vox), self.labels] = wta_coef_
+        return self.coef_, self.labels
 
     def predict(self, X):
         Xs = X / self.scale_

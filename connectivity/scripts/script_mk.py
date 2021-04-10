@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import nibabel as nib
 import glob
+from scipy.stats import mode
 from random import seed, sample
 from collections import defaultdict
 import neptune
@@ -16,7 +17,7 @@ import connectivity.io as cio
 import connectivity.nib_utils as nio
 from connectivity import data as cdata
 import connectivity.run_mk as run_connect
-from connectivity import visualize_summary as summary
+from connectivity import visualize as summary
 
 
 def delete_conn_files():
@@ -108,7 +109,7 @@ def log_to_neptune(
 def train_ridge(
     hyperparameter,
     train_exp="sc1",
-    cortex="tesselsWB642",
+    cortex="tessels0642",
     cerebellum="cerebellum_suit",
     log_online=False,
     log_locally=True,
@@ -152,7 +153,7 @@ def train_ridge(
         config["train_exp"] = train_exp
         config["subjects"] = train_subjs
         config["validate_model"] = True
-        config["cv_fold"] = 4
+        config["cv_fold"] = 4 # other options: 'sess' or 'run' or None
         config["mode"] = "crossed"
         config["hyperparameter"] = f"{param:.0f}"
 
@@ -182,7 +183,7 @@ def train_ridge(
 
 def train_WTA(
     train_exp="sc1",
-    cortex="tesselsWB642",
+    cortex="tessels0642",
     cerebellum="cerebellum_suit",
     log_online=False,
     log_locally=True,
@@ -242,6 +243,9 @@ def train_WTA(
     # save out weight maps
     if config['save_weights']:
         save_weight_maps(model_name=name, cortex=cortex, train_exp=train_exp)
+         # this is temporary but if we want this to be permanent,
+         # we should make a separate key 'save_wta'
+        save_wta_maps(model_name=name, cortex=cortex, train_exp=train_exp) 
 
     # concat data to model_summary (if file already exists)
     if log_locally:
@@ -255,7 +259,7 @@ def train_NNLS(
     alphas,
     gammas,
     train_exp="sc1",
-    cortex="tesselsWB642",
+    cortex="tessels0642",
     cerebellum="cerebellum_suit",
     log_online=False,
     log_locally=True,
@@ -372,13 +376,54 @@ def save_weight_maps(
     print('saving cortical and cerebellar weights to disk')
 
 
+def save_wta_maps(
+        model_name, 
+        cortex, 
+        train_exp
+        ):
+    """Save weight maps to disk for cortex and cerebellum
+
+    Args: 
+        model_name (str): model_name (folder in conn_train_dir)
+        cortex (str): cortex model name (example: tesselsWB162)
+        train_exp (str): 'sc1' or 'sc2'
+    Returns: 
+        saves nifti/gifti to disk
+    """
+    # set directory
+    dirs = const.Dirs(exp_name=train_exp)
+
+    # get model path
+    fpath = os.path.join(dirs.conn_train_dir, model_name)
+
+    # get trained subject models
+    model_fnames = glob.glob(os.path.join(fpath, '*.h5'))
+
+    labels_all = []
+    for model_fname in model_fnames:
+
+        # read model data
+        data = cio.read_hdf5(model_fname)
+        
+        # append labels
+        labels_all.append(data.labels)
+
+    # save maps to disk for cerebellum and cortex
+    save_maps_cerebellum(data=np.stack(labels_all, axis=0), 
+                        fpath=os.path.join(fpath, 'group_wta_cerebellum'),
+                        group='mode',
+                        nifti=True)
+
+
 def save_maps_cerebellum(
     data, 
     fpath='/',
-    group_average=True, 
+    group='nanmean', 
     gifti=True, 
     nifti=False, 
-    column_names=None
+    column_names=[], 
+    label_RGBA=[],
+    label_names=[],
     ):
     """Takes data (np array), averages along first dimension
     saves nifti and gifti map to disk
@@ -386,46 +431,45 @@ def save_maps_cerebellum(
     Args: 
         data (np array): np array of shape (N x 6937)
         fpath (str): save path for output file
-        group_average (bool): default is True, averages data np arrays 
+        group (bool): default is 'nanmean' (for func data), other option is 'mode' (for label data) 
         gifti (bool): default is True, saves gifti to fpath
         nifti (bool): default is False, saves nifti to fpath
-        column_names (bool or list):
+        column_names (list):
+        label_RGBA (list):
+        label_names (list):
     Returns: 
         saves nifti and/or gifti image to disk, returns gifti
     """
     num_cols, num_vox = data.shape
 
-    # average data
-    if group_average:
+    # get mean or mode of data along first dim (first dim is usually subjects)
+    if group=='nanmean':
         data = np.nanmean(data, axis=0)
-
-    # get col names
-    if column_names is None:
-        column_names = []
-        for i in range(num_cols):
-            column_names.append("col_{:02d}".format(i+1))
-    
-    # get filenames
-    fnames = []
-    for col in column_names:
-        fnames.append(fpath + '_' + col)
+    elif group=='mode':
+        data = mode(data, axis=0)
+        data = data.mode[0]
+    else:
+        print('need to group data by passing "nanmean" or "mode"')
 
     # convert averaged cerebellum data array to nifti
-    nib_objs = cdata.convert_cerebellum_to_nifti(data=data)
+    nib_obj = cdata.convert_cerebellum_to_nifti(data=data)[0]
     
     # save nifti(s) to disk
     if nifti:
-        fnames = [name + '.nii' for name in fnames]
-        for (nib_obj, fname) in zip(nib_objs, fnames):
-            nib.save(nib_obj, fname) # this is temporary (to test bug in map)
+        nib.save(nib_obj, fpath + '.nii')
 
     # map volume to surface
-    surf_data = flatmap.vol_to_surf(nib_objs, space="SUIT")
+    surf_data = flatmap.vol_to_surf([nib_obj], space="SUIT", stats=group)
 
-    # # make and save gifti image
-    gii_img = flatmap.make_func_gifti(data=surf_data, column_names=column_names)
+    # make and save gifti image
+    if group=='nanmean':
+        gii_img = flatmap.make_func_gifti(data=surf_data, column_names=column_names)
+        out_name = 'func'
+    elif group=='mode':
+        gii_img = flatmap.make_label_gifti(data=surf_data, label_names=label_names, column_names=column_names, label_RGBA=label_RGBA)
+        out_name = 'label'
     if gifti:
-        nib.save(gii_img, fpath + '.func.gii')
+        nib.save(gii_img, fpath + f'.{out_name}.gii')
     
     return gii_img
 
@@ -538,11 +582,10 @@ def run(cortex="tessels0362",
 
     Args: 
         cortex (str): 'tesselsWB162', 'tesselsWB642' etc.
-        model_type (str): 'WTA' or 'ridge'
+        model_type (str): 'WTA' or 'ridge' or 
         train_or_test (str): 'train' or 'eval'
     """
     print(f'doing model {train_or_eval}')
-    # run training routine
     if train_or_eval=="train":
         for exp in range(2):
             if model_type=="ridge":
@@ -555,9 +598,7 @@ def run(cortex="tessels0362",
             else:
                 print('please enter a model (ridge, WTA, NNLS)')
 
-    # run eval routine
-    if train_or_eval=="eval":
-        # eval models
+    elif train_or_eval=="eval":
         for exp in range(2):
 
             # get best train model (based on train CV)

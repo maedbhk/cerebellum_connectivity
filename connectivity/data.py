@@ -41,7 +41,7 @@ class Dataset:
         data: None
     """
 
-    def __init__(self, experiment="sc1", glm="glm7", roi="cerebellum_suit", subj_id="s03"):
+    def __init__(self, experiment="sc1", glm="glm7", roi="cerebellum_suit", subj_id="s02"):
         """Inits Dataset."""
         self.exp = experiment
         self.glm = glm
@@ -62,7 +62,7 @@ class Dataset:
         # this is the row info
         self.XX = np.array(file["XX"])
         self.TN = cio._convertobj(file, "TN")
-        # self.CN = cio._convertobj(file, "CN")
+        self.CN = cio._convertobj(file, "CN")
         self.cond = np.array(file["cond"]).reshape(-1).astype(int)
         self.inst = np.array(file["inst"]).reshape(-1).astype(int)
         self.task = np.array(file["task"]).reshape(-1).astype(int)

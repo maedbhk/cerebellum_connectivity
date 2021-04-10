@@ -13,6 +13,7 @@ from sklearn.metrics import mean_squared_error
 import connectivity.io as cio
 from connectivity import data as cdata
 import connectivity.constants as const
+import connectivity.sparsity as csparsity
 import connectivity.model as model
 import connectivity.evaluation as ev
 import connectivity.nib_utils as nio
@@ -54,10 +55,10 @@ def get_default_train_config():
         "averaging": "sess",  # Averaging scheme for X and Y (see data.py)
         "weighting": True,  # "none" "full" "diag"
         # "incl_inst": True,
-        "X_data": "tesselsWB162",
-        "Y_data": "cerebellum_grey",
-        "validate_model": False,
-        "cv_fold": None,
+        "X_data": "tessels0162",
+        "Y_data": "cerebellum_suit",
+        "validate_model": True,
+        "cv_fold": None, #TO IMPLEMENT: "sess", "run" (None is "tasks")
         "subjects": [
             "s01",
             "s03",
@@ -97,7 +98,7 @@ def get_default_eval_config():
         A dict mapping keys to evaluation parameters.
     """
     config = {
-        "name": "L2_WB162_A1",
+        "name": "L2_tessels1002_A1",
         "sessions": [1, 2],
         "glm": "glm7",
         "train_exp": "sc1",
@@ -105,7 +106,7 @@ def get_default_eval_config():
         "averaging": "sess",
         "weighting": True,  # 0: none, 1: by regr., 2: by full matrix???
         "incl_inst": True,
-        "X_data": "tesselsWB162",
+        "X_data": "tessels1002",
         "Y_data": "cerebellum_grey",
         "subjects": [
             "s01",
@@ -136,6 +137,7 @@ def get_default_eval_config():
         "mode": "crossed",
         "splitby": None,
         "save_maps": False,
+        "threshold": 0.1
     }
     return config
 
@@ -178,16 +180,20 @@ def train_models(config, save=False):
         # Fit model, get train and validate metrics
         models[-1].fit(X, Y)
         models[-1].rmse_train, models[-1].R_train = train_metrics(models[-1], X, Y)
-        models[-1].rmse_cv, models[-1].R_cv = validate_metrics(models[-1], X, Y, config["cv_fold"])
-        
-        # collect rmse for each subject and each model
+
+        # collect train metrics (rmse and R)
         data = {
             "subj_id": subj,
             "rmse_train": models[-1].rmse_train,
-            "R_train": models[-1].R_train,
-            "rmse_cv": models[-1].rmse_cv,
-            "R_cv": models[-1].R_cv,
-        }
+            "R_train": models[-1].R_train
+            }
+
+        # run cross validation and collect metrics (rmse and R)
+        if config['validate_model']:
+            models[-1].rmse_cv, models[-1].R_cv = validate_metrics(models[-1], X, Y, X_info, config["cv_fold"])
+            data.update({"rmse_cv": models[-1].rmse_cv,
+                        "R_cv": models[-1].R_cv
+                        })
 
         # Copy over all scalars or strings from config to eval dict:
         for key, value in config.items():
@@ -224,7 +230,7 @@ def train_metrics(model, X, Y):
     return rmse_train, R_train
 
 
-def validate_metrics(model, X, Y, cv_fold):
+def validate_metrics(model, X, Y, X_info, cv_fold):
     """computes CV training metrics (rmse and R) on X and Y
 
     Args:
@@ -237,11 +243,11 @@ def validate_metrics(model, X, Y, cv_fold):
     """
     # get cv rmse and R
     rmse_cv_all = np.sqrt(cross_val_score(model, X, Y, scoring="neg_mean_squared_error", cv=cv_fold) * -1)
-    rmse_cv = np.nanmean(rmse_cv_all)
+   
+    # TO DO: implement train/validate splits for "sess", "run"
     r_cv_all = cross_val_score(model, X, Y, scoring=ev.calculate_R_cv, cv=cv_fold)
-    R_cv = np.nanmean(r_cv_all)
 
-    return rmse_cv, R_cv
+    return np.nanmean(rmse_cv_all), np.nanmean(r_cv_all)
 
 
 def eval_models(config):
@@ -284,6 +290,10 @@ def eval_models(config):
         # add evaluation (summary)
         evals = _get_eval(Y=Y, Y_pred=Y_pred, Y_info=Y_info, X_info=X_info)
         data.update(evals)
+
+        # add sparsity metric (voxels)
+        sparsity_results = _get_sparsity(config, fitted_model)
+        data.update(sparsity_results)
 
         # add evaluation (voxels)
         if config["save_maps"]:
