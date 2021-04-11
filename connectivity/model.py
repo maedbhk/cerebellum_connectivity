@@ -91,6 +91,55 @@ class WTA(LinearRegression, ModelMixin):
         return Xs @ self.coef_.T  # weights need to be transposed (throws error otherwise)
 
 
+class NTakeAll(LinearRegression, ModelMixin):
+    """
+    WTA model
+    It performs scaling by stdev, but not by mean before fitting and prediction
+    """
+
+    def __init__(self, positive=False, n=1):
+        """
+        Simply calls the superordinate construction - but does not fit intercept, as this is tightly controlled in Dataset.get_data()
+        """
+        super().__init__(positive=positive, fit_intercept=False)
+        self.n = n
+
+    def fit(self, X, Y):
+        self.scale_ = np.sqrt(np.sum(X ** 2, 0) / X.shape[0])
+        Xs = X / self.scale_
+        Xs = np.nan_to_num(Xs) # there are 0 values after scaling
+        super().fit(Xs, Y)
+
+        if self.positive:
+            # no need to do anything
+            # takes top N positive values
+            pass  
+        else:
+            # takes top N absolute values
+            self.coef_ = abs(self.coef_)
+
+        coef = self.coef_ # temp
+        
+        # sort labels and take top N
+        self.labels = (-self.coef_).argsort(axis=1)
+        self.labels = self.labels[:, :self.n]
+
+        # get corresponding coef of N labels
+        values = np.take_along_axis(self.coef_, self.labels, axis=1)
+
+        # assign corresponding coef of N labels
+        # to zero-initialized np array
+        self.coef_ = np.zeros(self.coef_.shape)
+        np.put_along_axis(self.coef_, self.labels, values, axis=1)
+
+        return self.coef_, self.labels
+
+    def predict(self, X):
+        Xs = X / self.scale_
+        Xs = np.nan_to_num(Xs) # there are 0 values after scaling
+        return Xs @ self.coef_.T  # weights need to be transposed (throws error otherwise)
+
+
 class NNLS(BaseEstimator, ModelMixin):
     """
     Fast implementation of a multivariate Non-negative least squares (NNLS) regression

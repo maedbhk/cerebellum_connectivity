@@ -17,7 +17,7 @@ import connectivity.io as cio
 import connectivity.nib_utils as nio
 from connectivity import data as cdata
 import connectivity.run_mk as run_connect
-from connectivity import visualize_summary as summary
+from connectivity import visualize as summary
 
 
 def delete_conn_files():
@@ -117,8 +117,6 @@ def train_ridge(
     ):
     """Train model
 
-    Optimal alpha value is returned based on R_cv.
-
     Args:
         hyperparameter (list): list of alpha values.
         train_exp (str): 'sc1' or 'sc2'
@@ -191,8 +189,6 @@ def train_WTA(
     ):
     """Train model
 
-    Optimal alpha value is returned based on R_cv.
-
     Args:
         train_exp (str): 'sc1' or 'sc2'
         cortex (str): cortical ROI
@@ -215,7 +211,7 @@ def train_WTA(
     if model_ext is not None:
         name = f"{name}_{model_ext}"
     config["name"] = name
-    config["param"] = {"positive": True}
+    config["param"] = {"positive": False}
     config["model"] = 'WTA'
     config["X_data"] = cortex
     config["Y_data"] = cerebellum
@@ -246,6 +242,79 @@ def train_WTA(
 
     # save out label maps
     save_wta_maps(model_name=name, cortex=cortex, train_exp=train_exp)
+
+    # concat data to model_summary (if file already exists)
+    if log_locally:
+        if os.path.isfile(fpath):
+            df_all = pd.concat([df_all, pd.read_csv(fpath)])
+        # save out train summary
+        df_all.to_csv(fpath, index=False)
+
+
+def train_NTakeAll(
+    hyperparameter,
+    train_exp="sc1",
+    cortex="tessels0642",
+    cerebellum="cerebellum_suit",
+    log_online=False,
+    log_locally=True,
+    model_ext=None,
+    ):
+    """Train model
+
+    Args:
+        hyperparameters (list): list of hyperparameters (n take all)
+        train_exp (str): 'sc1' or 'sc2'
+        cortex (str): cortical ROI
+        cerebellum (str): cerebellar ROI
+        log_online (bool): log results to ML tracking platform
+        log_locally (bool): log results locally
+        model_ext (str or None): add additional information to base model name
+    Returns:
+        Appends summary data for each model and subject into `train_summary.csv`
+        Returns pandas dataframe of train_summary
+    """
+    train_subjs, _ = split_subjects(const.return_subjs, test_size=0.3)
+
+    # get default train parameters
+    config = run_connect.get_default_train_config()
+
+    df_all = pd.DataFrame()
+    for param in hyperparameter:
+        print(f"training param {param:.0f}")
+        # train and validate ridge models
+        name = f"NTakeAll_{cortex}"
+        if model_ext is not None:
+            name = f"{name}_{model_ext}"
+        config["name"] = name
+        config["param"] = {"positive": False, "n": param}
+        config["model"] = 'NTakeAll'
+        config["X_data"] = cortex
+        config["Y_data"] = cerebellum
+        config["weighting"] = True
+        config["averaging"] = "sess"
+        config["train_exp"] = train_exp
+        config["subjects"] = train_subjs
+        config["validate_model"] = True
+        config["cv_fold"] = 4
+        config["mode"] = "crossed"
+        config["hyperparameter"] = param
+
+        # train model
+        models, df = run_connect.train_models(config, save=log_locally)
+        df_all = pd.concat([df_all, df])
+
+        # write online to neptune
+        if log_online:
+            log_to_neptune(dataframe=df, config=config, modeltype="train")
+
+    # save out train summary
+    dirs = const.Dirs(exp_name=train_exp)
+    fpath = os.path.join(dirs.conn_train_dir, "train_summary.csv")
+
+    # save out weight maps
+    if config['save_weights']:
+        save_weight_maps(model_name=name, cortex=cortex, train_exp=train_exp)
 
     # concat data to model_summary (if file already exists)
     if log_locally:
@@ -581,8 +650,8 @@ def run(cortex="tessels0362",
     """ Run connectivity routine (train and evaluate)
 
     Args: 
-        cortex (str): 'tesselsWB162', 'tesselsWB642' etc.
-        model_type (str): 'WTA' or 'ridge'
+        cortex (str): 'tessels0162', 'tessels0642' etc.
+        model_type (str): 'ridge' or 'WTA' or 'NTakeAll' or 'NNLS'
         train_or_test (str): 'train' or 'eval'
     """
     print(f'doing model {train_or_eval}')
@@ -595,6 +664,8 @@ def run(cortex="tessels0362",
                 train_WTA(train_exp=f"sc{exp+1}", cortex=cortex)
             elif model_type=="NNLS":
                 train_NNLS(alphas=[0], gammas=[0], train_exp=f"sc{exp+1}", cortex=cortex)
+            elif model_type=="NTakeAll":
+                train_NTakeAll(hyperparameter=[1,2,3,4,5], train_exp=f"sc{exp+1}", cortex=cortex)
             else:
                 print('please enter a model (ridge, WTA, NNLS)')
 
