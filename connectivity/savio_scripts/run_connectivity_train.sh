@@ -12,7 +12,7 @@
 #SBATCH --qos=savio_normal
 #
 # Wall clock limit:
-#SBATCH --time=40:00:00
+#SBATCH --time=50:00:00
 #
 ## Command(s) to run:
 module load python/3.7
