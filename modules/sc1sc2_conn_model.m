@@ -158,7 +158,7 @@ switch what
         end % sn (subject)
     case 'ROI:define_cortical_all' 
         for i=1:length(corticalParcels)
-            sc1sc2_conn_model('ROI:define_cortical','parcelName',corticalParcels{i});
+            % 44,'parcelName',corticalParcels{i});
         end
     case 'ROI:beta_unn'
         % Calculate BetaUW for regions
@@ -170,8 +170,8 @@ switch what
         experiment_num = 1;
         parcelType     = 'tessels0162';  %% other options are 'cerebellum_suit', 'yeo_7WB', and 'yeo_17WB'
         glm            = 7;
-        ignore_nan     = 1; % Set Nans to zero for sampling? 
-        interp         = 1; % Interpolation for sampling 
+        ignore_nan     = 0; % Set Nans to zero for sampling? 
+        interp         = 0; % Interpolation for sampling 
         
         vararginoptions(varargin, {'sn', 'experiment_num', 'glm', 'parcelType', 'ignore_nan','interp'});
         
@@ -207,8 +207,7 @@ switch what
             V(end+1)=SPM.VResMS;
             cd(glmDir);
             tic;
-%             Y = region_getdata(V,R,'interp',interp,'ignore_nan',ignore_nan);  % Data is N x P
-            Y = region_getdata(V,R,'interp',interp);  % Data is N x P
+            Y = region_getdata(V,R,'interp',interp,'ignore_nan',ignore_nan);  % Data is N x P
             B=[];
             for r = 1:numel(R) % R is the output 'regions' structure from 'ROI_define'
                 % Get betas (univariately prewhitened)
@@ -310,18 +309,18 @@ switch what
         
         vararginoptions(varargin, {'sn', 'glm', 'experiment_num'});
         
-        sc1sc2_conn_model('ROI:beta_unn', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0042');
-        sc1sc2_conn_model('ROI:beta_unn', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0162');
-        sc1sc2_conn_model('ROI:beta_unn', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0362');
-        sc1sc2_conn_model('ROI:beta_unn', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0642');
+        % sc1sc2_conn_model('ROI:beta_unn', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0042');
+        %sc1sc2_conn_model('ROI:beta_unn', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0162');
+        %sc1sc2_conn_model('ROI:beta_unn', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0362');
+        %sc1sc2_conn_model('ROI:beta_unn', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0642');
         sc1sc2_conn_model('ROI:beta_unn', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels1002');
         sc1sc2_conn_model('ROI:beta_unn', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'yeo7');
         sc1sc2_conn_model('ROI:beta_unn', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'yeo17');
         % add betas
-        sc1sc2_conn_model('ROI:add_to_beta', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0042');
-        sc1sc2_conn_model('ROI:add_to_beta', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0162');
-        sc1sc2_conn_model('ROI:add_to_beta', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0362');
-        sc1sc2_conn_model('ROI:add_to_beta', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0642');
+        % sc1sc2_conn_model('ROI:add_to_beta', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0042');
+        % sc1sc2_conn_model('ROI:add_to_beta', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0162');
+        % sc1sc2_conn_model('ROI:add_to_beta', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0362');
+        % sc1sc2_conn_model('ROI:add_to_beta', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0642');
         sc1sc2_conn_model('ROI:add_to_beta', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels1002');
         sc1sc2_conn_model('ROI:add_to_beta', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'yeo7');
         sc1sc2_conn_model('ROI:add_to_beta', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'yeo17');
