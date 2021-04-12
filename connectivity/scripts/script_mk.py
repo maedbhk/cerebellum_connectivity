@@ -283,7 +283,7 @@ def train_NTakeAll(
     for param in hyperparameter:
         print(f"training param {param:.0f}")
         # train and validate ridge models
-        name = f"NTakeAll_{cortex}"
+        name = f"NTakeAll_{cortex}_{param:.0f}"
         if model_ext is not None:
             name = f"{name}_{model_ext}"
         config["name"] = name
