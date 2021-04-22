@@ -287,7 +287,7 @@ def train_NTakeAll(
         if model_ext is not None:
             name = f"{name}_{model_ext}"
         config["name"] = name
-        config["param"] = {"positive": False, "n": param}
+        config["param"] = {"positive": True, "n": param}
         config["model"] = 'NTakeAll'
         config["X_data"] = cortex
         config["Y_data"] = cerebellum
@@ -665,7 +665,7 @@ def run(cortex="tessels0362",
             elif model_type=="NNLS":
                 train_NNLS(alphas=[0], gammas=[0], train_exp=f"sc{exp+1}", cortex=cortex)
             elif model_type=="NTakeAll":
-                train_NTakeAll(hyperparameter=[1,2,3,4,5], train_exp=f"sc{exp+1}", cortex=cortex)
+                train_NTakeAll(hyperparameter=[1,2,3,4,5], train_exp=f"sc{exp+1}", cortex=cortex, model_ext='positive')
             else:
                 print('please enter a model (ridge, WTA, NNLS)')
 
