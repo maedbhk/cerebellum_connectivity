@@ -237,7 +237,8 @@ def plot_winner_map(roi='tessels0042', exp='sc1', cscale=None, symmetric_cmap=Fa
 
 
 def get_best_model(train_exp):
-    """Get idx for best ridge based on either rmse_train or rmse_cv.
+    """Get idx for best ridge based on R_cv
+    If crossvalidation wasn't done, then R_train is used
 
     Args:
         exp (str): 'sc1' or 'sc2
@@ -253,7 +254,10 @@ def get_best_model(train_exp):
     tmp = df.groupby("name").mean().reset_index()
 
     # get best model (based on R CV)
-    best_model = tmp[tmp["R_cv"] == tmp["R_cv"].max()]["name"].values[0]
+    try:
+        best_model = tmp[tmp["R_cv"] == tmp["R_cv"].max()]["name"].values[0]
+    except:
+        best_model = tmp[tmp["R_train"] == tmp["R_train"].max()]["name"].values[0]
 
     print(f"best model for {train_exp} is {best_model}")
 
