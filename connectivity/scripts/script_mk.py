@@ -663,7 +663,7 @@ def run(cortex="tessels0362",
             elif model_type=="WTA":
                 train_WTA(train_exp=f"sc{exp+1}", cortex=cortex)
             elif model_type=="NNLS":
-                train_NNLS(alphas=[0], gammas=[0], train_exp=f"sc{exp+1}", cortex=cortex)
+                train_NNLS(alphas=[0], gammas=[0], train_exp=f"sc{exp+1}", cortex=cortex, model_ext='no_cv')
             elif model_type=="NTakeAll":
                 train_NTakeAll(hyperparameter=[1,2,3,4,5], train_exp=f"sc{exp+1}", cortex=cortex, model_ext='positive')
             else:
