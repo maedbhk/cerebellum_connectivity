@@ -97,13 +97,14 @@ class NTakeAll(LinearRegression, ModelMixin):
     It performs scaling by stdev, but not by mean before fitting and prediction
     """
 
-    def __init__(self, positive=False, n=1):
+    def __init__(self, hem_labels, positive=False, n=1):
         """
         Simply calls the superordinate construction - but does not fit intercept, as this is tightly controlled in Dataset.get_data()
         """
         super().__init__(positive=positive, fit_intercept=False)
         self.n = n
-
+        self.hem_labels = hem_labels
+    
     def fit(self, X, Y):
         self.scale_ = np.sqrt(np.sum(X ** 2, 0) / X.shape[0])
         Xs = X / self.scale_
@@ -119,6 +120,8 @@ class NTakeAll(LinearRegression, ModelMixin):
             self.coef_ = abs(self.coef_)
 
         coef = self.coef_ # temp
+
+        keyboard
         
         # sort labels and take top N
         self.labels = (-self.coef_).argsort(axis=1)

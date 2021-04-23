@@ -17,6 +17,7 @@ import connectivity.io as cio
 import connectivity.nib_utils as nio
 from connectivity import data as cdata
 import connectivity.run_mk as run_connect
+from connectivity import sparsity as csparse
 from connectivity import visualize as summary
 
 
@@ -279,6 +280,11 @@ def train_NTakeAll(
     # get default train parameters
     config = run_connect.get_default_train_config()
 
+    # get right and left hem labels for modeling
+    hem_labels = []
+    for hem in ['R', 'L']:
+        hem_labels.append(csparse.get_labels_hemisphere(roi=cortex, hemisphere=hem))
+
     df_all = pd.DataFrame()
     for param in hyperparameter:
         print(f"training param {param:.0f}")
@@ -287,7 +293,7 @@ def train_NTakeAll(
         if model_ext is not None:
             name = f"{name}_{model_ext}"
         config["name"] = name
-        config["param"] = {"positive": True, "n": param}
+        config["param"] = {"positive": True, "n": param, "hem_labels": hem_labels}
         config["model"] = 'NTakeAll'
         config["X_data"] = cortex
         config["Y_data"] = cerebellum
@@ -637,10 +643,10 @@ def eval_model(
         df.to_csv(eval_fpath, index=False)
 
 
-@click.command()
-@click.option("--cortex")
-@click.option("--model_type")
-@click.option("--train_or_eval")
+# @click.command()
+# @click.option("--cortex")
+# @click.option("--model_type")
+# @click.option("--train_or_eval")
 
 
 def run(cortex="tessels0362", 
@@ -665,7 +671,7 @@ def run(cortex="tessels0362",
             elif model_type=="NNLS":
                 train_NNLS(alphas=[0], gammas=[0], train_exp=f"sc{exp+1}", cortex=cortex, model_ext='no_cv')
             elif model_type=="NTakeAll":
-                train_NTakeAll(hyperparameter=[1,2,3,4,5], train_exp=f"sc{exp+1}", cortex=cortex, model_ext='positive')
+                train_NTakeAll(hyperparameter=[2,3,4,5], train_exp=f"sc{exp+1}", cortex=cortex, model_ext='positive') # 1
             else:
                 print('please enter a model (ridge, WTA, NNLS)')
 
@@ -691,5 +697,5 @@ def run(cortex="tessels0362",
             eval_model(model_name=best_model, cortex=cortex, train_exp=f"sc{2-exp}", eval_exp=f"sc{exp+1}")
 
 
-if __name__ == "__main__":
-    run()
+# if __name__ == "__main__":
+#     run()

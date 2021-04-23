@@ -357,7 +357,7 @@ def _get_eval(Y, Y_pred, Y_info, X_info):
     return data
 
 
-def _get_sparsity(config, fitted_model):
+def _get_sparsity_OLD(config, fitted_model):
     """Get sparsity metrics for fitted model
 
     Args: 
