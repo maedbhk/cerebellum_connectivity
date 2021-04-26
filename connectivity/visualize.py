@@ -9,6 +9,7 @@ from collections import defaultdict
 import matplotlib.pyplot as plt
 import SUITPy.flatmap as flatmap
 from nilearn.plotting import view_surf
+from nilearn.surface import load_surf_data
 import nibabel as nib
 
 import connectivity.data as cdata
@@ -257,6 +258,8 @@ def plot_winner_map(roi='tessels0042', exp='sc1', cscale=None, symmetric_cmap=Fa
 
     surf_fname = os.path.join(dirs.conn_train_dir, f'WTA_{roi}', "group_wta_cerebellum.label.gii")
     view = nio.view_cerebellum(data=surf_fname, cscale=cscale, symmetric_cmap=symmetric_cmap)
+    surf_data = load_surf_data(surf_fname)
+    # view = flatmap.plot(surf_data, overlay_type='label')
 
     return view
 

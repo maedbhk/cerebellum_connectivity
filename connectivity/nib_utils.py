@@ -159,7 +159,10 @@ def view_cerebellum(data, cmap='CMRmap', threshold=None, bg_map=None, cscale=Non
     # underlay = nib.load(underlay)
 
     # convert 0 to nan (for plotting)
-    data[data==0] = np.nan
+    try:
+        data[data==0] = np.nan
+    except:
+        pass
 
     # Determine scale
     if cscale is None:
