@@ -190,6 +190,28 @@ def plot_eval_map(gifti_func="group_R_vox", exp="sc1", model=None, cscale=None, 
     return view
 
 
+def plot_ntakeall_map(roi='tessels0042', n=2, model_ext='positive', hem='L', exp='sc1', cscale=None, symmetric_cmap=False):
+    """Plot NTakeAll map for `roi` and `exp`
+    
+    Args: 
+        roi (str): 'tessels0042', 'tessels1002' etc.
+        n (int): 2,3,4 etc.
+        exp (str): 'sc1' or 'sc2'
+        model_ext (str): 'positive' or 'absolute'
+        hem (str): 'L', 'R', 'L_R'
+        cscale (bool): default is None
+        symmetric_cmap (bool): default is False
+    Returns: 
+        Returns view object for visualizing winner map
+    """
+    dirs = const.Dirs(exp_name=exp)
+
+    surf_fname = os.path.join(dirs.conn_train_dir, f'NTakeAll_{roi}_{n}_{model_ext}', f'group_ntakeall_cerebellum_{hem}.func.gii')
+    view = nio.view_cerebellum(data=surf_fname, cscale=cscale, symmetric_cmap=symmetric_cmap)
+
+    return view
+
+
 def plot_train_map(gifti_func='group_weights_cerebellum', exp='sc1', model=None, cscale=None, hemisphere='R', symmetric_cmap=False):
     # initialise directories
     dirs = const.Dirs(exp_name=exp)

@@ -2,6 +2,7 @@ import os
 import numpy as np
 from collections import defaultdict
 from nilearn.surface import load_surf_data
+from scipy.stats.mstats import gmean
 
 from connectivity import data as cdata
 from connectivity import constants as const
@@ -92,3 +93,41 @@ def get_distance_weights(weight_indices, distances):
     dist_sum_var_all[dist_sum_var_all==0]=np.nan
 
     return {'sum_var_distances_vox':  dist_sum_var_all}
+
+def geometric_distances(distances, labels):
+    """Compute geometric mean of NTakeAll cortical distances
+
+    Args: 
+        distances (np array): distances between cortical regions; shape (num_reg x num_reg)
+        labels (dict): dict containing keys 'L' and 'R' (shape; voxels x NTakeAll labels)
+    Returns: 
+        geo_dist (dict): dict with keys: left hemi, right hemi, avg hemi
+        values are each an np array of shape (voxels x 1)
+    """
+    # loop over hemispheres
+    data = {}
+    for key,value in labels.items():
+
+        vox, ntakeall = value.shape
+
+        # loop over voxels
+        gmean_vox = np.zeros(vox)
+        for v in np.arange(vox):
+
+            labels_vox = value[v,:]
+
+            # loop over ntakeall and compute distances
+            dist_all = []
+            for n in np.arange(ntakeall-1):
+                dist_all.append(distances[labels_vox[n], labels_vox[n+1]])
+            
+            # get geometric mean of distances
+            gmean_vox[v] = gmean(dist_all)
+
+        # add to dict
+        data.update({key: gmean_vox})
+    
+    # get average across hemispheres
+    data['L_R'] = np.nanmean([data['L'], data['R']], axis=0)
+
+    return data

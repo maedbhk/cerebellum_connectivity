@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import quadprog as qp
+import copy
 from scipy import sparse
 from sklearn.base import BaseEstimator
 from sklearn.linear_model import LinearRegression
@@ -59,53 +60,37 @@ class L2regression(Ridge, ModelMixin):
         return Xs @ self.coef_.T  # weights need to be transposed (throws error otherwise)
 
 
-class WTA(LinearRegression, ModelMixin):
-    """
-    WTA model
-    It performs scaling by stdev, but not by mean before fitting and prediction
-    """
-
-    def __init__(self, positive=False):
-        """
-        Simply calls the superordinate construction - but does not fit intercept, as this is tightly controlled in Dataset.get_data()
-        """
-        super().__init__(positive=positive, fit_intercept=False)
-
-    def fit(self, X, Y):
-        self.scale_ = np.sqrt(np.sum(X ** 2, 0) / X.shape[0])
-        Xs = X / self.scale_
-        Xs = np.nan_to_num(Xs) # there are 0 values after scaling
-        super().fit(Xs, Y)
-        self.labels = np.argmax(self.coef_, axis=1)
-        wta_coef_ = np.amax(self.coef_, axis=1)
-        self.coef_ = np.zeros((self.coef_.shape))
-        num_vox = self.coef_.shape[0]
-        # for v in range(num_vox):
-        #     self.coef_[v, self.labels[v]] = wta_coef_[v]
-        self.coef_[np.arange(num_vox), self.labels] = wta_coef_
-        return self.coef_, self.labels
-
-    def predict(self, X):
-        Xs = X / self.scale_
-        Xs = np.nan_to_num(Xs) # there are 0 values after scaling
-        return Xs @ self.coef_.T  # weights need to be transposed (throws error otherwise)
-
-
 class NTakeAll(LinearRegression, ModelMixin):
     """
     WTA model
     It performs scaling by stdev, but not by mean before fitting and prediction
     """
 
-    def __init__(self, hem_labels, positive=False, n=1):
+    def __init__(self, labels_hem, positive=False, n=1):
         """
-        Simply calls the superordinate construction - but does not fit intercept, as this is tightly controlled in Dataset.get_data()
+        Calls the superordinate construction, but does not fit intercept, as this is tightly controlled in Dataset.get_data()
+
+        Args: 
+            labels (dict): keys are 'left_hem' and 'right_hem' and values are labels for cortical regions
+            positive (bool): if positive, only takes positive coeficients, if False, takes abs values
+            n (int): NTakeAll value (1,2,3 etc.)
+
+        Returns: 
+            coef (np array), labels (dict): keys are 'left_hem' and 'right_hemi',
+            values are NTakeAll labels (shape vox x NTakeall)
         """
         super().__init__(positive=positive, fit_intercept=False)
         self.n = n
-        self.hem_labels = hem_labels
+        self.labels_hem = labels_hem
     
     def fit(self, X, Y):
+        """Fits NTakeAll model 
+
+        Args: 
+            X (np array):
+            Y (np array):
+        
+        """
         self.scale_ = np.sqrt(np.sum(X ** 2, 0) / X.shape[0])
         Xs = X / self.scale_
         Xs = np.nan_to_num(Xs) # there are 0 values after scaling
@@ -119,23 +104,31 @@ class NTakeAll(LinearRegression, ModelMixin):
             # takes top N absolute values
             self.coef_ = abs(self.coef_)
 
-        coef = self.coef_ # temp
-
-        keyboard
+        # loop over hemispheres
+        coefs_hem = []
+        self.labels_ntakeall={}
+        for k,v in self.labels_hem.items():
+            
+            coef = self.coef_[:, v]
         
-        # sort labels and take top N
-        self.labels = (-self.coef_).argsort(axis=1)
-        self.labels = self.labels[:, :self.n]
+            # sort labels and take top N
+            labels = (-coef).argsort(axis=1)
+            labels = labels[:, :self.n]
+            self.labels_ntakeall[k] = labels + v[0]
 
-        # get corresponding coef of N labels
-        values = np.take_along_axis(self.coef_, self.labels, axis=1)
+            # get corresponding coef of N labels
+            values = np.take_along_axis(coef, labels, axis=1)
 
-        # assign corresponding coef of N labels
-        # to zero-initialized np array
-        self.coef_ = np.zeros(self.coef_.shape)
-        np.put_along_axis(self.coef_, self.labels, values, axis=1)
+            # assign corresponding coef of N labels
+            # to zero-initialized np array
+            coef = np.zeros(coef.shape)
+            np.put_along_axis(coef, labels, values, axis=1)
+            coefs_hem.append(coef)
+        
+        # concatenate hemispheres for coef and labels
+        self.coef_ = np.concatenate((coefs_hem[0], coefs_hem[1]), axis=1)
 
-        return self.coef_, self.labels
+        return self.coef_, self.labels_ntakeall
 
     def predict(self, X):
         Xs = X / self.scale_

@@ -180,78 +180,6 @@ def train_ridge(
         df_all.to_csv(fpath, index=False)
 
 
-def train_WTA(
-    train_exp="sc1",
-    cortex="tessels0642",
-    cerebellum="cerebellum_suit",
-    log_online=False,
-    log_locally=True,
-    model_ext=None,
-    ):
-    """Train model
-
-    Args:
-        train_exp (str): 'sc1' or 'sc2'
-        cortex (str): cortical ROI
-        cerebellum (str): cerebellar ROI
-        log_online (bool): log results to ML tracking platform
-        log_locally (bool): log results locally
-        model_ext (str or None): add additional information to base model name
-    Returns:
-        Appends summary data for each model and subject into `train_summary.csv`
-        Returns pandas dataframe of train_summary
-    """
-    train_subjs, _ = split_subjects(const.return_subjs, test_size=0.3)
-
-    # get default train parameters
-    config = run_connect.get_default_train_config()
-
-    df_all = pd.DataFrame()
-    # train and validate ridge models
-    name = f"WTA_{cortex}"
-    if model_ext is not None:
-        name = f"{name}_{model_ext}"
-    config["name"] = name
-    config["param"] = {"positive": False}
-    config["model"] = 'WTA'
-    config["X_data"] = cortex
-    config["Y_data"] = cerebellum
-    config["weighting"] = True
-    config["averaging"] = "sess"
-    config["train_exp"] = train_exp
-    config["subjects"] = train_subjs
-    config["validate_model"] = True
-    config["cv_fold"] = 4
-    config["mode"] = "crossed"
-    config["hyperparameter"] = 0
-
-    # train model
-    models, df = run_connect.train_models(config, save=log_locally)
-    df_all = pd.concat([df_all, df])
-
-    # write online to neptune
-    if log_online:
-        log_to_neptune(dataframe=df, config=config, modeltype="train")
-
-    # save out train summary
-    dirs = const.Dirs(exp_name=train_exp)
-    fpath = os.path.join(dirs.conn_train_dir, "train_summary.csv")
-
-    # save out weight maps
-    if config['save_weights']:
-        save_weight_maps(model_name=name, cortex=cortex, train_exp=train_exp)
-
-    # save out label maps
-    save_wta_maps(model_name=name, cortex=cortex, train_exp=train_exp)
-
-    # concat data to model_summary (if file already exists)
-    if log_locally:
-        if os.path.isfile(fpath):
-            df_all = pd.concat([df_all, pd.read_csv(fpath)])
-        # save out train summary
-        df_all.to_csv(fpath, index=False)
-
-
 def train_NTakeAll(
     hyperparameter,
     train_exp="sc1",
@@ -260,6 +188,7 @@ def train_NTakeAll(
     log_online=False,
     log_locally=True,
     model_ext=None,
+    positive=True
     ):
     """Train model
 
@@ -276,14 +205,20 @@ def train_NTakeAll(
         Returns pandas dataframe of train_summary
     """
     train_subjs, _ = split_subjects(const.return_subjs, test_size=0.3)
+    train_subjs = ['s02', 's03']
 
     # get default train parameters
     config = run_connect.get_default_train_config()
 
     # get right and left hem labels for modeling
-    hem_labels = []
-    for hem in ['R', 'L']:
-        hem_labels.append(csparse.get_labels_hemisphere(roi=cortex, hemisphere=hem))
+    labels = {}
+    for hem in ['L', 'R']:
+        # hem_labels.append(csparse.get_labels_hemisphere(roi=cortex, hemisphere=hem))
+        labels[hem] = csparse.get_labels_hemisphere(roi=cortex, hemisphere=hem)
+
+    model_ext = 'positive'
+    if not positive:
+        model_ext = 'absolute'
 
     df_all = pd.DataFrame()
     for param in hyperparameter:
@@ -293,7 +228,7 @@ def train_NTakeAll(
         if model_ext is not None:
             name = f"{name}_{model_ext}"
         config["name"] = name
-        config["param"] = {"positive": True, "n": param, "hem_labels": hem_labels}
+        config["param"] = {"positive": positive, "n": param, "labels_hem": labels}
         config["model"] = 'NTakeAll'
         config["X_data"] = cortex
         config["Y_data"] = cerebellum
@@ -310,6 +245,17 @@ def train_NTakeAll(
         models, df = run_connect.train_models(config, save=log_locally)
         df_all = pd.concat([df_all, df])
 
+        # save out weight maps
+        if config['save_weights']:
+            save_weight_maps(model_name=name, cortex=cortex, train_exp=train_exp)
+
+        # save out sparsity metrics
+        # wta if param is 1, else ntakeall sparsity
+        if param==1:
+            save_wta_maps(model_name=name, cortex=cortex, train_exp=train_exp)
+        else:
+            save_sparsity_maps(model_name=name, cortex=cortex, train_exp=train_exp)
+
         # write online to neptune
         if log_online:
             log_to_neptune(dataframe=df, config=config, modeltype="train")
@@ -317,10 +263,6 @@ def train_NTakeAll(
     # save out train summary
     dirs = const.Dirs(exp_name=train_exp)
     fpath = os.path.join(dirs.conn_train_dir, "train_summary.csv")
-
-    # save out weight maps
-    if config['save_weights']:
-        save_weight_maps(model_name=name, cortex=cortex, train_exp=train_exp)
 
     # concat data to model_summary (if file already exists)
     if log_locally:
@@ -474,20 +416,68 @@ def save_wta_maps(
     # get trained subject models
     model_fnames = glob.glob(os.path.join(fpath, '*.h5'))
 
-    labels_all = []
+    labels_all = defaultdict(list)
     for model_fname in model_fnames:
 
         # read model data
         data = cio.read_hdf5(model_fname)
-        
-        # append labels
-        labels_all.append(data.labels)
 
-    # save maps to disk for cerebellum and cortex
-    save_maps_cerebellum(data=np.stack(labels_all, axis=0), 
-                        fpath=os.path.join(fpath, 'group_wta_cerebellum'),
-                        group='mode',
-                        nifti=True)
+        for k, v in data.labels_ntakeall.items():
+            labels_all[k].append(v)
+
+    # save maps to disk for cerebellum
+    for k,v in labels_all.items():
+        save_maps_cerebellum(data=np.stack(v, axis=0), 
+                            fpath=os.path.join(fpath, f'group_wta_cerebellum_{k}'),
+                            group='mode',
+                            nifti=True)
+
+
+def save_sparsity_maps(
+    model_name, 
+    cortex, 
+    train_exp
+    ):
+    """Save weight maps to disk for cortex and cerebellum
+
+    Args: 
+        model_name (str): model_name (folder in conn_train_dir)
+        cortex (str): cortex model name (example: tesselsWB162)
+        train_exp (str): 'sc1' or 'sc2'
+    Returns: 
+        saves nifti/gifti to disk
+    """
+    # set directory
+    dirs = const.Dirs(exp_name=train_exp)
+
+    # get model path
+    fpath = os.path.join(dirs.conn_train_dir, model_name)
+
+    # get trained subject models
+    model_fnames = glob.glob(os.path.join(fpath, '*.h5'))
+
+    # get distance matrix
+    distances = cdata.get_distance_matrix(roi=cortex)[0]
+
+    dist_all = defaultdict(list)
+    for model_fname in model_fnames:
+
+        # read model data
+        data = cio.read_hdf5(model_fname)
+
+        # calculate geometric mean of distances
+        # for NTakeAll tessels
+        dist = csparse.geometric_distances(distances=distances, labels=data.labels_ntakeall)
+
+        for k, v in dist.items():
+            dist_all[k].append(v)
+
+    # save maps to disk for cerebellum
+    for k,v in dist_all.items():
+        save_maps_cerebellum(data=np.stack(v, axis=0), 
+                            fpath=os.path.join(fpath, f'group_ntakeall_cerebellum_{k}'),
+                            group='nanmean',
+                            nifti=True)
 
 
 def save_maps_cerebellum(
@@ -666,14 +656,12 @@ def run(cortex="tessels0362",
             if model_type=="ridge":
                 # train ridge
                 train_ridge(hyperparameter=[-2,0,2,4,6,8,10], train_exp=f"sc{exp+1}", cortex=cortex)
-            elif model_type=="WTA":
-                train_WTA(train_exp=f"sc{exp+1}", cortex=cortex)
             elif model_type=="NNLS":
                 train_NNLS(alphas=[0], gammas=[0], train_exp=f"sc{exp+1}", cortex=cortex, model_ext='no_cv')
             elif model_type=="NTakeAll":
-                train_NTakeAll(hyperparameter=[2,3,4,5], train_exp=f"sc{exp+1}", cortex=cortex, model_ext='positive') # 1
+                train_NTakeAll(hyperparameter=[1,2,3,4,5,10], train_exp=f"sc{exp+1}", cortex=cortex) # 1
             else:
-                print('please enter a model (ridge, WTA, NNLS)')
+                print('please enter a model (ridge, NNLS, or NTakeAll)')
 
     elif train_or_eval=="eval":
         for exp in range(2):

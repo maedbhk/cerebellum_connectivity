@@ -154,16 +154,12 @@ def train_models(config, save=False):
     """
 
     dirs = const.Dirs(exp_name=config["train_exp"], glm=config["glm"])
+    
     models = []
     train_all = defaultdict(list)
-    # Store the training configuration in model directory
-    if save:
-        fpath = os.path.join(dirs.conn_train_dir, config["name"])
-        cio.make_dirs(fpath)
-        cio.save_dict_as_JSON(os.path.join(fpath, "train_config.json"), config)
 
     # Loop over subjects and train
-    for subj in config["subjects"]:
+    for subj in config['subjects']:
         print(f"Training model on {subj}")
 
         # get data
@@ -190,7 +186,8 @@ def train_models(config, save=False):
 
         # run cross validation and collect metrics (rmse and R)
         if config['validate_model']:
-            models[-1].rmse_cv, models[-1].R_cv = validate_metrics(models[-1], X, Y, X_info, config["cv_fold"])
+            model_copy = copy.deepcopy(models[-1])
+            models[-1].rmse_cv, models[-1].R_cv = validate_metrics(model_copy, X, Y, X_info, config["cv_fold"])
             data.update({"rmse_cv": models[-1].rmse_cv,
                         "R_cv": models[-1].R_cv
                         })
@@ -203,10 +200,21 @@ def train_models(config, save=False):
         for k, v in data.items():
             train_all[k].append(v)
 
-        # Save the fitted model to disk if required
+        # Save the fitted model and model config to disk
         if save:
             fname = _get_model_name(train_name=config["name"], exp=config["train_exp"], subj_id=subj)
             dd.io.save(fname, models[-1], compression=None)
+
+    # Store the training configuration in model directory
+    # remove hem_labels from config if it exists
+    config_copy = copy.deepcopy(config)
+    for k,v in config_copy['param'].items():
+        if isinstance(v, (np.ndarray, list, dict)):
+            config['param'].pop(k)
+
+    fpath = os.path.join(dirs.conn_train_dir, config["name"])
+    cio.make_dirs(fpath)
+    cio.save_dict_as_JSON(os.path.join(fpath, "train_config.json"), config)
 
     return models, pd.DataFrame.from_dict(train_all)
 
@@ -289,10 +297,6 @@ def eval_models(config):
         # add evaluation (summary)
         evals = _get_eval(Y=Y, Y_pred=Y_pred, Y_info=Y_info, X_info=X_info)
         data.update(evals)
-
-        # add sparsity metric (voxels)
-        sparsity_results = _get_sparsity(config, fitted_model)
-        data.update(sparsity_results)
 
         # add evaluation (voxels)
         if config["save_maps"]:
@@ -452,5 +456,6 @@ def _get_model_name(train_name, exp, subj_id):
 
     dirs = const.Dirs(exp_name=exp)
     fname = f"{train_name}_{subj_id}.h5"
+    cio.make_dirs(os.path.join(dirs.conn_train_dir, train_name))
     fpath = os.path.join(dirs.conn_train_dir, train_name, fname)
     return fpath

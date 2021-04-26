@@ -29,5 +29,5 @@ python3 script_mk.py --cortex="tessels0162" --model_type="NTakeAll" --train_or_e
 python3 script_mk.py --cortex="tessels0362" --model_type="NTakeAll" --train_or_eval="train"
 python3 script_mk.py --cortex="tessels0642" --model_type="NTakeAll" --train_or_eval="train"
 python3 script_mk.py --cortex="tessels1002" --model_type="NTakeAll" --train_or_eval="train"
-python3 script_mk.py --cortex="yeo7" --model_type="NTakeAll" --train_or_eval="train"
-python3 script_mk.py --cortex="yeo17" --model_type="NTakeAll" --train_or_eval="train"
+# python3 script_mk.py --cortex="yeo7" --model_type="NTakeAll" --train_or_eval="train"
+# python3 script_mk.py --cortex="yeo17" --model_type="NTakeAll" --train_or_eval="train"
