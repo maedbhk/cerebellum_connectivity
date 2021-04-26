@@ -253,7 +253,7 @@ def train_NTakeAll(
         if param==1:
             save_wta_maps(model_name=name, cortex=cortex, train_exp=train_exp)
         else:
-            save_sparsity_maps(model_name=name, cortex=cortex, train_exp=train_exp)
+            save_sparsity_maps(model_name=name, cortex=cortex, train_exp=train_exp, metric='nanmedian')
 
         # write online to neptune
         if log_online:
@@ -436,7 +436,8 @@ def save_wta_maps(
 def save_sparsity_maps(
     model_name, 
     cortex, 
-    train_exp
+    train_exp,
+    metric
     ):
     """Save weight maps to disk for cortex and cerebellum
 
@@ -444,6 +445,7 @@ def save_sparsity_maps(
         model_name (str): model_name (folder in conn_train_dir)
         cortex (str): cortex model name (example: tesselsWB162)
         train_exp (str): 'sc1' or 'sc2'
+        metric (str): 'nanmean', 'nanmedian', 'gmean'
     Returns: 
         saves nifti/gifti to disk
     """
@@ -467,7 +469,7 @@ def save_sparsity_maps(
 
         # calculate geometric mean of distances
         # for NTakeAll tessels
-        dist = csparse.geometric_distances(distances=distances, labels=data.labels_ntakeall)
+        dist = csparse.geometric_distances(distances=distances, labels=data.labels_ntakeall, metric='nanmean')
 
         for k, v in dist.items():
             dist_all[k].append(v)
@@ -638,13 +640,14 @@ def eval_model(
 @click.option("--model_type")
 @click.option("--train_or_eval")
 @click.option("--hyperparameter")
-
+@click.option("--positive")
 
 def run(cortex="tessels0362", 
         model_type="ridge", 
         train_or_eval="train", 
         delete_train=False,
-        hyperparameter=[1,2,3,4,5,10]):
+        hyperparameter=[1,2,3,4,5,10],
+        positive=True):
     """ Run connectivity routine (train and evaluate)
 
     Args: 
@@ -661,7 +664,7 @@ def run(cortex="tessels0362",
             elif model_type=="NNLS":
                 train_NNLS(alphas=[0], gammas=[0], train_exp=f"sc{exp+1}", cortex=cortex, model_ext='no_cv')
             elif model_type=="NTakeAll":
-                train_NTakeAll(hyperparameter=[1,2,3,4,5,10], train_exp=f"sc{exp+1}", cortex=cortex, positive=True)
+                train_NTakeAll(hyperparameter=[1,2,3,4,5,10], train_exp=f"sc{exp+1}", cortex=cortex, positive=positive)
             else:
                 print('please enter a model (ridge, NNLS, or NTakeAll)')
 
