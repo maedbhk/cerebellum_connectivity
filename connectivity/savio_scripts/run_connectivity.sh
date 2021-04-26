@@ -12,7 +12,7 @@
 #SBATCH --qos=savio_normal
 #
 # Wall clock limit:
-#SBATCH --time=70:00:00
+#SBATCH --time=80:00:00
 #
 ## Command(s) to run:
 module load python/3.7
@@ -32,7 +32,5 @@ python3 script_mk.py --cortex="tessels0642" --model_type="NNLS" --train_or_eval=
 python3 script_mk.py --cortex="tessels1002" --model_type="NNLS" --train_or_eval="train"
 python3 script_mk.py --cortex="tessels0362" --model_type="NNLS" --train_or_eval="train"
 # python3 script_mk.py --cortex="tessels1442" --model_type="NNLS" --train_or_eval="train" # NEED TO RUN
-
-# python3 script_mk.py --cortex="tessels1442" --model_type="WTA" --train_or_eval="train" # NEED TO RUN
 
 python3 script_mk.py --train_or_eval="eval"
