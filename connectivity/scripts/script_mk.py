@@ -205,7 +205,6 @@ def train_NTakeAll(
         Returns pandas dataframe of train_summary
     """
     train_subjs, _ = split_subjects(const.return_subjs, test_size=0.3)
-    train_subjs = ['s02', 's03']
 
     # get default train parameters
     config = run_connect.get_default_train_config()
@@ -427,7 +426,8 @@ def save_wta_maps(
 
     # save maps to disk for cerebellum
     for k,v in labels_all.items():
-        save_maps_cerebellum(data=np.stack(v, axis=0), 
+        tmp = np.stack(v, axis=0) # ugly
+        save_maps_cerebellum(data=tmp.reshape(tmp.shape[:2]), 
                             fpath=os.path.join(fpath, f'group_wta_cerebellum_{k}'),
                             group='mode',
                             nifti=True)
@@ -633,16 +633,18 @@ def eval_model(
         df.to_csv(eval_fpath, index=False)
 
 
-# @click.command()
-# @click.option("--cortex")
-# @click.option("--model_type")
-# @click.option("--train_or_eval")
+@click.command()
+@click.option("--cortex")
+@click.option("--model_type")
+@click.option("--train_or_eval")
+@click.option("--hyperparameter")
 
 
 def run(cortex="tessels0362", 
         model_type="ridge", 
         train_or_eval="train", 
-        delete_train=False):
+        delete_train=False,
+        hyperparameter=[1,2,3,4,5,10]):
     """ Run connectivity routine (train and evaluate)
 
     Args: 
@@ -659,7 +661,7 @@ def run(cortex="tessels0362",
             elif model_type=="NNLS":
                 train_NNLS(alphas=[0], gammas=[0], train_exp=f"sc{exp+1}", cortex=cortex, model_ext='no_cv')
             elif model_type=="NTakeAll":
-                train_NTakeAll(hyperparameter=[1,2,3,4,5,10], train_exp=f"sc{exp+1}", cortex=cortex) # 1
+                train_NTakeAll(hyperparameter=[1,2,3,4,5,10], train_exp=f"sc{exp+1}", cortex=cortex, positive=True) # 1
             else:
                 print('please enter a model (ridge, NNLS, or NTakeAll)')
 
@@ -685,5 +687,5 @@ def run(cortex="tessels0362",
             eval_model(model_name=best_model, cortex=cortex, train_exp=f"sc{2-exp}", eval_exp=f"sc{exp+1}")
 
 
-# if __name__ == "__main__":
-#     run()
+if __name__ == "__main__":
+    run()
