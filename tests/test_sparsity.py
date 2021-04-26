@@ -16,7 +16,8 @@ from connectivity import sparsity as csparse
 def save_sparsity_maps(
     model_name, 
     cortex, 
-    train_exp
+    train_exp,
+    metric
     ):
     """Save weight maps to disk for cortex and cerebellum
 
@@ -24,6 +25,7 @@ def save_sparsity_maps(
         model_name (str): model_name (folder in conn_train_dir)
         cortex (str): cortex model name (example: tesselsWB162)
         train_exp (str): 'sc1' or 'sc2'
+        metric (str): 'nanmean', 'gmean', 'nanmedian'
     Returns: 
         saves nifti/gifti to disk
     """
@@ -47,7 +49,7 @@ def save_sparsity_maps(
 
         # calculate geometric mean of distances
         # for NTakeAll tessels
-        dist = csparse.geometric_distances(distances=distances, labels=data.labels_ntakeall, metric='nanmean')
+        dist = csparse.geometric_distances(distances=distances, labels=data.labels_ntakeall, metric=metric)
 
         for k, v in dist.items():
             dist_all[k].append(v)
@@ -55,7 +57,7 @@ def save_sparsity_maps(
     # save maps to disk for cerebellum
     for k,v in dist_all.items():
         save_maps_cerebellum(data=np.stack(v, axis=0), 
-                            fpath=os.path.join(fpath, f'group_ntakeall_cerebellum_{k}_arithmetic_mean'),
+                            fpath=os.path.join(fpath, f'group_ntakeall_cerebellum_{k}_{metric}'),
                             group='nanmean',
                             nifti=False)
 
@@ -122,12 +124,14 @@ def save_maps_cerebellum(
 @click.option("--model_name")
 @click.option("--cortex")
 @click.option("--train_exp")
+@click.option("--metric")
 
 def run(model_name='NTakeAll_tessels0042_2_positive',
         cortex='tessels0042',
-        train_exp='sc1'):
+        train_exp='sc1',
+        metric='nanmean'):
 
-    save_sparsity_maps(model_name=model_name, cortex=cortex, train_exp=train_exp)
+    save_sparsity_maps(model_name=model_name, cortex=cortex, train_exp=train_exp, metric=metric)
 
 
 if __name__ == "__main__":

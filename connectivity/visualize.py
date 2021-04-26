@@ -190,7 +190,7 @@ def plot_eval_map(gifti_func="group_R_vox", exp="sc1", model=None, cscale=None, 
     return view
 
 
-def plot_ntakeall_map(roi='tessels0042', n=2, model_ext='positive', hem='L', exp='sc1', cscale=None, symmetric_cmap=False):
+def plot_ntakeall_map(roi='tessels0042', n=2, model_ext='positive', hem='L', metric=None, exp='sc1', cscale=None, vmin=None, symmetric_cmap=False):
     """Plot NTakeAll map for `roi` and `exp`
     
     Args: 
@@ -206,8 +206,11 @@ def plot_ntakeall_map(roi='tessels0042', n=2, model_ext='positive', hem='L', exp
     """
     dirs = const.Dirs(exp_name=exp)
 
-    surf_fname = os.path.join(dirs.conn_train_dir, f'NTakeAll_{roi}_{n}_{model_ext}', f'group_ntakeall_cerebellum_{hem}.func.gii')
-    view = nio.view_cerebellum(data=surf_fname, cscale=cscale, symmetric_cmap=symmetric_cmap)
+    if metric:
+        surf_fname = os.path.join(dirs.conn_train_dir, f'NTakeAll_{roi}_{n}_{model_ext}', f'group_ntakeall_cerebellum_{hem}_{metric}.func.gii')
+    else:
+        surf_fname = os.path.join(dirs.conn_train_dir, f'NTakeAll_{roi}_{n}_{model_ext}', f'group_ntakeall_cerebellum_{hem}.func.gii')
+    view = nio.view_cerebellum(data=surf_fname, cscale=cscale, symmetric_cmap=symmetric_cmap, vmin=vmin)
 
     return view
 

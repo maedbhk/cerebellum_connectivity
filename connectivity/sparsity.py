@@ -127,6 +127,8 @@ def geometric_distances(distances, labels, metric='gmean'):
                 gmean_vox[v] = gmean(dist_all)
             elif metric=='nanmean':
                 gmean_vox[v] = np.nanmean(dist_all)
+            elif metric=='median':
+                gmean_vox[v] = np.nanmedian(dist_all)
 
         # add to dict
         data.update({key: gmean_vox})
