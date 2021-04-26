@@ -2,6 +2,10 @@ import os
 import glob
 from collections import defaultdict
 import numpy as np
+from scipy.stats import mode
+import nibabel as nib
+from pathlib import Path
+import SUITPy.flatmap as flatmap
 
 import connectivity.constants as const
 import connectivity.io as cio
