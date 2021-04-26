@@ -661,7 +661,7 @@ def run(cortex="tessels0362",
             elif model_type=="NNLS":
                 train_NNLS(alphas=[0], gammas=[0], train_exp=f"sc{exp+1}", cortex=cortex, model_ext='no_cv')
             elif model_type=="NTakeAll":
-                train_NTakeAll(hyperparameter=[1,2,3,4,5,10], train_exp=f"sc{exp+1}", cortex=cortex, positive=True) # 1
+                train_NTakeAll(hyperparameter=[1,2,3,4,5,10], train_exp=f"sc{exp+1}", cortex=cortex, positive=True)
             else:
                 print('please enter a model (ridge, NNLS, or NTakeAll)')
 

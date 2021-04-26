@@ -94,12 +94,13 @@ def get_distance_weights(weight_indices, distances):
 
     return {'sum_var_distances_vox':  dist_sum_var_all}
 
-def geometric_distances(distances, labels):
+def geometric_distances(distances, labels, metric='gmean'):
     """Compute geometric mean of NTakeAll cortical distances
 
     Args: 
         distances (np array): distances between cortical regions; shape (num_reg x num_reg)
         labels (dict): dict containing keys 'L' and 'R' (shape; voxels x NTakeAll labels)
+        metric (str): 'gmean', 'nanmean', 'median'
     Returns: 
         geo_dist (dict): dict with keys: left hemi, right hemi, avg hemi
         values are each an np array of shape (voxels x 1)
@@ -122,7 +123,10 @@ def geometric_distances(distances, labels):
                 dist_all.append(distances[labels_vox[n], labels_vox[n+1]])
             
             # get geometric mean of distances
-            gmean_vox[v] = gmean(dist_all)
+            if metric=='gmean':
+                gmean_vox[v] = gmean(dist_all)
+            elif metric=='nanmean':
+                gmean_vox[v] = np.nanmean(dist_all)
 
         # add to dict
         data.update({key: gmean_vox})

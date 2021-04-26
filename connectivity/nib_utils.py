@@ -158,13 +158,16 @@ def view_cerebellum(data, cmap='CMRmap', threshold=None, bg_map=None, cscale=Non
     # Determine underlay and assign color
     # underlay = nib.load(underlay)
 
+    # convert 0 to nan (for plotting)
+    data[data==0] = np.nan
+
     # Determine scale
     if cscale is None:
         cscale = [np.nanmin(data), np.nanmax(data)]
 
     # nilearn seems to
     view = view_surf(surf_mesh, data, bg_map=bg_map, cmap=cmap,
-                        threshold=threshold, vmin=cscale[0], vmax=cscale[1], 
+                        threshold=cscale[0], vmin=cscale[0], vmax=cscale[1], 
                         symmetric_cmap=symmetric_cmap, title=title)
     # view = flatmap.plot(data, surf=surf_mesh, cscale=cscale)
     return view
@@ -209,3 +212,5 @@ def view_cortex(data, cmap='CMRmap', bg_map=None, cscale=None, hemisphere='R', a
                     title=title
                     )        
     return view
+
+
