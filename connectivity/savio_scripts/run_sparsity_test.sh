@@ -23,7 +23,4 @@ export PYTHONPATH
 
 cd /global/scratch/maedbhking/projects/cerebellum_connectivity/tests
 
-model_names=(NTakeAll_tessels0042_2_positive NTakeAll_tessels0042_3_positive NTakeAll_tessels0042_4_positive NTakeAll_tessels0042_5_positive NTakeAll_tessels0042_10_positive)
-
-for ((i=0; i<${#model_names[@]}; i++)); do \
-python3 test_sparsity.py --model_name=${model_names[i]} --cortex='tessels0042' --train_exp='sc1' --metric='nanmedian'; done
+python3 test_sparsity.py --train_exp='sc1' --metric='nanmean'

@@ -57,7 +57,7 @@ def save_sparsity_maps(
     # save maps to disk for cerebellum
     for k,v in dist_all.items():
         save_maps_cerebellum(data=np.stack(v, axis=0), 
-                            fpath=os.path.join(fpath, f'group_ntakeall_cerebellum_{k}_{metric}'),
+                            fpath=os.path.join(fpath, f'group_ntakeall_cerebellum_{k}'),
                             group='nanmean',
                             nifti=False)
 
@@ -121,17 +121,18 @@ def save_maps_cerebellum(
 
 
 @click.command()
-@click.option("--model_name")
-@click.option("--cortex")
 @click.option("--train_exp")
 @click.option("--metric")
 
-def run(model_name='NTakeAll_tessels0042_2_positive',
-        cortex='tessels0042',
-        train_exp='sc1',
+def run(train_exp='sc1',
         metric='nanmean'):
 
-    save_sparsity_maps(model_name=model_name, cortex=cortex, train_exp=train_exp, metric=metric)
+    rois = ['tessels0042', 'tessels0362', 'tessels0642', 'tessels1002']
+    params = [2,3,4,5,10]
+
+    for roi in rois:
+        for param in params:
+            save_sparsity_maps(model_name=f'NTakeAll_{roi}_{param}_positive', cortex=roi, train_exp='sc1', metric=metric)
 
 
 if __name__ == "__main__":
