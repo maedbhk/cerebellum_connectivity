@@ -301,30 +301,29 @@ switch what
         end % s (sn)
     case 'ROI:beta_all' % extracts betas and add_to_beta
         % Example usage: sc1sc2_conn_model('ROI:MDTB:beta_all')
-        
-        sn  = returnSubjs;
-        glm = 7;
-        experiment_num = 1;
-        
-        
-        vararginoptions(varargin, {'sn', 'glm', 'experiment_num'});
-        
-        % sc1sc2_conn_model('ROI:beta_unn', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0042');
-        %sc1sc2_conn_model('ROI:beta_unn', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0162');
-        %sc1sc2_conn_model('ROI:beta_unn', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0362');
-        %sc1sc2_conn_model('ROI:beta_unn', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0642');
+        sn = returnSubjs; 
+        experiment_num=2;
+        glm = 7; 
+        % sc1sc2_conn_model('ROI:beta_unn', 'sn', sn, 'experiment_num', 1, 'glm', 7, 'parcelType', 'cerebellum_suit','interp',1,'ignore_nan',1);
+        % sc1sc2_conn_model('ROI:beta_unn', 'sn', sn, 'experiment_num', 2, 'glm', 7, 'parcelType', 'cerebellum_suit','interp',1,'ignore_nan',1);
+        sc1sc2_conn_model('ROI:beta_unn', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0042');
+        sc1sc2_conn_model('ROI:beta_unn', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0162');
+        sc1sc2_conn_model('ROI:beta_unn', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0362');
+        sc1sc2_conn_model('ROI:beta_unn', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0642');
         sc1sc2_conn_model('ROI:beta_unn', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels1002');
         sc1sc2_conn_model('ROI:beta_unn', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'yeo7');
         sc1sc2_conn_model('ROI:beta_unn', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'yeo17');
         % add betas
-        % sc1sc2_conn_model('ROI:add_to_beta', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0042');
-        % sc1sc2_conn_model('ROI:add_to_beta', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0162');
-        % sc1sc2_conn_model('ROI:add_to_beta', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0362');
-        % sc1sc2_conn_model('ROI:add_to_beta', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0642');
+        sc1sc2_conn_model('ROI:add_to_beta', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0042');
+        sc1sc2_conn_model('ROI:add_to_beta', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0162');
+        sc1sc2_conn_model('ROI:add_to_beta', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0362');
+        sc1sc2_conn_model('ROI:add_to_beta', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0642');
         sc1sc2_conn_model('ROI:add_to_beta', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels1002');
         sc1sc2_conn_model('ROI:add_to_beta', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'yeo7');
         sc1sc2_conn_model('ROI:add_to_beta', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'yeo17');
-            
+        % sc1sc2_conn_model('ROI:add_to_beta', 'sn', sn, 'experiment_num', 1, 'glm', 7, 'parcelType', 'cerebellum_suit');
+        % sc1sc2_conn_model('ROI:add_to_beta', 'sn', sn, 'experiment_num', 2, 'glm', 7, 'parcelType', 'cerebellum_suit');
+  
         
     case 'PREP:MDTB:cortex:surface'           % creates Y_info file for the cortical surfaces
         % gets the betas on the surface and univariately prewhiten them. It
