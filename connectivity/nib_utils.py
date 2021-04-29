@@ -215,7 +215,7 @@ def view_cortex(data, cmap='CMRmap', bg_map=None, cscale=None, hemisphere='R', a
                     vmax=cscale[1],
                     cmap=cmap,
                     symmetric_cmap=symmetric_cmap,
-                    title=title
+                    # title=title
                     )        
     return view
 

@@ -102,7 +102,7 @@ def plot_train_predictions(dataframe, x='train_name', hue=None, x_order=None, hu
     """
     plt.figure(figsize=(15, 10))
     # R
-    sns.factorplot(x=x, y="train_R_cv", hue=hue, data=dataframe, order=x_order, hue_order=hue_order, legend=False, ci=None, size=4, aspect=2)
+    sns.factorplot(x=x, y="train_R_cv", hue=hue, data=dataframe, order=x_order, hue_order=hue_order, legend=False, size=4, aspect=2)
     plt.title("Model Training (CV Predictions)", fontsize=20)
     plt.tick_params(axis="both", which="major", labelsize=15)
     plt.xticks(rotation="45", ha="right")
