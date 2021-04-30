@@ -178,7 +178,7 @@ def view_cerebellum(data, cmap='CMRmap', threshold=None, bg_map=None, cscale=Non
     # view = flatmap.plot(data, surf=surf_mesh, cscale=cscale)
     return view
 
-def view_cortex(data, cmap='CMRmap', bg_map=None, cscale=None, hemisphere='R', atlas_type='inflated', symmetric_cmap=False, title=None, subset=None):
+def view_cortex(data, cmap='CMRmap', bg_map=None, cscale=None, hemisphere='R', atlas_type='inflated', symmetric_cmap=False, title=None, subset=None, colorbar=None):
     """Visualize data on inflated cortex
 
     Args: 
@@ -187,6 +187,7 @@ def view_cortex(data, cmap='CMRmap', bg_map=None, cscale=None, hemisphere='R', a
         map_type (str): 'func' or 'label'
         hemisphere (str): 'R' or 'L'
         atlas_type (str): 'inflated', 'very_inflated' (see fs_LR dir)
+        subset (list of int): list of tessels to visualize
     """
     # initialise directories
     dirs = const.Dirs()
@@ -202,7 +203,8 @@ def view_cortex(data, cmap='CMRmap', bg_map=None, cscale=None, hemisphere='R', a
 
     # subset data
     if subset:
-        data = data[data==subset]
+        mask = np.isin(data, subset)
+        data = np.where(mask, data, 0)
         
     # Determine scale
     if cscale is None:
@@ -215,6 +217,7 @@ def view_cortex(data, cmap='CMRmap', bg_map=None, cscale=None, hemisphere='R', a
                     vmax=cscale[1],
                     cmap=cmap,
                     symmetric_cmap=symmetric_cmap,
+                    colorbar=colorbar
                     # title=title
                     )        
     return view

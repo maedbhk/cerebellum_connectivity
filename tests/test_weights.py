@@ -15,7 +15,7 @@ def run(train_exp='sc1'):
 
         for param in params:
             
-            script_mk.save_weight_maps(model_name=f'NTakeAll_{roi}_{param}_positive', cortex=roi, train_exp='sc1')
+            script_mk.save_weight_maps(model_name=f'NTakeAll_{roi}_{param}_positive', cortex=roi, train_exp=train_exp)
 
 if __name__ == "__main__":
     run()

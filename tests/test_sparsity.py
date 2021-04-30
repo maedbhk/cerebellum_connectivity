@@ -119,7 +119,6 @@ def save_maps_cerebellum(
     
     return gii_img
 
-
 @click.command()
 @click.option("--train_exp")
 @click.option("--metric")

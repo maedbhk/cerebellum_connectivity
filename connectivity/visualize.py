@@ -348,7 +348,7 @@ def plot_train_weights(dataframe, hue=None):
     plt.ylabel("Weights", fontsize=20)
 
 
-def plot_parcellation(parcellation=None, anatomical_structure='cerebellum', hemisphere=None):
+def plot_parcellation(parcellation=None, anatomical_structure='cerebellum', hemisphere=None, subset=None, colorbar=None):
     """General purpose function for plotting parcellations (cortex or cerebellum)
 
     Args: 
@@ -372,24 +372,15 @@ def plot_parcellation(parcellation=None, anatomical_structure='cerebellum', hemi
     elif parcellation=='buckner17':
         surf_labels = os.path.join(flatmap._surf_dir,'Buckner_17Networks.label.gii')
     elif 'tessels' in parcellation:
-        parcellation = ''.join(re.findall(r'[1-9]', parcellation))
+        parcellation = ''.join(re.findall(r'[0-9]', parcellation))
         surf_labels = os.path.join(dirs.fs_lr_dir, f'Icosahedron-{parcellation}.32k.{hemisphere}.label.gii')
     else:
         print('please provide a valid parcellation')
     
     if anatomical_structure=='cerebellum':
-        try:
-            return nio.view_cerebellum(data=surf_labels)
-        except:
-            surf_mesh = os.path.join(flatmap._surf_dir,'FLAT.surf.gii')
-            return view_surf(surf_mesh=surf_mesh, symmetric_cmap=False, colorbar=False)  
-
+        return nio.view_cerebellum(data=surf_labels)
     elif anatomical_structure=='cortex':
-        try:
-            return nio.view_cortex(data=surf_labels, hemisphere=hemisphere)
-        except:
-            surf_mesh = os.path.join(dirs.fs_lr_dir, f'fs_LR.32k.{hemisphere}.inflated.surf.gii')
-            return view_surf(surf_mesh=surf_mesh, symmetric_cmap=False, black_bg=True, colorbar=False) 
+        return nio.view_cortex(data=surf_labels, hemisphere=hemisphere, subset=subset, colorbar=colorbar)
     else:
         print("please provide a valid anatomical structure, either 'cerebellum' or 'cortex'")
 
