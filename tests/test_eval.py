@@ -11,7 +11,7 @@ def run():
 
             cortex = model.split('_')[1]
             # save voxel/vertex maps for best training weights
-            script_mk.save_weight_maps(model_name=model, cortex=cortex, train_exp=f"sc{2-exp}")
+            # script_mk.save_weight_maps(model_name=model, cortex=cortex, train_exp=f"sc{2-exp}")
             # test best train model
             script_mk.eval_model(model_name=model, cortex=cortex, train_exp=f"sc{2-exp}", eval_exp=f"sc{exp+1}")
 
