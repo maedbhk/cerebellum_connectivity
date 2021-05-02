@@ -1,6 +1,6 @@
 #!/bin/bash
 # Job name:
-#SBATCH --job-name=test_tasks
+#SBATCH --job-name=summary_tasks
 #
 # Account:
 #SBATCH --account=fc_cerebellum
