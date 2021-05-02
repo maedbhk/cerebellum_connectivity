@@ -375,6 +375,8 @@ def plot_parcellation(parcellation=None, anatomical_structure='cerebellum', hemi
         parcellation = ''.join(re.findall(r'[0-9]', parcellation))
         surf_labels = os.path.join(dirs.fs_lr_dir, f'Icosahedron-{parcellation}.32k.{hemisphere}.label.gii')
     else:
+        surf_labels = load_surf_data(os.path.join(flatmap._surf_dir,'Buckner_7Networks.label.gii'))
+        surf_labels = np.zeros(surf_labels.shape)
         print('please provide a valid parcellation')
     
     if anatomical_structure=='cerebellum':

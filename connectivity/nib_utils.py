@@ -175,6 +175,7 @@ def view_cerebellum(data, cmap='CMRmap', threshold=None, bg_map=None, cscale=Non
     view = view_surf(surf_mesh, data, bg_map=bg_map, cmap=cmap,
                         threshold=threshold, vmin=vmin, vmax=cscale[1], 
                         symmetric_cmap=symmetric_cmap) # title=title
+    # cscale = [vmin, cscale[1]]
     # view = flatmap.plot(data, surf=surf_mesh, cscale=cscale)
     return view
 
