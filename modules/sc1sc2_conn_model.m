@@ -7,6 +7,7 @@ function [ varargout ] = sc1sc2_conn_model( what, varargin )
 % baseDir         = '/Volumes/MotorControl/data/super_cerebellum_new';
 % baseDir         = '/Users/ladan/Documents/Project-Cerebellum/Cerebellum_Data';
 baseDir         = '/srv/diedrichsen/data/super_cerebellum';
+baseDir         = '/Volumes/diedrichsen_data$/data/super_cerebellum/'; 
 atlasDir        = '/srv/diedrichsen/data/Atlas_templates/fs_LR_32';
 wbDir           = fullfile(baseDir,'sc1','surfaceWB');
 behavDir        = 'data';
