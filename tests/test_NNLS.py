@@ -44,13 +44,13 @@ def compare_OLS_NNLS():
     print(f"model2: {R2.round(2)}")
 
 def NNLS_speed_test():
-    P1 = [10,20,30,40,50,70,100,200,300,400]
+    P1 = [10,20,30,40,50,70,100,200,300,400,500,600]
     time = []
     for p1 in P1:
-        X, Y = simulate_IID_Data(N=42,P1=p1,P2=100)
+        X, Y = simulate_IID_Data(N=42,P1=p1,P2=10)
 
         # Non-negative solution without regularisation
-        nn1 = mod.NNLS(alpha=0.01, gamma=0)
+        nn1 = mod.NNLS(alpha=0, gamma=0)
         fcn = lambda: nn1.fit(X,Y)
         time.append(timeit.timeit(fcn,number=1))
     T = pd.DataFrame({'P':P1,'time':time})

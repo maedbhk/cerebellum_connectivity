@@ -7,7 +7,7 @@ import deepdish as dd
 import pandas as pd
 import connectivity.model as model
 import connectivity.evaluation as ev
-
+import timeit
 import connectivity.io as cio
 from connectivity.data import Dataset
 import connectivity.constants as const
@@ -44,14 +44,14 @@ def get_default_train_config():
         "model": "L2regression",  # Model class name (must be in model.py)
         "param": {"alpha": 1},  # Parameter to model constructor
         "sessions": [1, 2],  # Sessions used for training data
-        "glm": 7,  # GLM used for training data
-        "train_exp": 1,  # Experiment used for training data
+        "glm": "glm7",  # GLM used for training data
+        "train_exp": "sc1",  # Experiment used for training data
         "averaging": "sess",  # Avaraging scheme for X and Y (see data.py)
         "weighting": 2,  # 0: none, 1: by regr., 2: by full matrix
         "incl_inst": True,
         "X_data": "tesselsWB162",
-        "Y_data": "cerebellum_grey",
-        "subjects": [2, 3, 4, 6, 8, 9, 10, 12, 14, 15, 17, 18, 19, 20, 21, 22, 24, 25, 26, 27, 28, 29, 30, 31],
+        "Y_data": "cerebellum_suit",
+        "subjects": ["s02", "s03","s04", "s06", "s08", "s09", "s10", "s12", "s14", "s15", "s17", "s18", "s19", "s20", "s21", "s22", "s24", "s25", "s26", "s27", "s28", "s29", "s30", "s31"],
         "mode": "crossed",  # Training mode
     }
     return config
@@ -62,15 +62,15 @@ def get_default_eval_config():
     config = {
         "name": "L2_WB162_A1",
         "sessions": [1, 2],
-        "glm": 7,
-        "train_exp": 1,
+        "glm": "glm7",
+        "train_exp": "sc1",
         "eval_exp": 2,
         "averaging": "sess",
         "weighting": 2,  # 0: none, 1: by regr., 2: by full matrix
         "incl_inst": True,
         "X_data": "tesselsWB162",
-        "Y_data": "cerebellum_grey",
-        "subjects": [2, 3, 4, 6, 8, 9, 10, 12, 14, 15, 17, 18, 19, 20, 21, 22, 24, 25, 26, 27, 28, 29, 30, 31],
+        "Y_data": "cerebellum_suit",
+        "subjects": ["s02", "s03","s04", "s06", "s08", "s09", "s10", "s12", "s14", "s15", "s17", "s18", "s19", "s20", "s21", "s22", "s24", "s25", "s26", "s27", "s28", "s29", "s30", "s31"],
         "mode": "crossed",
         "eval_splitby": None,
     }
@@ -90,7 +90,7 @@ def train_models(config, save=False):
             List of trained models for all subject
     """
     exp = config["train_exp"]
-    dirs = const.Dirs(study_name=f"sc{exp}", glm=config["glm"])
+    dirs = const.Dirs(exp_name=f"sc{exp}", glm=config["glm"])
     models = []
 
     # Store the training configuration in model directory
@@ -106,20 +106,23 @@ def train_models(config, save=False):
 
     # Loop over subjects and train
     for s in config["subjects"]:
-        print(f"Subject{s:02d}\n")
+        print(f"Subject " + s + "\n")
 
         # Get the condensed data
-        Ydata = Dataset(glm=config["glm"], sn=s, roi=config["Y_data"])
+        Ydata = Dataset(glm=config["glm"], subj_id=s, roi=config["Y_data"])
         Ydata.load_mat()
         Y, T = Ydata.get_data(averaging=config["averaging"], weighting=config["weighting"])
-        Xdata = Dataset(glm=config["glm"], sn=s, roi=config["X_data"])
+        Xdata = Dataset(glm=config["glm"], subj_id=s, roi=config["X_data"])
         Xdata.load_mat()
         X, T = Xdata.get_data(averaging=config["averaging"], weighting=config["weighting"])
         # Generate new model and put in the list
         newModel = getattr(model, config["model"])(**config["param"])
         models.append(newModel)
         # Fit this model
+        tic = timeit.default_timer() 
         models[-1].fit(X, Y)
+        toc = timeit.default_timer()
+        models[-1].fit_time=tic-toc
 
         # Save the fitted model to disk if required
         if save:
@@ -200,7 +203,7 @@ def _get_model_name(train_name, exp, subject):
         fpath (str)
             full path and name to connectivity output for model training
     """
-    dirs = const.Dirs(study_name=f"sc{exp}")
+    dirs = const.Dirs(exp_name=f"sc{exp}")
     fname = f"{train_name}_s{subject:02d}.h5"
     fpath = os.path.join(dirs.conn_train_dir, train_name, fname)
     return fpath

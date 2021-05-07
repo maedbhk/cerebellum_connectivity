@@ -107,7 +107,7 @@ def get_default_eval_config():
         "weighting": True,  # 0: none, 1: by regr., 2: by full matrix???
         "incl_inst": True,
         "X_data": "tessels1002",
-        "Y_data": "cerebellum_grey",
+        "Y_data": "cerebellum_suit",
         "subjects": [
             "s01",
             "s03",
