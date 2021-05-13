@@ -40,7 +40,7 @@ def delete_conn_files():
 def get_default_train_config():
     # defaults training config:
     config = {
-        "name": "L2_WB162_A1",  # Model name - determines the directory
+        "name": "ridge_tessels0162_A0",  # Model name - determines the directory
         "model": "L2regression",  # Model class name (must be in model.py)
         "param": {"alpha": 1},  # Parameter to model constructor
         "sessions": [1, 2],  # Sessions used for training data
@@ -49,7 +49,7 @@ def get_default_train_config():
         "averaging": "sess",  # Avaraging scheme for X and Y (see data.py)
         "weighting": 2,  # 0: none, 1: by regr., 2: by full matrix
         "incl_inst": True,
-        "X_data": "tesselsWB162",
+        "X_data": "tessels0162",
         "Y_data": "cerebellum_suit",
         "subjects": ["s02", "s03","s04", "s06", "s08", "s09", "s10", "s12", "s14", "s15", "s17", "s18", "s19", "s20", "s21", "s22", "s24", "s25", "s26", "s27", "s28", "s29", "s30", "s31"],
         "mode": "crossed",  # Training mode
@@ -90,7 +90,7 @@ def train_models(config, save=False):
             List of trained models for all subject
     """
     exp = config["train_exp"]
-    dirs = const.Dirs(exp_name=f"sc{exp}", glm=config["glm"])
+    dirs = const.Dirs(exp_name=exp, glm=config["glm"])
     models = []
 
     # Store the training configuration in model directory
@@ -189,21 +189,18 @@ def eval_models(config):
     # Return list of models
     return D
 
+def _get_model_name(train_name, exp, subj_id):
+    """returns path/name for connectivity training model outputs.
 
-def _get_model_name(train_name, exp, subject):
-    """returns path/name for connectivity training model outputs
     Args:
-        train_name (str)
-            Name of trained model
-        exp (int)
-            Experiment number
-        subject (int)
-            Subject number
+        train_name (str): Name of trained model
+        exp (str): Experiment name
+        subj_id (str): Subject id
     Returns:
-        fpath (str)
-            full path and name to connectivity output for model training
+        fpath (str): Full path and name to connectivity output for model training.
     """
-    dirs = const.Dirs(exp_name=f"sc{exp}")
-    fname = f"{train_name}_s{subject:02d}.h5"
+
+    dirs = const.Dirs(exp_name=exp)
+    fname = f"{train_name}_{subj_id}.h5"
     fpath = os.path.join(dirs.conn_train_dir, train_name, fname)
     return fpath

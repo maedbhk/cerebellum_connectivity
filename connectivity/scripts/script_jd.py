@@ -11,7 +11,7 @@ def train_ridge(corticalParc, logalpha, sn=const.return_subjs):
     config = run.get_default_train_config()
     num_models = len(logalpha)
     for i in range(num_models):
-        name = f"ridge_{corticalP}_A{logalpha[i]:.0f}"
+        name = f"ridge_{corticalParc}_A{logalpha[i]:.0f}"
         for e in range(2):
             config["name"] = name
             config["param"] = {"alpha": np.exp(logalpha[i])}
@@ -65,4 +65,4 @@ def eval_ridge(resolution, logalpha, sn=const.return_subjs):
 
 if __name__ == "__main__":
     # D = eval_ridge(162, [-2, 0, 2, 4, 6, 8, 10])
-    D = train_NNLS('tessels0162',[-2])
+    D = train_ridge('tessels0162',[0])
