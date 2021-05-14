@@ -341,3 +341,30 @@ def eucl_distance(coord):
     for i in range(2):
         D = D + (coord[:,i].reshape(-1,1)-coord[:,i])**2
     return np.sqrt(D)
+
+def read_suit_nii(atlas_file):
+    """
+    takes in a atlas file name in suit space 
+    Args:
+    altas_file  - nifti filename for the atlas
+    Returns:
+    """
+
+    # Load the region file for cerebellum in suit space
+    dirs = const.Dirs(exp_name="sc1")
+    group_dir = os.path.join(dirs.reg_dir, 'data','group')
+    reg_file = os.path.join(group_dir,'regions_cerebellum_suit.mat')
+    region = cio.read_mat_as_hdf5(fpath=reg_file)["R"]
+
+    # get the coordinates of the cerebellum suit
+    coords = region.data.T
+
+    # load in the vol for the atlas file
+    vol_def = nib.load(atlas_file)
+
+    # convert to voxel space
+    ijk = suit.flatmap.coords_to_voxelidxs(coords,vol_def).astype(int)
+
+    return ijk, vol_def
+
+
