@@ -60,15 +60,15 @@ def get_default_train_config():
 def get_default_eval_config():
     # defaults training config:
     config = {
-        "name": "L2_WB162_A1",
+        "name": "ridge_tessels0162_A0",
         "sessions": [1, 2],
         "glm": "glm7",
         "train_exp": "sc1",
-        "eval_exp": 2,
+        "eval_exp": "sc2",
         "averaging": "sess",
         "weighting": 2,  # 0: none, 1: by regr., 2: by full matrix
         "incl_inst": True,
-        "X_data": "tesselsWB162",
+        "X_data": "tessels0162",
         "Y_data": "cerebellum_suit",
         "subjects": ["s02", "s03","s04", "s06", "s08", "s09", "s10", "s12", "s14", "s15", "s17", "s18", "s19", "s20", "s21", "s22", "s24", "s25", "s26", "s27", "s28", "s29", "s30", "s31"],
         "mode": "crossed",
@@ -144,17 +144,16 @@ def eval_models(config):
             Evaluation of different models on the data
     """
 
-    eexp = config["eval_exp"]
     D = pd.DataFrame()
 
     for i, s in enumerate(config["subjects"]):
-        print(f"Subject{s:02d}\n")
+        print(f"Evaluating Subject {s}\n")
 
         # Get the data
-        Ydata = Dataset(experiment=f"sc{eexp}", glm=config["glm"], sn=s, roi=config["Y_data"])
+        Ydata = Dataset(experiment=config["eval_exp"], glm=config["glm"], subj_id=s, roi=config["Y_data"])
         Ydata.load_mat()
         Y, T = Ydata.get_data(averaging=config["averaging"], weighting=config["weighting"])
-        Xdata = Dataset(experiment=f"sc{eexp}", glm=config["glm"], sn=s, roi=config["X_data"])
+        Xdata = Dataset(experiment=config["eval_exp"], glm=config["glm"], subj_id=s, roi=config["X_data"])
         Xdata.load_mat()
         X, T = Xdata.get_data(averaging=config["averaging"], weighting=config["weighting"])
 
@@ -178,12 +177,8 @@ def eval_models(config):
         # Add the evaluation
         D.loc[i, "R"], Rvox = ev.calculate_R(Y, Ypred)  # R between predicted and observed
         D.loc[i, "R2"], R2vox = ev.calculate_R2(Y, Ypred)  # R2 between predicted and observed
-        D.loc[i, "noise_Y_R"], _, D.loc[i, "noise_Y_R2"], _ = ev.calculate_reliability(
-            Y, T
-        )  # Noise ceiling for cerebellum (squared)
-        D.loc[i, "noise_X_R"], _, D.loc[i, "noise_X_R2"], _ = ev.calculate_reliability(
-            Ypred, T
-        )  # Noise ceiling for cortex (squared)
+        D.loc[i, "noise_Y_R"], _, D.loc[i, "noise_Y_R2"], _ = ev.calculate_reliability(Y, T)  # Noise ceiling for cerebellum (squared)
+        D.loc[i, "noise_X_R"], _, D.loc[i, "noise_X_R2"], _ = ev.calculate_reliability(Ypred, T)  # Noise ceiling for cortex (squared)
         pass
 
     # Return list of models

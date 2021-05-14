@@ -41,28 +41,28 @@ def train_NNLS(corticalParc, logalpha, sn=const.return_subjs):
 
 
 
-def eval_ridge(resolution, logalpha, sn=const.return_subjs):
+def eval_ridge(corticalParc, logalpha, sn=const.return_subjs):
     d = const.Dirs()
     config = run.get_default_eval_config()
     num_models = len(logalpha)
     D = pd.DataFrame()
     for i in range(num_models):
-        name = f"L2_WB{resolution}_A{logalpha[i]:.0f}"
+        name = f"ridge_{corticalParc}_A{logalpha[i]:.0f}"
         for e in range(2):
             config["name"] = name
             config["logalpha"] = logalpha[i]  # For recording in
-            config["X_data"] = f"tesselsWB{resolution}"
+            config["X_data"] = corticalParc
             config["weighting"] = 2
-            config["train_exp"] = e + 1
-            config["eval_exp"] = 2 - e
+            config["train_exp"] = f'sc{e + 1}'
+            config["eval_exp"] = f'sc{2 - e}'
             config["subjects"] = sn
             T = run.eval_models(config)
             D = pd.concat([D, T], ignore_index=True)
 
-    D.to_csv(d.conn_eval_dir / f"Ridge_WB{resolution}.dat")
+    D.to_csv(d.conn_eval_dir / f"Ridge_{corticalParc}.dat")
     return D
 
-
 if __name__ == "__main__":
-    # D = eval_ridge(162, [-2, 0, 2, 4, 6, 8, 10])
-    D = train_ridge('tessels0162',[0])
+    # D = eval_ridge('tessels0162', [0])
+    D = train_ridge('tessels0162',[-2,0,2,4,6,8])
+    # D = train_NNLS('tessels0162',[-2],['s02'])
