@@ -346,9 +346,9 @@ def read_suit_nii(atlas_file):
     """
     takes in a atlas file name in suit space 
     Args:
-    altas_file  - nifti filename for the atlas
+        altas_file  - nifti filename for the atlas
     Returns:
-    parcel_suit - values from parcellation file in suit space
+        region_number_suit - values from parcellation file in suit space
     """
 
     # Load the region file for cerebellum in suit space
@@ -367,16 +367,46 @@ def read_suit_nii(atlas_file):
     ijk = suit.flatmap.coords_to_voxelidxs(coords,vol_def).astype(int)
 
     indices = ijk.T
-    print(indices.shape)
 
     # get the volume data
     vol_data = vol_def.get_fdata()
 
     # use indices to sample from vol_data
-    parcel_suit = np.zeros((indices.shape[0], 1))
+    region_number_suit = np.zeros((indices.shape[0], 1))
     for v in range(indices.shape[0]):
-        parcel_suit[v] = vol_data[indices[v, 0], indices[v, 1], indices[v, 2]]
+        region_number_suit[v] = vol_data[indices[v, 0], indices[v, 1], indices[v, 2]]
 
-    return parcel_suit
+    return region_number_suit
 
+def average_by_roi(data, region_number_suit):
+    """
+    Takes in a vector containing voxels in suit space and the value of the parcel (output from read_suit_nii)
+    and calculate the average for each roi
+    Args:
+        data                - data in suit space
+        region_number_suit  - parcel vector in suit space (np.ndarray)
+    Returns:
+        data_mean_roi       - numpy array with mean within each roi (to be used as input to convert_cerebellum_to_nifti)
+    """
+
+    # find region numbers
+    region_numbers = np.unique(region_number_suit)
+
+    # loop over regions and calcaulate mean for each
+    # initialize the data array
+    data_mean_roi = np.zeros([len(region_numbers), region_number_suit.shape[0]])
+    for r in range(len(region_numbers)):
+        # get the indices of voxels in suit space
+        reg_index = region_number_suit == region_numbers[r]
+
+        # get data for the region
+        reg_data = data[reg_index]
+
+        # calculate mean of data within region
+        mean_data = np.mean(reg_data[:])
+
+        # fill in data_roi
+        data_mean_roi[r, reg_index] = mean_data
+
+    return data_mean_roi
 
