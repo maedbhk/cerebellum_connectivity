@@ -348,6 +348,7 @@ def read_suit_nii(atlas_file):
     Args:
     altas_file  - nifti filename for the atlas
     Returns:
+    parcel_suit - values from parcellation file in suit space
     """
 
     # Load the region file for cerebellum in suit space
@@ -365,6 +366,17 @@ def read_suit_nii(atlas_file):
     # convert to voxel space
     ijk = suit.flatmap.coords_to_voxelidxs(coords,vol_def).astype(int)
 
-    return ijk, vol_def
+    indices = ijk.T
+    print(indices.shape)
+
+    # get the volume data
+    vol_data = vol_def.get_fdata()
+
+    # use indices to sample from vol_data
+    parcel_suit = np.zeros((indices.shape[0], 1))
+    for v in range(indices.shape[0]):
+        parcel_suit[v] = vol_data[indices[v, 0], indices[v, 1], indices[v, 2]]
+
+    return parcel_suit
 
 
