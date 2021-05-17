@@ -48,8 +48,9 @@ def calculate_R_cv(model, X, Y):
 
 
 def calculate_R2(Y, Y_pred):
-    """Calculates squared correlation between Y and Y_pred without subtracting the mean.
-
+    """
+    Calculates squared correlation between Y and Y_pred without subtracting the mean.
+    This function is used to calculate how much variation in the response Y can be explained by the model
     Args:
         Y (nd-array):
         Y_pred (nd-array):

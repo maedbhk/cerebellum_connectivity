@@ -24,7 +24,7 @@ return_subjs = ["s02","s03","s04","s06","s08",
 # base_dir = Path('/Users/jdiedrichsen/Dropbox (Diedrichsenlab)/projects/SuperCerebellum')
 # base_dir = Path("global/scratch/maedbhking/projects/cerebellum_connectivity/data")
 # base_dir = Path("/Users/maedbhking/Documents/cerebellum_connectivity/data")
-base_dir = Path(__file__).absolute().parent.parent / 'data'
+base_dir = Path(__file__).absolute().parent.parent.parent / 'serverData'
 
 
 class Dirs:
@@ -40,7 +40,7 @@ class Dirs:
         self.base_dir = base_dir
         self.fs_lr_dir = base_dir / "fs_LR_32"
         self.data_dir = base_dir / exp_name
-        self.behav_dir = self.data_dir / "data"
+        self.behav_dir = self.data_dir / "serverData"
         self.imaging_dir = self.data_dir / "imaging_data"
         self.suit_dir = self.data_dir / "suit"
         self.suit_glm_dir = self.suit_dir / glm
