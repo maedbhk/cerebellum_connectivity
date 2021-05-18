@@ -99,16 +99,19 @@ class NNLS(BaseEstimator, ModelMixin):
     using the  quadprog module
     """
 
-    def __init__(self, alpha=0, gamma=0):
+    def __init__(self, alpha=0, gamma=0, solver = "quadprog"):
         """
         Constructor. Input:
             alpha (double):
                 L2-regularisation
             gamma (double):
                 L1-regularisation (0 def)
+            solver
+                Library for solving quadratic programming problem
         """
         self.alpha = alpha
         self.gamma = gamma
+        self.solver = solver
 
     def fit(self, X, Y):
         """
@@ -124,8 +127,14 @@ class NNLS(BaseEstimator, ModelMixin):
         C = np.eye(P1)
         b = np.zeros((P1,))
         self.coef_ = np.zeros((P1, P2))
-        for i in range(P2):
-            self.coef_[:, i] = qp.solve_qp(G, a[:, i], C, b, 0)[0]
+        if (solver=="quadprog"):
+            for i in range(P2):
+                self.coef_[:, i] = qp.solve_qp(G, a[:, i], C, b, 0)[0]
+        if (solver=="quadprog"):
+            for i in range(P2):
+                self.coef_[:, i] = qp.solve_qp(G, a[:, i], C, b, 0)[0]
+
+
         return self
 
     def predict(self, X):

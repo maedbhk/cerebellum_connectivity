@@ -25,6 +25,7 @@ jedi = "==0.17.2"
 nilearn = "*"
 click = "*"
 neptune-client = "*"
+cplex = "*"
 
 [requires]
 python_version = "3.7"

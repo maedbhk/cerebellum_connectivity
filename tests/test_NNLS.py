@@ -7,6 +7,7 @@ import connectivity.constants as const
 import connectivity.model as mod
 import quadprog as qp
 import timeit
+import
 
 def simulate_IID_Data(N=8, P1=6, P2=5):
     """
@@ -51,8 +52,13 @@ def NNLS_speed_test():
 
         # Non-negative solution without regularisation
         nn1 = mod.NNLS(alpha=0, gamma=0)
-        fcn = lambda: nn1.fit(X,Y)
-        time.append(timeit.timeit(fcn,number=1))
+        tic = timeit.default_timer()
+        nn1.fit(X,Y)
+        toc = timeit.default_timer()
+        time.append(tic-toc)
+
+
+
     T = pd.DataFrame({'P':P1,'time':time})
     pass
 
