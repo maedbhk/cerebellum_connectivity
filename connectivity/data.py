@@ -261,13 +261,13 @@ def convert_cortex_to_gifti(data, atlas):
     # get texture
     gifti_img = []
     for h,hem in enumerate(hemName):
-        # Load the labels (roi-numbers) from the label.gii files 
+        # Load the labels (roi-numbers) from the label.gii files
         gii_path = os.path.join(dirs.reg_dir, 'data', 'group', f'{atlas}.{hem}.label.gii')
         gii_data = nib.load(gii_path)
         labels = gii_data.darrays[0].data[:]
 
         # Fill the corresponding vertices
-        # Fastest way: prepend a NaN for ROI 0 (medial wall) 
+        # Fastest way: prepend a NaN for ROI 0 (medial wall)
         c_data = np.insert(data,0,np.nan)
         mapped_data = c_data[labels]
         # Make the gifti imae   gifti img
@@ -293,12 +293,12 @@ def get_distance_matrix(roi):
         coordHem = []
         parcels = []
         for h,hem in enumerate(['L','R']):
-            # Load the corresponding label file 
+            # Load the corresponding label file
             label_file = os.path.join(group_dir,roi + '.' + hem + '.label.gii')
             labels = nib.load(label_file)
             roi_label = labels.darrays[0].data
 
-            # Load the spherical gifti 
+            # Load the spherical gifti
             sphere_file = os.path.join(group_dir,'fs_LR.32k.' + hem + '.sphere.surf.gii')
             sphere = nib.load(sphere_file)
             vertex = sphere.darrays[0].data
@@ -306,35 +306,35 @@ def get_distance_matrix(roi):
             # To achieve a large seperation between the hemispheres, just move the hemispheres apart 50 cm in the x-coordinate
             vertex[:,0] = vertex[:,0]+(h*2-1)*500
 
-            # Loop over the regions > 0 and find the average coordinate 
+            # Loop over the regions > 0 and find the average coordinate
             parcels.append(np.unique(roi_label[roi_label>0]))
             num_parcels = parcels[h].shape[0]
             coordHem.append(np.zeros((num_parcels,3)))
             for i,par in enumerate(parcels[h]):
                 coordHem[h][i,:] = vertex[roi_label==par,:].mean(axis=0)
-            
-        # Concatinate these to a full matrix 
+
+        # Concatinate these to a full matrix
         num_regions = max(map(np.max,parcels))
         coord = np.zeros((num_regions,3))
-        # Assign the coordinates - note that the 
+        # Assign the coordinates - note that the
         # Indices in the label files are 1-based [Matlab-style]
-        # 0-label is the medial wall and ignored! 
+        # 0-label is the medial wall and ignored!
         coord[parcels[0]-1,:]=coordHem[0]
         coord[parcels[1]-1,:]=coordHem[1]
 
     # Now get the distances from the coordinates and return
     Dist = eucl_distance(coord)
-    return Dist, coord 
+    return Dist, coord
 
 def eucl_distance(coord):
     """
-    Calculates euclediand distances over some cooordinates 
+    Calculates euclediand distances over some cooordinates
     Args:
         coord (ndarray)
-            Nx3 array of x,y,z coordinates 
-    Returns: 
-        dist (ndarray) 
-            NxN array pf distances 
+            Nx3 array of x,y,z coordinates
+    Returns:
+        dist (ndarray)
+            NxN array pf distances
     """
     num_points = coord.shape[0]
     D = np.zeros((num_points,num_points))
@@ -342,9 +342,9 @@ def eucl_distance(coord):
         D = D + (coord[:,i].reshape(-1,1)-coord[:,i])**2
     return np.sqrt(D)
 
-def read_suit_nii(atlas_file):
+def read_suit_nii(nii_file):
     """
-    takes in a atlas file name in suit space 
+    takes in a atlas file name in suit space
     Args:
         altas_file  - nifti filename for the atlas
     Returns:
@@ -361,7 +361,7 @@ def read_suit_nii(atlas_file):
     coords = region.data.T
 
     # load in the vol for the atlas file
-    vol_def = nib.load(atlas_file)
+    vol_def = nib.load(nii_file)
 
     # convert to voxel space
     ijk = suit.flatmap.coords_to_voxelidxs(coords,vol_def).astype(int)
@@ -372,11 +372,8 @@ def read_suit_nii(atlas_file):
     vol_data = vol_def.get_fdata()
 
     # use indices to sample from vol_data
-    region_number_suit = np.zeros((indices.shape[0], 1))
-    for v in range(indices.shape[0]):
-        region_number_suit[v] = vol_data[indices[v, 0], indices[v, 1], indices[v, 2]]
-
-    return region_number_suit
+    data = vol_data[indices[:, 0], indices[:, 1], indices[:, 2]]
+    return data
 
 def average_by_roi(data, region_number_suit):
     """
