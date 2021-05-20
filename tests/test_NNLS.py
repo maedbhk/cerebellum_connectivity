@@ -7,7 +7,6 @@ import connectivity.constants as const
 import connectivity.model as mod
 import quadprog as qp
 import timeit
-import
 
 def simulate_IID_Data(N=8, P1=6, P2=5):
     """
@@ -25,10 +24,31 @@ def simulate_IID_Data(N=8, P1=6, P2=5):
     # Generate the cerebellar data
     Y = X @ W + np.random.normal(0, 1, (N, P2))
 
-    return X,Y
+    return X,Y,W
+
+def simulate_real_Data(corticalParc="tessels0162", subj_id = "s02",P2 = 100):
+    """ 
+        Make some artifical data from the real problem size
+    """
+    Xdata = Dataset(experiment="sc1", glm="glm7", roi=corticalParc, subj_id=subj_id)
+    Xdata.load_mat()  # Import the data from Matlab
+    X, S = Xdata.get_data(averaging="sess",weighting=2)
+    X = X - X.mean(axis=0)
+    X = X / np.sqrt(np.sum(X ** 2, 0) / X.shape[0])
+    N, P1 = X.shape 
+
+    # Make non-negative connectivity weights
+    W = np.random.normal(0, 1, (P1, P2))
+    W[W < 0] = 0.0
+
+    # Generate the cerebellar data
+    Y = X @ W + np.random.normal(0, 1, (N, P2))
+
+    return X,Y,W 
+
 
 def compare_OLS_NNLS():
-    X, Y = simulate_IID_Data()
+    X, Y, W = simulate_IID_Data()
     W1 = np.linalg.solve(X.T @ X, X.T @ Y)  # Normal OLS solution
 
     # Non-negative solution without regularisation
@@ -45,22 +65,47 @@ def compare_OLS_NNLS():
     print(f"model2: {R2.round(2)}")
 
 def NNLS_speed_test():
-    P1 = [10,20,30,40,50,70,100,200,300,400,500,600]
-    time = []
-    for p1 in P1:
-        X, Y = simulate_IID_Data(N=42,P1=p1,P2=10)
+    P1 = [10,20,30,40,50,70,100,200,300,400,500,600,1000]
+    time1=[]
+    time2=[]
+    for i,p1 in enumerate(P1):
+        X, Y, W  = simulate_IID_Data(N=42,P1=p1,P2=10)
 
-        # Non-negative solution without regularisation
-        nn1 = mod.NNLS(alpha=0, gamma=0)
+        # Non-negative solution 
+        nn1 = mod.NNLS(alpha=0.1, gamma=0, solver="quadprog")
         tic = timeit.default_timer()
         nn1.fit(X,Y)
         toc = timeit.default_timer()
-        time.append(tic-toc)
+        time1.append(toc-tic)
 
+        # Non-negative solution 
+        nn2 = mod.NNLS(alpha=0.1, gamma=0, solver="cvxopt")
+        tic = timeit.default_timer()
+        nn2.fit(X,Y)
+        toc = timeit.default_timer()
+        time2.append(toc-tic)
 
+    T = pd.DataFrame({'P':P1,'time1':time1,'time2':time2})
+    pass
 
-    T = pd.DataFrame({'P':P1,'time':time})
+def NNLS_speed_real():
+    X, Y, W  = simulate_real_Data(P2=100)
+
+    # Non-negative solution 
+    nn1 = mod.NNLS(alpha=0.1, gamma=0, solver="quadprog")
+    tic = timeit.default_timer()
+    nn1.fit(X,Y)
+    toc = timeit.default_timer()
+    time1 = toc-tic 
+
+    # Non-negative solution 
+    nn2 = mod.NNLS(alpha=0.1, gamma=0, solver="cvxopt")
+    tic = timeit.default_timer()
+    nn2.fit(X,Y)
+    toc = timeit.default_timer()
+    time2 = toc-tic
+
     pass
 
 if __name__ == "__main__":
-    NNLS_speed_test()
+    NNLS_speed_real()

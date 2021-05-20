@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import quadprog as qp
+import cvxopt
 from scipy import sparse
 from sklearn.base import BaseEstimator
 from sklearn.linear_model import LinearRegression
@@ -99,7 +100,7 @@ class NNLS(BaseEstimator, ModelMixin):
     using the  quadprog module
     """
 
-    def __init__(self, alpha=0, gamma=0, solver = "quadprog"):
+    def __init__(self, alpha=0, gamma=0, solver = "cvxopt"):
         """
         Constructor. Input:
             alpha (double):
@@ -126,18 +127,23 @@ class NNLS(BaseEstimator, ModelMixin):
         a = Xs.T @ Y - self.gamma
         C = np.eye(P1)
         b = np.zeros((P1,))
-        self.coef_ = np.zeros((P1, P2))
-        if (solver=="quadprog"):
+        self.coef_ = np.zeros((P2, P1))
+        if (self.solver=="quadprog"):
             for i in range(P2):
-                self.coef_[:, i] = qp.solve_qp(G, a[:, i], C, b, 0)[0]
-        if (solver=="quadprog"):
+                self.coef_[i, :] = qp.solve_qp(G, a[:, i], C, b, 0)[0]
+        elif (self.solver=="cvxopt"):
+            Gc = cvxopt.matrix(G)
+            Cc = cvxopt.matrix(-1*C)
+            bc = cvxopt.matrix(b)
+            inVa = cvxopt.matrix(np.zeros((P1,)))
             for i in range(P2):
-                self.coef_[:, i] = qp.solve_qp(G, a[:, i], C, b, 0)[0]
+                ac = cvxopt.matrix(-a[:,i])
+                sol = cvxopt.solvers.qp(Gc,ac,Cc,bc,initvals=inVa)
+                self.coef_[i, :] = np.array(sol['x']).reshape((P1,))
+                inVa = sol['x']
 
-
-        return self
 
     def predict(self, X):
         Xs = X / self.scale_
         Xs = np.nan_to_num(Xs) # there are 0 values after scaling
-        return Xs @ self.coef_
+        return Xs @ self.coef_.T 

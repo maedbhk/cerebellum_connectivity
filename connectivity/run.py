@@ -122,7 +122,7 @@ def train_models(config, save=False):
         tic = timeit.default_timer() 
         models[-1].fit(X, Y)
         toc = timeit.default_timer()
-        models[-1].fit_time=tic-toc
+        models[-1].fit_time=toc-tic
 
         # Save the fitted model to disk if required
         if save:

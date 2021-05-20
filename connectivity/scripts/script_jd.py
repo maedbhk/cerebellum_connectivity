@@ -6,7 +6,6 @@ from connectivity.data import Dataset
 import connectivity.model as model
 import connectivity.run as run
 
-
 def train_ridge(corticalParc, logalpha, sn=const.return_subjs):
     config = run.get_default_train_config()
     num_models = len(logalpha)
@@ -40,7 +39,6 @@ def train_NNLS(corticalParc, logalpha, sn=const.return_subjs):
     pass
 
 
-
 def eval_ridge(corticalParc, logalpha, sn=const.return_subjs):
     d = const.Dirs()
     config = run.get_default_eval_config()
@@ -64,5 +62,5 @@ def eval_ridge(corticalParc, logalpha, sn=const.return_subjs):
 
 if __name__ == "__main__":
     # D = eval_ridge('tessels0162', [0])
-    D = train_ridge('tessels0162',[-2,0,2,4,6,8])
-    # D = train_NNLS('tessels0162',[-2],['s02'])
+    # D = train_ridge('tessels0162',[-2,0,2,4,6,8])
+    D = train_NNLS('tessels0162',[0,2,-2])
