@@ -110,10 +110,10 @@ def train_models(config, save=False):
 
         # Get the condensed data
         Ydata = Dataset(glm=config["glm"], subj_id=s, roi=config["Y_data"])
-        Ydata.load_mat()
+        Ydata.load()
         Y, T = Ydata.get_data(averaging=config["averaging"], weighting=config["weighting"])
         Xdata = Dataset(glm=config["glm"], subj_id=s, roi=config["X_data"])
-        Xdata.load_mat()
+        Xdata.load()
         X, T = Xdata.get_data(averaging=config["averaging"], weighting=config["weighting"])
         # Generate new model and put in the list
         newModel = getattr(model, config["model"])(**config["param"])
@@ -151,10 +151,10 @@ def eval_models(config):
 
         # Get the data
         Ydata = Dataset(experiment=config["eval_exp"], glm=config["glm"], subj_id=s, roi=config["Y_data"])
-        Ydata.load_mat()
+        Ydata.load()
         Y, T = Ydata.get_data(averaging=config["averaging"], weighting=config["weighting"])
         Xdata = Dataset(experiment=config["eval_exp"], glm=config["glm"], subj_id=s, roi=config["X_data"])
-        Xdata.load_mat()
+        Xdata.load()
         X, T = Xdata.get_data(averaging=config["averaging"], weighting=config["weighting"])
 
         # Get the model from file
@@ -183,6 +183,25 @@ def eval_models(config):
 
     # Return list of models
     return D
+
+def average_models(name,exp,subj_id=const.return_subjs):
+    """
+        Returns a model with connectivity weights averaged across subjects 
+
+    Args:
+        name ([str]): Name of the trained model
+        exp ([str]): "sc1" or "sc2"
+        subj_id ([list], optional): Lists of subjects, Defaults to const.return_subjs.
+    """
+    num_subj = len(subj_id)
+    for i,s in enumerate(subj_id):
+        fname = _get_model_name(name, exp, s)
+        M = dd.io.load(fname)
+        if i==0:
+            W = np.zeros((num_subj,M.coef_.shape[0],M.coef_.shape[1]))
+        W[i,:,:] = M.coef_
+    M.coef_ = np.nanmean(W,axis=0)
+    return M
 
 def _get_model_name(train_name, exp, subj_id):
     """returns path/name for connectivity training model outputs.

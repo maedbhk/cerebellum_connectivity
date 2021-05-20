@@ -129,7 +129,9 @@ def test_group_data():
     pass
     pass 
 
-
+def test_average_models(): 
+    M = run.average_models('NN_tessels0162_A0','sc1')
+    pass 
 
 def load_group_data(exp = "sc1", roi="cerebellum_suit"):
     Xdata = Dataset(experiment=exp, glm="glm7", roi=roi, subj_id="all")
@@ -137,12 +139,4 @@ def load_group_data(exp = "sc1", roi="cerebellum_suit"):
     pass
 
 if __name__ == "__main__":
-    make_group_data("sc2","cerebellum_suit")
-    make_group_data("sc2","tessels0042")
-    make_group_data("sc2","tessels0162")
-    make_group_data("sc2","tessels0362")
-    make_group_data("sc2","tessels0642")
-    make_group_data("sc2","tessels1002")
-    make_group_data("sc2","tessels1442")
-    make_group_data("sc2","yeo7")
-    make_group_data("sc2","yeo17")
+    test_average_models()

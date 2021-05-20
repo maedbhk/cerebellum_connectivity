@@ -61,6 +61,33 @@ def eval_ridge(corticalParc, logalpha, sn=const.return_subjs):
     D.to_csv(d.conn_eval_dir / f"Ridge_{corticalParc}.dat")
     return D
 
+def eval_models(model_name, corticalParc, logalpha, sn=const.return_subjs):
+    d = const.Dirs()
+    config = run.get_default_eval_config()
+    num_models = len(logalpha)
+    if type(corticalParc) is not list: 
+        corticalParc = [corticalParc] * num_models
+    if type(model_name) is not list: 
+        model_name = [model_name] * num_models
+
+    D = pd.DataFrame()
+    for model,cort,loga in zip(model_name,corticalParc,logalpha):
+        name = f"{model}_{cort}_A{loga:.0f}"
+        for e in range(2):
+            config["name"] = name
+            config["model"] = model
+            config["logalpha"] = loga  # For recording in
+            config["X_data"] = cort
+            config["weighting"] = 2
+            config["train_exp"] = f'sc{e + 1}'
+            config["eval_exp"] = f'sc{2 - e}'
+            config["subjects"] = sn
+            T = run.eval_models(config)
+            D = pd.concat([D, T], ignore_index=True)
+
+    return D
+
+
 def make_group_data(exp = "sc1", roi="cerebellum_suit"): 
     Xdata = Dataset(experiment=exp, glm="glm7", roi=roi, subj_id=const.return_subjs)
     # const.return_subjs
@@ -68,22 +95,11 @@ def make_group_data(exp = "sc1", roi="cerebellum_suit"):
     Xdata.average_subj()
     Xdata.save(dataname="all")
 
-def fit_group_model():
-    # Load and region average data 
-    Xdata = data.Dataset(experiment="sc1", roi="cerebellum_suit", subj_id="all")
-    Xdata.load()
-    Ydata = data.Dataset(experiment="sc1", roi="tessels0162",subj_id="all")
-    Ydata.load()
-
-    # Read MDTB atlas
-    index = data.read_suit_nii('/Users/jdiedrichsen/Data/cerebellar_atlases/atl-MDTB/atl-MDTB10_sp-SUIT.nii')
-    X, xinfo = Xdata.get_data('sess',True)
-    Y, yinfo = Ydata.get_data('sess',True)
-    Xm, reg = data.average_by_roi(X,index)
-    pass
-
-
 if __name__ == "__main__":
-    # D = eval_ridge('tessels0162', [0])
-    # D = train_ridge('tessels0162',[-2,0,2,4,6,8])
-    D = fit_group_model()
+    # D = train_NNLS('tessels0162', [-2,0,2],sn=['all'])
+    # D = train_ridge('tessels0162',[-2,0,2,4,6,8],sn=['all'])
+    # D = fit_group_model()
+    d = const.Dirs()
+    T = eval_models(['ridge','ridge','ridge','ridge','ridge','ridge','NN','NN','NN'],'tessels0162',[-2,0,2,4,6,8,-2,0,2],sn=['all'])
+    T.to_csv(d.conn_eval_dir / "group_model.dat")
+    

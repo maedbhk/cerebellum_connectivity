@@ -97,13 +97,32 @@ class Dataset:
             self.data = self.data.reshape(d.shape)
         return self
 
-    def average_subj(self): 
+    def load_h5(self):
         """
-            Averages data across subjects if data is 3-dimensional
+            Load the content of a data set object from a hpf5 file.
+            Returns:
+                Data set object
         """
-        if self.data.ndim == 2: 
-            raise NameError('data is already 2-dimensional')
-        self.data = np.nanmean(self.data, axis = 0)
+        dirs = const.Dirs(exp_name=self.exp, glm=self.glm)
+        fname = "Y_" + self.glm + "_" + self.roi + ".h5"
+        fdir = dirs.beta_reg_dir / self.subj_id
+
+        a_dict = dd.io.load(fdir / fname)
+        for key, value in a_dict.items():
+            setattr(self,key,value)
+        return self
+
+
+    def load(self):
+        """
+            Utility function to first try to load subjects as h5 file
+            and then as a mat file
+        """
+        try: 
+            self.load_h5()
+        except:
+            self.load_mat()
+        return self
 
     def save(self, dataname = None, filename=None):
         """Save the content of the data set in a dict as a hpf5 file.
@@ -126,22 +145,13 @@ class Dataset:
         dd.io.save(fdir / fname, vars(self), compression=None)
 
 
-    def load(self, filename=None):
-        """Load the content of a data set object from a hpf5 file.
-        Args:
-            filename (str): default is None.
-        Returns:
-            returns dict from hpf5.
+    def average_subj(self): 
         """
-        if filename is None:
-            dirs = const.Dirs(exp_name=self.exp, glm=self.glm)
-            fname = "Y_" + self.glm + "_" + self.roi + ".h5"
-            fdir = dirs.beta_reg_dir / self.subj_id
-
-        a_dict = dd.io.load(fdir / fname)
-        for key, value in a_dict.items():
-            setattr(self,key,value)
-        return self
+            Averages data across subjects if data is 3-dimensional
+        """
+        if self.data.ndim == 2: 
+            raise NameError('data is already 2-dimensional')
+        self.data = np.nanmean(self.data, axis = 0)
 
 
     def get_info(self):
