@@ -3,6 +3,7 @@ import connectivity.data as data
 import connectivity.model as model
 import connectivity.run as run
 import connectivity.nib_utils as nio
+import connectivity.constants as const
 import numpy as np
 import SUITPy as suit
 from sklearn.linear_model import Ridge
@@ -115,5 +116,33 @@ def test_read_suit_nii():
     A = data.read_suit_nii('/Users/jdiedrichsen/Data/cerebellar_atlases/atl-MDTB/atl-MDTB10_sp-SUIT.nii')
     pass
 
+def test_group_data():
+    Xdata = Dataset(experiment="sc1", glm="glm7", roi="cerebellum_suit", subj_id="s02")
+    Xdata.load_mat()
+    assert(Xdata.data.ndim==2)
+    pass
+
+    Xdata = Dataset(experiment="sc1", glm="glm7", roi="cerebellum_suit", subj_id=const.return_subjs)
+    Xdata.load_mat()
+    Xdata.average_subj()
+
+    pass
+    pass 
+
+
+
+def load_group_data(exp = "sc1", roi="cerebellum_suit"):
+    Xdata = Dataset(experiment=exp, glm="glm7", roi=roi, subj_id="all")
+    Xdata.load()
+    pass
+
 if __name__ == "__main__":
-    test_read_suit_nii()
+    make_group_data("sc2","cerebellum_suit")
+    make_group_data("sc2","tessels0042")
+    make_group_data("sc2","tessels0162")
+    make_group_data("sc2","tessels0362")
+    make_group_data("sc2","tessels0642")
+    make_group_data("sc2","tessels1002")
+    make_group_data("sc2","tessels1442")
+    make_group_data("sc2","yeo7")
+    make_group_data("sc2","yeo17")

@@ -24,9 +24,20 @@ from numpy.linalg import solve
    @authors: Maedbh King, Ladan Shahshahani, Jörn Diedrichsen
 
   Typical usage example:
+  data = Dataset('sc1','glm7','cerebellum_suit','s02')
+  data.load_mat() # Load from Matlab 
+  X, INFO = data.get_data(averaging="sess") # Get numpy 
 
-  cereb_data = Dataset(roi='cerebellum_grey')
-  data, info = cereb_data.get_data()
+  Group averaging: 
+  data = Dataset(subj_id = const.return_subjs) # Any list of subjects will do 
+  data.load_mat()                             # Load from Matlab
+  data.average_subj()                         # Average 
+
+  Saving and loading as h5: 
+  data.save(dataname="group")     # Save under new data name (default = subj_id)
+  data = Dataset('sc1','glm7','cerebellum_suit','group')
+  data.load()
+
 """
 
 
@@ -37,7 +48,7 @@ class Dataset:
         exp: A string indicating experiment.
         glm: A string indicating glm.
         roi: A string indicating region-of-interest.
-        subj_id: A string for subject id.
+        subj_id: A string for subject id - if the subj_id is a list of strings, the data will be averaged across these subjects. Thus, to get group-averaged data, set subj_id = const.return_subj
         data: None
     """
 
@@ -54,36 +65,64 @@ class Dataset:
         """Reads a data set from the Y_info file and corresponding GLM file from matlab."""
         dirs = const.Dirs(exp_name=self.exp, glm=self.glm)
         fname = "Y_" + self.glm + "_" + self.roi + ".mat"
-        fdir = dirs.beta_reg_dir / self.subj_id
-        file = h5py.File(fdir / fname, "r")
 
-        # Store the data in betas x voxel/rois format
-        self.data = np.array(file["data"]).T
-        # this is the row info
-        self.XX = np.array(file["XX"])
-        self.TN = cio._convertobj(file, "TN")
-        self.CN = cio._convertobj(file, "CN")
-        self.cond = np.array(file["cond"]).reshape(-1).astype(int)
-        self.inst = np.array(file["inst"]).reshape(-1).astype(int)
-        self.task = np.array(file["task"]).reshape(-1).astype(int)
-        self.sess = np.array(file["sess"]).reshape(-1).astype(int)
-        self.run = np.array(file["run"]).reshape(-1).astype(int)
+        # For a single subject - make it a list 
+        if type(self.subj_id) is not list:
+            subj_id = [self.subj_id]
+        else: 
+            subj_id = self.subj_id
+        num_subj = len(subj_id)
+        # Iterate over all subjects
+        for i,s in enumerate(subj_id): 
+            fdir = dirs.beta_reg_dir / s
+            file = h5py.File(fdir / fname, "r")
+
+            # Store the data in betas x voxel/rois format
+            d = np.array(file["data"]).T
+            if (self.data is None):
+                self.data = np.zeros((num_subj,d.shape[0],d.shape[1]))
+            self.data[i,:,:] = d
+            # this is the row info
+            self.XX = np.array(file["XX"])
+            self.TN = cio._convertobj(file, "TN")
+            self.CN = cio._convertobj(file, "CN")
+            self.cond = np.array(file["cond"]).reshape(-1).astype(int)
+            self.inst = np.array(file["inst"]).reshape(-1).astype(int)
+            self.task = np.array(file["task"]).reshape(-1).astype(int)
+            self.sess = np.array(file["sess"]).reshape(-1).astype(int)
+            self.run = np.array(file["run"]).reshape(-1).astype(int)
+        
+        # Remove third dimension if single subject
+        if num_subj==1: 
+            self.data = self.data.reshape(d.shape)
         return self
 
+    def average_subj(self): 
+        """
+            Averages data across subjects if data is 3-dimensional
+        """
+        if self.data.ndim == 2: 
+            raise NameError('data is already 2-dimensional')
+        self.data = np.nanmean(self.data, axis = 0)
 
-    def save(self, filename=None):
+    def save(self, dataname = None, filename=None):
         """Save the content of the data set in a dict as a hpf5 file.
 
         Args:
-            filename (str): default is None.
+            dataname (str): default is subj_id - but can be set for group data
+            filename (str): by default will be set to something automatic 
         Returns:
             saves dict to disk
         """
         if filename is None:
-            dirs = const.Dirs(study_name=self.exp, glm=self.glm)
+            if dataname is None: 
+                if type(self.subj_id) is list: 
+                    raise(NameError('For group data need to set data name'))
+                else: 
+                    dataname = self.subj_id
+            dirs = const.Dirs(exp_name=self.exp, glm=self.glm)
             fname = "Y_" + self.glm + "_" + self.roi + ".h5"
-            fdir = dirs.beta_reg_dir / self.subj_id
-
+            fdir = dirs.beta_reg_dir / dataname
         dd.io.save(fdir / fname, vars(self), compression=None)
 
 
@@ -95,11 +134,14 @@ class Dataset:
             returns dict from hpf5.
         """
         if filename is None:
-            dirs = Dirs(study_name=self.exp, glm=self.glm)
-            fname = "Y_info_" + self.glm + "_" + self.roi + ".h5"
-            fdir = dirs.BETA_REG_DIR / dirs.BETA_REG_DIR / self.subj_id
+            dirs = const.Dirs(exp_name=self.exp, glm=self.glm)
+            fname = "Y_" + self.glm + "_" + self.roi + ".h5"
+            fdir = dirs.beta_reg_dir / self.subj_id
 
-        return dd.io.load(fdir / fname, self, compression=None)
+        a_dict = dd.io.load(fdir / fname)
+        for key, value in a_dict.items():
+            setattr(self,key,value)
+        return self
 
 
     def get_info(self):
@@ -377,33 +419,32 @@ def read_suit_nii(nii_file):
 
 def average_by_roi(data, region_number_suit):
     """
-    Takes in a vector containing voxels in suit space and the value of the parcel (output from read_suit_nii)
+    Takes in a matrix containing voxels in suit space and the value of the parcel (output from read_suit_nii)
     and calculate the average for each roi
     Args:
-        data                - data in suit space
+        data                - data in suit space (NxP)
         region_number_suit  - parcel vector in suit space (np.ndarray)
     Returns:
         data_mean_roi       - numpy array with mean within each roi (to be used as input to convert_cerebellum_to_nifti)
     """
 
     # find region numbers
+    region_number_suit = region_number_suit.astype("int")
     region_numbers = np.unique(region_number_suit)
-
-    # loop over regions and calcaulate mean for each
+    num_reg = len(region_numbers)
+    # loop over regions and calculate mean for each
     # initialize the data array
-    data_mean_roi = np.zeros([len(region_numbers), region_number_suit.shape[0]])
-    for r in range(len(region_numbers)):
+
+    data_mean_roi = np.zeros((data.shape[0],num_reg))
+    for r in range(num_reg):
         # get the indices of voxels in suit space
         reg_index = region_number_suit == region_numbers[r]
 
         # get data for the region
-        reg_data = data[reg_index]
-
-        # calculate mean of data within region
-        mean_data = np.mean(reg_data[:])
+        reg_data = data[:,reg_index].mean(axis=1)
 
         # fill in data_roi
-        data_mean_roi[r, reg_index] = mean_data
+        data_mean_roi[:, r] = reg_data
 
-    return data_mean_roi
+    return data_mean_roi, region_numbers
 
