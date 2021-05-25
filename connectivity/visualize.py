@@ -20,6 +20,13 @@ import connectivity.nib_utils as nio
 plt.rcParams["axes.grid"] = False
 
 
+def save_fig(plt, fname):
+    dirs = const.Dirs()
+    fpath = os.path.join(dirs.figure, fname)
+
+    plt.savefig(fpath, dpi=300, orientation='portrait')
+
+
 def train_summary(summary_name="train_summary", save_online=True):
     """load train summary containing all metrics about training models.
 
@@ -406,5 +413,51 @@ def plot_distance_matrix(roi='tessels0042', hemisphere='R'):
 
     # visualize matrix of distances
     plt.imshow(distances)
+    plt.xlabel('Cortical regions', fontsize=15)
+    plt.ylabel('Cortical regions', fontsize=15)
     plt.colorbar()
+    save_fig(plt, f'distance_matrix_{roi}.png')
+    # plt.show()
+
+
+def plot_task_scatterplot(dataframe=None, exp='sc1', save=True): 
+    """plot scatterplot of beta weights between two rois. 
+
+    Args:   
+        dataframe (pd dataframe): dataframe outputf from `get_betas_summary`
+        exp (str): 'sc1' or 'sc2'
+    """
+    dirs = const.Dirs()
+
+    # loads dataframe if not given
+    if not dataframe:
+        dataframe = pd.read_csv(os.path.join(dirs.base_dir, 'betas_summary.csv'))
+
+    for roi in dataframe['roi'].unique():
+        if 'cerebellum' in roi:
+            roi1 = 'cerebellum'
+            roi_x = roi
+        else:
+            roi2 = 'cortex'
+            roi_y = roi
+
+    # get x and y data
+    x = dataframe.query(f'roi=="{roi_x}" and exp=="{exp}"').groupby("TN")['betas'].mean().reset_index()
+    y = dataframe.query(f'roi=="{roi_y}" and exp=="{exp}"').groupby("TN")['betas'].mean().reset_index()
+    df = x.merge(y, on='TN')
+
+    plt.figure(figsize=(10,10))
+    sns.regplot(x='betas_x', y='betas_y', data=df, marker="o", color="skyblue")
+    plt.xlabel(f'{roi1} (betas)', fontsize=20)
+    plt.ylabel(f'{roi2} (betas)', fontsize=20)
+    plt.xticks(fontsize=15)
+    plt.yticks(fontsize=15)
+
+    # add annotations one by one with a loop
+    for line in range(0,df.shape[0]):
+        plt.text(df.betas_x[line]+0.002, df.betas_y[line], df.TN[line], horizontalalignment='left', size='large', color='black', weight='bold')
+
+    if save:
+        save_fig(plt, f'task_scatterplot_{exp}.png')
+
     plt.show()
