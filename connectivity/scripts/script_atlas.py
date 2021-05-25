@@ -13,7 +13,7 @@ def run(glm, atlas):
     labels = {}
     # loop over exp
     for exp in ['sc1', 'sc2']:
-        labels[exp] = make_atlas.model_wta(exp, glm, atlas)
+        labels[exp] = make_atlas.model_wta(const.return_subjs, exp, glm, atlas)
 
     # concat labels across exps
     labels_concat = np.concatenate((labels['sc1'], labels['sc2']))

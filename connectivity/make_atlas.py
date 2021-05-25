@@ -49,11 +49,10 @@ def _get_data(subj, exp, glm, atlas):
 
     return Y, Y_info, X, X_info
 
-def model_wta(exp, glm, atlas, crossvalidate=False):
+def model_wta(subjs, exp, glm, atlas, crossvalidate=False):
 
     labels_all = []
-    # for subj in const.return_subjs:
-    for subj in ['s02', 's03']:
+    for subj in subjs:
 
         Y, Y_info, X, X_info = _get_data(subj, exp, glm, atlas)
 
