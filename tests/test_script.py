@@ -3,21 +3,22 @@ import connectivity.data as data
 import connectivity.model as model
 import connectivity.run as run
 import connectivity.nib_utils as nio
+import connectivity.constants as const
 import numpy as np
 import SUITPy as suit
 from sklearn.linear_model import Ridge
 
 def test_single_fit():
-    # Get task by voxel data for cerebellum 
+    # Get task by voxel data for cerebellum
     Ydata = Dataset(glm="glm7", sn="s02", roi="cerebellum_suit")
     Ydata.load_mat()
     Y, T = Ydata.get_data(averaging="sess")
-    # Get task by voxel data for cortex 
+    # Get task by voxel data for cortex
     Xdata = Dataset(glm=7, sn=2, roi="tesselsWB162")
     Xdata.load_mat()
     X, T = Xdata.get_data(averaging="sess")
 
-    # Run the Ridge estimation model 
+    # Run the Ridge estimation model
     R = model.L2regression(alpha=1)
     R.fit(X, Y)
 
@@ -111,5 +112,31 @@ def test_distance():
     D2,c2 = data.get_distance_matrix('tessels0042')
     pass
 
+def test_read_suit_nii():
+    A = data.read_suit_nii('/Users/jdiedrichsen/Data/cerebellar_atlases/atl-MDTB/atl-MDTB10_sp-SUIT.nii')
+    pass
+
+def test_group_data():
+    Xdata = Dataset(experiment="sc1", glm="glm7", roi="cerebellum_suit", subj_id="s02")
+    Xdata.load_mat()
+    assert(Xdata.data.ndim==2)
+    pass
+
+    Xdata = Dataset(experiment="sc1", glm="glm7", roi="cerebellum_suit", subj_id=const.return_subjs)
+    Xdata.load_mat()
+    Xdata.average_subj()
+
+    pass
+    pass 
+
+def test_average_models(): 
+    M = run.average_models('NN_tessels0162_A0','sc1')
+    pass 
+
+def load_group_data(exp = "sc1", roi="cerebellum_suit"):
+    Xdata = Dataset(experiment=exp, glm="glm7", roi=roi, subj_id="all")
+    Xdata.load()
+    pass
+
 if __name__ == "__main__":
-    test_mapping_cortex()
+    test_average_models()

@@ -7,6 +7,7 @@ function [ varargout ] = sc1sc2_conn_model( what, varargin )
 % baseDir         = '/Volumes/MotorControl/data/super_cerebellum_new';
 % baseDir         = '/Users/ladan/Documents/Project-Cerebellum/Cerebellum_Data';
 baseDir         = '/srv/diedrichsen/data/super_cerebellum';
+baseDir         = '/Volumes/diedrichsen_data$/data/super_cerebellum/'; 
 atlasDir        = '/srv/diedrichsen/data/Atlas_templates/fs_LR_32';
 wbDir           = fullfile(baseDir,'sc1','surfaceWB');
 behavDir        = 'data';
@@ -158,7 +159,7 @@ switch what
         end % sn (subject)
     case 'ROI:define_cortical_all' 
         for i=1:length(corticalParcels)
-            sc1sc2_conn_model('ROI:define_cortical','parcelName',corticalParcels{i});
+            % 44,'parcelName',corticalParcels{i});
         end
     case 'ROI:beta_unn'
         % Calculate BetaUW for regions
@@ -170,8 +171,8 @@ switch what
         experiment_num = 1;
         parcelType     = 'tessels0162';  %% other options are 'cerebellum_suit', 'yeo_7WB', and 'yeo_17WB'
         glm            = 7;
-        ignore_nan     = 1; % Set Nans to zero for sampling? 
-        interp         = 1; % Interpolation for sampling 
+        ignore_nan     = 0; % Set Nans to zero for sampling? 
+        interp         = 0; % Interpolation for sampling 
         
         vararginoptions(varargin, {'sn', 'experiment_num', 'glm', 'parcelType', 'ignore_nan','interp'});
         
@@ -207,8 +208,7 @@ switch what
             V(end+1)=SPM.VResMS;
             cd(glmDir);
             tic;
-%             Y = region_getdata(V,R,'interp',interp,'ignore_nan',ignore_nan);  % Data is N x P
-            Y = region_getdata(V,R,'interp',interp);  % Data is N x P
+            Y = region_getdata(V,R,'interp',interp,'ignore_nan',ignore_nan);  % Data is N x P
             B=[];
             for r = 1:numel(R) % R is the output 'regions' structure from 'ROI_define'
                 % Get betas (univariately prewhitened)
@@ -302,14 +302,11 @@ switch what
         end % s (sn)
     case 'ROI:beta_all' % extracts betas and add_to_beta
         % Example usage: sc1sc2_conn_model('ROI:MDTB:beta_all')
-        
-        sn  = returnSubjs;
-        glm = 7;
-        experiment_num = 1;
-        
-        
-        vararginoptions(varargin, {'sn', 'glm', 'experiment_num'});
-        
+        sn = returnSubjs; 
+        experiment_num=2;
+        glm = 7; 
+        % sc1sc2_conn_model('ROI:beta_unn', 'sn', sn, 'experiment_num', 1, 'glm', 7, 'parcelType', 'cerebellum_suit','interp',1,'ignore_nan',1);
+        % sc1sc2_conn_model('ROI:beta_unn', 'sn', sn, 'experiment_num', 2, 'glm', 7, 'parcelType', 'cerebellum_suit','interp',1,'ignore_nan',1);
         sc1sc2_conn_model('ROI:beta_unn', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0042');
         sc1sc2_conn_model('ROI:beta_unn', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0162');
         sc1sc2_conn_model('ROI:beta_unn', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels0362');
@@ -325,7 +322,9 @@ switch what
         sc1sc2_conn_model('ROI:add_to_beta', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'tessels1002');
         sc1sc2_conn_model('ROI:add_to_beta', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'yeo7');
         sc1sc2_conn_model('ROI:add_to_beta', 'sn', sn, 'experiment_num', experiment_num, 'glm', glm, 'parcelType', 'yeo17');
-            
+        % sc1sc2_conn_model('ROI:add_to_beta', 'sn', sn, 'experiment_num', 1, 'glm', 7, 'parcelType', 'cerebellum_suit');
+        % sc1sc2_conn_model('ROI:add_to_beta', 'sn', sn, 'experiment_num', 2, 'glm', 7, 'parcelType', 'cerebellum_suit');
+  
         
     case 'PREP:MDTB:cortex:surface'           % creates Y_info file for the cortical surfaces
         % gets the betas on the surface and univariately prewhiten them. It
