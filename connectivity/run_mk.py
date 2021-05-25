@@ -13,7 +13,6 @@ from sklearn.metrics import mean_squared_error
 import connectivity.io as cio
 from connectivity import data as cdata
 import connectivity.constants as const
-import connectivity.sparsity as csparsity
 import connectivity.model as model
 import connectivity.evaluation as ev
 import connectivity.nib_utils as nio
@@ -290,10 +289,6 @@ def eval_models(config):
         # add evaluation (summary)
         evals = _get_eval(Y=Y, Y_pred=Y_pred, Y_info=Y_info, X_info=X_info)
         data.update(evals)
-
-        # add sparsity metric (voxels)
-        sparsity_results = _get_sparsity(config, fitted_model)
-        data.update(sparsity_results)
 
         # add evaluation (voxels)
         if config["save_maps"]:
