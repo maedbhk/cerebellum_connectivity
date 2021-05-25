@@ -4,6 +4,7 @@ from pathlib import Path
 import nibabel as nib
 import numpy as np
 from pathlib import Path
+import matplotlib.pyplot as plt
 from nilearn.image import mean_img
 import SUITPy.flatmap as flatmap
 from nilearn.plotting import view_surf, plot_surf_roi
@@ -55,7 +56,7 @@ def make_label_gifti_cortex(data, anatomical_struct='CortexLeft', label_names=No
             label_names.append("label-{:02d}".format(i+1))
 
     # Create label.gii structure
-    C = nb.gifti.GiftiMetaData.from_dict({
+    C = nib.gifti.GiftiMetaData.from_dict({
         'AnatomicalStructurePrimary': anatomical_struct,
         'encoding': 'XML_BASE64_GZIP'})
 
@@ -63,7 +64,7 @@ def make_label_gifti_cortex(data, anatomical_struct='CortexLeft', label_names=No
     num_labels = np.arange(numLabels)
     E_all = []
     for (label,rgba,name) in zip(num_labels,label_RGBA,label_names):
-        E = nb.gifti.gifti.GiftiLabel()
+        E = nib.gifti.gifti.GiftiLabel()
         E.key = label 
         E.label= name
         E.red = rgba[0]
@@ -75,16 +76,16 @@ def make_label_gifti_cortex(data, anatomical_struct='CortexLeft', label_names=No
 
     D = list()
     for i in range(numCols):
-        d = nb.gifti.GiftiDataArray(
+        d = nib.gifti.GiftiDataArray(
             data=np.float32(data[:, i]),
             intent='NIFTI_INTENT_LABEL', 
             datatype='NIFTI_TYPE_INT32', # was NIFTI_TYPE_INT32
-            meta=nb.gifti.GiftiMetaData.from_dict({'Name': column_names[i]})
+            meta=nib.gifti.GiftiMetaData.from_dict({'Name': column_names[i]})
         )
         D.append(d)
 
     # Make and return the gifti file
-    gifti = nb.gifti.GiftiImage(meta=C, darrays=D)
+    gifti = nib.gifti.GiftiImage(meta=C, darrays=D)
     gifti.labeltable.labels.extend(E_all)
     return gifti
 
