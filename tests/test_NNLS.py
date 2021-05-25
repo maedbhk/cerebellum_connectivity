@@ -27,7 +27,7 @@ def simulate_IID_Data(N=8, P1=6, P2=5):
     return X,Y,W
 
 def simulate_real_Data(corticalParc="tessels0162", subj_id = "s02",P2 = 100):
-    """ 
+    """
         Make some artifical data from the real problem size
     """
     Xdata = Dataset(experiment="sc1", glm="glm7", roi=corticalParc, subj_id=subj_id)
@@ -35,7 +35,7 @@ def simulate_real_Data(corticalParc="tessels0162", subj_id = "s02",P2 = 100):
     X, S = Xdata.get_data(averaging="sess",weighting=2)
     X = X - X.mean(axis=0)
     X = X / np.sqrt(np.sum(X ** 2, 0) / X.shape[0])
-    N, P1 = X.shape 
+    N, P1 = X.shape
 
     # Make non-negative connectivity weights
     W = np.random.normal(0, 1, (P1, P2))
@@ -44,7 +44,7 @@ def simulate_real_Data(corticalParc="tessels0162", subj_id = "s02",P2 = 100):
     # Generate the cerebellar data
     Y = X @ W + np.random.normal(0, 1, (N, P2))
 
-    return X,Y,W 
+    return X,Y,W
 
 
 def compare_OLS_NNLS():
@@ -68,37 +68,49 @@ def NNLS_speed_test():
     P1 = [10,20,30,40,50,70,100,200,300,400,500,600,1000]
     time1=[]
     time2=[]
+    time3=[]
+    exit_flag = []
+    miter = []
     for i,p1 in enumerate(P1):
         X, Y, W  = simulate_IID_Data(N=42,P1=p1,P2=10)
 
-        # Non-negative solution 
+        # Quadraticprog
         nn1 = mod.NNLS(alpha=0.1, gamma=0, solver="quadprog")
         tic = timeit.default_timer()
         nn1.fit(X,Y)
         toc = timeit.default_timer()
         time1.append(toc-tic)
 
-        # Non-negative solution 
+        # cvxopt
         nn2 = mod.NNLS(alpha=0.1, gamma=0, solver="cvxopt")
         tic = timeit.default_timer()
         nn2.fit(X,Y)
         toc = timeit.default_timer()
         time2.append(toc-tic)
 
-    T = pd.DataFrame({'P':P1,'time1':time1,'time2':time2})
+        # qpoases
+        nn3 = mod.NNLS(alpha=0.1, gamma=0, solver="qpoases")
+        tic = timeit.default_timer()
+        nn3.fit(X,Y)
+        toc = timeit.default_timer()
+        time3.append(toc-tic)
+        exit_flag.append((nn3.exit_>0).sum())
+        miter.append(nn3.iter_.mean())
+
+    T = pd.DataFrame({'P':P1,'time1':time1,'time2':time2,'time3':time3,'exit_flag':exit_flag,'miter':miter})
     pass
 
 def NNLS_speed_real():
     X, Y, W  = simulate_real_Data(P2=100)
 
-    # Non-negative solution 
+    # Non-negative solution
     nn1 = mod.NNLS(alpha=0.1, gamma=0, solver="quadprog")
     tic = timeit.default_timer()
     nn1.fit(X,Y)
     toc = timeit.default_timer()
-    time1 = toc-tic 
+    time1 = toc-tic
 
-    # Non-negative solution 
+    # Non-negative solution
     nn2 = mod.NNLS(alpha=0.1, gamma=0, solver="cvxopt")
     tic = timeit.default_timer()
     nn2.fit(X,Y)
@@ -108,4 +120,4 @@ def NNLS_speed_real():
     pass
 
 if __name__ == "__main__":
-    NNLS_speed_real()
+    NNLS_speed_test()

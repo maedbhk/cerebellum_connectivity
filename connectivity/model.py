@@ -2,6 +2,7 @@ import os
 import numpy as np
 import quadprog as qp
 import cvxopt
+import qpoases as oa
 from scipy import sparse
 from sklearn.base import BaseEstimator
 from sklearn.linear_model import LinearRegression
@@ -141,9 +142,26 @@ class NNLS(BaseEstimator, ModelMixin):
                 sol = cvxopt.solvers.qp(Gc,ac,Cc,bc,initvals=inVa)
                 self.coef_[i, :] = np.array(sol['x']).reshape((P1,))
                 inVa = sol['x']
+        elif (self.solver=="qpoases"):
+            #Setup data of first QP.
+            ub  = np.ones((P1,))*100.0
+            p = oa.PyQProblemB(P1)
+            options = oa.PyOptions()
+            options.enableFlippingBounds = oa.PyBooleanType.FALSE
+            options.initialStatusBounds  = oa.PySubjectToStatus.INACTIVE
+            options.numRefinementSteps   = 1
+            p.setOptions(options)
+            nWSR = np.array([2000])
+            r1=p.init(G, -a[:,0], b, ub, nWSR)
+            self.iter_ = np.ones((P2,1),dtype=int)*2000
+            self.exit_ = np.zeros((P2),dtype=int)
 
+            # Solve second QP.
+            for i in range(P2):
+                self.exit_[i]=p.hotstart(-a[:,i], b, ub, self.iter_[i,:])
+                p.getPrimalSolution(self.coef_[i,:])
 
     def predict(self, X):
         Xs = X / self.scale_
         Xs = np.nan_to_num(Xs) # there are 0 values after scaling
-        return Xs @ self.coef_.T 
+        return Xs @ self.coef_.T
