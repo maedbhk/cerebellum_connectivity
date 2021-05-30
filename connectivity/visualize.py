@@ -12,7 +12,6 @@ from nilearn.plotting import view_surf
 import nibabel as nib
 
 import connectivity.data as cdata
-import connectivity.sparsity as csparsity
 import connectivity.constants as const
 import connectivity.nib_utils as nio
 
@@ -323,7 +322,8 @@ def plot_parcellation(parcellation=None, anatomical_structure='cerebellum', hemi
     """General purpose function for plotting parcellations (cortex or cerebellum)
 
     Args: 
-        parcellation (str):  any of the following: 'yeo7', 'yeo17', 'MDTB_10', 'tessels<num>', 'buckner7', 'buckner17'
+        parcellation (str):  any of the following: 'yeo7', 'yeo17', 'MDTB_10', 'tessels<num>', 
+        'Buckner_7Networks', 'Buckner_17Networks', 'MDTB_10Regions'
         anatomical_structure (str): default is 'cerebellum'. other options: 'cortex'
         hemisphere (None or str): default is None. other options are 'L' and 'R'
     Returns:
@@ -332,19 +332,10 @@ def plot_parcellation(parcellation=None, anatomical_structure='cerebellum', hemi
     # initialize directory
     dirs = const.Dirs()
 
-    if parcellation=='MDTB_10':
-        surf_labels = os.path.join(flatmap._surf_dir,'MDTB_10Regions.label.gii')
-    elif parcellation=='yeo7':
-        surf_labels = os.path.join(dirs.fs_lr_dir, f'Yeo_JNeurophysiol11_7Networks.32k.{hemisphere}.label.gii')
-    elif parcellation=='yeo17':
-        surf_labels = os.path.join(dirs.fs_lr_dir, f'Yeo_JNeurophysiol11_17Networks.32k.{hemisphere}.label.gii')
-    elif parcellation=='buckner7':
-        surf_labels = os.path.join(flatmap._surf_dir,'Buckner_7Networks.label.gii')
-    elif parcellation=='buckner17':
-        surf_labels = os.path.join(flatmap._surf_dir,'Buckner_17Networks.label.gii')
-    elif 'tessels' in parcellation:
-        parcellation = ''.join(re.findall(r'[1-9]', parcellation))
-        surf_labels = os.path.join(dirs.fs_lr_dir, f'Icosahedron-{parcellation}.32k.{hemisphere}.label.gii')
+    if anatomical_structure=='cerebellum':
+        surf_labels = os.path.join(flatmap._surf_dir,f'{parcellation}.label.gii')
+    elif anatomical_structure=='cortex':
+        surf_labels = os.path.join(dirs.reg_dir, 'data', 'group', f'{parcellation}.32k.{hemisphere}.label.gii')
     else:
         print('please provide a valid parcellation')
     
@@ -359,13 +350,13 @@ def plot_parcellation(parcellation=None, anatomical_structure='cerebellum', hemi
         try:
             return nio.view_cortex(data=surf_labels, hemisphere=hemisphere)
         except:
-            surf_mesh = os.path.join(dirs.fs_lr_dir, f'fs_LR.32k.{hemisphere}.inflated.surf.gii')
+            surf_mesh = os.path.join(dirs.reg_dir, 'data', 'group', f'fs_LR.32k.{hemisphere}.inflated.surf.gii')
             return view_surf(surf_mesh=surf_mesh, symmetric_cmap=False, black_bg=True, colorbar=False) 
     else:
         print("please provide a valid anatomical structure, either 'cerebellum' or 'cortex'")
 
 
-def plot_distance_matrix(roi='tessels0042', hemisphere='R'):
+def plot_distance_matrix(roi='tessels0042'):
     """Plot matrix of distances for cortical `roi` and `hemisphere`
 
     Args: 
@@ -375,12 +366,8 @@ def plot_distance_matrix(roi='tessels0042', hemisphere='R'):
         plots distance matrix
     """
 
-    # get labels for `hemisphere`
-    labels = csparsity.get_labels_hemisphere(roi, hemisphere)
-
     # get distances for `roi` and `hemisphere`
     distances = cdata.get_distance_matrix(roi=roi)[0]
-    distances = distances[labels,][:, labels]
 
     # visualize matrix of distances
     plt.imshow(distances)

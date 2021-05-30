@@ -184,7 +184,7 @@ def view_cortex(data, cmap='CMRmap', bg_map=None, cscale=None, hemisphere='R', a
     dirs = const.Dirs()
 
     # get surface mesh
-    surf_mesh = os.path.join(dirs.fs_lr_dir, f'fs_LR.32k.{hemisphere}.{atlas_type}.surf.gii')
+    surf_mesh = os.path.join(dirs.reg_dir, 'data', 'group', f'fs_LR.32k.{hemisphere}.{atlas_type}.surf.gii')
 
     # load surf data from file
     if isinstance(data, str):
