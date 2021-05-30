@@ -323,7 +323,8 @@ def plot_parcellation(parcellation=None, anatomical_structure='cerebellum', hemi
     """General purpose function for plotting parcellations (cortex or cerebellum)
 
     Args: 
-        parcellation (str):  any of the following: 'yeo7', 'yeo17', 'MDTB_10', 'tessels<num>', 'buckner7', 'buckner17'
+        parcellation (str):  any of the following: 'yeo7', 'yeo17', 'MDTB_10', 'tessels<num>', 
+        'Buckner_7Networks', 'Buckner_17Networks', 'MDTB_10Regions'
         anatomical_structure (str): default is 'cerebellum'. other options: 'cortex'
         hemisphere (None or str): default is None. other options are 'L' and 'R'
     Returns:
@@ -332,21 +333,10 @@ def plot_parcellation(parcellation=None, anatomical_structure='cerebellum', hemi
     # initialize directory
     dirs = const.Dirs()
 
-    if parcellation=='MDTB_10':
-        surf_labels = os.path.join(flatmap._surf_dir,'MDTB_10Regions.label.gii')
-    elif parcellation=='yeo7':
-        surf_labels = os.path.join(dirs.fs_lr_dir, f'Yeo_JNeurophysiol11_7Networks.32k.{hemisphere}.label.gii')
-    elif parcellation=='yeo17':
-        surf_labels = os.path.join(dirs.fs_lr_dir, f'Yeo_JNeurophysiol11_17Networks.32k.{hemisphere}.label.gii')
-    elif parcellation=='buckner7':
-        surf_labels = os.path.join(flatmap._surf_dir,'Buckner_7Networks.label.gii')
-    elif parcellation=='buckner17':
-        surf_labels = os.path.join(flatmap._surf_dir,'Buckner_17Networks.label.gii')
-    elif 'tessels' in parcellation:
-        parcellation = ''.join(re.findall(r'[1-9]', parcellation))
-        surf_labels = os.path.join(dirs.fs_lr_dir, f'Icosahedron-{parcellation}.32k.{hemisphere}.label.gii')
-    else:
-        print('please provide a valid parcellation')
+    if anatomical_structure=='cerebellum':
+        os.path.join(flatmap._surf_dir,f'{parcellation}.label.gii')
+    elif anatomical_structure=='cortex':
+        surf_labels = os.path.join(dirs.reg_dir, 'data', 'group', f'{hemisphere}.label.gii')
     
     if anatomical_structure=='cerebellum':
         try:
@@ -359,7 +349,7 @@ def plot_parcellation(parcellation=None, anatomical_structure='cerebellum', hemi
         try:
             return nio.view_cortex(data=surf_labels, hemisphere=hemisphere)
         except:
-            surf_mesh = os.path.join(dirs.fs_lr_dir, f'fs_LR.32k.{hemisphere}.inflated.surf.gii')
+            surf_mesh = os.path.join(dirs.reg_dir, 'data', 'group', f'fs_LR.32k.{hemisphere}.inflated.surf.gii')
             return view_surf(surf_mesh=surf_mesh, symmetric_cmap=False, black_bg=True, colorbar=False) 
     else:
         print("please provide a valid anatomical structure, either 'cerebellum' or 'cortex'")

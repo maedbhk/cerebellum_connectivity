@@ -79,12 +79,7 @@ def get_label_colors(atlas, hem='L'):
     """
     dirs = const.Dirs()
 
-    if atlas=='yeo7':
-        atlas = 'Yeo_JNeurophysiol11_7Networks'
-    elif atlas=='yeo17':
-        atlas = 'Yeo_JNeurophysiol11_17Networks'
-
-    img = nib.load(os.path.join(dirs.fs_lr_dir, f'{atlas}.32k.{hem}.label.gii'))
+    img = nib.load(os.path.join(dirs.reg_dir, 'data', 'group', f'{atlas}.32k.{hem}.label.gii'))
     labels = img.labeltable.labels
 
     rgba = np.zeros((len(labels),4))
