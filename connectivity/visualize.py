@@ -336,7 +336,7 @@ def plot_parcellation(parcellation=None, anatomical_structure='cerebellum', hemi
     if anatomical_structure=='cerebellum':
         os.path.join(flatmap._surf_dir,f'{parcellation}.label.gii')
     elif anatomical_structure=='cortex':
-        surf_labels = os.path.join(dirs.reg_dir, 'data', 'group', f'{hemisphere}.label.gii')
+        surf_labels = os.path.join(dirs.reg_dir, 'data', 'group', f'{parcellation}.32k.{hemisphere}.label.gii')
     
     if anatomical_structure=='cerebellum':
         try:
