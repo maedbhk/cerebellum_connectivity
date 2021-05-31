@@ -29,7 +29,6 @@ def run(glm, atlas):
                         fpath=os.path.join(fpath, f'{atlas}_wta_suit'),
                         group='mode',
                         nifti=True,
-                        label_RGBA=rgba[1:]) # we don't want the medial wall
-
+                        label_RGBA=rgba)
 if __name__ == "__main__":
     run()

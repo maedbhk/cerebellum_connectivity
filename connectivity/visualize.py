@@ -12,7 +12,6 @@ from nilearn.plotting import view_surf
 import nibabel as nib
 
 import connectivity.data as cdata
-import connectivity.sparsity as csparsity
 import connectivity.constants as const
 import connectivity.nib_utils as nio
 
@@ -365,12 +364,8 @@ def plot_distance_matrix(roi='tessels0042', hemisphere='R'):
         plots distance matrix
     """
 
-    # get labels for `hemisphere`
-    labels = csparsity.get_labels_hemisphere(roi, hemisphere)
-
     # get distances for `roi` and `hemisphere`
     distances = cdata.get_distance_matrix(roi=roi)[0]
-    distances = distances[labels,][:, labels]
 
     # visualize matrix of distances
     plt.imshow(distances)
