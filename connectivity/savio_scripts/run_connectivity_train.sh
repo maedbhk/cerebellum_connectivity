@@ -23,11 +23,10 @@ export PYTHONPATH
 
 cd /global/scratch/maedbhking/projects/cerebellum_connectivity/connectivity/scripts
 
-# run connectivity models
-python3 script_mk.py --cortex="tessels0042" --model_type="NNLS" --train_or_eval="train"
-python3 script_mk.py --cortex="tessels0162" --model_type="NNLS" --train_or_eval="train"
-python3 script_mk.py --cortex="tessels0362" --model_type="NNLS" --train_or_eval="train"
-python3 script_mk.py --cortex="tessels0642" --model_type="NNLS" --train_or_eval="train"
-python3 script_mk.py --cortex="tessels1002" --model_type="NNLS" --train_or_eval="train"
-python3 script_mk.py --cortex="yeo7" --model_type="NNLS" --train_or_eval="train"
-python3 script_mk.py --cortex="yeo17" --model_type="NNLS" --train_or_eval="train"
+atlases=(tessels0042 tessels0162 tessels0362 tessels0642 tessels1002)
+models=(ridge WTA)
+
+# train models
+for ((m=0; i<${#models[@]}; i++)); do \
+for ((a=0; i<${#atlases[@]}; i++)); do \
+python3 script_mk.py --cortex=${atlases[a]} --model_type=${models[m]} --train_or_eval="train"; done; done

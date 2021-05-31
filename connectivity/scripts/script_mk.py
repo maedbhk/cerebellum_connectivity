@@ -185,6 +185,7 @@ def train_WTA(
     train_exp="sc1",
     cortex="tessels0642",
     cerebellum="cerebellum_suit",
+    positive=True,
     log_online=False,
     log_locally=True,
     model_ext=None,
@@ -197,6 +198,7 @@ def train_WTA(
         train_exp (str): 'sc1' or 'sc2'
         cortex (str): cortical ROI
         cerebellum (str): cerebellar ROI
+        positive (bool): if True, take only positive coeficients, if False, take absolute
         log_online (bool): log results to ML tracking platform
         log_locally (bool): log results locally
         model_ext (str or None): add additional information to base model name
@@ -215,7 +217,7 @@ def train_WTA(
     if model_ext is not None:
         name = f"{name}_{model_ext}"
     config["name"] = name
-    config["param"] = {"positive": True}
+    config["param"] = {"positive": positive}
     config["model"] = 'WTA'
     config["X_data"] = cortex
     config["Y_data"] = cerebellum
@@ -243,9 +245,6 @@ def train_WTA(
     # save out weight maps
     if config['save_weights']:
         save_weight_maps(model_name=name, cortex=cortex, train_exp=train_exp)
-         # this is temporary but if we want this to be permanent,
-         # we should make a separate key 'save_wta'
-        save_wta_maps(model_name=name, cortex=cortex, train_exp=train_exp) 
 
     # concat data to model_summary (if file already exists)
     if log_locally:
@@ -582,7 +581,7 @@ def run(cortex="tessels0362",
 
     Args: 
         cortex (str): 'tesselsWB162', 'tesselsWB642' etc.
-        model_type (str): 'WTA' or 'ridge' or 
+        model_type (str): 'WTA' or 'ridge' or 'NNLS'
         train_or_test (str): 'train' or 'eval'
     """
     print(f'doing model {train_or_eval}')
