@@ -289,7 +289,7 @@ def plot_train_weights(dataframe, hue=None):
     plt.xlabel("# of ROIs", fontsize=20)
     plt.ylabel("Weights", fontsize=20)
 
-def plot_parcellation(parcellation='yeo7', anatomical_structure='cortex', hemisphere='R', view='medial'):
+def plot_parcellation(parcellation='yeo7', anatomical_structure='cortex', hemisphere='R'):
     """General purpose function for plotting *.label.gii parcellations (cortex or cerebellum)
 
     Args: 
