@@ -249,7 +249,7 @@ def get_best_model(train_exp):
     df = pd.read_csv(fpath)
 
     # get mean values for each model
-    tmp = df.groupby("name").mean().reset_index()
+    tmp = df.groupby(["name", "X_data"]).mean().reset_index()
 
     # get best model (based on R CV or R train)
     try: 
