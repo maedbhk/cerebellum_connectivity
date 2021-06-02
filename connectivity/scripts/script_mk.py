@@ -185,6 +185,7 @@ def train_WTA(
     train_exp="sc1",
     cortex="tessels0642",
     cerebellum="cerebellum_suit",
+    positive=True,
     log_online=False,
     log_locally=True,
     model_ext=None,
@@ -197,6 +198,7 @@ def train_WTA(
         train_exp (str): 'sc1' or 'sc2'
         cortex (str): cortical ROI
         cerebellum (str): cerebellar ROI
+        positive (bool): if True, take only positive coeficients, if False, take absolute
         log_online (bool): log results to ML tracking platform
         log_locally (bool): log results locally
         model_ext (str or None): add additional information to base model name
@@ -215,7 +217,7 @@ def train_WTA(
     if model_ext is not None:
         name = f"{name}_{model_ext}"
     config["name"] = name
-    config["param"] = {"positive": True}
+    config["param"] = {"positive": positive}
     config["model"] = 'WTA'
     config["X_data"] = cortex
     config["Y_data"] = cerebellum
@@ -243,9 +245,6 @@ def train_WTA(
     # save out weight maps
     if config['save_weights']:
         save_weight_maps(model_name=name, cortex=cortex, train_exp=train_exp)
-         # this is temporary but if we want this to be permanent,
-         # we should make a separate key 'save_wta'
-        save_wta_maps(model_name=name, cortex=cortex, train_exp=train_exp) 
 
     # concat data to model_summary (if file already exists)
     if log_locally:
@@ -303,7 +302,7 @@ def train_NNLS(
         config["averaging"] = "sess"
         config["train_exp"] = train_exp
         config["subjects"] = train_subjs
-        config["validate_model"] = True
+        config["validate_model"] = False
         config["cv_fold"] = 4
         config["mode"] = "crossed"
         config["hyperparameter"] = f"{alpha:.0f}_{gamma:.0f}"
@@ -582,7 +581,7 @@ def run(cortex="tessels0362",
 
     Args: 
         cortex (str): 'tesselsWB162', 'tesselsWB642' etc.
-        model_type (str): 'WTA' or 'ridge' or 
+        model_type (str): 'WTA' or 'ridge' or 'NNLS'
         train_or_test (str): 'train' or 'eval'
     """
     print(f'doing model {train_or_eval}')
@@ -602,8 +601,8 @@ def run(cortex="tessels0362",
         for exp in range(2):
 
             # get best train model (based on train CV)
-            best_model = summary.get_best_model(train_exp=f"sc{2-exp}")
-            cortex = best_model.split('_')[1] # assumes that training model follows convention <model_type>_<cortex_name>_<other>
+            best_model, cortex = summary.get_best_model(train_exp=f"sc{2-exp}")
+            # cortex = best_model.split('_')[1] # assumes that training model follows convention <model_type>_<cortex_name>_<other>
 
             # save voxel/vertex maps for best training weights
             save_weight_maps(model_name=best_model, cortex=cortex, train_exp=f"sc{2-exp}")

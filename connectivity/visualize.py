@@ -216,21 +216,20 @@ def plot_train_map(gifti_func='group_weights_cerebellum', exp='sc1', model=None,
     return view
 
 
-def plot_winner_map(roi='tessels0042', exp='sc1', cscale=None, symmetric_cmap=False):
+def plot_winner_map(atlas='mdtb1002_007', cscale=None, symmetric_cmap=False):
     """Plot winner-take-all map for `roi` for `exp`
 
     Args: 
-        roi (str): 'tessels0042', 'tessels1002' etc.
-        exp (str): 'sc1' or 'sc2'
+        atlas (str): 'tessels0042', 'tessels1002' etc.
         cscale (bool): default is None
         symmetric_cmap (bool): default is False
     Returns: 
         Returns view object for visualizing winner map
     """
-    dirs = const.Dirs(exp_name=exp)
+    dirs = const.Dirs()
 
-    surf_fname = os.path.join(dirs.conn_train_dir, f'WTA_{roi}', "group_wta_cerebellum.label.gii")
-    view = nio.view_cerebellum(data=surf_fname, cscale=cscale, symmetric_cmap=symmetric_cmap)
+    surf_fname = os.path.join(dirs.base_dir, 'cerebellar_atlases', f'{atlas}_wta_suit.label.gii')
+    view = nio.view_cerebellum(data=surf_fname, overlay_type='label')
 
     return view
 
@@ -249,17 +248,19 @@ def get_best_model(train_exp):
     df = pd.read_csv(fpath)
 
     # get mean values for each model
-    tmp = df.groupby("name").mean().reset_index()
+    tmp = df.groupby(["name", "X_data"]).mean().reset_index()
 
     # get best model (based on R CV or R train)
     try: 
         best_model = tmp[tmp["R_cv"] == tmp["R_cv"].max()]["name"].values[0]
+        cortex = tmp[tmp["R_cv"] == tmp["R_cv"].max()]["X_data"].values[0]
     except:
         best_model = tmp[tmp["R_train"] == tmp["R_train"].max()]["name"].values[0]
+        cortex = tmp[tmp["R_train"] == tmp["R_train"].max()]["X_data"].values[0]
 
     print(f"best model for {train_exp} is {best_model}")
 
-    return best_model
+    return best_model, cortex
 
 
 def train_weights(exp="sc1", model_name="ridge_tesselsWB162_alpha_6"):
@@ -333,9 +334,9 @@ def plot_parcellation(parcellation=None, anatomical_structure='cerebellum', hemi
     dirs = const.Dirs()
 
     if anatomical_structure=='cerebellum':
-        surf_labels = os.path.join(flatmap._surf_dir,f'{parcellation}.label.gii')
+        os.path.join(flatmap._surf_dir,f'{parcellation}.label.gii')
     elif anatomical_structure=='cortex':
-        surf_labels = os.path.join(dirs.reg_dir, 'data', 'group', f'{parcellation}.32k.{hemisphere}.label.gii')
+        surf_labels = os.path.join(dirs.reg_dir, 'data', 'group', f'{parcellation}.{hemisphere}.label.gii')
     else:
         print('please provide a valid parcellation')
     

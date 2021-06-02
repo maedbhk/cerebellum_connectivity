@@ -1,6 +1,6 @@
 #!/bin/bash
 # Job name:
-#SBATCH --job-name=connect_train
+#SBATCH --job-name=make_atlas
 #
 # Account:
 #SBATCH --account=fc_cerebellum
@@ -12,7 +12,7 @@
 #SBATCH --qos=savio_normal
 #
 # Wall clock limit:
-#SBATCH --time=60:00:00
+#SBATCH --time=02:00:00
 #
 ## Command(s) to run:
 module load python/3.7
@@ -23,10 +23,8 @@ export PYTHONPATH
 
 cd /global/scratch/maedbhking/projects/cerebellum_connectivity/connectivity/scripts
 
-atlases=(yeo7 yeo17 mdtb1002_007 mdtb1002_025 mdtb1002_050 mdtb1002_100 mdtb1002_150 mdtb1002_200)
-models=(NNLS)
+atlases=(yeo7 yeo17 mdtb1002_007 mdtb1002_010)
+glm=glm7
 
-# train models
-for ((m=0; m<${#models[@]}; m++)); do \
-for ((a=0; a<${#atlases[@]}; a++)); do \
-python3 script_mk.py --cortex=${atlases[a]} --model_type=${models[m]} --train_or_eval="train"; done; done
+for ((i=0; i<${#atlases[@]}; i++)); do \
+python3 script_atlas.py --glm=${glm} --atlas=${atlases[i]}; done
