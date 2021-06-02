@@ -2,9 +2,11 @@
 import os
 from pathlib import Path
 import nibabel as nib
+from nibabel.nifti1 import load
 import numpy as np
 from pathlib import Path
 import matplotlib.pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap
 from nilearn.image import mean_img
 import SUITPy.flatmap as flatmap
 from nilearn.plotting import view_surf, plot_surf_roi
@@ -136,8 +138,29 @@ def make_func_gifti_cortex(data, anatomical_struct='CortexLeft', column_names=No
 
     return gifti
 
-def view_cerebellum(data, cmap='CMRmap', overlay_type='func', threshold=None, cscale=None, symmetric_cmap=False, title=None):
-    """Visualize data on suit flatmap
+def get_label_colors(fpath):
+    """get rgba for atlas (given by fpath)
+
+    Args: 
+        fpath (str): full path to atlas
+    Returns: 
+        rgba (np array): shape num_labels x num_rgba
+    """
+    dirs = const.Dirs()
+
+    img = nib.load(fpath)
+    labels = img.labeltable.labels
+
+    rgba = np.zeros((len(labels),4))
+    for i,label in enumerate(labels):
+        rgba[i,] = labels[i].rgba
+
+    cmap = LinearSegmentedColormap.from_list('mylist', rgba)
+
+    return rgba, cmap
+
+def view_cerebellum(data, threshold=None, cscale=None, symmetric_cmap=False, title=None):
+    """Visualize data on suit flatmap, plots either *.func.gii or *.label.gii data
 
     Args: 
         data (str): full path to gifti file
@@ -153,24 +176,26 @@ def view_cerebellum(data, cmap='CMRmap', overlay_type='func', threshold=None, cs
     # load surf data from file
     fname = Path(data).name
     title = fname.split('.')[0]
-    if overlay_type=='func':
-        data = load_surf_data(data)
-    elif overlay_type=='label':
-        data = nib.load(data)
+
+    if '.func.' in data:
+        overlay_type = 'func'
+    elif '.label.' in data:
+        overlay_type = 'label'
 
     # Determine scale
-    if (overlay_type=='func' and cscale is None):
+    if ('.func.' in data and cscale is None):
+        data = load_surf_data(data)
         cscale = [np.nanmin(data), np.nanmax(data)]
 
     # nilearn seems to
-    # view = view_surf(surf_mesh, data, bg_map=bg_map, cmap=cmap,
+    # view = view_surf(surf_mesh, data, cmap='CMRmap',
     #                     threshold=threshold, vmin=cscale[0], vmax=cscale[1], 
     #                     symmetric_cmap=symmetric_cmap, title=title)
     view = flatmap.plot(data, surf=surf_mesh, overlay_type=overlay_type, cscale=cscale)
     return view
 
-def view_cortex(data, cmap='CMRmap', overlay_type='func', cscale=None, hemisphere='R', atlas_type='inflated', symmetric_cmap=False, title=None):
-    """Visualize data on inflated cortex
+def view_cortex(data, hemisphere='R', cmap=None, cscale=None, atlas_type='inflated', symmetric_cmap=False, title=None, view='medial'):
+    """Visualize data on inflated cortex, plots either *.func.gii or *.label.gii data
 
     Args: 
         data (str): fullpath to file: *.func.gii or *.label.gii
@@ -188,22 +213,25 @@ def view_cortex(data, cmap='CMRmap', overlay_type='func', cscale=None, hemispher
     # load surf data from file
     fname = Path(data).name
     title = fname.split('.')[0]
-    if overlay_type=='func':
-        data = load_surf_data(data)
-    elif overlay_type=='label':
-        data = nib.load(data)
-    data = load_surf_data(data)
         
     # Determine scale
-    if (overlay_type=='func' and cscale is None):
+    if ('.func.' in data and cscale is None):
+        data = load_surf_data(data)
         cscale = [np.nanmin(data), np.nanmax(data)]
 
-    view = view_surf(surf_mesh=surf_mesh, 
-                    surf_map=data,
-                    vmin=cscale[0], 
-                    vmax=cscale[1],
-                    cmap=cmap,
-                    symmetric_cmap=symmetric_cmap,
-                    # title=title
-                    )        
-    return view
+    if '.func.' in data:
+        return view_surf(surf_mesh=surf_mesh, 
+                        surf_map=data,
+                        vmin=cscale[0], 
+                        vmax=cscale[1],
+                        cmap='CMRmap',
+                        symmetric_cmap=symmetric_cmap,
+                        # title=title
+                        ) 
+    elif '.label.' in data:   
+        if hemisphere=='L':
+            view = 'lateral'
+        if cmap is None:
+            _, cmap = get_label_colors(fpath=data)
+        return plot_surf_roi(surf_mesh, data, cmap=cmap, view=view)    
+    

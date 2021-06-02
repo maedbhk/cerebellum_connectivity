@@ -3,6 +3,7 @@ import numpy as np
 import os
 import connectivity.constants as const
 import connectivity.io as cio
+import connectivity.nib_utils as nio
 from connectivity import make_atlas
 
 @click.command()
@@ -23,7 +24,8 @@ def run(glm, atlas):
     fpath = os.path.join(dirs.base_dir, 'cerebellar_atlases')
     cio.make_dirs(fpath)
 
-    rgba = make_atlas.get_label_colors(atlas)
+    # get label colors
+    rgba, _ = nio.get_label_colors(fpath=os.path.join(dirs.reg_dir, 'data', 'group', f'{atlas}.R.label.gii'))
 
     make_atlas.save_maps_cerebellum(data=labels_concat, 
                         fpath=os.path.join(fpath, f'{atlas}_wta_suit'),

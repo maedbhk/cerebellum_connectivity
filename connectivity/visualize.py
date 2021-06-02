@@ -8,8 +8,6 @@ import deepdish as dd
 from collections import defaultdict
 import matplotlib.pyplot as plt
 import SUITPy.flatmap as flatmap
-from nilearn.plotting import view_surf
-import nibabel as nib
 
 import connectivity.data as cdata
 import connectivity.constants as const
@@ -52,7 +50,6 @@ def train_summary(summary_name="train_summary", save_online=True):
 
     return df_concat
 
-
 def eval_summary(summary_name="eval_summary"):
     """load eval summary containing all metrics about eval models.
 
@@ -82,14 +79,12 @@ def eval_summary(summary_name="eval_summary"):
 
     return df_concat
 
-
 def log_online(dataframe):
     # group df by train name and take first row (not interested in results here)
     dataframe = dataframe.groupby('train_name').first().reset_index()[['train_name', 'train_exp', 'train_X_data', 'train_Y_data', 'train_model', 'train_glm','train_averaging']]
 
     dirs = const.Dirs()
     dataframe.to_csv(os.path.join(dirs.base_dir, 'model_logs.csv'))
-
 
 def plot_train_predictions(dataframe, x='train_name', hue=None, x_order=None, hue_order=None):
     """plots training predictions (R CV) for all models in dataframe.
@@ -107,7 +102,6 @@ def plot_train_predictions(dataframe, x='train_name', hue=None, x_order=None, hu
     plt.xlabel("")
     plt.ylabel("R", fontsize=20)
     plt.legend(fontsize=15, bbox_to_anchor=(1.05, 1), loc='upper left')
-
 
 def plot_eval_predictions(dataframe, exp="sc1"):
     """plots evaluation predictions (R eval) for best model in dataframe for 'sc1' or 'sc2'
@@ -161,7 +155,6 @@ def plot_eval_predictions(dataframe, exp="sc1"):
             textcoords="offset points",
         )
 
-
 def plot_eval_map(gifti_func="group_R_vox", exp="sc1", model=None, cscale=None, symmetric_cmap=False):
     """plot surface map for best model
 
@@ -188,7 +181,6 @@ def plot_eval_map(gifti_func="group_R_vox", exp="sc1", model=None, cscale=None, 
     view = nio.view_cerebellum(data=surf_data, cscale=cscale, symmetric_cmap=symmetric_cmap) #symmetric_cmap=False,
     return view
 
-
 def plot_train_map(gifti_func='group_weights_cerebellum', exp='sc1', model=None, cscale=None, hemisphere='R', symmetric_cmap=False):
     # initialise directories
     dirs = const.Dirs(exp_name=exp)
@@ -214,25 +206,6 @@ def plot_train_map(gifti_func='group_weights_cerebellum', exp='sc1', model=None,
     else:
         print("gifti must contain either cerebellum or cortex in name")
     return view
-
-
-def plot_winner_map(atlas='mdtb1002_007', cscale=None, symmetric_cmap=False):
-    """Plot winner-take-all map for `roi` for `exp`
-
-    Args: 
-        atlas (str): 'tessels0042', 'tessels1002' etc.
-        cscale (bool): default is None
-        symmetric_cmap (bool): default is False
-    Returns: 
-        Returns view object for visualizing winner map
-    """
-    dirs = const.Dirs()
-
-    surf_fname = os.path.join(dirs.base_dir, 'cerebellar_atlases', f'{atlas}_wta_suit.label.gii')
-    view = nio.view_cerebellum(data=surf_fname, overlay_type='label')
-
-    return view
-
 
 def get_best_model(train_exp):
     """Get idx for best ridge based on either R_cv (or R_train)
@@ -261,7 +234,6 @@ def get_best_model(train_exp):
     print(f"best model for {train_exp} is {best_model}")
 
     return best_model, cortex
-
 
 def train_weights(exp="sc1", model_name="ridge_tesselsWB162_alpha_6"):
     """gets training weights for a given model and summarizes into a dataframe
@@ -299,7 +271,6 @@ def train_weights(exp="sc1", model_name="ridge_tesselsWB162_alpha_6"):
 
     return pd.DataFrame.from_dict(data_dict)
 
-
 def plot_train_weights(dataframe, hue=None):
     """plots training weights in dataframe
 
@@ -318,13 +289,12 @@ def plot_train_weights(dataframe, hue=None):
     plt.xlabel("# of ROIs", fontsize=20)
     plt.ylabel("Weights", fontsize=20)
 
-
-def plot_parcellation(parcellation=None, anatomical_structure='cerebellum', hemisphere=None):
-    """General purpose function for plotting parcellations (cortex or cerebellum)
+def plot_parcellation(parcellation='yeo7', anatomical_structure='cortex', hemisphere='R', view='medial'):
+    """General purpose function for plotting *.label.gii parcellations (cortex or cerebellum)
 
     Args: 
-        parcellation (str):  any of the following: 'yeo7', 'yeo17', 'MDTB_10', 'tessels<num>', 
-        'Buckner_7Networks', 'Buckner_17Networks', 'MDTB_10Regions'
+        parcellation (str):  any of the following: 'yeo7', 'yeo17', 'mdtb1002_007', 'tessels<num>', 
+        'Buckner_7Networks', 'Buckner_17Networks', 'MDTB_10Regions', 'yeo7_wta_suit'
         anatomical_structure (str): default is 'cerebellum'. other options: 'cortex'
         hemisphere (None or str): default is None. other options are 'L' and 'R'
     Returns:
@@ -334,28 +304,16 @@ def plot_parcellation(parcellation=None, anatomical_structure='cerebellum', hemi
     dirs = const.Dirs()
 
     if anatomical_structure=='cerebellum':
-        os.path.join(flatmap._surf_dir,f'{parcellation}.label.gii')
+        if 'wta_suit' in parcellation:
+            fname = os.path.join(dirs.base_dir, 'cerebellar_atlases', f'{parcellation}.label.gii')
+        else:
+            fname = os.path.join(flatmap._surf_dir,f'{parcellation}.label.gii')
+        return nio.view_cerebellum(fname) 
     elif anatomical_structure=='cortex':
-        surf_labels = os.path.join(dirs.reg_dir, 'data', 'group', f'{parcellation}.{hemisphere}.label.gii')
+        fname = os.path.join(dirs.reg_dir, 'data', 'group', f'{parcellation}.{hemisphere}.label.gii')
+        return nio.view_cortex(fname, hemisphere)
     else:
         print('please provide a valid parcellation')
-    
-    if anatomical_structure=='cerebellum':
-        try:
-            return nio.view_cerebellum(data=surf_labels)
-        except:
-            surf_mesh = os.path.join(flatmap._surf_dir,'FLAT.surf.gii')
-            return view_surf(surf_mesh=surf_mesh, symmetric_cmap=False, colorbar=False)  
-
-    elif anatomical_structure=='cortex':
-        try:
-            return nio.view_cortex(data=surf_labels, hemisphere=hemisphere)
-        except:
-            surf_mesh = os.path.join(dirs.reg_dir, 'data', 'group', f'fs_LR.32k.{hemisphere}.inflated.surf.gii')
-            return view_surf(surf_mesh=surf_mesh, symmetric_cmap=False, black_bg=True, colorbar=False) 
-    else:
-        print("please provide a valid anatomical structure, either 'cerebellum' or 'cortex'")
-
 
 def plot_distance_matrix(roi='tessels0042'):
     """Plot matrix of distances for cortical `roi` and `hemisphere`

@@ -68,26 +68,6 @@ def model_wta(subjs, exp, glm, atlas, crossvalidate=False):
 
     return np.vstack(labels_all)
 
-def get_label_colors(atlas, hem='L'):
-    """get rgba for `atlas`
-
-    Args: 
-        atlas (str): 'yeo7' etc.
-        hem (str): 'L' or 'R' (colors should be the same regardless)
-    Returns: 
-        rgba (np array): shape num_labels x num_rgba
-    """
-    dirs = const.Dirs()
-
-    img = nib.load(os.path.join(dirs.reg_dir, 'data', 'group', f'{atlas}.{hem}.label.gii'))
-    labels = img.labeltable.labels
-
-    rgba = np.zeros((len(labels),4))
-    for i,label in enumerate(labels):
-        rgba[i,] = labels[i].rgba
-
-    return rgba
-
 def save_maps_cerebellum(
     data, 
     fpath='/',
