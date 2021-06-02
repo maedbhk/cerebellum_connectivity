@@ -12,7 +12,7 @@
 #SBATCH --qos=savio_normal
 #
 # Wall clock limit:
-#SBATCH --time=20:00:00
+#SBATCH --time=30:00:00
 #
 ## Command(s) to run:
 module load python/3.7
@@ -23,13 +23,13 @@ export PYTHONPATH
 
 cd /global/scratch/maedbhking/projects/cerebellum_connectivity/connectivity/scripts
 
-atlases=(yeo7 yeo17 mdtb1002_007 mdtb1002_010 mdtb1002_025 mdtb1002_050 mdtb1002_075 mdtb1002_100 mdtb1002_125 mdtb1002_150 mdtb1002_175 mdtb1002_200)
+atlases=(yeo7 yeo17 mdtb1002_007 mdtb1002_025 mdtb1002_050 mdtb1002_100 mdtb1002_150 mdtb1002_200)
 # atlases=(tessels0042 tessels0162 tessels0362 tessels0642 tessels1002)
 models=(ridge WTA)
 
 # train models
-for ((m=0; i<${#models[@]}; i++)); do \
-for ((a=0; i<${#atlases[@]}; i++)); do \
+for ((m=0; m<${#models[@]}; m++)); do \
+for ((a=0; a<${#atlases[@]}; a++)); do \
 python3 script_mk.py --cortex=${atlases[a]} --model_type=${models[m]} --train_or_eval="train"; done; done
 
 # evaluate models
