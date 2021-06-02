@@ -337,6 +337,8 @@ def plot_parcellation(parcellation=None, anatomical_structure='cerebellum', hemi
         os.path.join(flatmap._surf_dir,f'{parcellation}.label.gii')
     elif anatomical_structure=='cortex':
         surf_labels = os.path.join(dirs.reg_dir, 'data', 'group', f'{parcellation}.{hemisphere}.label.gii')
+    else:
+        print('please provide a valid parcellation')
     
     if anatomical_structure=='cerebellum':
         try:
@@ -355,7 +357,7 @@ def plot_parcellation(parcellation=None, anatomical_structure='cerebellum', hemi
         print("please provide a valid anatomical structure, either 'cerebellum' or 'cortex'")
 
 
-def plot_distance_matrix(roi='tessels0042', hemisphere='R'):
+def plot_distance_matrix(roi='tessels0042'):
     """Plot matrix of distances for cortical `roi` and `hemisphere`
 
     Args: 
