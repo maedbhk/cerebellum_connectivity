@@ -136,11 +136,11 @@ def make_func_gifti_cortex(data, anatomical_struct='CortexLeft', column_names=No
 
     return gifti
 
-def view_cerebellum(data, cmap='CMRmap', threshold=None, bg_map=None, cscale=None, symmetric_cmap=False, title=None):
+def view_cerebellum(data, cmap='CMRmap', overlay_type='func', threshold=None, cscale=None, symmetric_cmap=False, title=None):
     """Visualize data on suit flatmap
 
     Args: 
-        data (np array): np array of shape (28935 x 1) or str
+        data (str): full path to gifti file
         cmap (str): default is 'jet'
         threshold (int or None): default is None
         bg_map (str or None): default is None
@@ -151,30 +151,29 @@ def view_cerebellum(data, cmap='CMRmap', threshold=None, bg_map=None, cscale=Non
     surf_mesh = os.path.join(flatmap._surf_dir,'FLAT.surf.gii')
 
     # load surf data from file
-    if isinstance(data, str):
-        fname = Path(data).name
-        title = fname.split('.')[0]
+    fname = Path(data).name
+    title = fname.split('.')[0]
+    if overlay_type=='func':
         data = load_surf_data(data)
-
-    # Determine underlay and assign color
-    # underlay = nib.load(underlay)
+    elif overlay_type=='label':
+        data = nib.load(data)
 
     # Determine scale
-    if cscale is None:
+    if (overlay_type=='func' and cscale is None):
         cscale = [np.nanmin(data), np.nanmax(data)]
 
     # nilearn seems to
-    view = view_surf(surf_mesh, data, bg_map=bg_map, cmap=cmap,
-                        threshold=threshold, vmin=cscale[0], vmax=cscale[1], 
-                        symmetric_cmap=symmetric_cmap, title=title)
-    # view = flatmap.plot(data, surf=surf_mesh, cscale=cscale)
+    # view = view_surf(surf_mesh, data, bg_map=bg_map, cmap=cmap,
+    #                     threshold=threshold, vmin=cscale[0], vmax=cscale[1], 
+    #                     symmetric_cmap=symmetric_cmap, title=title)
+    view = flatmap.plot(data, surf=surf_mesh, overlay_type=overlay_type, cscale=cscale)
     return view
 
-def view_cortex(data, cmap='CMRmap', bg_map=None, cscale=None, hemisphere='R', atlas_type='inflated', symmetric_cmap=False, title=None, subset=None):
+def view_cortex(data, cmap='CMRmap', overlay_type='func', cscale=None, hemisphere='R', atlas_type='inflated', symmetric_cmap=False, title=None):
     """Visualize data on inflated cortex
 
     Args: 
-        data (str or np array): *.func.gii or *.label.gii
+        data (str): fullpath to file: *.func.gii or *.label.gii
         bg_map (str or np array or None): 
         map_type (str): 'func' or 'label'
         hemisphere (str): 'R' or 'L'
@@ -187,26 +186,24 @@ def view_cortex(data, cmap='CMRmap', bg_map=None, cscale=None, hemisphere='R', a
     surf_mesh = os.path.join(dirs.reg_dir, 'data', 'group', f'fs_LR.32k.{hemisphere}.{atlas_type}.surf.gii')
 
     # load surf data from file
-    if isinstance(data, str):
-        fname = Path(data).name
-        title = fname.split('.')[0]
+    fname = Path(data).name
+    title = fname.split('.')[0]
+    if overlay_type=='func':
         data = load_surf_data(data)
-
-    # subset data
-    if subset:
-        data = data[data==subset]
+    elif overlay_type=='label':
+        data = nib.load(data)
+    data = load_surf_data(data)
         
     # Determine scale
-    if cscale is None:
+    if (overlay_type=='func' and cscale is None):
         cscale = [np.nanmin(data), np.nanmax(data)]
 
     view = view_surf(surf_mesh=surf_mesh, 
                     surf_map=data,
-                    bg_map=bg_map,
                     vmin=cscale[0], 
                     vmax=cscale[1],
                     cmap=cmap,
                     symmetric_cmap=symmetric_cmap,
-                    title=title
+                    # title=title
                     )        
     return view

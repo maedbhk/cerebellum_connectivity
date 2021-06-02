@@ -216,21 +216,20 @@ def plot_train_map(gifti_func='group_weights_cerebellum', exp='sc1', model=None,
     return view
 
 
-def plot_winner_map(roi='tessels0042', exp='sc1', cscale=None, symmetric_cmap=False):
+def plot_winner_map(atlas='mdtb1002_007', cscale=None, symmetric_cmap=False):
     """Plot winner-take-all map for `roi` for `exp`
 
     Args: 
-        roi (str): 'tessels0042', 'tessels1002' etc.
-        exp (str): 'sc1' or 'sc2'
+        atlas (str): 'tessels0042', 'tessels1002' etc.
         cscale (bool): default is None
         symmetric_cmap (bool): default is False
     Returns: 
         Returns view object for visualizing winner map
     """
-    dirs = const.Dirs(exp_name=exp)
+    dirs = const.Dirs()
 
-    surf_fname = os.path.join(dirs.conn_train_dir, f'WTA_{roi}', "group_wta_cerebellum.label.gii")
-    view = nio.view_cerebellum(data=surf_fname, cscale=cscale, symmetric_cmap=symmetric_cmap)
+    surf_fname = os.path.join(dirs.base_dir, 'cerebellar_atlases', f'{atlas}_wta_suit.label.gii')
+    view = nio.view_cerebellum(data=surf_fname, overlay_type='label')
 
     return view
 

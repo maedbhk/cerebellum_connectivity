@@ -86,7 +86,7 @@ def get_label_colors(atlas, hem='L'):
     for i,label in enumerate(labels):
         rgba[i,] = labels[i].rgba
 
-    return rgba[1:] # we don't want the medial wall
+    return rgba
 
 def save_maps_cerebellum(
     data, 
