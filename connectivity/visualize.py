@@ -254,12 +254,14 @@ def get_best_model(train_exp):
     # get best model (based on R CV or R train)
     try: 
         best_model = tmp[tmp["R_cv"] == tmp["R_cv"].max()]["name"].values[0]
+        cortex = tmp[tmp["R_cv"] == tmp["R_cv"].max()]["X_data"].values[0]
     except:
         best_model = tmp[tmp["R_train"] == tmp["R_train"].max()]["name"].values[0]
+        cortex = tmp[tmp["R_train"] == tmp["R_train"].max()]["X_data"].values[0]
 
     print(f"best model for {train_exp} is {best_model}")
 
-    return best_model
+    return best_model, cortex
 
 
 def train_weights(exp="sc1", model_name="ridge_tesselsWB162_alpha_6"):

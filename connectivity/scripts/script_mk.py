@@ -601,8 +601,8 @@ def run(cortex="tessels0362",
         for exp in range(2):
 
             # get best train model (based on train CV)
-            best_model = summary.get_best_model(train_exp=f"sc{2-exp}")
-            cortex = best_model.split('_')[1] # assumes that training model follows convention <model_type>_<cortex_name>_<other>
+            best_model, cortex = summary.get_best_model(train_exp=f"sc{2-exp}")
+            # cortex = best_model.split('_')[1] # assumes that training model follows convention <model_type>_<cortex_name>_<other>
 
             # save voxel/vertex maps for best training weights
             save_weight_maps(model_name=best_model, cortex=cortex, train_exp=f"sc{2-exp}")
