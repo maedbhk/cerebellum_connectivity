@@ -93,7 +93,6 @@ def plot_train_predictions(dataframe, x='train_name', hue=None, x_order=None, hu
         dataframe (pandas dataframe): must contain 'train_name' and 'train_R_cv'
         hue (str or None): can be 'train_exp', 'Y_data' etc.
     """
-    plt.figure(figsize=(15, 10))
     # R
     sns.factorplot(x=x, y="train_R_cv", hue=hue, data=dataframe, order=x_order, hue_order=hue_order, legend=False, ci=None, size=4, aspect=2)
     plt.title("Model Training (CV Predictions)", fontsize=20)
@@ -102,6 +101,7 @@ def plot_train_predictions(dataframe, x='train_name', hue=None, x_order=None, hu
     plt.xlabel("")
     plt.ylabel("R", fontsize=20)
     plt.legend(fontsize=15, bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.show()
 
 def plot_eval_predictions(dataframe, exp="sc1"):
     """plots evaluation predictions (R eval) for best model in dataframe for 'sc1' or 'sc2'

@@ -302,7 +302,7 @@ def train_NNLS(
         config["averaging"] = "sess"
         config["train_exp"] = train_exp
         config["subjects"] = train_subjs
-        config["validate_model"] = False
+        config["validate_model"] = True
         config["cv_fold"] = 4
         config["mode"] = "crossed"
         config["hyperparameter"] = f"{alpha:.0f}_{gamma:.0f}"
