@@ -33,28 +33,35 @@ def make_label_gifti_cortex(data, anatomical_struct='CortexLeft', label_names=No
         gifti (label GiftiImage)
 
     """
-    numVerts, numCols = data.shape
-    numLabels = len(np.unique(data))
+    try:
+        num_verts, num_cols = data.shape
+    except: 
+        data = np.reshape(data, (len(data),1))
+        num_verts, num_cols  = data.shape
+
+    num_labels = len(np.unique(data))
 
     # Create naming and coloring if not specified in varargin
     # Make columnNames if empty
-    if len(column_names) == 0:
-        for i in range(numLabels):
+    if column_names is None:
+        column_names = []
+        for i in range(num_labels):
             column_names.append("col_{:02d}".format(i+1))
 
     # Determine color scale if empty
-    if len(label_RGBA) == 0:
-        hsv = plt.cm.get_cmap('hsv',numLabels)
-        color = hsv(np.linspace(0,1,numLabels))
+    if label_RGBA is None:
+        hsv = plt.cm.get_cmap('hsv',num_labels)
+        color = hsv(np.linspace(0,1,num_labels))
         # Shuffle the order so that colors are more visible
-        color = color[np.random.permutation(numLabels)]
-        label_RGBA = np.zeros([numLabels,4])
-        for i in range(numLabels):
+        color = color[np.random.permutation(num_labels)]
+        label_RGBA = np.zeros([num_labels,4])
+        for i in range(num_labels):
             label_RGBA[i] = color[i]
 
     # Create label names
-    if len(label_names) == 0:
-        for i in range(numLabels):
+    if label_names is None:
+        label_names = []
+        for i in range(num_labels):
             label_names.append("label-{:02d}".format(i+1))
 
     # Create label.gii structure
@@ -63,7 +70,7 @@ def make_label_gifti_cortex(data, anatomical_struct='CortexLeft', label_names=No
         'encoding': 'XML_BASE64_GZIP'})
 
 
-    num_labels = np.arange(numLabels)
+    num_labels = np.arange(num_labels)
     E_all = []
     for (label,rgba,name) in zip(num_labels,label_RGBA,label_names):
         E = nib.gifti.gifti.GiftiLabel()
@@ -77,7 +84,7 @@ def make_label_gifti_cortex(data, anatomical_struct='CortexLeft', label_names=No
         E_all.append(E)
 
     D = list()
-    for i in range(numCols):
+    for i in range(num_cols):
         d = nib.gifti.GiftiDataArray(
             data=np.float32(data[:, i]),
             intent='NIFTI_INTENT_LABEL', 
@@ -103,7 +110,11 @@ def make_func_gifti_cortex(data, anatomical_struct='CortexLeft', column_names=No
     Returns:
         gifti (functional GiftiImage)
     """
-    num_verts, num_cols = data.shape
+    try:
+        num_verts, num_cols = data.shape
+    except: 
+        data = np.reshape(data, (len(data),1))
+        num_verts, num_cols  = data.shape
   
     # Make columnNames if empty
     if column_names is None:
