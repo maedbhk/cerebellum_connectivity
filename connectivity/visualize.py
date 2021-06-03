@@ -114,7 +114,7 @@ def plot_eval_predictions(dataframe, exp="sc1"):
         hue (str or None): default is 'eval_name'
     """
     # get best model (from train CV)
-    best_model = get_best_model(train_exp=exp)
+    best_model,_ = get_best_model(train_exp=exp)
 
     if exp is "sc1":
         eval_exp = "sc2"
@@ -154,6 +154,7 @@ def plot_eval_predictions(dataframe, exp="sc1"):
             xytext=(0, 10),
             textcoords="offset points",
         )
+    plt.show()
 
 def plot_eval_map(gifti_func="group_R_vox", exp="sc1", model=None, cscale=None, symmetric_cmap=False):
     """plot surface map for best model
@@ -174,7 +175,7 @@ def plot_eval_map(gifti_func="group_R_vox", exp="sc1", model=None, cscale=None, 
 
     # get best model
     if not model:
-        model = get_best_model(train_exp=exp)
+        model,_ = get_best_model(train_exp=exp)
 
     # plot map
     surf_data = os.path.join(dirs.conn_eval_dir, model, f"{gifti_func}.func.gii")
@@ -190,7 +191,7 @@ def plot_train_map(gifti_func='group_weights_cerebellum', exp='sc1', model=None,
 
     # get best model
     if not model:
-        model = get_best_model(train_exp=exp)
+        model,_ = get_best_model(train_exp=exp)
     
     # plot either cerebellum or cortex
     if 'cerebellum' in gifti_func:

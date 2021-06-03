@@ -179,8 +179,10 @@ def view_cerebellum(data, threshold=None, cscale=None, symmetric_cmap=False, tit
 
     if '.func.' in data:
         overlay_type = 'func'
+        viewer = 'nilearn'
     elif '.label.' in data:
         overlay_type = 'label'
+        viewer = 'suit'
 
     # Determine scale
     if ('.func.' in data and cscale is None):
@@ -188,12 +190,14 @@ def view_cerebellum(data, threshold=None, cscale=None, symmetric_cmap=False, tit
         cscale = [np.nanmin(data), np.nanmax(data)]
 
     # nilearn seems to
-    # view = view_surf(surf_mesh, data, cmap='CMRmap',
-    #                     threshold=threshold, vmin=cscale[0], vmax=cscale[1], 
-    #                     symmetric_cmap=symmetric_cmap, title=title)
-    view = flatmap.plot(data, surf=surf_mesh, overlay_type=overlay_type, cscale=cscale)
+    if viewer=='nilearn':
+        view = view_surf(surf_mesh, data, cmap='CMRmap',
+                        threshold=threshold, vmin=cscale[0], vmax=cscale[1], 
+                        symmetric_cmap=symmetric_cmap)
+    elif viewer=='suit':
+        view = flatmap.plot(data, surf=surf_mesh, overlay_type=overlay_type, cscale=cscale)
+    
     return view
-
 def view_cortex(data, hemisphere='R', cmap=None, cscale=None, atlas_type='inflated', symmetric_cmap=False, title=None, view='medial'):
     """Visualize data on inflated cortex, plots either *.func.gii or *.label.gii data
 
