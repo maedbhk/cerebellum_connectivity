@@ -198,6 +198,7 @@ def view_cerebellum(data, threshold=None, cscale=None, symmetric_cmap=False, tit
         view = flatmap.plot(data, surf=surf_mesh, overlay_type=overlay_type, cscale=cscale)
     
     return view
+
 def view_cortex(data, hemisphere='R', cmap=None, cscale=None, atlas_type='inflated', symmetric_cmap=False, title=None, view='medial'):
     """Visualize data on inflated cortex, plots either *.func.gii or *.label.gii data
 
