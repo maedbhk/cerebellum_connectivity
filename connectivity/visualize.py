@@ -15,7 +15,6 @@ import connectivity.nib_utils as nio
 
 plt.rcParams["axes.grid"] = False
 
-
 def train_summary(summary_name="train_summary", save_online=True):
     """load train summary containing all metrics about training models.
 
@@ -96,6 +95,23 @@ def plot_train_predictions(dataframe, x='train_name', hue=None, x_order=None, hu
     # R
     sns.factorplot(x=x, y="train_R_cv", hue=hue, data=dataframe, order=x_order, hue_order=hue_order, legend=False, ci=None, size=4, aspect=2)
     plt.title("Model Training (CV Predictions)", fontsize=20)
+    plt.tick_params(axis="both", which="major", labelsize=15)
+    plt.xticks(rotation="45", ha="right")
+    plt.xlabel("")
+    plt.ylabel("R", fontsize=20)
+    plt.legend(fontsize=15, bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.show()
+
+def plot_eval_predictions_all(dataframe, x='eval_name', hue=None, x_order=None, hue_order=None):
+    """plots training predictions (R CV) for all models in dataframe.
+
+    Args:
+        dataframe (pandas dataframe): must contain 'train_name' and 'train_R_cv'
+        hue (str or None): can be 'train_exp', 'Y_data' etc.
+    """
+    # R
+    sns.factorplot(x=x, y="R_eval", hue=hue, data=dataframe, order=x_order, hue_order=hue_order, legend=False, ci=None, size=4, aspect=2)
+    plt.title("Model Evaluation", fontsize=20)
     plt.tick_params(axis="both", which="major", labelsize=15)
     plt.xticks(rotation="45", ha="right")
     plt.xlabel("")

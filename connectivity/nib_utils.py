@@ -249,7 +249,7 @@ def view_cerebellum(data, threshold=None, cscale=None, symmetric_cmap=False, tit
     
     return view
 
-def view_cortex(data, hemisphere='R', cmap=None, cscale=None, atlas_type='inflated', symmetric_cmap=False, title=None, view='medial'):
+def view_cortex(data, hemisphere='R', cmap=None, cscale=None, atlas_type='inflated', symmetric_cmap=False, title=None, orientation='medial'):
     """Visualize data on inflated cortex, plots either *.func.gii or *.label.gii data
 
     Args: 
@@ -270,13 +270,13 @@ def view_cortex(data, hemisphere='R', cmap=None, cscale=None, atlas_type='inflat
     title = fname.split('.')[0]
         
     # Determine scale
+    func_data = load_surf_data(data)
     if ('.func.' in data and cscale is None):
-        data = load_surf_data(data)
-        cscale = [np.nanmin(data), np.nanmax(data)]
+        cscale = [np.nanmin(func_data), np.nanmax(func_data)]
 
     if '.func.' in data:
-        return view_surf(surf_mesh=surf_mesh, 
-                        surf_map=data,
+        view = view_surf(surf_mesh=surf_mesh, 
+                        surf_map=func_data,
                         vmin=cscale[0], 
                         vmax=cscale[1],
                         cmap='CMRmap',
@@ -285,8 +285,10 @@ def view_cortex(data, hemisphere='R', cmap=None, cscale=None, atlas_type='inflat
                         ) 
     elif '.label.' in data:   
         if hemisphere=='L':
-            view = 'lateral'
+            orientation = 'lateral'
         if cmap is None:
             _, cmap = get_label_colors(fpath=data)
-        return plot_surf_roi(surf_mesh, data, cmap=cmap, view=view)    
+        view = plot_surf_roi(surf_mesh, data, cmap=cmap, view=orientation)    
+    
+    return view
     
