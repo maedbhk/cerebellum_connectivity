@@ -419,7 +419,7 @@ def save_maps_cerebellum(
     fpath='/',
     group='nanmean', 
     gifti=True, 
-    nifti=False, 
+    nifti=True, 
     column_names=[], 
     label_RGBA=[],
     label_names=[],
@@ -602,9 +602,6 @@ def run(cortex="tessels0362",
             
             # get best model for each method and parcellation (NNLS, ridge, WTA)
             models, cortex_names = summary.get_best_models(train_exp=f"sc{2-exp}")
-
-            # get best train model (based on train CV)
-            # best_model, cortex = summary.get_best_model(train_exp=f"sc{2-exp}")
 
             for (best_model, cortex) in zip(models, cortex_names):
 
