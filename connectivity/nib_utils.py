@@ -7,7 +7,7 @@ import numpy as np
 from pathlib import Path
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
-from nilearn.image import mean_img
+from nilearn.input_data import NiftiMasker
 import SUITPy.flatmap as flatmap
 from nilearn.plotting import view_surf, plot_surf_roi
 from nilearn.surface import load_surf_data
@@ -169,6 +169,45 @@ def get_label_colors(fpath):
     cmap = LinearSegmentedColormap.from_list('mylist', rgba)
 
     return rgba, cmap
+
+def mask_vol(mask, vol, output='2D'):
+    """ mask volume using NiftiMasker
+
+    If output is '3D' inverse transform is computed (go from 2D np array to 3D nifti)
+    If output is '2D' then transform is computed (mask 3D nifti and return 2D np array)
+
+    Args: 
+        mask (str or nib obj):
+        vol (str or nib obj): can be 4D or 3D nifti or 2d array (n_time_points x n_voxels)
+        output (str): '2D' or '3D'. default is '2D'
+    Returns: 
+        np array shape (n_time_points x n_voxels) if output='2D'
+        nifti obj if output='3D'
+    """
+    nifti_masker = NiftiMasker(standardize=False, mask_strategy='epi', memory_level=2,
+                            smoothing_fwhm=0, memory="nilearn_cache") 
+
+    # load mask if it's a string
+    if isinstance(mask, str):
+        mask = nib.load(mask)
+
+    # fit the mask
+    nifti_masker.fit(mask)
+
+    # check vol format
+    if isinstance(vol, str):
+        vol = nib.load(vol)
+        fmri_masked = nifti_masker.transform(vol) #  (n_time_points x n_voxels)
+    elif isinstance(vol, nib.nifti1.Nifti1Image):
+        fmri_masked = nifti_masker.transform(vol) #  (n_time_points x n_voxels)
+    elif isinstance(vol, np.ndarray):
+        fmri_masked = vol
+
+    # return masked data
+    if output=="2D":
+        return fmri_masked
+    elif output=="3D":
+        return nifti_masker.inverse_transform(fmri_masked)
 
 def view_cerebellum(data, threshold=None, cscale=None, symmetric_cmap=False, title=None):
     """Visualize data on suit flatmap, plots either *.func.gii or *.label.gii data

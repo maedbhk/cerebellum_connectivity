@@ -599,24 +599,28 @@ def run(cortex="tessels0362",
 
     elif train_or_eval=="eval":
         for exp in range(2):
+            
+            # get best model for each method and parcellation (NNLS, ridge, WTA)
+            models, cortex_names = summary.get_best_models(train_exp=f"sc{2-exp}")
 
             # get best train model (based on train CV)
-            best_model, cortex = summary.get_best_model(train_exp=f"sc{2-exp}")
-            # cortex = best_model.split('_')[1] # assumes that training model follows convention <model_type>_<cortex_name>_<other>
+            # best_model, cortex = summary.get_best_model(train_exp=f"sc{2-exp}")
 
-            # save voxel/vertex maps for best training weights
-            save_weight_maps(model_name=best_model, cortex=cortex, train_exp=f"sc{2-exp}")
+            for (best_model, cortex) in zip(models, cortex_names):
 
-            # delete training models that are suboptimal (save space)
-            if delete_train:
-                dirs = const.Dirs(exp_name=f"sc{2-exp}")
-                model_fpaths = [f.path for f in os.scandir(dirs.conn_train_dir) if f.is_dir()]
-                for fpath in model_fpaths:
-                    if best_model != Path(fpath).name:
-                        shutil.rmtree(fpath)
+                # save voxel/vertex maps for best training weights
+                save_weight_maps(model_name=best_model, cortex=cortex, train_exp=f"sc{2-exp}")
 
-            # test best train model
-            eval_model(model_name=best_model, cortex=cortex, train_exp=f"sc{2-exp}", eval_exp=f"sc{exp+1}")
+                # delete training models that are suboptimal (save space)
+                if delete_train:
+                    dirs = const.Dirs(exp_name=f"sc{2-exp}")
+                    model_fpaths = [f.path for f in os.scandir(dirs.conn_train_dir) if f.is_dir()]
+                    for fpath in model_fpaths:
+                        if best_model != Path(fpath).name:
+                            shutil.rmtree(fpath)
+
+                # test best train model
+                eval_model(model_name=best_model, cortex=cortex, train_exp=f"sc{2-exp}", eval_exp=f"sc{exp+1}")
 
 
 if __name__ == "__main__":

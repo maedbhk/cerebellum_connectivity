@@ -209,7 +209,7 @@ def plot_train_map(gifti_func='group_weights_cerebellum', exp='sc1', model=None,
     return view
 
 def get_best_model(train_exp):
-    """Get idx for best ridge based on either R_cv (or R_train)
+    """Get idx for best model based on either R_cv (or R_train)
 
     Args:
         exp (str): 'sc1' or 'sc2
@@ -235,6 +235,33 @@ def get_best_model(train_exp):
     print(f"best model for {train_exp} is {best_model}")
 
     return best_model, cortex
+
+def get_best_models(train_exp):
+    """Get model_names, cortex_names for best models (NNLS, ridge, WTA) based on R_cv
+    Args:
+        exp (str): 'sc1' or 'sc2
+    Returns:
+        model_names (list of str), cortex_names (list of str)
+    """
+    # load train summary (contains R CV of all trained models)
+    dirs = const.Dirs(exp_name=train_exp)
+    fpath = os.path.join(dirs.conn_train_dir, "train_summary.csv")
+    df = pd.read_csv(fpath)
+
+    tmp = df.groupby(['X_data', 'model', 'hyperparameter', 'name']
+                ).mean().reset_index()
+
+    tmp1 = tmp.groupby(['X_data', 'model']
+            ).apply(lambda x: x['R_cv'].max()
+            ).reset_index(name='R_cv')
+
+    tmp2 = tmp1.merge(tmp, on=['X_data', 'model', 'R_cv'])
+
+    model_names = list(tmp2['name'])
+
+    cortex_names = list(tmp2['X_data'])
+
+    return model_names, cortex_names
 
 def train_weights(exp="sc1", model_name="ridge_tesselsWB162_alpha_6"):
     """gets training weights for a given model and summarizes into a dataframe

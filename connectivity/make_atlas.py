@@ -10,6 +10,7 @@ import connectivity.constants as const
 import connectivity.io as cio
 import connectivity.model as model
 from connectivity import data as cdata
+from connectivity import nib_utils as nio
 
 def _get_data(subj, exp, glm, atlas):
     """get cortical and cerebellar data 
@@ -67,6 +68,52 @@ def model_wta(subjs, exp, glm, atlas, crossvalidate=False):
         labels_all.append(new_model.labels)
 
     return np.vstack(labels_all)
+
+def dice_coefficient(atlas1, atlas2, mask=None):
+    """Calculate dice coefficient between two atlases
+
+    ***scipy.spatial.distance.pdist calculates dice coefficient but doesn't deal with NaN values****
+
+    Args: 
+        atlas1 (str or nib obj):
+        atlas2 (str or nib obj):
+        mask (None or str): if mask is provided, extracts data from mask (speeds up computation)
+
+    Returns: 
+        Dice (np array): shape (num_labels x num_labels)
+    """
+    if isinstance(atlas1, str):
+        atlas1 = nib.load(atlas1)
+    
+    if isinstance(atlas2, str):
+        atlas2 = nib.load(atlas2)
+
+    # get data
+    atlas1 = atlas1.get_data()
+    atlas2 = atlas2.get_data()
+
+    # extract data from mask for `atlas1` and `atlas2` if provided
+    if mask is not None:
+        atlas1 = nio.mask_vol(mask, vol=atlas1, output='2D')
+        atlas2 = nio.mask_vol(mask, vol=atlas2, output='2D')
+
+    # get labels
+    labels1 = np.unique(atlas1)
+    labels1 = labels1[labels1!=0]
+    labels2 = np.unique(atlas2)
+    labels2 = labels2[labels2!=0]
+
+    Dice = np.zeros((labels1.size, labels2.size))
+    for i, label1 in enumerate(labels1):
+        for j, label2 in enumerate(labels2):
+            dice = np.sum(atlas1[atlas2==label2]==label1)*2.0 / (np.sum(atlas1[atlas1==label1]==label1) + np.sum(atlas2[atlas2==label2]==label2))
+            
+            Dice[int(i)][int(j)]=float(dice)
+
+            if dice > 1 or dice < 0:
+                raise ValueError(f"Dice coefficient is greater than 1 or less than 0 ({dice}) at atlas1: {label1}, atlas2: {label2}")
+
+    return Dice
 
 def save_maps_cerebellum(
     data, 
