@@ -1,1 +1,0 @@
-{"duration": 0.0016777515411376953, "input_args": {"signals": "array([[ 1., 13., 13., ..., 13.,  1.,  5.]])", "sessions": "None", "detrend": "False", "standardize": "False", "confounds": "None", "standardize_confounds": "True", "low_pass": "None", "high_pass": "None", "t_r": "None", "ensure_finite": "False"}}

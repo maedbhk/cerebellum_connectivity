@@ -78,6 +78,9 @@ target/
 # exclude data from source control by default
 /data/
 
+# exclude nil earn cache
+nilearn_cache/
+
 # exclude reports and figures
 /reports/
 

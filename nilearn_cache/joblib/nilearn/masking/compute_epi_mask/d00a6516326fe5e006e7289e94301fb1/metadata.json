@@ -1,1 +1,0 @@
-{"duration": 0.08273530006408691, "input_args": {"epi_img": "<nibabel.nifti1.Nifti1Image object at 0x10cd3d450>", "lower_cutoff": "0.2", "upper_cutoff": "0.85", "connected": "True", "opening": "2", "exclude_zeros": "False", "ensure_finite": "True", "target_affine": "None", "target_shape": "None", "memory": "None"}}
