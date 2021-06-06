@@ -1,13 +1,8 @@
-import os
 import numpy as np
-import glob
 import nibabel as nib
 from scipy.stats import mode
-from nilearn.surface import load_surf_data
 import SUITPy.flatmap as flatmap
 
-import connectivity.constants as const
-import connectivity.io as cio
 import connectivity.model as model
 from connectivity import data as cdata
 from connectivity import nib_utils as nio

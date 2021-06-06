@@ -27,4 +27,4 @@ atlases=(yeo7 yeo17 mdtb1002_007 mdtb1002_010)
 glm=glm7
 
 for ((i=0; i<${#atlases[@]}; i++)); do \
-python3 script_atlas.py --glm=${glm} --atlas=${atlases[i]}; done
+python3 script_atlas.py --glm=${glm} --atlas_name=${atlases[i]}; done

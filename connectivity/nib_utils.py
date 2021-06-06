@@ -2,7 +2,6 @@
 import os
 from pathlib import Path
 import nibabel as nib
-from nibabel.nifti1 import load
 import numpy as np
 from pathlib import Path
 import matplotlib.pyplot as plt
@@ -208,6 +207,34 @@ def mask_vol(mask, vol, output='2D'):
         return fmri_masked
     elif output=="3D":
         return nifti_masker.inverse_transform(fmri_masked)
+
+def binarize_vol(imgs, mask, metric='max'):
+    """Binarizes niftis for `imgs` based on `metric`
+
+    Args: 
+        imgs (list of nib or list of str): list of nib objects or fullpath to niftis
+        mask (nib or str): mask for `imgs`
+        metric (str): 'max' or 'min'
+
+    Returns: 
+        nib obj
+    """
+    data_all = []
+    for img in imgs:
+        data_all.append(mask_vol(mask, vol=img, output='2D'))
+
+    data = np.vstack(data_all)
+
+    # binarize `data` based on max or min values
+    if metric=='max':
+        labels = np.argmax(data, axis=0)
+    elif metric=='min':
+        labels = np.argmin(data, axis=0)
+    
+    # compute 3D vol for `labels`
+    nib_obj = mask_vol(mask, vol=labels, output='3D')
+
+    return nib_obj
 
 def view_cerebellum(data, threshold=None, cscale=None, symmetric_cmap=False, title=None):
     """Visualize data on suit flatmap, plots either *.func.gii or *.label.gii data

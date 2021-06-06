@@ -1,11 +1,7 @@
 import os
-import sys
-import glob
 import numpy as np
-import json
 import deepdish as dd
 import pandas as pd
-import copy
 from collections import defaultdict
 from sklearn.model_selection import cross_val_score
 from sklearn.metrics import mean_squared_error
@@ -15,7 +11,6 @@ from connectivity import data as cdata
 import connectivity.constants as const
 import connectivity.model as model
 import connectivity.evaluation as ev
-import connectivity.nib_utils as nio
 
 import warnings
 

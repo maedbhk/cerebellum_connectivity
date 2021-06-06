@@ -7,14 +7,12 @@ import nibabel as nib
 import glob
 from scipy.stats import mode
 from random import seed, sample
-from collections import defaultdict
 import neptune
 from pathlib import Path
 import SUITPy.flatmap as flatmap
 
 import connectivity.constants as const
 import connectivity.io as cio
-import connectivity.nib_utils as nio
 from connectivity import data as cdata
 import connectivity.run_mk as run_connect
 from connectivity import visualize as summary
