@@ -5,16 +5,15 @@ import numpy as np
 import pandas as pd
 import nibabel as nib
 import glob
-from scipy.stats import mode
 from random import seed, sample
 import neptune
 from pathlib import Path
-import SUITPy.flatmap as flatmap
 
 import connectivity.constants as const
 import connectivity.io as cio
+import connectivity.nib_utils as nio
 from connectivity import data as cdata
-import connectivity.run_mk as run_connect
+from connectivity import train_evaluate
 from connectivity import visualize as summary
 
 
@@ -33,7 +32,6 @@ def delete_conn_files():
                 except:
                     os.remove(f)
     print("deleting training and evaluation connectivity data")
-
 
 def split_subjects(
     subj_ids, 
@@ -62,7 +60,6 @@ def split_subjects(
     train_subjs = list([x for x in subj_ids if x not in test_subjs])
 
     return train_subjs, test_subjs
-
 
 def log_to_neptune(
     dataframe, 
@@ -103,7 +100,6 @@ def log_to_neptune(
             neptune.set_property(k, v)
     neptune.stop()
 
-
 def train_ridge(
     hyperparameter,
     train_exp="sc1",
@@ -132,7 +128,7 @@ def train_ridge(
     train_subjs, _ = split_subjects(const.return_subjs, test_size=0.3)
 
     # get default train parameters
-    config = run_connect.get_default_train_config()
+    config = train_evaluate.get_default_train_config()
 
     df_all = pd.DataFrame()
     # train and validate ridge models
@@ -156,7 +152,7 @@ def train_ridge(
         config["hyperparameter"] = f"{param:.0f}"
 
         # train model
-        models, df = run_connect.train_models(config, save=log_locally)
+        models, df = train_evaluate.train_models(config, save=log_locally)
         df_all = pd.concat([df_all, df])
 
         # write online to neptune
@@ -177,7 +173,6 @@ def train_ridge(
             df_all = pd.concat([df_all, pd.read_csv(fpath)])
         # save out train summary
         df_all.to_csv(fpath, index=False)
-
 
 def train_WTA(
     train_exp="sc1",
@@ -207,7 +202,7 @@ def train_WTA(
     train_subjs, _ = split_subjects(const.return_subjs, test_size=0.3)
 
     # get default train parameters
-    config = run_connect.get_default_train_config()
+    config = train_evaluate.get_default_train_config()
 
     df_all = pd.DataFrame()
     # train and validate ridge models
@@ -229,7 +224,7 @@ def train_WTA(
     config["hyperparameter"] = 0
 
     # train model
-    models, df = run_connect.train_models(config, save=log_locally)
+    models, df = train_evaluate.train_models(config, save=log_locally)
     df_all = pd.concat([df_all, df])
 
     # write online to neptune
@@ -250,7 +245,6 @@ def train_WTA(
             df_all = pd.concat([df_all, pd.read_csv(fpath)])
         # save out train summary
         df_all.to_csv(fpath, index=False)
-
 
 def train_NNLS(
     alphas,
@@ -282,7 +276,7 @@ def train_NNLS(
     train_subjs, _ = split_subjects(const.return_subjs, test_size=0.3)
 
     # get default train parameters
-    config = run_connect.get_default_train_config()
+    config = train_evaluate.get_default_train_config()
 
     df_all = pd.DataFrame()
     # train and validate ridge models
@@ -306,7 +300,7 @@ def train_NNLS(
         config["hyperparameter"] = f"{alpha:.0f}_{gamma:.0f}"
 
         # train model
-        models, df = run_connect.train_models(config, save=log_locally)
+        models, df = train_evaluate.train_models(config, save=log_locally)
         df_all = pd.concat([df_all, df])
 
         # write online to neptune
@@ -327,7 +321,6 @@ def train_NNLS(
             df_all = pd.concat([df_all, pd.read_csv(fpath)])
         # save out train summary
         df_all.to_csv(fpath, index=False)
-
 
 def save_weight_maps(
         model_name, 
@@ -363,113 +356,17 @@ def save_weight_maps(
         cortex_weights_all.append(np.nanmean(data.coef_, axis=0))
 
     # save maps to disk for cerebellum and cortex
-    save_maps_cerebellum(data=np.stack(cereb_weights_all, axis=0), 
-                        fpath=os.path.join(fpath, 'group_weights_cerebellum'))
+    nio.make_gifti_cerebellum(data=np.stack(cereb_weights_all, axis=0), 
+                            mask=cdata.read_mask(),
+                            outpath=os.path.join(fpath, 'group_weights_cerebellum.func.gii'),
+                            stats='nanmean',
+                            data_type='func')
 
     save_maps_cortex(data=np.stack(cortex_weights_all, axis=0),
                     atlas=cortex,
                     fpath=os.path.join(fpath, 'group_weights_cortex'))
 
     print('saving cortical and cerebellar weights to disk')
-
-
-def save_wta_maps(
-        model_name, 
-        cortex, 
-        train_exp
-        ):
-    """Save weight maps to disk for cortex and cerebellum
-
-    Args: 
-        model_name (str): model_name (folder in conn_train_dir)
-        cortex (str): cortex model name (example: tesselsWB162)
-        train_exp (str): 'sc1' or 'sc2'
-    Returns: 
-        saves nifti/gifti to disk
-    """
-    # set directory
-    dirs = const.Dirs(exp_name=train_exp)
-
-    # get model path
-    fpath = os.path.join(dirs.conn_train_dir, model_name)
-
-    # get trained subject models
-    model_fnames = glob.glob(os.path.join(fpath, '*.h5'))
-
-    labels_all = []
-    for model_fname in model_fnames:
-
-        # read model data
-        data = cio.read_hdf5(model_fname)
-        
-        # append labels
-        labels_all.append(data.labels)
-
-    # save maps to disk for cerebellum and cortex
-    save_maps_cerebellum(data=np.stack(labels_all, axis=0), 
-                        fpath=os.path.join(fpath, 'group_wta_cerebellum'),
-                        group='mode',
-                        nifti=True)
-
-
-def save_maps_cerebellum(
-    data, 
-    fpath='/',
-    group='nanmean', 
-    gifti=True, 
-    nifti=True, 
-    column_names=[], 
-    label_RGBA=[],
-    label_names=[],
-    ):
-    """Takes data (np array), averages along first dimension
-    saves nifti and gifti map to disk
-
-    Args: 
-        data (np array): np array of shape (N x 6937)
-        fpath (str): save path for output file
-        group (bool): default is 'nanmean' (for func data), other option is 'mode' (for label data) 
-        gifti (bool): default is True, saves gifti to fpath
-        nifti (bool): default is False, saves nifti to fpath
-        column_names (list):
-        label_RGBA (list):
-        label_names (list):
-    Returns: 
-        saves nifti and/or gifti image to disk, returns gifti
-    """
-    num_cols, num_vox = data.shape
-
-    # get mean or mode of data along first dim (first dim is usually subjects)
-    if group=='nanmean':
-        data = np.nanmean(data, axis=0)
-    elif group=='mode':
-        data = mode(data, axis=0)
-        data = data.mode[0]
-    else:
-        print('need to group data by passing "nanmean" or "mode"')
-
-    # convert averaged cerebellum data array to nifti
-    nib_obj = cdata.convert_cerebellum_to_nifti(data=data)[0]
-    
-    # save nifti(s) to disk
-    if nifti:
-        nib.save(nib_obj, fpath + '.nii')
-
-    # map volume to surface
-    surf_data = flatmap.vol_to_surf([nib_obj], space="SUIT", stats=group)
-
-    # make and save gifti image
-    if group=='nanmean':
-        gii_img = flatmap.make_func_gifti(data=surf_data, column_names=column_names)
-        out_name = 'func'
-    elif group=='mode':
-        gii_img = flatmap.make_label_gifti(data=surf_data, label_names=label_names, column_names=column_names, label_RGBA=label_RGBA)
-        out_name = 'label'
-    if gifti:
-        nib.save(gii_img, fpath + f'.{out_name}.gii')
-    
-    return gii_img
-
 
 def save_maps_cortex(
     data, 
@@ -499,7 +396,6 @@ def save_maps_cortex(
     for (func_gii, hem) in zip(func_giis, hem_names):
         nib.save(func_gii, fpath + f'.{hem}.func.gii')
 
-
 def eval_model(
     model_name,
     train_exp="sc1",
@@ -526,10 +422,11 @@ def eval_model(
     """
     dirs = const.Dirs(exp_name=eval_exp)
 
+    # get train subjects
     train_subjs, _ = split_subjects(const.return_subjs, test_size=0.3)
 
     # get default eval parameters
-    config = run_connect.get_default_eval_config()
+    config = train_evaluate.get_default_eval_config()
 
     print(f"evaluating {model_name}")
     config["name"] = model_name
@@ -543,15 +440,18 @@ def eval_model(
     config["save_maps"] = True
 
     # eval model(s)
-    df, voxels = run_connect.eval_models(config)
+    df, voxels = train_evaluate.eval_models(config)
 
     # save voxel data to gifti(only for cerebellum_suit)
     if config["save_maps"] and config["Y_data"] == "cerebellum_suit":
         fpath = os.path.join(dirs.conn_eval_dir, model_name)
         cio.make_dirs(fpath)
         for k, v in voxels.items():
-            save_maps_cerebellum(data=np.stack(v, axis=0), 
-                                fpath=os.path.join(fpath, f'group_{k}'))
+            nio.make_gifti_cerebellum(data=np.stack(v, axis=0),
+                                mask=cdata.read_mask(),
+                                outpath=os.path.join(fpath, f'group_{k}.func.gii'),
+                                stats='nanmean',
+                                data_type='func')
 
     # write to neptune
     if log_online:
@@ -564,12 +464,10 @@ def eval_model(
             df = pd.concat([df, pd.read_csv(eval_fpath)])
         df.to_csv(eval_fpath, index=False)
 
-
 @click.command()
 @click.option("--cortex")
 @click.option("--model_type")
 @click.option("--train_or_eval")
-
 
 def run(cortex="tessels0362", 
         model_type="ridge", 
@@ -616,7 +514,6 @@ def run(cortex="tessels0362",
 
                 # test best train model
                 eval_model(model_name=best_model, cortex=cortex, train_exp=f"sc{2-exp}", eval_exp=f"sc{exp+1}")
-
 
 if __name__ == "__main__":
     run()

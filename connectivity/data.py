@@ -2,12 +2,8 @@
 import os
 import pandas as pd
 import numpy as np
-import re
 import deepdish as dd
-import copy
 import scipy
-import scipy.io as sio
-from collections import defaultdict
 import h5py
 import SUITPy as suit
 import nibabel as nib
@@ -17,7 +13,6 @@ import connectivity.constants as const
 import connectivity.io as cio
 import connectivity.matrix as matrix
 import connectivity.nib_utils as nio
-from numpy.linalg import solve
 
 """Main module for getting data to be used for running connectivity models.
 
@@ -59,7 +54,6 @@ class Dataset:
         self.roi = roi
         self.subj_id = subj_id
         self.data = None
-
 
     def load_mat(self):
         """Reads a data set from the Y_info file and corresponding GLM file from matlab."""
@@ -112,7 +106,6 @@ class Dataset:
             setattr(self,key,value)
         return self
 
-
     def load(self):
         """
             Utility function to first try to load subjects as h5 file
@@ -144,7 +137,6 @@ class Dataset:
             fdir = dirs.beta_reg_dir / dataname
         dd.io.save(fdir / fname, vars(self), compression=None)
 
-
     def average_subj(self): 
         """
             Averages data across subjects if data is 3-dimensional
@@ -152,7 +144,6 @@ class Dataset:
         if self.data.ndim == 2: 
             raise NameError('data is already 2-dimensional')
         self.data = np.nanmean(self.data, axis = 0)
-
 
     def get_info(self):
         """Return info for data set in a dataframe."""
@@ -167,12 +158,10 @@ class Dataset:
         }
         return pd.DataFrame(d)
 
-
     def get_info_run(self):
         """Returns info for a typical run only."""
         info = self.get_info()
         return info[info.run == 1]
-
 
     def get_data(self, averaging="sess", weighting=True, subset=None):
         """Get the data using a specific aggregation.
@@ -272,8 +261,8 @@ def convert_to_vol(data, xyz, voldef):
 def convert_cerebellum_to_nifti(data):
     """
     Args:
-        data (np-arrray): N x 6937 length data array
-        or 1-d (6937,) array
+        data (np-arrray): N x 6930 length data array
+        or 1-d (6930,) array
     Returns:
         nifti (List of nifti1image): N output images
     """
@@ -296,6 +285,7 @@ def convert_cerebellum_to_nifti(data):
         nii_mapped.append(convert_to_vol(data,region.data.T,nii_suit))
     else:
         raise(NameError('data needs to be 1 or 2-dimensional'))
+    
     return nii_mapped
 
 def convert_cortex_to_gifti(data, atlas):
@@ -393,6 +383,19 @@ def eucl_distance(coord):
     for i in range(2):
         D = D + (coord[:,i].reshape(-1,1)-coord[:,i])**2
     return np.sqrt(D)
+
+def read_mask(mask='cerebellarGreySUIT3mm.nii'):
+    """Read cerebellar mask from file
+
+    Args: 
+        fpath (str): fullpath to cerebellar mask
+    Returns: 
+        nib obj
+    """
+    dirs = const.Dirs(exp_name='sc1')
+    mask = os.path.join(dirs.reg_dir, 'data','group', mask)
+
+    return nib.load(mask)
 
 def read_suit_nii(nii_file):
     """

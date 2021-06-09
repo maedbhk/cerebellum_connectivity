@@ -31,7 +31,6 @@ np.seterr(divide="ignore", invalid="ignore")
   models = eval_models(config)
 """
 
-
 def get_default_train_config():
     """Defaults for training model(s).
 
@@ -84,7 +83,6 @@ def get_default_train_config():
     }
     return config
 
-
 def get_default_eval_config():
     """Defaults for evaluating model(s).
 
@@ -134,7 +132,6 @@ def get_default_eval_config():
         "threshold": 0.1
     }
     return config
-
 
 def train_models(config, save=False):
     """Trains a specific model class on X and Y data from a specific experiment for subjects listed in config.
@@ -204,7 +201,6 @@ def train_models(config, save=False):
 
     return models, pd.DataFrame.from_dict(train_all)
 
-
 def train_metrics(model, X, Y):
     """computes training metrics (rmse and R) on X and Y
 
@@ -222,7 +218,6 @@ def train_metrics(model, X, Y):
     R_train, _ = ev.calculate_R(Y, Y_pred)
 
     return rmse_train, R_train
-
 
 def validate_metrics(model, X, Y, X_info, cv_fold):
     """computes CV training metrics (rmse and R) on X and Y
@@ -242,7 +237,6 @@ def validate_metrics(model, X, Y, X_info, cv_fold):
     r_cv_all = cross_val_score(model, X, Y, scoring=ev.calculate_R_cv, cv=cv_fold)
 
     return np.nanmean(rmse_cv_all), np.nanmean(r_cv_all)
-
 
 def eval_models(config):
     """Evaluates a specific model class on X and Y data from a specific experiment for subjects listed in config.
@@ -301,7 +295,6 @@ def eval_models(config):
     # Return list of models
     return pd.DataFrame.from_dict(eval_all), eval_voxels
 
-
 def _get_eval(Y, Y_pred, Y_info, X_info):
     """Compute evaluation, returning summary and voxel data.
 
@@ -347,7 +340,6 @@ def _get_eval(Y, Y_pred, Y_info, X_info):
 
     return data
 
-
 def _get_data(config, exp, subj):
     """get X and Y data for exp and subj
 
@@ -384,7 +376,6 @@ def _get_data(config, exp, subj):
     X, X_info = Xdata.get_data(averaging=config["averaging"], weighting=config["weighting"])
 
     return Y, Y_info, X, X_info
-
 
 def _get_model_name(train_name, exp, subj_id):
     """returns path/name for connectivity training model outputs.

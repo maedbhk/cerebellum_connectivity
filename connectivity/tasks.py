@@ -3,7 +3,6 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
-import SUITPy.flatmap as flatmap
 
 import connectivity.nib_utils as nio
 from connectivity import data as cdata
@@ -112,55 +111,37 @@ def get_betas_summary(rois, exps, glm='glm7', save=True, averaging="none"):
     
     return dataframe_all
 
-def save_maps_cerebellum(data, fpath='/', group_average=True, gifti=True, nifti=True, column_names=None):
-    """Takes data (np array), averages along first dimension
-    saves nifti and gifti map to disk
-
+def get_task_maps_cerebellum(data, data_info, task='Instruct'):
+    """plot task maps 
+    
     Args: 
-        data (np array): np array of shape (N x 6937)
-        fpath (str): save path for output file
-        group_average (bool): default is True, averages data np arrays 
-        gifti (bool): default is True, saves gifti to fpath
-        nifti (bool): default is True, saves nifti to fpath
-        column_names (bool or list):
+        data (np array): shape (17 x 92 x 6937) (subjs x tasks x voxels) - output from get_betas()
+        data_info (pd dataframe): must contain `TN` to index betas
+        task (str): default is 'Instruct', inspect data_info to get other task names
     Returns: 
-        saves nifti and/or gifti image to disk, returns gifti
+        gii (gifti object containing all task maps), saves to disk
     """
-    num_cols, num_vox = data.shape
+    # get group average
+    data = np.nanmean(data, axis=0)
 
-    # average data
-    if group_average:
-        data = np.nanmean(data, axis=0)
+    # groupby tasks
+    data_info = data_info.groupby('TN').mean().reset_index()
 
-    # get col names
-    if column_names is None:
-        column_names = []
-        for i in range(num_cols):
-            column_names.append("col_{:02d}".format(i+1))
-    
-    # get filenames
-    fnames = []
-    for col in column_names:
-        fnames.append(fpath + '_' + col)
+    # get betas for `task`
+    idx = data_info[data_info['TN']==task].index
 
-    # convert averaged cerebellum data array to nifti
-    nib_objs = cdata.convert_cerebellum_to_nifti(data=data)
-    
-    # save nifti(s) to disk
-    if nifti:
-        fnames = [name + '.nii' for name in fnames]
-        for (nib_obj, fname) in zip(nib_objs, fnames):
-            nib.save(img=nib_obj, fpath=fname) # this is temporary (to test bug in map)
+    # average 
+    betas = np.nanmean(data[idx,:], axis=0)
+    betas = betas.reshape(1, len(betas))
 
-    # map volume to surface
-    surf_data = flatmap.vol_to_surf(nib_objs, space="SUIT")
-
-    # # make and save gifti image
-    gii_img = flatmap.make_func_gifti(data=surf_data, column_names=column_names)
-    if gifti:
-        nib.save(img=gii_img, fpath=fpath + '.func.gii')
-    
-    return gii_img
+    gii = nio.make_gifti_cerebellum(data=betas,
+                            mask=cdata.read_mask(),
+                            column_names=task,
+                            data_type='func',
+                            save_nifti=False,
+                            save_gifti=False,
+                            stats=None)
+    return gii
 
 def plot_task_scatterplot(dataframe, exp='sc1', save=True): 
     """plot scatterplot of beta weights between two rois. 
@@ -197,38 +178,3 @@ def plot_task_scatterplot(dataframe, exp='sc1', save=True):
 
     if save:
         save_fig(plt, f'task_scatterplot_{exp}.png')
-
-def plot_task_maps_cerebellum(data, data_info, task='Instruct'):
-    """plot task maps 
-    
-    Args: 
-        data (np array): shape (17 x 92 x 6937) (subjs x tasks x voxels)
-        data_info (pd dataframe): must contain `TN` to index betas
-        task (str): default is 'Instruct', inspect data_info to get other task names
-    Returns: 
-        returns view_all (list of objects), tasks (list of str): task names
-    """
-    # get group average
-    data = np.nanmean(data, axis=0)
-
-    # groupby tasks
-    data_info = data_info.groupby('TN').mean().reset_index()
-
-    # get betas for `task`
-    idx = data_info[data_info['TN']==task].index
-
-    # average 
-    betas = np.nanmean(data[idx,:], axis=0)
-    betas = betas.reshape(1, len(betas))
-
-    # convert betas to gifti 
-    gii_img =  save_maps_cerebellum(data=betas,
-                                column_names=task,
-                                gifti=False,
-                                nifti=False,
-                                group_average=False)
-
-    # plot cerebellum
-    view = nio.view_cerebellum(data=gii_img.darrays[0].data)
-    
-    return view

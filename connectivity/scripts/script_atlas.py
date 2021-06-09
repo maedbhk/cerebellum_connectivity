@@ -3,6 +3,7 @@ import numpy as np
 import os
 import connectivity.constants as const
 import connectivity.io as cio
+from connectivity import data as cdata
 import connectivity.nib_utils as nio
 from connectivity import atlas
 
@@ -25,7 +26,7 @@ def run(glm, atlas_name):
     labels = {}
     # loop over exp
     for exp in ['sc1', 'sc2']:
-        labels[exp] = atlas.model_wta(const.return_subjs, exp, glm, atlas_name)
+        labels[exp] = atlas.model_wta(['s02', 's03'], exp, glm, atlas_name) # const.return_subjs
 
     # concat labels across exps
     labels_concat = np.concatenate((labels['sc1'], labels['sc2']))
@@ -38,10 +39,12 @@ def run(glm, atlas_name):
     # get label colors
     rgba, _ = nio.get_label_colors(fpath=os.path.join(dirs.reg_dir, 'data', 'group', f'{atlas_name}.R.label.gii'))
 
-    atlas.save_maps_cerebellum(data=labels_concat, 
-                        fpath=os.path.join(fpath, f'{atlas_name}_wta_suit'),
-                        group='mode',
-                        nifti=True,
+    nio.make_gifti_cerebellum(data=labels_concat, 
+                        mask=cdata.read_mask(),
+                        outpath=os.path.join(fpath, f'{atlas_name}_wta_suit.label.gii'),
+                        stats='mode',
+                        data_type='label',
+                        save_nifti=True,
                         label_RGBA=rgba)
                         
 if __name__ == "__main__":

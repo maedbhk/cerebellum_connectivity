@@ -2,17 +2,24 @@
 import os
 from pathlib import Path
 import nibabel as nib
+from scipy.stats import mode
 import numpy as np
 from pathlib import Path
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 from nilearn.input_data import NiftiMasker
 import SUITPy.flatmap as flatmap
+from nilearn.image import index_img, concat_imgs
 from nilearn.plotting import view_surf, plot_surf_roi
 from nilearn.surface import load_surf_data
 import connectivity.constants as const
 
-def make_label_gifti_cortex(data, anatomical_struct='CortexLeft', label_names=None, column_names=None, label_RGBA=None):
+def make_label_gifti_cortex(
+    data, 
+    anatomical_struct='CortexLeft', 
+    label_names=None, 
+    column_names=None, 
+    label_RGBA=None):
     """
     Generates a label GiftiImage from a numpy array
        @author joern.diedrichsen@googlemail.com, Feb 2019 (Python conversion: switt)
@@ -61,7 +68,7 @@ def make_label_gifti_cortex(data, anatomical_struct='CortexLeft', label_names=No
     if label_names is None:
         label_names = []
         for i in range(num_labels):
-            label_names.append("label-{:02d}".format(i+1))
+            label_names.append("label-{:02d}".format(i))
 
     # Create label.gii structure
     C = nib.gifti.GiftiMetaData.from_dict({
@@ -97,7 +104,10 @@ def make_label_gifti_cortex(data, anatomical_struct='CortexLeft', label_names=No
     gifti.labeltable.labels.extend(E_all)
     return gifti
 
-def make_func_gifti_cortex(data, anatomical_struct='CortexLeft', column_names=None):
+def make_func_gifti_cortex(
+    data, 
+    anatomical_struct='CortexLeft', 
+    column_names=None):
     """
     Generates a function GiftiImage from a numpy array
        @author joern.diedrichsen@googlemail.com, Feb 2019 (Python conversion: switt)
@@ -148,11 +158,87 @@ def make_func_gifti_cortex(data, anatomical_struct='CortexLeft', column_names=No
 
     return gifti
 
+def make_gifti_cerebellum(
+    data, 
+    mask,
+    outpath='/',
+    stats='nanmean', 
+    data_type='func',
+    save_nifti=True, 
+    save_gifti=True,
+    column_names=[], 
+    label_RGBA=[],
+    label_names=[],
+    ):
+    """Takes data (np array) or 3D/4D nifti obj or str; optionally computes mean/mode along first dimension; optionally saves nifti and gifti map to disk
+
+    If `data` is 3D/4D nifti obj or str, then nifti is masked using `mask` and np array (N x 6930) is returned
+
+    Args: 
+        data (np array or nib obj or str): np array of shape (N x 6930) or nib obj (3D or 4D) or str (fullpath to nifti)
+        mask (nib obj or str): nib obj of mask or fullpath to mask
+        outpath (str): save path for output file (must contain *.label.gii or *.func.gii)
+        stats (str): 'nanmean', 'mode' or None if doing stats
+        data_type (str): 'func' or 'label'
+        save_nifti (bool): default is False, saves nifti to fpath
+        column_names (list):
+        label_RGBA (list):
+        label_names (list):
+    Returns: 
+        saves gifti and/or nifti image to disk, returns gifti
+    """
+    if isinstance(mask, str):
+        mask = nib.load(mask)
+    elif isinstance(mask, nib.nifti1.Nifti1Image):
+        pass
+
+    if isinstance(data, str):
+        data = nib.load(data)
+        data = mask_vol(mask, data, output='2D')
+    elif isinstance(data, nib.nifti1.Nifti1Image):
+        data = mask_vol(mask, data, output='2D')
+    elif isinstance(data, np.ndarray):
+        pass
+
+    # get mean or mode of data along first dim
+    if stats=='nanmean':
+        data = np.nanmean(data, axis=0)
+    elif stats=='mode':
+        data = mode(data, axis=0)
+        data = data.mode[0]
+    elif stats is None:
+        pass
+
+    # convert cerebellum data array to nifti
+    imgs = mask_vol(mask, data, output='3D')
+    
+    # save nifti(s) to disk
+    if save_nifti:
+        fname = Path(outpath).name
+        if len(imgs)>1:
+            img = concat_imgs(imgs)
+        else:
+            img = imgs[0]
+        nib.save(img, str(Path(outpath).parent) + '/' + fname.rsplit('.')[0] + '.nii')
+
+    # make and save gifti
+    if data_type=='label':
+        surf_data = flatmap.vol_to_surf(imgs, space="SUIT", stats='mode')
+        gii_img = flatmap.make_label_gifti(data=surf_data, label_names=label_names, column_names=column_names, label_RGBA=label_RGBA)
+    elif data_type=='func':
+        surf_data = flatmap.vol_to_surf(imgs, space="SUIT", stats='nanmean')
+        gii_img = flatmap.make_func_gifti(data=surf_data, column_names=column_names)
+    
+    if save_gifti:
+        nib.save(gii_img, outpath)
+        print(f'saving gifti to {outpath}')
+        return gii_img
+
 def get_label_colors(fpath):
     """get rgba for atlas (given by fpath)
 
     Args: 
-        fpath (str): full path to atlas
+        fpath (str): full path to atlas (*.label.gii)
     Returns: 
         rgba (np array): shape num_labels x num_rgba
     """
@@ -169,19 +255,19 @@ def get_label_colors(fpath):
 
     return rgba, cmap
 
-def mask_vol(mask, vol, output='2D'):
-    """ mask volume using NiftiMasker
+def mask_vol(mask, data, output='2D'):
+    """ mask volume using NiftiMasker, input can be volume (3D/4D Nifti1Image) or np array (n_cols x n_voxels) or str (to 3D/4D volume)
 
-    If output is '3D' inverse transform is computed (go from 2D np array to 3D nifti)
-    If output is '2D' then transform is computed (mask 3D nifti and return 2D np array)
+    If output is '3D' inverse transform is computed (go from 2D np array to list of 3D nifti(s))
+    If output is '2D' then transform is computed (mask 3D nifti(s) and return 2D np array)
 
     Args: 
-        mask (str or nib obj):
-        vol (str or nib obj): can be 4D or 3D nifti or 2d array (n_time_points x n_voxels)
+        mask (str or nib obj): should be `cerebellarGreySUIT3mm.nii`
+        data (str or nib obj or np array): can be str to nifti (4D or 3D) or nifti obj (4D or 3D) or 2d array (n_cols x n_voxels)
         output (str): '2D' or '3D'. default is '2D'
     Returns: 
-        np array shape (n_time_points x n_voxels) if output='2D'
-        nifti obj if output='3D'
+        np array shape (n_cols x n_voxels) if output='2D'
+        list of nifti obj(s) if output='3D' (multiple niftis are returned if `data` is 4D nifti)
     """
     nifti_masker = NiftiMasker(standardize=False, mask_strategy='epi', memory_level=2,
                             smoothing_fwhm=0, memory="nilearn_cache") 
@@ -194,19 +280,27 @@ def mask_vol(mask, vol, output='2D'):
     nifti_masker.fit(mask)
 
     # check vol format
-    if isinstance(vol, str):
-        vol = nib.load(vol)
-        fmri_masked = nifti_masker.transform(vol) #  (n_time_points x n_voxels)
-    elif isinstance(vol, nib.nifti1.Nifti1Image):
-        fmri_masked = nifti_masker.transform(vol) #  (n_time_points x n_voxels)
-    elif isinstance(vol, np.ndarray):
-        fmri_masked = vol
+    if isinstance(data, str):
+        data = nib.load(data)
+        fmri_masked = nifti_masker.transform(data) #  (n_time_points x n_voxels)
+    elif isinstance(data, nib.nifti1.Nifti1Image):
+        fmri_masked = nifti_masker.transform(data) #  (n_time_points x n_voxels)
+    elif isinstance(data, np.ndarray): 
+        try:
+            num_vert, num_col = data.shape
+        except: 
+            data = np.reshape(data, (1,len(data)))
+        fmri_masked = data
 
     # return masked data
     if output=="2D":
         return fmri_masked
     elif output=="3D":
-        return nifti_masker.inverse_transform(fmri_masked)
+        nib_obj = nifti_masker.inverse_transform(fmri_masked)
+        nib_objs = []
+        for i in np.arange(nib_obj.shape[3]):
+            nib_objs.append(index_img(nib_obj,i))
+        return nib_objs
 
 def binarize_vol(imgs, mask, metric='max'):
     """Binarizes niftis for `imgs` based on `metric`
@@ -221,7 +315,7 @@ def binarize_vol(imgs, mask, metric='max'):
     """
     data_all = []
     for img in imgs:
-        data_all.append(mask_vol(mask, vol=img, output='2D'))
+        data_all.append(mask_vol(mask, data=img, output='2D'))
 
     data = np.vstack(data_all)
 
@@ -232,11 +326,17 @@ def binarize_vol(imgs, mask, metric='max'):
         labels = np.argmin(data, axis=0)
     
     # compute 3D vol for `labels`
-    nib_obj = mask_vol(mask, vol=labels, output='3D')
+    nib_obj = mask_vol(mask, data=labels+1, output='3D')
 
     return nib_obj
 
-def view_cerebellum(data, threshold=None, cscale=None, symmetric_cmap=False, title=None):
+def view_cerebellum(
+    data, 
+    threshold=None, 
+    cscale=None, 
+    symmetric_cmap=False, 
+    title=None,
+    colorbar=True):
     """Visualize data on suit flatmap, plots either *.func.gii or *.label.gii data
 
     Args: 
@@ -266,17 +366,25 @@ def view_cerebellum(data, threshold=None, cscale=None, symmetric_cmap=False, tit
         data = load_surf_data(data)
         cscale = [np.nanmin(data), np.nanmax(data)]
 
-    # nilearn seems to
+    # visualize
     if viewer=='nilearn':
         view = view_surf(surf_mesh, data, cmap='CMRmap',
                         threshold=threshold, vmin=cscale[0], vmax=cscale[1], 
-                        symmetric_cmap=symmetric_cmap)
+                        symmetric_cmap=symmetric_cmap, colorbar=colorbar)
     elif viewer=='suit':
-        view = flatmap.plot(data, surf=surf_mesh, overlay_type=overlay_type, cscale=cscale)
+        view = flatmap.plot(data, surf=surf_mesh, overlay_type=overlay_type, cscale=cscale, colorbar=colorbar)
     
     return view
 
-def view_cortex(data, hemisphere='R', cmap=None, cscale=None, atlas_type='inflated', symmetric_cmap=False, title=None, orientation='medial'):
+def view_cortex(
+    data, 
+    hemisphere='R', 
+    cmap=None, 
+    cscale=None, 
+    atlas_type='inflated', 
+    symmetric_cmap=False, 
+    title=None, 
+    orientation='medial'):
     """Visualize data on inflated cortex, plots either *.func.gii or *.label.gii data
 
     Args: 
@@ -290,7 +398,7 @@ def view_cortex(data, hemisphere='R', cmap=None, cscale=None, atlas_type='inflat
     dirs = const.Dirs()
 
     # get surface mesh
-    surf_mesh = os.path.join(dirs.reg_dir, 'data', 'group', f'fs_LR.32k.{hemisphere}.{atlas_type}.surf.gii')
+    surf_mesh = os.path.join(dirs.reg_dir, 'data', 'average', f'fs_LR.32k.{hemisphere}.{atlas_type}.surf.gii')
 
     # load surf data from file
     fname = Path(data).name
