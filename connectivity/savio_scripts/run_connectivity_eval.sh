@@ -24,4 +24,4 @@ export PYTHONPATH
 cd /global/scratch/maedbhking/projects/cerebellum_connectivity/connectivity/scripts
 
 # run connectivity models (eval)
-python3 script_mk.py --train_or_eval="eval"
+python3 script_connectivity.py --train_or_eval="eval"

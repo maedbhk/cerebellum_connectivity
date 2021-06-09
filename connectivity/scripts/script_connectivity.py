@@ -355,46 +355,20 @@ def save_weight_maps(
         cereb_weights_all.append(np.nanmean(data.coef_, axis=1))
         cortex_weights_all.append(np.nanmean(data.coef_, axis=0))
 
-    # save maps to disk for cerebellum and cortex
+    # save maps to disk for cerebellum
     nio.make_gifti_cerebellum(data=np.stack(cereb_weights_all, axis=0), 
                             mask=cdata.read_mask(),
                             outpath=os.path.join(fpath, 'group_weights_cerebellum.func.gii'),
                             stats='nanmean',
                             data_type='func')
 
-    save_maps_cortex(data=np.stack(cortex_weights_all, axis=0),
-                    atlas=cortex,
-                    fpath=os.path.join(fpath, 'group_weights_cortex'))
+    # save maps to disk for cortex
+    data = np.stack(cortex_weights_all, axis=0)
+    func_giis, hem_names = cdata.convert_cortex_to_gifti(data=np.nanmean(data, axis=0), atlas=cortex)
+    for (func_gii, hem) in zip(func_giis, hem_names):
+        nib.save(func_gii, os.path.join(fpath, 'group_weights_cortex', f'.{hem}.func.gii'))
 
     print('saving cortical and cerebellar weights to disk')
-
-def save_maps_cortex(
-    data, 
-    atlas, 
-    fpath='/', 
-    group_average=True
-    ):
-    """Takes list of np arrays, averages list and
-    saves gifti map to disk
-
-    Args: 
-        data (np array): np array of shape (N x 32492)
-        fpath (str): save path for output file
-        atlas (str): cortex atlas name (example: tessels0162)
-        group_average (bool): default is True, averages data np arrays 
-    Returns: 
-        saves gifti image to disk for left and right hemispheres
-    """
-    # average data
-    if group_average:
-        data = np.nanmean(data, axis=0)
-
-    # get functional gifti
-    func_giis, hem_names = cdata.convert_cortex_to_gifti(data=data, atlas=atlas)
-    
-    # save giftis to file
-    for (func_gii, hem) in zip(func_giis, hem_names):
-        nib.save(func_gii, fpath + f'.{hem}.func.gii')
 
 def eval_model(
     model_name,
@@ -503,6 +477,17 @@ def run(cortex="tessels0362",
 
                 # save voxel/vertex maps for best training weights
                 save_weight_maps(model_name=best_model, cortex=cortex, train_exp=f"sc{2-exp}")
+
+                # temporary delete 'CortexLeft' or 'CortexRight' files
+                #************
+                dirs = const.Dirs(exp_name=f"sc{2-exp}")
+                # get model path
+                fpath = os.path.join(dirs.conn_train_dir, best_model)
+                # get trained subject models
+                imgs = glob.glob(os.path.join(fpath, '*.Cortex*'))
+                for img in imgs:
+                    os.remove(img)
+                #************
 
                 # delete training models that are suboptimal (save space)
                 if delete_train:

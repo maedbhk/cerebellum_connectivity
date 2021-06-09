@@ -30,4 +30,4 @@ models=(NNLS)
 # train models
 for ((m=0; m<${#models[@]}; m++)); do \
 for ((a=0; a<${#atlases[@]}; a++)); do \
-python3 script_mk.py --cortex=${atlases[a]} --model_type=${models[m]} --train_or_eval="train"; done; done
+python3 script_connectivity.py --cortex=${atlases[a]} --model_type=${models[m]} --train_or_eval="train"; done; done
