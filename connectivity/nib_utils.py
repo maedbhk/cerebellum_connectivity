@@ -302,6 +302,36 @@ def mask_vol(mask, data, output='2D'):
             nib_objs.append(index_img(nib_obj,i))
         return nib_objs
 
+def get_cortical_atlases():
+    """returns: fpaths (list of str): list to all cortical atlases (*.label.gii) 
+    """
+    dirs = const.Dirs()
+
+    fpaths = []
+    fpath = os.path.join(dirs.reg_dir, 'data', 'group')
+    for path in list(Path(fpath).rglob('*.label.gii')):
+        # if any(atlas_key in str(path) for atlas_key in atlas_keys):
+        fpaths.append(str(Path(path).name))
+
+    return fpaths
+
+def get_cerebellar_atlases():
+    """returns: fpaths (list of str): list of full paths to cerebellar atlases
+    """
+    dirs = const.Dirs()
+
+    fpaths = []
+    # get atlases in cerebellar atlases
+    fpath = os.path.join(dirs.base_dir, 'cerebellar_atlases')
+    for path in list(Path(fpath).rglob('*.label.gii')):
+        fpaths.append(str(Path(path).name))
+
+    # get atlases in flatmap/surfaces
+    for path in list(Path(flatmap._surf_dir).rglob('*.label.gii')):
+        fpaths.extend([str(Path(path).name)])
+    
+    return fpaths
+
 def binarize_vol(imgs, mask, metric='max'):
     """Binarizes niftis for `imgs` based on `metric`
 
@@ -367,38 +397,40 @@ def view_cerebellum(
         cscale = [np.nanmin(data), np.nanmax(data)]
 
     # visualize
-    if viewer=='nilearn':
-        view = view_surf(surf_mesh, data, cmap='CMRmap',
-                        threshold=threshold, vmin=cscale[0], vmax=cscale[1], 
-                        symmetric_cmap=symmetric_cmap, colorbar=colorbar)
-    elif viewer=='suit':
-        view = flatmap.plot(data, surf=surf_mesh, overlay_type=overlay_type, cscale=cscale, colorbar=colorbar)
-    
-    return view
+    # if viewer=='nilearn':
+    #     return view_surf(surf_mesh, data, cmap='CMRmap',
+    #                     threshold=threshold, vmin=cscale[0], vmax=cscale[1], 
+    #                     symmetric_cmap=symmetric_cmap, colorbar=colorbar)
+    # elif viewer=='suit':
+    return flatmap.plot(data, surf=surf_mesh, overlay_type=overlay_type, cscale=cscale, colorbar=colorbar)
 
 def view_cortex(
-    data, 
-    hemisphere='R', 
+    data,  
     cmap=None, 
     cscale=None, 
     atlas_type='inflated', 
     symmetric_cmap=False, 
     title=None, 
     orientation='medial'):
-    """Visualize data on inflated cortex, plots either *.func.gii or *.label.gii data
+    """Visualize data on inflated cortex, plots either *<hem>.func.gii or *<hem>.label.gii data
 
     Args: 
-        data (str): fullpath to file: *.func.gii or *.label.gii
+        data (str): fullpath to file: *<hem>.func.gii or *<hem>.label.gii
         bg_map (str or np array or None): 
-        map_type (str): 'func' or 'label'
-        hemisphere (str): 'R' or 'L'
         atlas_type (str): 'inflated', 'very_inflated' (see fs_LR dir)
     """
     # initialise directories
     dirs = const.Dirs()
 
+    if '.R.' in data:
+        hemisphere = 'R'
+    elif '.L.' in data:
+        hemisphere = 'L'
+    else:
+        hemisphere = 'R'
+
     # get surface mesh
-    surf_mesh = os.path.join(dirs.reg_dir, 'data', 'average', f'fs_LR.32k.{hemisphere}.{atlas_type}.surf.gii')
+    surf_mesh = os.path.join(dirs.reg_dir, 'data', 'group', f'fs_LR.32k.{hemisphere}.{atlas_type}.surf.gii')
 
     # load surf data from file
     fname = Path(data).name

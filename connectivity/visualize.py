@@ -172,7 +172,7 @@ def plot_eval_predictions(dataframe, exp="sc1"):
         )
     plt.show()
 
-def plot_eval_map(gifti_func="group_R_vox", exp="sc1", model=None, cscale=None, symmetric_cmap=False):
+def map_eval(data="R", exp="sc1", model_name='best_model', colorbar=False, symmetric_cmap=False, cscale=None):
     """plot surface map for best model
 
     Args:
@@ -190,39 +190,76 @@ def plot_eval_map(gifti_func="group_R_vox", exp="sc1", model=None, cscale=None, 
     df_eval = eval_summary()
 
     # get best model
-    if not model:
+    model = model_name
+    if model_name=="best_model":
         model,_ = get_best_model(train_exp=exp)
 
     # plot map
-    surf_data = os.path.join(dirs.conn_eval_dir, model, f"{gifti_func}.func.gii")
-    view = nio.view_cerebellum(data=surf_data, cscale=cscale, symmetric_cmap=symmetric_cmap) #symmetric_cmap=False,
+    surf_data = os.path.join(dirs.conn_eval_dir, model, f"group_{data}_vox.func.gii")
+    view = nio.view_cerebellum(data=surf_data, cscale=cscale, symmetric_cmap=symmetric_cmap, colorbar=colorbar)
     return view
 
-def plot_train_map(gifti_func='group_weights_cerebellum', exp='sc1', model=None, cscale=None, hemisphere='R', symmetric_cmap=False):
+def map_model_comparison(gifti, exp='sc1', colorbar=True, symmetric_cmap=False, cscale=None):
+    """plot surface map for best model
+
+    Args:
+        gifti (str):full path to gifti
+    """
+    dirs = const.Dirs(exp_name=exp)
+
+    # plot map
+    surf_data = os.path.join(dirs.conn_eval_dir, 'model_comparison', gifti)
+    view = nio.view_cerebellum(data=surf_data, cscale=cscale, symmetric_cmap=symmetric_cmap, colorbar=colorbar)
+    return view
+
+def map_weights(structure='cerebellum', exp='sc1', model_name='best_model', hemisphere='R', colorbar=False, symmetric_cmap=False, cscale=None):
+    """plot training weights for cortex or cerebellum
+
+    Args: 
+        gifti_func (str): '
+    """
     # initialise directories
     dirs = const.Dirs(exp_name=exp)
 
-    # get evaluation
-    df_eval = eval_summary()
-
     # get best model
-    if not model:
+    model = model_name
+    if model_name=='best_model':
         model,_ = get_best_model(train_exp=exp)
     
     # plot either cerebellum or cortex
-    if 'cerebellum' in gifti_func:
-        surf_fname = os.path.join(dirs.conn_train_dir, model, f"{gifti_func}.func.gii")
-        view = nio.view_cerebellum(data=surf_fname, cscale=cscale, symmetric_cmap=symmetric_cmap)
-    elif 'cortex' in gifti_func:
-        if hemisphere=='R':
-            hem_name = 'CortexRight'
-        elif hemisphere=='L':
-            hem_name = 'CortexLeft'
-        surf_fname = os.path.join(dirs.conn_train_dir, model, f"{gifti_func}.{hem_name}.func.gii")
-        view = nio.view_cortex(data=surf_fname, cscale=cscale, hemisphere=hemisphere, symmetric_cmap=symmetric_cmap)
+    if structure=='cerebellum':
+        surf_fname = os.path.join(dirs.conn_train_dir, model, f"group_weights_{structure}.func.gii")
+        view = nio.view_cerebellum(data=surf_fname, cscale=cscale, symmetric_cmap=symmetric_cmap, colorbar=colorbar)
+    elif structure=='cortex':
+        surf_fname = os.path.join(dirs.conn_train_dir, model, f"group_weights_{structure}.{hemisphere}.func.gii")
+        view = nio.view_cortex(data=surf_fname, symmetric_cmap=symmetric_cmap, cscale=cscale)
     else:
         print("gifti must contain either cerebellum or cortex in name")
     return view
+
+def map_atlas(parcellation='yeo7.R.label.gii', structure='cortex'):
+    """General purpose function for plotting *.label.gii parcellations (cortex or cerebellum)
+
+    Args: 
+        parcellation (str): default is 'yeo7.R.label.gii'
+        anatomical_structure (str): default is 'cerebellum'. other options: 'cortex'
+    Returns:
+        viewing object to visualize parcellations
+    """
+    # initialize directory
+    dirs = const.Dirs()
+
+    if structure=='cerebellum':
+        if 'wta_suit' in parcellation:
+            fname = os.path.join(dirs.base_dir, 'cerebellar_atlases', parcellation)
+        else:
+            fname = os.path.join(flatmap._surf_dir, parcellation)
+        return nio.view_cerebellum(fname) 
+    elif structure=='cortex':
+        fname = os.path.join(dirs.reg_dir, 'data', 'group', parcellation)
+        return nio.view_cortex(fname)
+    else:
+        print('please provide a valid parcellation')
 
 def get_best_model(train_exp):
     """Get idx for best model based on either R_cv (or R_train)
@@ -279,6 +316,13 @@ def get_best_models(train_exp):
 
     return model_names, cortex_names
 
+def get_eval_models(exp):
+    dirs = const.Dirs(exp_name=exp)
+    df = pd.read_csv(os.path.join(dirs.conn_eval_dir, 'eval_summary.csv'))
+    df = df[['name', 'X_data']].drop_duplicates() # get unique model names
+
+    return df['name'].to_list()
+
 def train_weights(exp="sc1", model_name="ridge_tesselsWB162_alpha_6"):
     """gets training weights for a given model and summarizes into a dataframe
 
@@ -333,38 +377,11 @@ def plot_train_weights(dataframe, hue=None):
     plt.xlabel("# of ROIs", fontsize=20)
     plt.ylabel("Weights", fontsize=20)
 
-def plot_parcellation(parcellation='yeo7', anatomical_structure='cortex', hemisphere='R'):
-    """General purpose function for plotting *.label.gii parcellations (cortex or cerebellum)
-
-    Args: 
-        parcellation (str):  any of the following: 'yeo7', 'yeo17', 'mdtb1002_007', 'tessels<num>', 
-        'Buckner_7Networks', 'Buckner_17Networks', 'MDTB_10Regions', 'yeo7_wta_suit'
-        anatomical_structure (str): default is 'cerebellum'. other options: 'cortex'
-        hemisphere (None or str): default is None. other options are 'L' and 'R'
-    Returns:
-        viewing object to visualize parcellations
-    """
-    # initialize directory
-    dirs = const.Dirs()
-
-    if anatomical_structure=='cerebellum':
-        if 'wta_suit' in parcellation:
-            fname = os.path.join(dirs.base_dir, 'cerebellar_atlases', f'{parcellation}.label.gii')
-        else:
-            fname = os.path.join(flatmap._surf_dir,f'{parcellation}.label.gii')
-        return nio.view_cerebellum(fname) 
-    elif anatomical_structure=='cortex':
-        fname = os.path.join(dirs.reg_dir, 'data', 'group', f'{parcellation}.{hemisphere}.label.gii')
-        return nio.view_cortex(fname, hemisphere)
-    else:
-        print('please provide a valid parcellation')
-
-def plot_distance_matrix(roi='tessels0042'):
-    """Plot matrix of distances for cortical `roi` and `hemisphere`
+def show_distance_matrix(roi='tessels0042'):
+    """Plot matrix of distances for cortical `roi`
 
     Args: 
         roi (str): default is 'tessels0042'
-        hemisphere (str): 'R' or 'L'
     Returns: 
         plots distance matrix
     """
