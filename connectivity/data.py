@@ -261,8 +261,8 @@ def convert_to_vol(data, xyz, voldef):
 def convert_cerebellum_to_nifti(data):
     """
     Args:
-        data (np-arrray): N x 6930 length data array
-        or 1-d (6930,) array
+        data (np-arrray): N x 6937 length data array
+        or 1-d (6937,) array
     Returns:
         nifti (List of nifti1image): N output images
     """

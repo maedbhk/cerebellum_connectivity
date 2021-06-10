@@ -33,7 +33,7 @@ def run(glm='glm7', metric='R', methods=['WTA', 'ridge', 'NNLS']):
         for cortex in df['X_data'].unique():
 
             # grab full paths to trained models for `cortex` and filter out `methods`
-            imgs = [os.path.join(dirs.conn_eval_dir, model, f'group_{metric}_vox.nii') for model in df['name'] if cortex in model] 
+            imgs = [os.path.join(dirs.conn_eval_dir, model, f'group_{metric}  .nii') for model in df['name'] if cortex in model] 
             imgs = [img for img in imgs if any(k in img for k in methods)]
 
             # get binarized difference map
