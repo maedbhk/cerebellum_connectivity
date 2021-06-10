@@ -7,7 +7,7 @@ import connectivity.nib_utils as nio
 from connectivity import data as cdata
 from connectivity import io 
 
-def run(glm='glm7', metric='R', methods=['WTA', 'ridge']):
+def run(glm='glm7', metric='R', methods=['WTA', 'ridge', 'NNLS']):
     """
     Args: 
         glm (str): 'glm7'
