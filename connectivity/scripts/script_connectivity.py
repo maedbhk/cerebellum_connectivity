@@ -438,10 +438,24 @@ def eval_model(
             df = pd.concat([df, pd.read_csv(eval_fpath)])
         df.to_csv(eval_fpath, index=False)
 
-@click.command()
-@click.option("--cortex")
-@click.option("--model_type")
-@click.option("--train_or_eval")
+def log_models(exp):
+    dirs = const.Dirs(exp_name=exp)
+    dataframe = pd.read_csv(os.path.join(dirs.conn_train_dir, "train_summary.csv"))
+
+    # groupby train_name
+    dataframe = dataframe.groupby('train_name').first().reset_index()[['train_name', 'train_exp', 'train_X_data', 'train_Y_data', 'train_model', 'train_glm','train_averaging']]
+    
+    fpath = os.path.join(dirs.base_dir, 'model_logs.csv')
+    if os.path.isfile(fpath):
+        dataframe = pd.concat([dataframe, pd.read_csv(fpath)])
+   
+    # save out train summary
+    dataframe.to_csv(fpath, index=False)
+
+# @click.command()
+# @click.option("--cortex")
+# @click.option("--model_type")
+# @click.option("--train_or_eval")
 
 def run(cortex="tessels0362", 
         model_type="ridge", 
@@ -457,15 +471,18 @@ def run(cortex="tessels0362",
     print(f'doing model {train_or_eval}')
     if train_or_eval=="train":
         for exp in range(2):
-            if model_type=="ridge":
-                # train ridge
-                train_ridge(hyperparameter=[-2,0,2,4,6,8,10], train_exp=f"sc{exp+1}", cortex=cortex)
-            elif model_type=="WTA":
-                train_WTA(train_exp=f"sc{exp+1}", cortex=cortex)
-            elif model_type=="NNLS":
-                train_NNLS(alphas=[0], gammas=[0], train_exp=f"sc{exp+1}", cortex=cortex)
-            else:
-                print('please enter a model (ridge, WTA, NNLS)')
+            # if model_type=="ridge":
+            #     # train ridge
+            #     train_ridge(hyperparameter=[-2,0,2,4,6,8,10], train_exp=f"sc{exp+1}", cortex=cortex)
+            # elif model_type=="WTA":
+            #     train_WTA(train_exp=f"sc{exp+1}", cortex=cortex)
+            # elif model_type=="NNLS":
+            #     train_NNLS(alphas=[0], gammas=[0], train_exp=f"sc{exp+1}", cortex=cortex)
+            # else:
+            #     print('please enter a model (ridge, WTA, NNLS)')
+            
+            # log models
+            log_models(exp=f"sc{exp+1}")
 
     elif train_or_eval=="eval":
         for exp in range(2):
@@ -500,5 +517,5 @@ def run(cortex="tessels0362",
                 # test best train model
                 eval_model(model_name=best_model, cortex=cortex, train_exp=f"sc{2-exp}", eval_exp=f"sc{exp+1}")
 
-if __name__ == "__main__":
-    run()
+# if __name__ == "__main__":
+#     run()
