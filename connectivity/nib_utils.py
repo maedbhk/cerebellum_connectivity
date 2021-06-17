@@ -396,12 +396,6 @@ def view_cerebellum(
         data = load_surf_data(data)
         cscale = [np.nanmin(data), np.nanmax(data)]
 
-    # visualize
-    # if viewer=='nilearn':
-    #     return view_surf(surf_mesh, data, cmap='CMRmap',
-    #                     threshold=threshold, vmin=cscale[0], vmax=cscale[1], 
-    #                     symmetric_cmap=symmetric_cmap, colorbar=colorbar)
-    # elif viewer=='suit':
     return flatmap.plot(data, surf=surf_mesh, overlay_type=overlay_type, cscale=cscale, colorbar=colorbar)
 
 def view_cortex(
