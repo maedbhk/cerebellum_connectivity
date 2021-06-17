@@ -565,6 +565,20 @@ def eval_model(
         if os.path.isfile(eval_fpath):
             df = pd.concat([df, pd.read_csv(eval_fpath)])
         df.to_csv(eval_fpath, index=False)
+        
+def log_models(exp):
+    dirs = const.Dirs(exp_name=exp)
+    dataframe = pd.read_csv(os.path.join(dirs.conn_train_dir, "train_summary.csv"))
+
+    # groupby train_name
+    dataframe = dataframe.groupby('name').first().reset_index()[['name', 'train_exp', 'X_data', 'Y_data', 'model', 'glm', 'averaging', 'validate_model', 'weighting']]
+    
+    fpath = os.path.join(dirs.base_dir, 'model_logs.csv')
+    if os.path.isfile(fpath):
+        dataframe = pd.concat([dataframe, pd.read_csv(fpath)])
+   
+    # save out train summary
+    dataframe.to_csv(fpath, index=False)
 
 
 @click.command()
@@ -596,6 +610,9 @@ def run(cortex="tessels0362",
                 train_NNLS(alphas=[0], gammas=[0], train_exp=f"sc{exp+1}", cortex=cortex)
             else:
                 print('please enter a model (ridge, WTA, NNLS)')
+            
+            # log models
+            log_models(exp=f"sc{exp+1}")
 
     elif train_or_eval=="eval":
         for exp in range(2):
