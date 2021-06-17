@@ -324,7 +324,7 @@ def convert_cortex_to_gifti(data, atlas):
         mapped_data = c_data[labels]
         # Make the gifti imae   gifti img
         gifti_img.append(nio.make_func_gifti_cortex(data=mapped_data[:,None], anatomical_struct=anatomical_struct[h]))
-    return gifti_img, anatomical_struct
+    return gifti_img, hemName
 
 def get_distance_matrix(roi):
     """
