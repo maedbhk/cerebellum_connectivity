@@ -1,7 +1,7 @@
 import os
 import numpy as np
 import quadprog as qp
-import cvxopt
+# import cvxopt
 from scipy import sparse
 from sklearn.base import BaseEstimator
 from sklearn.linear_model import LinearRegression
@@ -59,6 +59,28 @@ class L2regression(Ridge, ModelMixin):
         Xs = np.nan_to_num(Xs) # there are 0 values after scaling
         return Xs @ self.coef_.T  # weights need to be transposed (throws error otherwise)
 
+class LASSO(Lasso, ModelMixin):
+    """
+    L2 regularized connectivity model
+    simple wrapper for Ridge. It performs scaling by stdev, but not by mean before fitting and prediction
+    """
+
+    def __init__(self, alpha=1):
+        """
+        Simply calls the superordinate construction - but does not fit intercept, as this is tightly controlled in Dataset.get_data()
+        """
+        super().__init__(alpha=alpha, fit_intercept=False)
+
+    def fit(self, X, Y):
+        self.scale_ = np.sqrt(np.nansum(X ** 2, 0) / X.shape[0])
+        Xs = X / self.scale_
+        Xs = np.nan_to_num(Xs) # there are 0 values after scaling
+        return super().fit(Xs, Y)
+
+    def predict(self, X):
+        Xs = X / self.scale_
+        Xs = np.nan_to_num(Xs) # there are 0 values after scaling
+        return Xs @ self.coef_.T  # weights need to be transposed (throws error otherwise)
 
 class WTA(LinearRegression, ModelMixin):
     """
@@ -91,6 +113,37 @@ class WTA(LinearRegression, ModelMixin):
         Xs = np.nan_to_num(Xs) # there are 0 values after scaling
         return Xs @ self.coef_.T  # weights need to be transposed (throws error otherwise)
 
+class WNTA(LinearRegression, ModelMixin):
+    """
+    WNTA model
+    It performs scaling by stdev, but not by mean before fitting and prediction
+    """
+
+    def __init__(self, positive=False, n = 2):
+        """
+        Simply calls the superordinate construction - but does not fit intercept, as this is tightly controlled in Dataset.get_data()
+        """
+        super().__init__(positive=positive, fit_intercept=False)
+        self.n = n
+
+    def fit(self, X, Y):
+        self.scale_ = np.sqrt(np.sum(X ** 2, 0) / X.shape[0])
+        Xs = X / self.scale_
+        Xs = np.nan_to_num(Xs) # there are 0 values after scaling
+        super().fit(Xs, Y)
+        ranked = np.argsort(self.coef_, axis = 1) # sort elements on the row (ascending)
+        ranked = ranked[:, ::-1] # get the sorting in descending order
+        self.labels = ranked[:, 0:self.n] # get the winning labels
+        wnta_coef_ = np.take_along_axis(self.coef_, self.labels, axis=1) # get the coefficients for the wining labels
+        self.coef_ = np.zeros((self.coef_.shape))
+        num_vox = self.coef_.shape[0]
+        self.coef_[np.arange(num_vox)[:, None], self.labels] = wnta_coef_
+        return self.coef_, self.labels
+
+    def predict(self, X):
+        Xs = X / self.scale_
+        Xs = np.nan_to_num(Xs) # there are 0 values after scaling
+        return Xs @ self.coef_.T  # weights need to be transposed (throws error otherwise)
 
 class NNLS(BaseEstimator, ModelMixin):
     """
@@ -147,3 +200,31 @@ class NNLS(BaseEstimator, ModelMixin):
         Xs = X / self.scale_
         Xs = np.nan_to_num(Xs) # there are 0 values after scaling
         return Xs @ self.coef_.T 
+
+class PLSRegress(PLSRegression, ModelMixin):
+    """
+        PLS regression connectivity model
+        for more info:
+            https://ogrisel.github.io/scikit-learn.org/sklearn-tutorial/modules/generated/sklearn.pls.PLSRegression.html
+            from sklearn.pls import PLSCanonical, PLSRegression, CCA
+            https://scikit-learn.org/stable/modules/generated/sklearn.cross_decomposition.PLSRegression.html
+            pls2_mod = PLSRegression(n_components = N, algorithm = method)
+    """
+
+    def __init__(self, n_components = 1):
+        super().__init__(n_components =n_components)
+        
+    def fit(self, X, Y):
+        """
+        uses nipals algorithm 
+        """
+
+        Xs = X / np.sqrt(np.sum(X**2,0)/X.shape[0]) # Control scaling 
+
+        Xs = np.nan_to_num(Xs)
+        return super().fit(Xs,Y)
+
+    def predict(self, X):
+        Xs = X / np.sqrt(np.sum(X**2,0)/X.shape[0]) # Control scaling 
+        Xs = np.nan_to_num(Xs)
+        return super().predict(Xs)
