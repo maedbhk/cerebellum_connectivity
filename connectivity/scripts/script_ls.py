@@ -185,7 +185,7 @@ def eval_pls(
         name = f"pls_{cortex}_N{n_components[i]}"
         
         for e in range(2):
-            print(f"Evaluating {name} - {cortex} sc{e+1}")
+            print(f"evaluating {name} - sc{e+1}")
             config["name"] = name
             config["model"] = "PLSRegress"
             config["n_components"] = n_components[i]  # For recording in
@@ -194,6 +194,7 @@ def eval_pls(
             config["train_exp"] = f'sc{e + 1}'
             config["eval_exp"] = f'sc{2 - e}'
             config["subjects"] = sn
+            config["save_maps"] = False
             
             # T = run.eval_models(config)
             T, _ = run_connect.eval_models(config)
@@ -477,6 +478,7 @@ def eval_ridge(cortex = 'tessels0162',
     for i in range(num_models):
         name = f"ridge_{cortex}_A{logalpha[i]:.0f}"
         for e in range(2):
+            print(f"evaluating {name} - sc{e+1}")
             config["name"] = name
             config["logalpha"] = logalpha[i]  # For recording in
             config["X_data"] = cortex
@@ -484,6 +486,7 @@ def eval_ridge(cortex = 'tessels0162',
             config["train_exp"] = f'sc{e + 1}'
             config["eval_exp"] = f'sc{2 - e}'
             config["subjects"] = sn
+            config["save_maps"] = False
             # T = run.eval_models(config)
             T, _ = run_connect.eval_models(config)
 
@@ -537,6 +540,7 @@ def eval_lasso(cortex = 'tessels0162',
     for i in range(num_models):
         name = f"lasso_{cortex}_A{logalpha[i]:.0f}"
         for e in range(2):
+            print(f"evaluating {name} - sc{e+1}")
             config["name"] = name
             config["model"] = "LASSO"
             config["logalpha"] = logalpha[i]  # For recording in
@@ -545,7 +549,8 @@ def eval_lasso(cortex = 'tessels0162',
             config["train_exp"] = f'sc{e + 1}'
             config["eval_exp"] = f'sc{2 - e}'
             config["subjects"] = sn
-            T = run.eval_models(config)
+            config["save_maps"] = False
+            T = run_connect.eval_models(config)
             D = pd.concat([D, T], ignore_index=True)
 
     # check if dataframe already exists
@@ -593,6 +598,7 @@ def eval_wnta(cortex = 'tessels0162',
     for i in range(num_models):
         name = f"wnta_{cortex}_N{n[i]:.0f}"
         for e in range(2):
+            print(f"evaluating {name} - sc{e+1}")
             config["name"] = name
             config["model"] = "WNTA"
             config["n"] = n[i]  # For recording in
@@ -603,6 +609,7 @@ def eval_wnta(cortex = 'tessels0162',
             config["subjects"] = sn
             config["weighting"] = True
             config["averaging"] = "sess"
+            config["save_maps"] = False
    
             # T = run.eval_models(config)
             T = run_connect.eval_models(config)
@@ -987,7 +994,9 @@ def CV_pls(sn = const.return_subjs,
 def pipeline():
 
     try:
-        train_wnta(cortex = 'baldassano', n= [5, 6, 7])
+        train_wnta(cortex = 'gordon', n = [2, 3, 4, 5, 6, 7])
+        train_wnta(cortex = 'fan', n = [2, 3, 4, 5, 6, 7])
+        train_wnta(corte = 'shen', n = [2, 3, 4, 5, 6, 7])
         eval_wnta(cortex = 'glasser', n = [2, 3, 4, 5, 6, 7])
         eval_wnta(cortex = 'fan', n = [2, 3, 4, 5, 6, 7])
         eval_wnta(cortex = 'shen', n = [2, 3, 4, 5, 6, 7])
