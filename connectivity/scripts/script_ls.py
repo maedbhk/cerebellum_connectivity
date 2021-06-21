@@ -1,6 +1,6 @@
 # import libraries
 import os, shutil
-import click
+# import click
 import numpy as np
 import pandas as pd
 import nibabel as nib
@@ -35,7 +35,7 @@ import matplotlib.pyplot as plt
 # %matplotlib tk
 
 
-# splitting subjects for cross validation
+# splitting subjects for discovery and replication set
 def split_subjects(
     subj_ids, 
     test_size=0.3
@@ -106,7 +106,7 @@ def get_data_roi(data, cerebellum = 'mdtb_10'):
         data_roi.append(reg_data)
     return data_roi
 
-# calculate vip score
+# calculate vip score for a pls model
 def calculate_vip(model):
 
     """
@@ -135,7 +135,7 @@ def calculate_vip(model):
         vips[i] = np.sqrt(p*(s.T @ weight)/total_s)
 
     return vips
-
+# Train pls models
 def train_pls(
     cortex = 'tessels0162',
     n_components = [2],
@@ -147,7 +147,7 @@ def train_pls(
     num_models = len(n_components)
 
     for e in range(2):
-        df_all = pd.DataFrame()
+        # df_all = pd.DataFrame()
         for i in range(num_models):
             name = f"pls_{cortex}_N{n_components[i]}"
 
@@ -160,11 +160,18 @@ def train_pls(
             config["train_exp"] = f"sc{e+1}"
             config["subjects"]  = sn
             config["mode"] = "crossed"
+            config["weighting"] = True
+            config["averaging"] = "sess"
+            config["validate_model"] = True
+            config["cv_fold"] = 4 # other options: 'sess' or 'run' or None
+            config["mode"] = "crossed"
+            config["hyperparameter"] = f"{n_components[i]:.0f}"
       
-            Model = run.train_models(config, save=True)
+            # Model = run.train_models(config, save=True)
+            Model = run_connect.train_models(config, save=True)
                    
     return
-
+# eval pls models
 def eval_pls(
     cortex = 'tessels0162', 
     n_components = [2], 
@@ -187,12 +194,18 @@ def eval_pls(
             config["train_exp"] = f'sc{e + 1}'
             config["eval_exp"] = f'sc{2 - e}'
             config["subjects"] = sn
-            T = run.eval_models(config)
+            
+            # T = run.eval_models(config)
+            T, _ = run_connect.eval_models(config)
             D = pd.concat([D, T], ignore_index=True)
 
+    # check if dataframe already exists
+    if os.path.exist(d.conn_eval_dir / f"Pls_{cortex}.dat"):
+        DD = pd.read_csv(d.conn_eval_dir / f"Pls_{cortex}.dat") 
+        D  = pd.concat([DD, D], ignore_index = True) 
+    
     D.to_csv(d.conn_eval_dir / f"Pls_{cortex}.dat")
     return D
-
 # gets vip scores for pls
 def get_vips(cortex = 'tessels0162', 
     n_components = [2], 
@@ -237,8 +250,7 @@ def get_vips(cortex = 'tessels0162',
                 dd.io.save(fname, fitted_model, compression=None)
 
     return
-
-# create maps for vips
+# create maps for vips for pls
 def create_vip_map(cortex = 'tessels0162', 
                    n_components = [2], 
                    train_exp = 'sc1',
@@ -281,7 +293,6 @@ def create_vip_map(cortex = 'tessels0162',
             for i, hem in enumerate(hemis):
                 fpath = os.path.join('/home/ladan/Desktop/MDTB', f"pls_vip_{cortex}_{c}_{sn[s]}.{hem}.func.gii")
                 nib.save(func_gii[i], fpath )
-
 # training pls to predict data for each cerebellar roi within a parcellation
 def train_pls_roi(
     cortex = 'tessels0162',
@@ -345,7 +356,6 @@ def train_pls_roi(
                     os.makedirs(fpath)
                 dd.io.save(os.path.join(fpath, fname), models[-1], compression=None)
     return
-
 def eval_pls_roi(
     cortex = 'tessels0162',
     cerebellum = 'mdtb_10', 
@@ -423,12 +433,11 @@ def eval_pls_roi(
 
                     D = pd.concat([D, TT], ignore_index=True)
     return D
-
 # get vip scores for each roi within a parcellation
 def get_vips_roi():
     pass    
 
-
+# train ridge models
 def train_ridge(
     cortex = 'tessels0162',
     logalpha = [-2],
@@ -439,14 +448,24 @@ def train_ridge(
     for i in range(num_models):
         name = f"ridge_{cortex}_A{logalpha[i]:.0f}"
         for e in range(2):
+            print(f"Doing {name} - {cortex} sc{e+1}")
             config["name"] = name
             config["param"] = {"alpha": np.exp(logalpha[i])}
             config["X_data"] = cortex
             config["weighting"] = 2
             config["train_exp"] = f"sc{e+1}"
             config["subjects"] = sn
-            Model = run.train_models(config, save=True)
-    
+            config["model"]     = "Ridge"
+            config["mode"] = "crossed"
+            config["weighting"] = True
+            config["averaging"] = "sess"
+            config["validate_model"] = True
+            config["cv_fold"] = 4 # other options: 'sess' or 'run' or None
+            config["mode"] = "crossed"
+            config["hyperparameter"] = f"{logalpha[i]:.0f}"
+            # Model = run.train_models(config, save=True)
+            Model = run_connect.train_models(config, save=True)
+# eval ridge models    
 def eval_ridge(cortex = 'tessels0162', 
     logalpha = [-2], 
     sn=const.return_subjs):
@@ -465,12 +484,20 @@ def eval_ridge(cortex = 'tessels0162',
             config["train_exp"] = f'sc{e + 1}'
             config["eval_exp"] = f'sc{2 - e}'
             config["subjects"] = sn
-            T = run.eval_models(config)
+            # T = run.eval_models(config)
+            T, _ = run_connect.eval_models(config)
+
             D = pd.concat([D, T], ignore_index=True)
 
+    # check if dataframe already exists
+    if os.path.exist(d.conn_eval_dir / f"Ridge_{cortex}.dat"):
+        DD = pd.read_csv(d.conn_eval_dir / f"Ridge_{cortex}.dat") 
+        D  = pd.concat([DD, D], ignore_index = True) 
+    
     D.to_csv(d.conn_eval_dir / f"Ridge_{cortex}.dat")
     return D
 
+# train lasso models
 def train_lasso(
     cortex = 'tessels0162',
     logalpha = [-2],
@@ -481,6 +508,7 @@ def train_lasso(
     for i in range(num_models):
         name = f"lasso_{cortex}_A{logalpha[i]:.0f}"
         for e in range(2):
+            print(f"Doing {name} - {cortex} sc{e+1}")
             config["name"] = name
             config["model"] = "LASSO"
             config["param"] = {"alpha": np.exp(logalpha[i])}
@@ -488,8 +516,16 @@ def train_lasso(
             config["weighting"] = 2
             config["train_exp"] = f"sc{e+1}"
             config["subjects"] = sn
-            Model = run.train_models(config, save=True)
-
+            config["mode"] = "crossed"
+            config["weighting"] = True
+            config["averaging"] = "sess"
+            config["validate_model"] = True
+            config["cv_fold"] = 4 # other options: 'sess' or 'run' or None
+            config["mode"] = "crossed"
+            config["hyperparameter"] = f"{logalpha[i]:.0f}"
+            # Model = run.train_models(config, save=True)
+            Model = run_connect.train_models(config, save=True)
+# eval lasso models
 def eval_lasso(cortex = 'tessels0162', 
     logalpha = [-2], 
     sn=const.return_subjs):
@@ -512,9 +548,15 @@ def eval_lasso(cortex = 'tessels0162',
             T = run.eval_models(config)
             D = pd.concat([D, T], ignore_index=True)
 
-    D.to_csv(d.conn_eval_dir / f"Ridge_{cortex}.dat")
+    # check if dataframe already exists
+    if os.path.exist(d.conn_eval_dir / f"Lasso_{cortex}.dat"):
+        DD = pd.read_csv(d.conn_eval_dir / f"Lasso_{cortex}.dat") 
+        D  = pd.concat([DD, D], ignore_index = True) 
+    
+    D.to_csv(d.conn_eval_dir / f"Lasso_{cortex}.dat")
     return D
 
+# train wnta models
 def train_wnta(cortex = 'tessels0162', 
     n = [2], 
     sn=const.return_subjs):
@@ -524,6 +566,7 @@ def train_wnta(cortex = 'tessels0162',
     for i in range(num_models):
         name = f"wnta_{cortex}_N{n[i]:.0f}"
         for e in range(2):
+            print(f"Doing {name} - {cortex} sc{e+1}")
             config["name"] = name
             config["model"] = "WNTA"
             config["param"] = {"n": n[i]}
@@ -531,13 +574,47 @@ def train_wnta(cortex = 'tessels0162',
             config["weighting"] = 2
             config["train_exp"] = f"sc{e+1}"
             config["subjects"] = sn
-            Model = run.train_models(config, save=True)
-    pass
-
+            config["weighting"] = True
+            config["averaging"] = "sess"
+            config["validate_model"] = True
+            config["cv_fold"] = 4 # other options: 'sess' or 'run' or None
+            config["mode"] = "crossed"
+            config["hyperparameter"] = f"{n[i]:.0f}"
+            # Model = run.train_models(config, save=True)
+            Model = run_connect.train_models(config, save=True)
+# eval wnta models
 def eval_wnta(cortex = 'tessels0162', 
     n = [1], 
     sn=const.return_subjs):
-    pass
+    d = const.Dirs()
+    config = run.get_default_eval_config()
+    num_models = len(n)
+    D = pd.DataFrame()
+    for i in range(num_models):
+        name = f"wnta_{cortex}_N{n[i]:.0f}"
+        for e in range(2):
+            config["name"] = name
+            config["model"] = "WNTA"
+            config["n"] = n[i]  # For recording in
+            config["X_data"] = cortex
+            config["weighting"] = 2
+            config["train_exp"] = f'sc{e + 1}'
+            config["eval_exp"] = f'sc{2 - e}'
+            config["subjects"] = sn
+            config["weighting"] = True
+            config["averaging"] = "sess"
+   
+            # T = run.eval_models(config)
+            T = run_connect.eval_models(config)
+            D = pd.concat([D, T], ignore_index=True)
+
+    # check if dataframe already exists
+    if os.path.exist(d.conn_eval_dir / f"Wnta_{cortex}.dat"):
+        DD = pd.read_csv(d.conn_eval_dir / f"Wnta_{cortex}.dat") 
+        D  = pd.concat([DD, D], ignore_index = True) 
+    
+    D.to_csv(d.conn_eval_dir / f"Wnta_{cortex}.dat")
+    return D
 
 # calculate average weight across group for one component
 def calc_average_w_pls(
@@ -568,7 +645,6 @@ def calc_average_w_pls(
         w_group = np.nanmean(w_subs, axis = 2)
 
     return w_group
-
 def calc_average_w_ridge(
     cortex = 'tessels0162', 
     model = 'ridge',
@@ -908,7 +984,18 @@ def CV_pls(sn = const.return_subjs,
 
     pass
 
+def pipeline():
 
+    try:
+        train_wnta(cortex = 'baldassano', n= [5, 6, 7])
+        eval_wnta(cortex = 'glasser', n = [2, 3, 4, 5, 6, 7])
+        eval_wnta(cortex = 'fan', n = [2, 3, 4, 5, 6, 7])
+        eval_wnta(cortex = 'shen', n = [2, 3, 4, 5, 6, 7])
+        eval_wnta(cortex = 'baldassano', n = [2, 3, 4, 5, 6, 7])
+        eval_wnta(cortex = 'gordon', n = [2, 3, 4, 5, 6, 7])
+    except:
+        print('encountered error')
+    return
 if __name__ == "__main__":
     
     # estimating models
