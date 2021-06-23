@@ -364,7 +364,7 @@ def save_weight_maps(
     data = np.stack(cortex_weights_all, axis=0)
     func_giis, hem_names = cdata.convert_cortex_to_gifti(data=np.nanmean(data, axis=0), atlas=cortex)
     for (func_gii, hem) in zip(func_giis, hem_names):
-        nib.save(func_gii, os.path.join(fpath, 'group_weights_cortex', f'.{hem}.func.gii'))
+        nib.save(func_gii, os.path.join(fpath, 'group_weights_cortex' + f'.{hem}.func.gii'))
 
     print('saving cortical and cerebellar weights to disk')
 

@@ -196,6 +196,31 @@ def binarize_vol(imgs, metric='max'):
 
     return nib_obj[0]
 
+def subtract_vol(imgs):
+    """Binarizes niftis for `imgs` based on `metric`
+    Args: 
+        imgs (list of nib obj or list of str): list of nib objects or fullpath to niftis
+    Returns: 
+        nib obj
+    """
+
+    if len(imgs)>2:
+        print(Exception('there should be no more than two nib objs in `imgs`'))
+
+    data_all = []
+    for img in imgs:
+        data_masked = cdata.read_suit_nii(img)
+        data_all.append(data_masked)
+
+    data = np.vstack(data_all)
+
+    data_diff = data[0] - data[1]
+    
+    # compute 3D vol for `labels`
+    nib_obj = cdata.convert_cerebellum_to_nifti(data_diff)
+
+    return nib_obj[0]
+
 def view_cerebellum(gifti, cscale=None, colorbar=False):
     """Visualize data on suit flatmap, plots either *.func.gii or *.label.gii data
 
