@@ -373,7 +373,7 @@ def save_maps_cerebellum(
     fpath='/',
     group='nanmean', 
     gifti=True, 
-    nifti=False, 
+    nifti=True, 
     column_names=[], 
     label_RGBA=[],
     label_names=[],
