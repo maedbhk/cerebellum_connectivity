@@ -115,95 +115,14 @@ class WTA(LinearRegression, ModelMixin):
         Xs = np.nan_to_num(Xs) # there are 0 values after scaling
         return Xs @ self.coef_.T  # weights need to be transposed (throws error otherwise)
 
-class WNTA(LinearRegression, ModelMixin):
+class WNTA(Ridge, ModelMixin):
     """
-    WNTA model
-    It performs scaling by stdev, but not by mean before fitting and prediction
-    """
-
-    def __init__(self, positive=False, n = 2):
-        """
-        Simply calls the superordinate construction - but does not fit intercept, as this is tightly controlled in Dataset.get_data()
-        """
-        super().__init__(positive=positive, fit_intercept=False)
-        self.n = n
-
-    def fit(self, X, Y):
-        self.scale_ = np.sqrt(np.sum(X ** 2, 0) / X.shape[0])
-        Xs = X / self.scale_
-        Xs = np.nan_to_num(Xs) # there are 0 values after scaling
-        super().fit(Xs, Y)
-        ranked = np.argsort(self.coef_, axis = 1) # sort elements on the row (ascending)
-        ranked = ranked[:, ::-1] # get the sorting in descending order
-        self.labels = ranked[:, 0:self.n] # get the winning labels
-        wnta_coef_ = np.take_along_axis(self.coef_, self.labels, axis=1) # get the coefficients for the wining labels
-        self.coef_ = np.zeros((self.coef_.shape))
-        num_vox = self.coef_.shape[0]
-        self.coef_[np.arange(num_vox)[:, None], self.labels] = wnta_coef_
-        return self.coef_, self.labels
-
-    def predict(self, X):
-        Xs = X / self.scale_
-        Xs = np.nan_to_num(Xs) # there are 0 values after scaling
-        return Xs @ self.coef_.T  # weights need to be transposed (throws error otherwise)
-
-class WNTA2(LinearRegression, Ridge, ModelMixin):
-    """
-    L2 regularized connectivity model
-    simple wrapper for Ridge. It performs scaling by stdev, but not by mean before fitting and prediction
-    """
-
-    def __init__(self, positive = False, alpha=1, n = 2):
-        """
-        Simply calls the superordinate construction - but does not fit intercept, as this is tightly controlled in Dataset.get_data()
-        """
-        super(LinearRegression, self).__init__(fit_intercept=False)
-        super(Ridge, self).__init__(alpha=alpha, fit_intercept=False)
-        self.n = n
-        self.positive = positive
-
-    #
-    def fit(self, X, Y):
-        self.scale_ = np.sqrt(np.sum(X ** 2, 0) / X.shape[0])
-        Xs = X / self.scale_
-        Xs = np.nan_to_num(Xs) # there are 0 values after scaling
-        super(LinearRegression, self).fit(Xs, Y)
-
-        self.coef_all = self.coef_
-        ranked = np.argsort(self.coef_, axis = 1) # sort elements on the row (ascending)
-        ranked = ranked[:, ::-1] # get the sorting in descending order
-        self.labels = ranked[:, 0:self.n] # get the winning labels
-
-        # perform a regression with the selected cortical parcels for each voxel
-        num_vox = Y.shape[1]
-        self.coefv_ = np.zeros((self.coef_all.shape))
-        for v in range(num_vox):
-            # get the cerebellar voxel data
-            y = Y[:, v]
-            # get the selected cortical parcels for the current voxel
-            Xv = X[:, self.labels[v, :]]
-
-            scale_ = np.sqrt(np.sum(Xv ** 2, 0) / Xv.shape[0])
-            Xsv = Xv / scale_
-            Xsv = np.nan_to_num(Xsv) # there are 0 values after scaling
-            super(Ridge, self).fit(Xsv, y)
-
-            self.coefv_[v, self.labels[v, :]] = self.coef_
-
-        return self.coefv_
-        # return self.coefv_, self.labels
-
-    def predict(self, X):
-        Xs = X / self.scale_
-        Xs = np.nan_to_num(Xs) # there are 0 values after scaling
-        return Xs @ self.coefv_.T  # weights need to be transposed (throws error otherwise)
-
-class WNTA3(Ridge, ModelMixin):
-    """
-    from sklearn documentation:
+    from sklearn documentation: https://scikit-learn.org/stable/modules/generated/sklearn.feature_selection.SequentialFeatureSelector.html
     This Sequential Feature Selector adds (forward selection) or removes (backward selection) features 
     to form a feature subset in a greedy fashion. At each stage, this estimator chooses the best feature
-    to add or remove based on the cross-validation score of an estimator.
+    to add or remove based on the cross-validation score of the estimator (here the estimator is a linear regression class).
+
+    can be used to fit winner-take-all (set n = 1 (default)) and winner-n-take-all
     """
 
     def __init__(self, alpha, positive = False, n = 1):
@@ -211,6 +130,7 @@ class WNTA3(Ridge, ModelMixin):
         defines a forward sequential feature selector
         """
         self.n = n
+        # defining a feature selector object (with forward selection)
         self.selector = SequentialFeatureSelector(LinearRegression(fit_intercept=False), n_features_to_select=self.n)
         super(Ridge, self).__init__(alpha=alpha, fit_intercept=False)
         self.positive = positive
@@ -219,10 +139,8 @@ class WNTA3(Ridge, ModelMixin):
         self.scale_ = np.sqrt(np.sum(X ** 2, 0) / X.shape[0])
         Xs = X / self.scale_
         Xs = np.nan_to_num(Xs) # there are 0 values after scaling
-        # selecting 
-        self.selector.fit(Xs, Y)
-        ## get the selected cortical tessels 
-        Xs = self.selector.transform(Xs)
+        ## fit and return the selected features (cortical parcels)
+        Xs = self.selector.fit_transform(Xs, Y)
         ## do a ridge regression with the selected cortical tessels
         super(Ridge, self).fit(Xs, Y)
         return self.coef_
@@ -230,9 +148,9 @@ class WNTA3(Ridge, ModelMixin):
     def predict(self, X):
         Xs = X / self.scale_
         Xs = np.nan_to_num(Xs) # there are 0 values after scaling
+        # just get the selected features
         Xs = self.selector.transform(Xs)
         return Xs @ self.coef_.T  # weights need to be transposed (throws error otherwise)
-    pass
 
 class NNLS(BaseEstimator, ModelMixin):
     """
