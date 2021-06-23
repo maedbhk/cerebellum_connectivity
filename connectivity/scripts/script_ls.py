@@ -564,6 +564,7 @@ def eval_lasso(cortex = 'tessels0162',
 # train wnta models
 def train_wnta(cortex = 'tessels0162', 
     n = [2], 
+    logalpha = [-2],
     sn=const.return_subjs):
 
     config = run.get_default_train_config()
@@ -574,14 +575,15 @@ def train_wnta(cortex = 'tessels0162',
             print(f"Doing {name} - {cortex} sc{e+1}")
             config["name"] = name
             config["model"] = "WNTA"
-            config["param"] = {"n": n[i]}
+            config["param"] = {"n": n[i], "alpha":np.exp(logalpha[i])}
             config["X_data"] = cortex
             config["weighting"] = 2
             config["train_exp"] = f"sc{e+1}"
             config["subjects"] = sn
             config["weighting"] = True
             config["averaging"] = "sess"
-            config["validate_model"] = True
+            # config["validate_model"] = True
+            config["validate_model"] = False # no need to validate the model?!
             config["cv_fold"] = 4 # other options: 'sess' or 'run' or None
             config["mode"] = "crossed"
             config["hyperparameter"] = f"{n[i]:.0f}"
