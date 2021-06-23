@@ -570,7 +570,7 @@ def train_wnta(cortex = 'tessels0162',
     config = run.get_default_train_config()
     num_models = len(n)
     for i in range(num_models):
-        name = f"wnta_{cortex}_N{n[i]:.0f}"
+        name = f"wnta_{cortex}_N{n[i]:.0f}_A{logalpha[i]:.0f}"
         for e in range(2):
             print(f"Doing {name} - {cortex} sc{e+1}")
             config["name"] = name
@@ -592,18 +592,21 @@ def train_wnta(cortex = 'tessels0162',
 # eval wnta models
 def eval_wnta(cortex = 'tessels0162', 
     n = [1], 
+    logalpha = [-2],
     sn=const.return_subjs):
     d = const.Dirs()
     config = run.get_default_eval_config()
     num_models = len(n)
     D = pd.DataFrame()
     for i in range(num_models):
-        name = f"wnta_{cortex}_N{n[i]:.0f}"
+        name = f"wnta_{cortex}_N{n[i]:.0f}_A{logalpha[i]:.0f}"
         for e in range(2):
             print(f"evaluating {name} - sc{e+1}")
             config["name"] = name
             config["model"] = "WNTA"
             config["n"] = n[i]  # For recording in
+            config["logalpha"] = logalpha[i]  # For recording in
+            config["param"] = {"n": n[i], "alpha":np.exp(logalpha[i])}
             config["X_data"] = cortex
             config["weighting"] = 2
             config["train_exp"] = f'sc{e + 1}'
@@ -614,11 +617,11 @@ def eval_wnta(cortex = 'tessels0162',
             config["save_maps"] = False
    
             # T = run.eval_models(config)
-            T = run_connect.eval_models(config)
+            T, _ = run_connect.eval_models(config)
             D = pd.concat([D, T], ignore_index=True)
 
     # check if dataframe already exists
-    if os.path.exist(d.conn_eval_dir / f"Wnta_{cortex}.dat"):
+    if os.path.exists(d.conn_eval_dir / f"Wnta_{cortex}.dat"):
         DD = pd.read_csv(d.conn_eval_dir / f"Wnta_{cortex}.dat") 
         D  = pd.concat([DD, D], ignore_index = True) 
     
