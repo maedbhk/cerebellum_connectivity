@@ -25,3 +25,6 @@ cd /global/scratch/maedbhking/projects/cerebellum_connectivity/connectivity/scri
 
 # run connectivity models (eval)
 python3 script_mk.py --train_or_eval="eval"
+
+# run difference scripts
+python3 script_compare_models.py

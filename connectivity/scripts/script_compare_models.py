@@ -97,12 +97,21 @@ def run_subtract(
             # make and save gifti image
             gii_img = flatmap.make_func_gifti(data=surf_data)
             nib.save(gii_img, os.path.join(fpath, f'group_difference_subtract_{fname}_{metric}_{cortex}.func.gii'))
-
-    
-def _get_eval_summary(exp, glm):
+   
+def _get_eval_summary(
+    exp, 
+    glm
+    ):
     # get eval summary
     dirs = const.Dirs(exp_name=f"sc{exp+1}", glm=glm)
     df = pd.read_csv(os.path.join(dirs.conn_eval_dir, 'eval_summary.csv'))
     df = df[['name', 'X_data']].drop_duplicates() # get unique model names
 
     return df
+
+def run():
+    run_binarize()
+    run_subtract()
+
+if __name__ == "__main__":
+    run()

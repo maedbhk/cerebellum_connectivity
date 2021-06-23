@@ -550,17 +550,6 @@ def run(cortex="tessels0362",
                 # save voxel/vertex maps for best training weights
                 save_weight_maps(model_name=best_model, cortex=cortex, train_exp=f"sc{2-exp}")
 
-                # temporary delete 'CortexLeft' or 'CortexRight' files
-                #************
-                dirs = const.Dirs(exp_name=f"sc{2-exp}")
-                # get model path
-                fpath = os.path.join(dirs.conn_train_dir, best_model)
-                # get trained subject models
-                imgs = glob.glob(os.path.join(fpath, '*.Cortex*'))
-                for img in imgs:
-                    os.remove(img)
-                #************
-
                 # delete training models that are suboptimal (save space)
                 if delete_train:
                     dirs = const.Dirs(exp_name=f"sc{2-exp}")

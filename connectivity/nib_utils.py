@@ -221,7 +221,37 @@ def subtract_vol(imgs):
 
     return nib_obj[0]
 
-def view_cerebellum(gifti, cscale=None, colorbar=False):
+def get_cortical_atlases():
+    """returns: fpaths (list of str): list to all cortical atlases (*.label.gii) 
+    """
+    dirs = const.Dirs()
+
+    fpaths = []
+    fpath = os.path.join(dirs.reg_dir, 'data', 'group')
+    for path in list(Path(fpath).rglob('*.label.gii')):
+        # if any(atlas_key in str(path) for atlas_key in atlas_keys):
+        fpaths.append(str(Path(path).name))
+
+    return fpaths
+
+def get_cerebellar_atlases():
+    """returns: fpaths (list of str): list of full paths to cerebellar atlases
+    """
+    dirs = const.Dirs()
+
+    fpaths = []
+    # get atlases in cerebellar atlases
+    fpath = os.path.join(dirs.base_dir, 'cerebellar_atlases')
+    for path in list(Path(fpath).rglob('*.label.gii')):
+        fpaths.append(str(Path(path).name))
+
+    # get atlases in flatmap/surfaces
+    for path in list(Path(flatmap._surf_dir).rglob('*.label.gii')):
+        fpaths.extend([str(Path(path).name)])
+    
+    return fpaths
+
+def view_cerebellum(gifti, cscale=None, colorbar=True, title=True):
     """Visualize data on suit flatmap, plots either *.func.gii or *.label.gii data
 
     Args: 
@@ -233,10 +263,7 @@ def view_cerebellum(gifti, cscale=None, colorbar=False):
     # full path to surface
     surf_mesh = os.path.join(flatmap._surf_dir,'FLAT.surf.gii')
 
-    # load surf data from file
-    # fname = Path(gifti).name
-    # title = fname.split('.')[0]
-
+    # determine overlay
     if '.func.' in gifti:
         overlay_type = 'func'
     elif '.label.' in gifti:
@@ -250,7 +277,11 @@ def view_cerebellum(gifti, cscale=None, colorbar=False):
         data = gifti
 
     view = flatmap.plot(data, surf=surf_mesh, overlay_type=overlay_type, cscale=cscale, colorbar=colorbar, new_figure=True) # implement colorbar
-    
+
+    if title:
+        fname = Path(gifti).name
+        view.set_title(fname.split('.')[0])
+
     return view
 
 def view_cortex(gifti, hemisphere='R', cmap=None, cscale=None, atlas_type='inflated', symmetric_cmap=False, orientation='medial'):
