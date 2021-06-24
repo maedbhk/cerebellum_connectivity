@@ -15,6 +15,8 @@ from sklearn.cross_decomposition import PLSRegression
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import KFold
 from sklearn.feature_selection import SequentialFeatureSelector
+from sklearn.feature_selection import RFE
+from sklearn.feature_selection import RFECV
 from sklearn.base import clone
 from scipy import stats
 import connectivity.evaluation as ev # will be used in stepwise regression
@@ -158,145 +160,49 @@ class WNTA(Ridge, ModelMixin):
 
 class WNTA2(LinearRegression, Ridge, ModelMixin):
 
-    def __init__(self, alpha = 1, direction = 'forward', threshold = 0.01, positive = False):
+    """
+    from sklearn documentation:
+    Feature ranking with recursive feature elimination and cross-validated selection of the best number of features.
+    """
+
+    def __init__(self, alpha, positive = False, n = 1):
+        """
+        defines a forward sequential feature selector
+        """
+        self.n = n
+        # defining a feature selector object (with forward selection)
         
-        super(LinearRegression, self).__init__(fit_intercept=False)
         super(Ridge, self).__init__(alpha=alpha, fit_intercept=False)
-        # self.n = n
         self.positive = positive
-        self.direction = direction # the direction of stepwise regression
-        # self.threshold = threshold # p value threshold used in stepwise regression
-
-    def _forward(self, X, Y):
-        included_list = [] # starting with an empty list
-
-        while True:
-            changed = False
-            excluded = list(set(range(X.shape[1])) - set(included_list))
-            score = pd.Series(index=excluded)
-
-            # Looping over cortical tessels 
-            for i in excluded:
-                # get the corresponding cortical tessel
-                Xi = X[:, i]
-                # fit the linear regression model
-                ## 1. scaling Xi
-                scale_ = np.sqrt(np.sum(Xi ** 2, 0) / Xi.shape[0])
-                Xis = Xi / scale_
-                Xis = np.nan_to_num(Xis) # there are 0 values after scaling
-
-                ## 2. fitting the model
-                super(LinearRegression, self).fit(Xis, Y)
-
-                ## get the score
-                # method 1: using linear regression score (Returns R2)
-                # score[i] = self.score
-                # method 2: using R calculated by evaluation module
-                score[i] = ev.calculate_R(Y, self.predict(Xis))
-
-
-
-            # get the feature with the best score
-            best_feat = score.idxmax()
-            included_list.append(best_feat)
-
-            changed = True
-
-            if not changed:
-                break
-
-
-                # # calculate the p-value
-                # sse = np.sum((self.predict(Xis) - Y)**2, axis = 0)/float(Xis.shape[0] - Xis.shape[1])
-                # se = np.zeros((1, sse.shape[0]))
-                # for j in range(sse.shape[0]):
-                #     se[j] = np.sqrt(np.diagonal(sse[j] * np.linalg.inv(np.dot(Xis.T, Xis))))
-
-                # self.t = self.coef_ / se
-                # self.p = 2 * (1 - stats.t.cdf(np.abs(self.t), Y.shape[0] - Xis.shape[1]))
-
-                # # update the p-values series
-                # p_values[i] = self.p
-            
-            # # get the best p_values
-            # best_p_value = p_values.min()
-
-            # # check if the best p value is below p threshold
-            # # and add the corresponding feature to the list of selected features
-            # if best_p_value < self.threshold:
-            #     best_feat = p_values.idxmin()
-            #     self.included_list.append(best_feat)
-
-            #     changed = True
-
-            # if not changed:
-            #     break
-
-        return included_list   
-
-    def _backward(self, X, Y):
-        # NEEDS TO BE FIXED
-        self.included_list = range(X.shape[1]) # starting with all the cortical tessels
-        while True:
-            changed = False
-            # fit the linear regression model
-            ## 1. scaling X
-            X_included = X[:, self.included_list]
-            scale_ = np.sqrt(np.sum(X_included ** 2, 0) / X_included.shape[0])
-            Xs = X_included / scale_
-            Xs = np.nan_to_num(Xs) # there are 0 values after scaling
-
-            ## 2. fitting the model
-            super(LinearRegression, self).fit(Xs, Y)
-
-            # # calculate the p-value
-            # sse = np.sum((self.predict(Xs) - Y)**2, axis = 0)/float(Xs.shape[0] - Xs.shape[1])
-            # se = np.zeros((1, sse.shape[0]))
-            # for j in range(sse.shape[0]):
-            #     se[j] = np.sqrt(np.diagonal(sse[j] * np.linalg.inv(np.dot(Xs.T, Xs))))
-
-            # self.t = self.coef_ / se
-            # self.p = 2 * (1 - stats.t.cdf(np.abs(self.t), Y.shape[0] - Xs.shape[1]))
-
-            # # update the p-values series
-            # p_values = self.p
-
-            # # get the worst p_value to omit the corresponding feature
-            # worst_p_value = p_values.max() 
-
-            # if worst_p_value > self.threshold:
-            #     changed = True
-            #     worst_feat = p_values.idxmax()
-            #     self.included_list.remove(worst_feat)
-
-            # if not changed:
-            #     break
-
-        pass
-    
+        
     def fit(self, X, Y):
-        # performing stepwise regression to get the best features
-        self.included_list = self._forward(X, Y)
 
-        # do a ridge regression with the selected features
-        X_selected = X[:, self.included_list]
-
-        # scaling
-        self.scale_ = np.sqrt(np.sum(X_selected ** 2, 0) / X_selected.shape[0])
-        Xs = X_selected / self.scale_
+        self.scale_ = np.sqrt(np.sum(X ** 2, 0) / X.shape[0])
+        Xs = X / self.scale_
         Xs = np.nan_to_num(Xs) # there are 0 values after scaling
+        ## recursive feature selection with cross validation.
+        ### returns the selected features that resulted in the highest cv score
+        self.selector = RFECV(LinearRegression(fit_intercept=False))
+        self.selector.fit(Xs, Y)
 
+        # attributes of the selector:
+        # ranking_ : returns ranking of the features
+        # support_ : returns True for selected features, False otherwise
+
+        Xs = self.selector.transform(Xs)   # getting the selected features
+        self.n_selected_feat = self.selector.n_features_ # how many features were selected
+        self.selected_feat   = range(X.shape)[self.selector.support_] # what are the selected features
         ## do a ridge regression with the selected cortical tessels
         super(Ridge, self).fit(Xs, Y)
-
         return self.coef_
-    def predict(self, X):
-        X_selected = X[:, self.included_list]
-        self.scale_ = np.sqrt(np.sum(X_selected ** 2, 0) / X_selected.shape[0])
-        Xs = X_selected / self.scale_
+
+    def _predict(self, X):
+        Xs = X / self.scale_
         Xs = np.nan_to_num(Xs) # there are 0 values after scaling
+        # just get the selected features
+        Xs = self.selector.transform(Xs)
         return Xs @ self.coef_.T  # weights need to be transposed (throws error otherwise)
-        
+
 class NNLS(BaseEstimator, ModelMixin):
     """
     Fast implementation of a multivariate Non-negative least squares (NNLS) regression
