@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+import nibabel as nib
 import SUITPy.flatmap as flatmap
 
 import connectivity.nib_utils as nio

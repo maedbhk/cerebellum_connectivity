@@ -7,14 +7,12 @@ import nibabel as nib
 import glob
 from scipy.stats import mode
 from random import seed, sample
-from collections import defaultdict
 import neptune
 from pathlib import Path
 import SUITPy.flatmap as flatmap
 
 import connectivity.constants as const
 import connectivity.io as cio
-import connectivity.nib_utils as nio
 from connectivity import data as cdata
 import connectivity.run_mk as run_connect
 from connectivity import visualize as summary
@@ -35,7 +33,6 @@ def delete_conn_files():
                 except:
                     os.remove(f)
     print("deleting training and evaluation connectivity data")
-
 
 def split_subjects(
     subj_ids, 
@@ -64,7 +61,6 @@ def split_subjects(
     train_subjs = list([x for x in subj_ids if x not in test_subjs])
 
     return train_subjs, test_subjs
-
 
 def log_to_neptune(
     dataframe, 
@@ -104,7 +100,6 @@ def log_to_neptune(
         if not isinstance(v, (list, dict)):
             neptune.set_property(k, v)
     neptune.stop()
-
 
 def train_ridge(
     hyperparameter,
@@ -180,7 +175,6 @@ def train_ridge(
         # save out train summary
         df_all.to_csv(fpath, index=False)
 
-
 def train_WTA(
     train_exp="sc1",
     cortex="tessels0642",
@@ -252,7 +246,6 @@ def train_WTA(
             df_all = pd.concat([df_all, pd.read_csv(fpath)])
         # save out train summary
         df_all.to_csv(fpath, index=False)
-
 
 def train_NNLS(
     alphas,
@@ -330,7 +323,6 @@ def train_NNLS(
         # save out train summary
         df_all.to_csv(fpath, index=False)
 
-
 def save_weight_maps(
         model_name, 
         cortex, 
@@ -368,58 +360,20 @@ def save_weight_maps(
     save_maps_cerebellum(data=np.stack(cereb_weights_all, axis=0), 
                         fpath=os.path.join(fpath, 'group_weights_cerebellum'))
 
-    save_maps_cortex(data=np.stack(cortex_weights_all, axis=0),
-                    atlas=cortex,
-                    fpath=os.path.join(fpath, 'group_weights_cortex'))
+    # save maps to disk for cortex
+    data = np.stack(cortex_weights_all, axis=0)
+    func_giis, hem_names = cdata.convert_cortex_to_gifti(data=np.nanmean(data, axis=0), atlas=cortex)
+    for (func_gii, hem) in zip(func_giis, hem_names):
+        nib.save(func_gii, os.path.join(fpath, f'group_weights_cortex.{hem}.func.gii'))
 
     print('saving cortical and cerebellar weights to disk')
-
-
-def save_wta_maps(
-        model_name, 
-        cortex, 
-        train_exp
-        ):
-    """Save weight maps to disk for cortex and cerebellum
-
-    Args: 
-        model_name (str): model_name (folder in conn_train_dir)
-        cortex (str): cortex model name (example: tesselsWB162)
-        train_exp (str): 'sc1' or 'sc2'
-    Returns: 
-        saves nifti/gifti to disk
-    """
-    # set directory
-    dirs = const.Dirs(exp_name=train_exp)
-
-    # get model path
-    fpath = os.path.join(dirs.conn_train_dir, model_name)
-
-    # get trained subject models
-    model_fnames = glob.glob(os.path.join(fpath, '*.h5'))
-
-    labels_all = []
-    for model_fname in model_fnames:
-
-        # read model data
-        data = cio.read_hdf5(model_fname)
-        
-        # append labels
-        labels_all.append(data.labels)
-
-    # save maps to disk for cerebellum and cortex
-    save_maps_cerebellum(data=np.stack(labels_all, axis=0), 
-                        fpath=os.path.join(fpath, 'group_wta_cerebellum'),
-                        group='mode',
-                        nifti=True)
-
 
 def save_maps_cerebellum(
     data, 
     fpath='/',
     group='nanmean', 
     gifti=True, 
-    nifti=False, 
+    nifti=True, 
     column_names=[], 
     label_RGBA=[],
     label_names=[],
@@ -471,36 +425,6 @@ def save_maps_cerebellum(
         nib.save(gii_img, fpath + f'.{out_name}.gii')
     
     return gii_img
-
-
-def save_maps_cortex(
-    data, 
-    atlas, 
-    fpath='/', 
-    group_average=True
-    ):
-    """Takes list of np arrays, averages list and
-    saves gifti map to disk
-
-    Args: 
-        data (np array): np array of shape (N x 32492)
-        fpath (str): save path for output file
-        atlas (str): cortex atlas name (example: tessels0162)
-        group_average (bool): default is True, averages data np arrays 
-    Returns: 
-        saves gifti image to disk for left and right hemispheres
-    """
-    # average data
-    if group_average:
-        data = np.nanmean(data, axis=0)
-
-    # get functional gifti
-    func_giis, hem_names = cdata.convert_cortex_to_gifti(data=data, atlas=atlas)
-    
-    # save giftis to file
-    for (func_gii, hem) in zip(func_giis, hem_names):
-        nib.save(func_gii, fpath + f'.{hem}.func.gii')
-
 
 def eval_model(
     model_name,
@@ -580,12 +504,10 @@ def log_models(exp):
     # save out train summary
     dataframe.to_csv(fpath, index=False)
 
-
 @click.command()
 @click.option("--cortex")
 @click.option("--model_type")
 @click.option("--train_or_eval")
-
 
 def run(cortex="tessels0362", 
         model_type="ridge", 
@@ -617,10 +539,10 @@ def run(cortex="tessels0362",
     elif train_or_eval=="eval":
         for exp in range(2):
             
-            # get best model for each method and parcellation (NNLS, ridge, WTA)
+            # get best model (for each method and parcellation)
             models, cortex_names = summary.get_best_models(train_exp=f"sc{2-exp}")
 
-            # get best train model (based on train CV)
+            # get best train model (of all models run) (based on train CV)
             # best_model, cortex = summary.get_best_model(train_exp=f"sc{2-exp}")
 
             for (best_model, cortex) in zip(models, cortex_names):

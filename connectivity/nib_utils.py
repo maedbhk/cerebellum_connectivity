@@ -2,16 +2,18 @@
 import os
 from pathlib import Path
 import nibabel as nib
-from nibabel.nifti1 import load
 import numpy as np
 from pathlib import Path
 import matplotlib.pyplot as plt
+import matplotlib as mpl
+import seaborn as sns
 from matplotlib.colors import LinearSegmentedColormap
-from nilearn.input_data import NiftiMasker
 import SUITPy.flatmap as flatmap
 from nilearn.plotting import view_surf, plot_surf_roi
 from nilearn.surface import load_surf_data
+
 import connectivity.constants as const
+from connectivity import data as cdata
 
 def make_label_gifti_cortex(data, anatomical_struct='CortexLeft', label_names=None, column_names=None, label_RGBA=None):
     """
@@ -62,7 +64,7 @@ def make_label_gifti_cortex(data, anatomical_struct='CortexLeft', label_names=No
     if label_names is None:
         label_names = []
         for i in range(num_labels):
-            label_names.append("label-{:02d}".format(i+1))
+            label_names.append("label-{:02d}".format(i))
 
     # Create label.gii structure
     C = nib.gifti.GiftiMetaData.from_dict({
@@ -167,93 +169,120 @@ def get_label_colors(fpath):
         rgba[i,] = labels[i].rgba
 
     cmap = LinearSegmentedColormap.from_list('mylist', rgba)
+    cmap = LinearSegmentedColormap.from_list('mylist', rgba, N=len(rgba))
+    mpl.cm.register_cmap("mycolormap", cmap)
+    cpal = sns.color_palette("mycolormap", n_colors=len(rgba))
 
-    return rgba, cmap
+    return rgba, cpal
 
-def mask_vol(mask, vol, output='2D'):
-    """ mask volume using NiftiMasker
-
-    If output is '3D' inverse transform is computed (go from 2D np array to 3D nifti)
-    If output is '2D' then transform is computed (mask 3D nifti and return 2D np array)
-
+def binarize_vol(imgs, metric='max'):
+    """Binarizes niftis for `imgs` based on `metric`
     Args: 
-        mask (str or nib obj):
-        vol (str or nib obj): can be 4D or 3D nifti or 2d array (n_time_points x n_voxels)
-        output (str): '2D' or '3D'. default is '2D'
+        imgs (list of nib obj or list of str): list of nib objects or fullpath to niftis
+        metric (str): 'max' or 'min'
     Returns: 
-        np array shape (n_time_points x n_voxels) if output='2D'
-        nifti obj if output='3D'
+        nib obj
     """
-    nifti_masker = NiftiMasker(standardize=False, mask_strategy='epi', memory_level=2,
-                            smoothing_fwhm=0, memory="nilearn_cache") 
+    data_all = []
+    for img in imgs:
+        data_masked = cdata.read_suit_nii(img)
+        data_all.append(data_masked)
 
-    # load mask if it's a string
-    if isinstance(mask, str):
-        mask = nib.load(mask)
+    data = np.vstack(data_all)
 
-    # fit the mask
-    nifti_masker.fit(mask)
+    # binarize `data` based on max or min values
+    if metric=='max':
+        labels = np.argmax(data, axis=0)
+    elif metric=='min':
+        labels = np.argmin(data, axis=0)
+    
+    # compute 3D vol for `labels`
+    nib_obj = cdata.convert_cerebellum_to_nifti(labels+1)
 
-    # check vol format
-    if isinstance(vol, str):
-        vol = nib.load(vol)
-        fmri_masked = nifti_masker.transform(vol) #  (n_time_points x n_voxels)
-    elif isinstance(vol, nib.nifti1.Nifti1Image):
-        fmri_masked = nifti_masker.transform(vol) #  (n_time_points x n_voxels)
-    elif isinstance(vol, np.ndarray):
-        fmri_masked = vol
+    return nib_obj[0]
 
-    # return masked data
-    if output=="2D":
-        return fmri_masked
-    elif output=="3D":
-        return nifti_masker.inverse_transform(fmri_masked)
+def subtract_vol(imgs):
+    """Binarizes niftis for `imgs` based on `metric`
+    Args: 
+        imgs (list of nib obj or list of str): list of nib objects or fullpath to niftis
+    Returns: 
+        nib obj
+    """
 
-def view_cerebellum(data, threshold=None, cscale=None, symmetric_cmap=False, title=None):
+    if len(imgs)>2:
+        print(Exception('there should be no more than two nib objs in `imgs`'))
+
+    data_all = []
+    for img in imgs:
+        data_masked = cdata.read_suit_nii(img)
+        data_all.append(data_masked)
+
+    data = np.vstack(data_all)
+
+    data_diff = data[0] - data[1]
+    
+    # compute 3D vol for `labels`
+    nib_obj = cdata.convert_cerebellum_to_nifti(data_diff)
+
+    return nib_obj[0]
+
+def get_cortical_atlases():
+    """returns: fpaths (list of str): list to all cortical atlases (*.label.gii) 
+    """
+    dirs = const.Dirs()
+
+    fpaths = []
+    fpath = os.path.join(dirs.reg_dir, 'data', 'group')
+    for path in list(Path(fpath).rglob('*.label.gii')):
+        # if any(atlas_key in str(path) for atlas_key in atlas_keys):
+        fpaths.append(str(path))
+
+    return fpaths
+
+def get_cerebellar_atlases():
+    """returns: fpaths (list of str): list of full paths to cerebellar atlases
+    """
+    dirs = const.Dirs()
+
+    fpaths = []
+    # get atlases in cerebellar atlases
+    fpath = os.path.join(dirs.base_dir, 'cerebellar_atlases')
+    for path in list(Path(fpath).rglob('*.label.gii')):
+        fpaths.append(str(path))
+    
+    return fpaths
+
+def view_cerebellum(gifti, cscale=None, colorbar=True, title=True):
     """Visualize data on suit flatmap, plots either *.func.gii or *.label.gii data
 
     Args: 
-        data (str): full path to gifti file
-        cmap (str): default is 'jet'
-        threshold (int or None): default is None
-        bg_map (str or None): default is None
+        gifti (str): full path to gifti image
         cscale (list or None): default is None
+        colorbar (bool): default is False.
     """
 
     # full path to surface
     surf_mesh = os.path.join(flatmap._surf_dir,'FLAT.surf.gii')
 
-    # load surf data from file
-    fname = Path(data).name
-    title = fname.split('.')[0]
-
-    if '.func.' in data:
+    # determine overlay
+    if '.func.' in gifti:
         overlay_type = 'func'
-        viewer = 'nilearn'
-    elif '.label.' in data:
+    elif '.label.' in gifti:
         overlay_type = 'label'
-        viewer = 'suit'
 
-    # Determine scale
-    if ('.func.' in data and cscale is None):
-        data = load_surf_data(data)
-        cscale = [np.nanmin(data), np.nanmax(data)]
+    view = flatmap.plot(gifti, surf=surf_mesh, overlay_type=overlay_type, cscale=cscale, colorbar=True, new_figure=True) # implement colorbar
 
-    # nilearn seems to
-    if viewer=='nilearn':
-        view = view_surf(surf_mesh, data, cmap='CMRmap',
-                        threshold=threshold, vmin=cscale[0], vmax=cscale[1], 
-                        symmetric_cmap=symmetric_cmap)
-    elif viewer=='suit':
-        view = flatmap.plot(data, surf=surf_mesh, overlay_type=overlay_type, cscale=cscale)
-    
+    if title:
+        fname = Path(gifti).name
+        view.set_title(fname.split('.')[0])
+
     return view
 
-def view_cortex(data, hemisphere='R', cmap=None, cscale=None, atlas_type='inflated', symmetric_cmap=False, title=None, orientation='medial'):
+def view_cortex(gifti, hemisphere='R', cmap=None, cscale=None, atlas_type='inflated', symmetric_cmap=False, orientation='medial'):
     """Visualize data on inflated cortex, plots either *.func.gii or *.label.gii data
 
     Args: 
-        data (str): fullpath to file: *.func.gii or *.label.gii
+        gifti (str): fullpath to file: *.func.gii or *.label.gii
         bg_map (str or np array or None): 
         map_type (str): 'func' or 'label'
         hemisphere (str): 'R' or 'L'
@@ -266,15 +295,15 @@ def view_cortex(data, hemisphere='R', cmap=None, cscale=None, atlas_type='inflat
     surf_mesh = os.path.join(dirs.reg_dir, 'data', 'group', f'fs_LR.32k.{hemisphere}.{atlas_type}.surf.gii')
 
     # load surf data from file
-    fname = Path(data).name
+    fname = Path(gifti).name
     title = fname.split('.')[0]
         
     # Determine scale
-    func_data = load_surf_data(data)
-    if ('.func.' in data and cscale is None):
+    func_data = load_surf_data(gifti)
+    if ('.func.' in gifti and cscale is None):
         cscale = [np.nanmin(func_data), np.nanmax(func_data)]
 
-    if '.func.' in data:
+    if '.func.' in gifti:
         view = view_surf(surf_mesh=surf_mesh, 
                         surf_map=func_data,
                         vmin=cscale[0], 
@@ -283,12 +312,12 @@ def view_cortex(data, hemisphere='R', cmap=None, cscale=None, atlas_type='inflat
                         symmetric_cmap=symmetric_cmap,
                         # title=title
                         ) 
-    elif '.label.' in data:   
+    elif '.label.' in gifti:   
         if hemisphere=='L':
             orientation = 'lateral'
         if cmap is None:
-            _, cmap = get_label_colors(fpath=data)
-        view = plot_surf_roi(surf_mesh, data, cmap=cmap, view=orientation)    
+            _, cmap = get_label_colors(fpath=gifti)
+        view = plot_surf_roi(surf_mesh, gifti, cmap=cmap, view=orientation)    
     
     return view
     

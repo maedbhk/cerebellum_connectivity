@@ -438,6 +438,12 @@ def average_by_roi(data, region_number_suit):
         data_mean_roi       - numpy array with mean within each roi (to be used as input to convert_cerebellum_to_nifti)
     """
 
+    # reshape data into NxP dims
+    try: 
+        num_cols, num_vox = data.shape
+    except: 
+        data = np.reshape(data, (1, len(data)))
+
     # find region numbers
     region_number_suit = region_number_suit.astype("int")
     region_numbers = np.unique(region_number_suit)
