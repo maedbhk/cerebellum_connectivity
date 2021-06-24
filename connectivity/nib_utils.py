@@ -5,6 +5,8 @@ import nibabel as nib
 import numpy as np
 from pathlib import Path
 import matplotlib.pyplot as plt
+import matplotlib as mpl
+import seaborn as sns
 from matplotlib.colors import LinearSegmentedColormap
 import SUITPy.flatmap as flatmap
 from nilearn.plotting import view_surf, plot_surf_roi
@@ -167,8 +169,11 @@ def get_label_colors(fpath):
         rgba[i,] = labels[i].rgba
 
     cmap = LinearSegmentedColormap.from_list('mylist', rgba)
+    cmap = LinearSegmentedColormap.from_list('mylist', rgba, N=len(rgba))
+    mpl.cm.register_cmap("mycolormap", cmap)
+    cpal = sns.color_palette("mycolormap", n_colors=len(rgba))
 
-    return rgba, cmap
+    return rgba, cpal
 
 def binarize_vol(imgs, metric='max'):
     """Binarizes niftis for `imgs` based on `metric`
@@ -230,7 +235,7 @@ def get_cortical_atlases():
     fpath = os.path.join(dirs.reg_dir, 'data', 'group')
     for path in list(Path(fpath).rglob('*.label.gii')):
         # if any(atlas_key in str(path) for atlas_key in atlas_keys):
-        fpaths.append(str(Path(path).name))
+        fpaths.append(str(path))
 
     return fpaths
 
@@ -243,11 +248,7 @@ def get_cerebellar_atlases():
     # get atlases in cerebellar atlases
     fpath = os.path.join(dirs.base_dir, 'cerebellar_atlases')
     for path in list(Path(fpath).rglob('*.label.gii')):
-        fpaths.append(str(Path(path).name))
-
-    # get atlases in flatmap/surfaces
-    for path in list(Path(flatmap._surf_dir).rglob('*.label.gii')):
-        fpaths.extend([str(Path(path).name)])
+        fpaths.append(str(path))
     
     return fpaths
 
@@ -269,14 +270,7 @@ def view_cerebellum(gifti, cscale=None, colorbar=True, title=True):
     elif '.label.' in gifti:
         overlay_type = 'label'
 
-    # Determine scale
-    if ('.func.' in gifti and cscale is None):
-        data = load_surf_data(gifti)
-        cscale = [np.nanmin(data), np.nanmax(data)]
-    else:
-        data = gifti
-
-    view = flatmap.plot(data, surf=surf_mesh, overlay_type=overlay_type, cscale=cscale, colorbar=colorbar, new_figure=True) # implement colorbar
+    view = flatmap.plot(gifti, surf=surf_mesh, overlay_type=overlay_type, cscale=cscale, colorbar=True, new_figure=True) # implement colorbar
 
     if title:
         fname = Path(gifti).name

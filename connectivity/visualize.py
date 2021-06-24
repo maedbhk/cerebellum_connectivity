@@ -5,9 +5,9 @@ import seaborn as sns
 import re
 import glob
 import deepdish as dd
+from pathlib import Path
 from collections import defaultdict
 import matplotlib.pyplot as plt
-import SUITPy.flatmap as flatmap
 
 import connectivity.data as cdata
 import connectivity.constants as const
@@ -154,7 +154,7 @@ def plot_eval_predictions(dataframe, exp="sc1"):
         )
     plt.show()
 
-def map_eval(data="R", exp="sc1", model_name='best_model', colorbar=False, symmetric_cmap=False, cscale=None):
+def map_eval(data="R", exp="sc1", model_name='best_model', colorbar=False, cscale=None, rois=True, atlas='MDTB_10Regions'):
     """plot surface map for best model
     Args:
         gifti (str):
@@ -175,20 +175,68 @@ def map_eval(data="R", exp="sc1", model_name='best_model', colorbar=False, symme
         model,_ = get_best_model(train_exp=exp)
 
     # plot map
-    surf_data = os.path.join(dirs.conn_eval_dir, model, f"group_{data}_vox.func.gii")
-    view = nio.view_cerebellum(gifti=surf_data, cscale=cscale, colorbar=colorbar)
+    fpath = os.path.join(dirs.conn_eval_dir, model)
+    view = nio.view_cerebellum(gifti=os.path.join(fpath, f"group_{data}_vox.func.gii"), cscale=cscale, colorbar=colorbar)
+
+    if rois:
+        roi_summary(fpath=os.path.join(fpath, f"group_{data}_vox.nii"), atlas=atlas, plot=True)
     return view
 
-def map_model_comparison(gifti, cscale=None, colorbar=True):
+def roi_summary(fpath, atlas='MDTB_10Regions', plot=True):
+    """plot roi summary of data in `fpath`
+
+    Args: 
+        fpath (str): full path to nifti image
+        atlas (str): default is 'MDTB_10Regions.nii'. assumes that atlases are saved in /cerebellar_atlases/
+    Returns: 
+        plots barplot of roi summary
+    """
+    dirs = const.Dirs()
+
+    # get rois for `atlas`
+    atlas_dir = os.path.join(dirs.base_dir, 'cerebellar_atlases')
+    rois = cdata.read_suit_nii(atlas_dir + f'/{atlas}.nii')
+
+    # get roi colors
+    rgba, cpal = nio.get_label_colors(fpath=atlas_dir + f'/{atlas}.label.gii')
+
+    df_all = pd.DataFrame()
+    data = cdata.read_suit_nii(fpath)
+    roi_mean, regs = cdata.average_by_roi(data, rois)
+    fname = Path(fpath).stem
+    df1 = pd.DataFrame({'roi_mean': list(np.hstack(roi_mean)),
+                    'regions': list(regs),
+                    'fnames': np.repeat(fname, len(regs))})
+    
+    if plot:
+        plt.figure()
+        sns.barplot(x='regions', y='roi_mean', data=df1.query('regions!=0'), palette=cpal[1:])
+        plt.xticks(rotation=45)
+        plt.xlabel(atlas)
+        plt.ylabel('ROI mean')
+
+    return df1
+
+def map_model_comparison(model_name, exp, method='subtract', colorbar=True, rois=True, atlas='MDTB_10Regions'):
     """plot surface map for best model
     Args:
-        gifti (str): full path to gifti
     """
-    view = nio.view_cerebellum(gifti, cscale=cscale, colorbar=colorbar)
+
+    # initialize directories
+    dirs = const.Dirs(exp_name=exp)
+
+    fpath = os.path.join(dirs.conn_eval_dir, 'model_comparison')
+    fpath_gii = glob.glob(f'{fpath}/*{method}*{model_name}*.gii*')
+    fpath_nii = glob.glob(f'{fpath}/*{method}*{model_name}*.nii*')
+
+    view = nio.view_cerebellum(fpath_gii[0], cscale=None, colorbar=colorbar)
+
+    if rois:
+        roi_summary(fpath=fpath_nii[0], atlas=atlas, plot=True)
     
     return view
 
-def map_weights(structure='cerebellum', exp='sc1', model_name='best_model', hemisphere='R', colorbar=False, symmetric_cmap=False, cscale=None):
+def map_weights(structure='cerebellum', exp='sc1', model_name='best_model', hemisphere='R', colorbar=False, cscale=None, rois=True, atlas='MDTB_10Regions'):
     """plot training weights for cortex or cerebellum
     Args: 
         gifti_func (str): '
@@ -201,21 +249,27 @@ def map_weights(structure='cerebellum', exp='sc1', model_name='best_model', hemi
     if model_name=='best_model':
         model,_ = get_best_model(train_exp=exp)
     
+    # get path to model
+    fpath = os.path.join(dirs.conn_train_dir, model)
+
     # plot either cerebellum or cortex
     if structure=='cerebellum':
-        surf_fname = os.path.join(dirs.conn_train_dir, model, f"group_weights_{structure}.func.gii")
+        surf_fname = fpath + f'/group_weights_{structure}.func.gii'
         view = nio.view_cerebellum(gifti=surf_fname, cscale=cscale, colorbar=colorbar)
     elif structure=='cortex':
-        surf_fname = os.path.join(dirs.conn_train_dir, model, f"group_weights_{structure}.{hemisphere}.func.gii")
+        surf_fname =  fpath + f"/group_weights_{structure}.{hemisphere}.func.gii"
         view = nio.view_cortex(gifti=surf_fname, cscale=cscale)
     else:
         print("gifti must contain either cerebellum or cortex in name")
+    
+    if (rois) & (structure=='cerebellum'):
+        roi_summary(fpath=os.path.join(fpath, f"group_weights_cerebellum.nii"), atlas=atlas, plot=True)
     return view
 
-def map_atlas(parcellation='yeo7.R.label.gii', structure='cortex'):
-    """General purpose function for plotting *.label.gii parcellations (cortex or cerebellum)
+def map_atlas(fpath, structure='cortex'):
+    """General purpose function for plotting *.label.gii or *.func.gii parcellations (cortex or cerebellum)
     Args: 
-        parcellation (str): default is 'yeo7.R.label.gii'
+        fpath (str): full path to atlas
         anatomical_structure (str): default is 'cerebellum'. other options: 'cortex'
     Returns:
         viewing object to visualize parcellations
@@ -224,14 +278,9 @@ def map_atlas(parcellation='yeo7.R.label.gii', structure='cortex'):
     dirs = const.Dirs()
 
     if structure=='cerebellum':
-        if 'wta_suit' in parcellation:
-            fname = os.path.join(dirs.base_dir, 'cerebellar_atlases', parcellation)
-        else:
-            fname = os.path.join(flatmap._surf_dir, parcellation)
-        return nio.view_cerebellum(gifti=fname) 
+        return nio.view_cerebellum(gifti=fpath) 
     elif structure=='cortex':
-        fname = os.path.join(dirs.reg_dir, 'data', 'group', parcellation)
-        return nio.view_cortex(gifti=fname)
+        return nio.view_cortex(gifti=fpath)
     else:
         print('please provide a valid parcellation')
 
@@ -294,7 +343,7 @@ def get_eval_models(exp):
     df = pd.read_csv(os.path.join(dirs.conn_eval_dir, 'eval_summary.csv'))
     df = df[['name', 'X_data']].drop_duplicates() # get unique model names
 
-    return df['name'].to_list()
+    return df['name'].to_list(), np.unique(df['X_data'].to_list())
 
 def train_weights(exp="sc1", model_name="ridge_tesselsWB162_alpha_6"):
     """gets training weights for a given model and summarizes into a dataframe
