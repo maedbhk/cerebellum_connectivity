@@ -199,6 +199,7 @@ def roi_summary(fpath, atlas='MDTB_10Regions', plot=True):
 
     # get roi colors
     rgba, cpal = nio.get_label_colors(fpath=atlas_dir + f'/{atlas}.label.gii')
+    labels = nio.get_gifti_labels(fpath=atlas_dir + f'/{atlas}.label.gii')
 
     df_all = pd.DataFrame()
     data = cdata.read_suit_nii(fpath)
@@ -206,11 +207,12 @@ def roi_summary(fpath, atlas='MDTB_10Regions', plot=True):
     fname = Path(fpath).stem
     df1 = pd.DataFrame({'roi_mean': list(np.hstack(roi_mean)),
                     'regions': list(regs),
+                    'labels': list(labels),
                     'fnames': np.repeat(fname, len(regs))})
     
     if plot:
         plt.figure()
-        sns.barplot(x='regions', y='roi_mean', data=df1.query('regions!=0'), palette=cpal[1:])
+        sns.barplot(x='labels', y='roi_mean', data=df1.query('regions!=0'), palette=cpal[1:])
         plt.xticks(rotation=45)
         plt.xlabel(atlas)
         plt.ylabel('ROI mean')

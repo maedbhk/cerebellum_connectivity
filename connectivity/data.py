@@ -2,12 +2,8 @@
 import os
 import pandas as pd
 import numpy as np
-import re
 import deepdish as dd
-import copy
 import scipy
-import scipy.io as sio
-from collections import defaultdict
 import h5py
 import SUITPy as suit
 import nibabel as nib
@@ -17,7 +13,6 @@ import connectivity.constants as const
 import connectivity.io as cio
 import connectivity.matrix as matrix
 import connectivity.nib_utils as nio
-from numpy.linalg import solve
 
 """Main module for getting data to be used for running connectivity models.
 
@@ -463,4 +458,3 @@ def average_by_roi(data, region_number_suit):
         data_mean_roi[:, r] = reg_data
 
     return data_mean_roi, region_numbers
-

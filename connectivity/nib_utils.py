@@ -175,6 +175,21 @@ def get_label_colors(fpath):
 
     return rgba, cpal
 
+def get_gifti_labels(fpath):
+    """get gifti labels for `img`
+
+    Args: 
+        img (str or nib obj): full path to atlas (*.label.gii) or nib obj
+    Returns: 
+        labels (list): list of label names
+    """
+    if isinstance(fpath, str):
+        img = nib.load(fpath)
+
+    labels = img.labeltable.get_labels_as_dict().values()
+
+    return list(labels)
+
 def binarize_vol(imgs, metric='max'):
     """Binarizes niftis for `imgs` based on `metric`
     Args: 
@@ -232,12 +247,15 @@ def get_cortical_atlases():
     dirs = const.Dirs()
 
     fpaths = []
+    atlases = []
     fpath = os.path.join(dirs.reg_dir, 'data', 'group')
     for path in list(Path(fpath).rglob('*.label.gii')):
         # if any(atlas_key in str(path) for atlas_key in atlas_keys):
         fpaths.append(str(path))
+        atlas = path[0].split('/')[-1].split('.')[0]
+        atlases.append(atlas)
 
-    return fpaths
+    return fpaths, atlases
 
 def get_cerebellar_atlases():
     """returns: fpaths (list of str): list of full paths to cerebellar atlases
@@ -245,12 +263,16 @@ def get_cerebellar_atlases():
     dirs = const.Dirs()
 
     fpaths = []
+    atlases = []
     # get atlases in cerebellar atlases
     fpath = os.path.join(dirs.base_dir, 'cerebellar_atlases')
     for path in list(Path(fpath).rglob('*.label.gii')):
-        fpaths.append(str(path))
+        path = str(path)
+        fpaths.append(path)
+        atlas = path.split('/')[-1].split('.')[0]
+        atlases.append(atlas)
     
-    return fpaths
+    return fpaths, atlases
 
 def view_cerebellum(gifti, cscale=None, colorbar=True, title=True):
     """Visualize data on suit flatmap, plots either *.func.gii or *.label.gii data
