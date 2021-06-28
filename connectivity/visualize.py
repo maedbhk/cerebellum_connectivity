@@ -71,14 +71,14 @@ def eval_summary(summary_name="eval_summary"):
 
     return df_concat
 
-def plot_train_predictions(dataframe, x='train_name', hue=None, x_order=None, hue_order=None):
+def plot_train_predictions(dataframe, exp='sc1', x='train_name', hue=None, x_order=None, hue_order=None, save=True):
     """plots training predictions (R CV) for all models in dataframe.
     Args:
         dataframe (pandas dataframe): must contain 'train_name' and 'train_R_cv'
         hue (str or None): can be 'train_exp', 'Y_data' etc.
     """
     # R
-    sns.factorplot(x=x, y="train_R_cv", hue=hue, data=dataframe, order=x_order, hue_order=hue_order, legend=False, ci=None, size=4, aspect=2)
+    sns.factorplot(x=x, y="train_R_cv", hue=hue, data=dataframe.query(f'train_exp=="{exp}"'), order=x_order, hue_order=hue_order, legend=False, ci=None, size=4, aspect=2)
     plt.title("Model Training (CV Predictions)", fontsize=20)
     plt.tick_params(axis="both", which="major", labelsize=15)
     plt.xticks(rotation="45", ha="right")
@@ -87,14 +87,18 @@ def plot_train_predictions(dataframe, x='train_name', hue=None, x_order=None, hu
     plt.legend(fontsize=15, bbox_to_anchor=(1.05, 1), loc='upper left')
     plt.show()
 
-def plot_eval_predictions_all(dataframe, x='eval_name', hue=None, x_order=None, hue_order=None):
+    if save:
+        dirs = const.Dirs()
+        plt.savefig(os.path.join(dirs.figure, f'train_predictions_{exp}.png'))
+
+def plot_eval_predictions(dataframe, exp='sc2', x='eval_name', hue=None, x_order=None, hue_order=None, save=True):
     """plots training predictions (R CV) for all models in dataframe.
     Args:
         dataframe (pandas dataframe): must contain 'train_name' and 'train_R_cv'
         hue (str or None): can be 'train_exp', 'Y_data' etc.
     """
     # R
-    sns.factorplot(x=x, y="R_eval", hue=hue, data=dataframe, order=x_order, hue_order=hue_order, legend=False, ci=None, size=4, aspect=2)
+    sns.factorplot(x=x, y="R_eval", hue=hue, data=dataframe.query(f'eval_exp=="{exp}"'), order=x_order, hue_order=hue_order, legend=False, ci=None, size=4, aspect=2)
     plt.title("Model Evaluation", fontsize=20)
     plt.tick_params(axis="both", which="major", labelsize=15)
     plt.xticks(rotation="45", ha="right")
@@ -103,7 +107,11 @@ def plot_eval_predictions_all(dataframe, x='eval_name', hue=None, x_order=None, 
     plt.legend(fontsize=15, bbox_to_anchor=(1.05, 1), loc='upper left')
     plt.show()
 
-def plot_eval_predictions(dataframe, exp="sc1"):
+    if save:
+        dirs = const.Dirs()
+        plt.savefig(os.path.join(dirs.figure, f'eval_predictions_{exp}.png'))
+
+def plot_best_eval(dataframe, exp="sc1", save=True):
     """plots evaluation predictions (R eval) for best model in dataframe for 'sc1' or 'sc2'
     Also plots model-dependent and model-independent noise ceilings.
     Args:
@@ -153,8 +161,11 @@ def plot_eval_predictions(dataframe, exp="sc1"):
             textcoords="offset points",
         )
     plt.show()
+    if save:
+        dirs = const.Dirs()
+        plt.savefig(os.path.join(dirs.figure, f'best_eval_{exp}.png'))
 
-def map_eval(data="R", exp="sc1", model_name='best_model', colorbar=False, cscale=None, rois=True, atlas='MDTB_10Regions'):
+def map_eval(data="R", exp="sc1", model_name='best_model', colorbar=False, cscale=None, rois=True, atlas='MDTB_10Regions', save=True):
     """plot surface map for best model
     Args:
         gifti (str):
@@ -178,11 +189,15 @@ def map_eval(data="R", exp="sc1", model_name='best_model', colorbar=False, cscal
     fpath = os.path.join(dirs.conn_eval_dir, model)
     view = nio.view_cerebellum(gifti=os.path.join(fpath, f"group_{data}_vox.func.gii"), cscale=cscale, colorbar=colorbar)
 
+    if save:
+        dirs = const.Dirs()
+        plt.savefig(os.path.join(dirs.figure, f'map_{data}_eval.png'))
+
     if rois:
-        roi_summary(fpath=os.path.join(fpath, f"group_{data}_vox.nii"), atlas=atlas, plot=True)
+        roi_summary(fpath=os.path.join(fpath, f"group_{data}_{model}_{exp}_vox.nii"), atlas=atlas)
     return view
 
-def roi_summary(fpath, atlas='MDTB_10Regions', plot=True):
+def roi_summary(fpath, atlas='MDTB_10Regions', save=True):
     """plot roi summary of data in `fpath`
 
     Args: 
@@ -210,16 +225,19 @@ def roi_summary(fpath, atlas='MDTB_10Regions', plot=True):
                     'labels': list(labels),
                     'fnames': np.repeat(fname, len(regs))})
     
-    if plot:
-        plt.figure()
-        sns.barplot(x='labels', y='roi_mean', data=df1.query('regions!=0'), palette=cpal[1:])
-        plt.xticks(rotation=45)
-        plt.xlabel(atlas)
-        plt.ylabel('ROI mean')
+    plt.figure()
+    sns.barplot(x='labels', y='roi_mean', data=df1.query('regions!=0'), palette=cpal[1:])
+    plt.xticks(rotation=45)
+    plt.xlabel(atlas)
+    plt.ylabel('ROI mean')
+
+    if save:
+        dirs = const.Dirs()
+        plt.savefig(os.path.join(dirs.figure, f'{atlas}_summary.png'))
 
     return df1
 
-def map_model_comparison(model_name, exp, method='subtract', colorbar=True, rois=True, atlas='MDTB_10Regions'):
+def map_model_comparison(model_name, exp, method='subtract', colorbar=True, rois=True, atlas='MDTB_10Regions', save=True):
     """plot surface map for best model
     Args:
     """
@@ -233,12 +251,16 @@ def map_model_comparison(model_name, exp, method='subtract', colorbar=True, rois
 
     view = nio.view_cerebellum(fpath_gii[0], cscale=None, colorbar=colorbar)
 
+    if save:
+        dirs = const.Dirs()
+        plt.savefig(os.path.join(dirs.figure, f'{model_name}_model_comparison_{exp}_{method}.png'))
+
     if rois:
-        roi_summary(fpath=fpath_nii[0], atlas=atlas, plot=True)
+        roi_summary(fpath=fpath_nii[0], atlas=atlas)
     
     return view
 
-def map_weights(structure='cerebellum', exp='sc1', model_name='best_model', hemisphere='R', colorbar=False, cscale=None, rois=True, atlas='MDTB_10Regions'):
+def map_weights(structure='cerebellum', exp='sc1', model_name='best_model', hemisphere='R', colorbar=False, cscale=None, rois=True, atlas='MDTB_10Regions', save=True):
     """plot training weights for cortex or cerebellum
     Args: 
         gifti_func (str): '
@@ -264,11 +286,15 @@ def map_weights(structure='cerebellum', exp='sc1', model_name='best_model', hemi
     else:
         print("gifti must contain either cerebellum or cortex in name")
     
+    if save:
+        dirs = const.Dirs()
+        plt.savefig(os.path.join(dirs.figure, f'{model}_{structure}_{hemisphere}_weights_{exp}.png'))
+
     if (rois) & (structure=='cerebellum'):
-        roi_summary(fpath=os.path.join(fpath, f"group_weights_cerebellum.nii"), atlas=atlas, plot=True)
+        roi_summary(fpath=os.path.join(fpath, f"group_weights_cerebellum.nii"), atlas=atlas)
     return view
 
-def map_atlas(fpath, structure='cortex'):
+def map_atlas(fpath, structure='cortex', save=True):
     """General purpose function for plotting *.label.gii or *.func.gii parcellations (cortex or cerebellum)
     Args: 
         fpath (str): full path to atlas
@@ -285,6 +311,10 @@ def map_atlas(fpath, structure='cortex'):
         return nio.view_cortex(gifti=fpath)
     else:
         print('please provide a valid parcellation')
+    
+    if save:
+        dirs = const.Dirs()
+        plt.savefig(os.path.join(dirs.figure, f'{Path(fpath).stem}_{structure}.png'))
 
 def get_best_model(train_exp):
     """Get idx for best model based on either R_cv (or R_train)

@@ -32,6 +32,6 @@ def run(atlas, glm='glm7'):
                         group='mode',
                         nifti=True,
                         label_RGBA=rgba)
-                        
+
 if __name__ == "__main__":
     run()
