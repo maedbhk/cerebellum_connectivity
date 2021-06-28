@@ -1,11 +1,8 @@
 import os
-import sys
-import glob
 import numpy as np
-import json
+import time
 import deepdish as dd
 import pandas as pd
-import copy
 from collections import defaultdict
 from sklearn.model_selection import cross_val_score
 from sklearn.metrics import mean_squared_error
@@ -15,7 +12,6 @@ from connectivity import data as cdata
 import connectivity.constants as const
 import connectivity.model as model
 import connectivity.evaluation as ev
-import connectivity.nib_utils as nio
 
 import warnings
 
@@ -197,13 +193,17 @@ def train_models(config, save=False):
             if not isinstance(value, (list, dict)):
                 data.update({key: value})
 
-        for k, v in data.items():
-            train_all[k].append(v)
-
         # Save the fitted model to disk if required
         if save:
             fname = _get_model_name(train_name=config["name"], exp=config["train_exp"], subj_id=subj)
             dd.io.save(fname, models[-1], compression=None)
+
+            # add date/timestamp to dict (to keep track of models)
+            timestamp = time.ctime(os.path.getctime(fname))
+            data.update({'timestamp': timestamp})
+
+        for k, v in data.items():
+            train_all[k].append(v)
 
     return models, pd.DataFrame.from_dict(train_all)
 
@@ -293,6 +293,11 @@ def eval_models(config):
 
         # don't save voxel data to summary
         data = {k: v for k, v in data.items() if "vox" not in k}
+
+        # add model timestamp
+        # add date/timestamp to dict (to keep track of models)
+        timestamp = time.ctime(os.path.getctime(fname))
+        data.update({'timestamp': timestamp})
 
         # append data for each subj
         for k, v in data.items():
