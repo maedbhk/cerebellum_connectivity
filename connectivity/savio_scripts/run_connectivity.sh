@@ -23,16 +23,21 @@ export PYTHONPATH
 
 cd /global/scratch/maedbhking/projects/cerebellum_connectivity/connectivity/scripts
 
-# # atlases=(yeo7 yeo17 mdtb1002_007 mdtb1002_025 mdtb1002_050 mdtb1002_100 mdtb1002_150 mdtb1002_200)
-# atlases=(tessels0042 tessels0162 tessels0362 tessels0642 tessels1002)
-# models=(WTA ridge)
+# atlases=(yeo7 yeo17 mdtb1002_007 mdtb1002_025 mdtb1002_050 mdtb1002_100 mdtb1002_150 mdtb1002_200)
+atlases=(tessels0042 tessels0162 tessels0362 tessels0642 tessels1002)
+models=(WTA ridge)
 
-# # train models
-# for ((m=0; m<${#models[@]}; m++)); do \
-# for ((a=0; a<${#atlases[@]}; a++)); do \
-# python3 script_mk.py --cortex=${atlases[a]} --model_type=${models[m]} --train_or_eval="train"; done; done
+# train models
+for ((m=0; m<${#models[@]}; m++)); do \
+for ((a=0; a<${#atlases[@]}; a++)); do \
+python3 script_mk.py --cortex=${atlases[a]} --model_type=${models[m]} --train_or_eval="train"; done; done
 
-# # evaluate models
-# python3 script_mk.py --train_or_eval="eval"
+# evaluate models
+python3 script_mk.py --train_or_eval="eval"
 
-python3 script_timestamp.py
+# compare models
+python3 script_compare_models.py
+
+# run wta atlases
+for ((a=0; a<${#atlases[@]}; a++)); do \
+python3 script_atlas.py --atlas=${atlases[a]}; done
