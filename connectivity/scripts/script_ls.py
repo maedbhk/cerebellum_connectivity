@@ -578,14 +578,14 @@ def train_wnta(cortex = 'tessels0162',
                 config["name"] = name
                 config["model"] = "WNTA"
                 # config["param"] = {"n": n[i], "alpha":np.exp(logalpha[i])}
-                config["param"] = {"n": n[i], "alpha": np.exp(logalpha[i])}
+                config["param"] = {"n": n[i], "alpha": np.exp(logalpha[j])}
                 config["X_data"] = cortex
                 config["weighting"] = 2
                 config["train_exp"] = f"sc{e+1}"
                 config["subjects"] = sn
                 config["weighting"] = True
                 config["averaging"] = "sess"
-                # config["validate_model"] = True
+                config["validate_model"] = True
                 config["validate_model"] = False # no need to validate the model?!
                 config["cv_fold"] = 4 # other options: 'sess' or 'run' or None
                 config["mode"] = "crossed"
@@ -635,29 +635,31 @@ def eval_wnta(cortex = 'tessels0162',
     sn=const.return_subjs):
     d = const.Dirs()
     config = run.get_default_eval_config()
-    num_models = len(n)
+    num_logalpha = len(logalpha)
+    num_n = len(n)
     D = pd.DataFrame()
-    for i in range(num_models):
-        name = f"wnta_{cortex}_N{n[i]:.0f}_A{logalpha[i]:.0f}"
-        for e in range(2):
-            print(f"evaluating {name} - sc{e+1}")
-            config["name"] = name
-            config["model"] = "WNTA"
-            config["n"] = n[i]  # For recording in
-            config["logalpha"] = logalpha[i]  # For recording in
-            config["param"] = {"n": n[i], "alpha":np.exp(logalpha[i])}
-            config["X_data"] = cortex
-            config["weighting"] = 2
-            config["train_exp"] = f'sc{e + 1}'
-            config["eval_exp"] = f'sc{2 - e}'
-            config["subjects"] = sn
-            config["weighting"] = True
-            config["averaging"] = "sess"
-            config["save_maps"] = False
-   
-            # T = run.eval_models(config)
-            T, _ = run_connect.eval_models(config)
-            D = pd.concat([D, T], ignore_index=True)
+    for i in range(num_n):
+        for j in range(num_logalpha):
+            name = f"wnta_{cortex}_N{n[i]:.0f}_A{logalpha[j]:.0f}"
+            for e in range(2):
+                print(f"evaluating {name} - sc{e+1}")
+                config["name"] = name
+                config["model"] = "WNTA"
+                config["n"] = n[i]  # For recording in
+                config["logalpha"] = logalpha[i]  # For recording in
+                config["param"] = {"n": n[i], "alpha":np.exp(logalpha[j])}
+                config["X_data"] = cortex
+                config["weighting"] = 2
+                config["train_exp"] = f'sc{e + 1}'
+                config["eval_exp"] = f'sc{2 - e}'
+                config["subjects"] = sn
+                config["weighting"] = True
+                config["averaging"] = "sess"
+                config["save_maps"] = False
+    
+                # T = run.eval_models(config)
+                T, _ = run_connect.eval_models(config)
+                D = pd.concat([D, T], ignore_index=True)
 
     # check if dataframe already exists
     if os.path.exists(d.conn_eval_dir / f"Wnta_{cortex}.dat"):
