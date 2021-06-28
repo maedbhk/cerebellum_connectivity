@@ -7,10 +7,10 @@ import connectivity.nib_utils as nio
 from connectivity import make_atlas
 
 @click.command()
-@click.option("--glm")
 @click.option("--atlas")
+@click.option("--glm")
 
-def run(glm, atlas):
+def run(atlas, glm='glm7'):
     labels = {}
     # loop over exp
     for exp in ['sc1', 'sc2']:
@@ -32,5 +32,6 @@ def run(glm, atlas):
                         group='mode',
                         nifti=True,
                         label_RGBA=rgba)
+                        
 if __name__ == "__main__":
     run()
