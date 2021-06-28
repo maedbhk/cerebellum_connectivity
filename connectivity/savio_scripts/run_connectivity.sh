@@ -12,7 +12,7 @@
 #SBATCH --qos=savio_normal
 #
 # Wall clock limit:
-#SBATCH --time=30:00:00
+#SBATCH --time=01:00:00
 #
 ## Command(s) to run:
 module load python/3.7
@@ -43,3 +43,4 @@ python3 script_compare_models.py
 atlases=(mdtb_wb_007 mdtb_wb_025)
 for ((a=0; a<${#atlases[@]}; a++)); do \
 python3 script_atlas.py --atlas=${atlases[a]}; done
+
