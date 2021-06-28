@@ -1,5 +1,6 @@
 from operator import index
 import os
+import time
 import numpy as np
 import pandas as pd
 import quadprog as qp
@@ -9,6 +10,7 @@ from sklearn.base import BaseEstimator
 from sklearn.linear_model import LinearRegression
 from sklearn.linear_model import Ridge
 from sklearn.linear_model import Lasso
+from sklearn.linear_model import LassoCV
 from sklearn.linear_model import ElasticNet
 from sklearn.decomposition import PCA
 from sklearn.cross_decomposition import PLSRegression
@@ -123,84 +125,117 @@ class WTA(LinearRegression, ModelMixin):
 
 class WNTA(Ridge, ModelMixin):
     """
-    from sklearn documentation: https://scikit-learn.org/stable/modules/generated/sklearn.feature_selection.SequentialFeatureSelector.html
-    This Sequential Feature Selector adds (forward selection) or removes (backward selection) features 
-    to form a feature subset in a greedy fashion. At each stage, this estimator chooses the best feature
-    to add or remove based on the cross-validation score of the estimator (here the estimator is a linear regression class).
-
-    can be used to fit winner-take-all (set n = 1 (default)) and winner-n-take-all
+    1. Selecting cortical tessels/parcels/voxels that best predict one cerebellar voxel (using forward stepwise regression)
+    2. use those cotrical tessels to do a regression for each voxel
+    
     """
-
-    def __init__(self, alpha, positive = False, n = 1):
+    def __init__(self, alpha = 1, n=1 , positive = False):
         """
         defines a forward sequential feature selector
         """
         self.n = n
         # defining a feature selector object (with forward selection)
-        self.selector = SequentialFeatureSelector(LinearRegression(fit_intercept=False), n_features_to_select=self.n)
-        super(Ridge, self).__init__(alpha=alpha, fit_intercept=False)
+        # super(Lasso, self).__init__(alpha = alpha_lasso, fit_intercept= False, max_iter=1000)
+        super(Ridge, self).__init__(alpha = alpha, fit_intercept= False)
         self.positive = positive
+        self.alpha = alpha
+
+
+        self.t0 = time.time()
+        self.t0 = time.ctime(self.t0)
+
+
+        print(f"started fitting at {self.t0}")
+        
+
+    def forward_selection(self, X, Y, vox):
+        """
+        1. start with evaluation of individual features
+        2. select the one feature that results in the best performance
+            ** what is the best? That depends on the selected evaluation criteria (in this case it can be R)
+        3. Consider all the possible combinations of the selected feature and another feature and select the best combination
+        4. Repeat 1 to 3 untill you have the desired number of features
+
+        Args: 
+        X(np.ndarray)   -    design matrix   
+        Y(np.ndarray)   -    response variables
+        n(int)          -    number of features to select
+        """
+
+        # 1. starting with an empty list: the list will be filled with best features eventual
+        self.selected = [] # list containing selected features
+        remaining = list(range(X.shape[1])) # list containing features that are to be examined
+
+        # 2. loop over features
+        while (remaining) and (len(self.selected)< self.n): # while remaining is not empty and n features are not selected 
+            scores = pd.Series(np.empty((len(remaining))), index=remaining) # the scores will be stored in this series
+            for i in remaining:        
+                feats = self.selected +[i] # list containing the current features
+                # fit the model
+                ## get the features from X
+                X_feat = X[:, list(feats)]
+
+                ## scale X_feat
+                scale_ = np.sqrt(np.nansum(X_feat ** 2, 0) / X_feat.shape[0])
+                Xs = X_feat / scale_
+                Xs = np.nan_to_num(Xs) # there are 0 values after scaling
+
+                ## fit the model
+                model = LinearRegression(fit_intercept=False).fit(Xs, Y)
+                ## get the score
+                score_i, _    = ev.calculate_R(Y, model.predict(Xs))
+                scores.loc[i] = score_i
+
+            # find the feature/feature combination with the best score and add it to the selected features
+            best = scores.idxmax()
+            self.selected.append(best)
+            # update remaining
+            ## remove the selected feature from remaining
+            remaining.remove(best)
+        return
         
     def fit(self, X, Y):
-        self.scale_ = np.sqrt(np.sum(X ** 2, 0) / X.shape[0])
-        Xs = X / self.scale_
-        Xs = np.nan_to_num(Xs) # there are 0 values after scaling
-        ## fit and return the selected features (cortical parcels)
-        Xs = self.selector.fit_transform(Xs, Y)
-        ## do a ridge regression with the selected cortical tessels
-        super(Ridge, self).fit(Xs, Y)
+
+        # get the scaling
+        self.scale_ = np.sqrt(np.nansum(X ** 2, 0) / X.shape[0])
+
+        # looping over cerebellar voxels
+        num_vox = Y.shape[1]
+        wnta_coef = np.zeros((Y.shape[1], X.shape[1]))
+        
+        for vox in range(num_vox):
+            # print(f"{vox}.", end = "", flush = True)
+            ## get current voxel 
+            y = Y[:, vox]
+
+            if np.any(y): # there are voxels with all zeros. Those voxels are skipped and the corresponding coef will be 0
+                ## use forward selection method to get the best features for each cerebellar voxel
+                ### creates self.selected
+                self.forward_selection(X, y, vox)
+
+                ## use the selected featuers to do a ridge regression 
+                X_selected = X[:, self.selected]
+                ### scale X_selected
+                scale_ = np.sqrt(np.nansum(X_selected ** 2, 0) / X_selected.shape[0])
+                Xs = X_selected / scale_
+                Xs = np.nan_to_num(Xs) # there are 0 values after scaling
+
+                super(Ridge, self).fit(Xs, y)
+
+                # fill in the elements of the coef
+                wnta_coef[vox, self.selected] = self.coef_
+
+        self.t1 = time.time()
+        self.t1 = time.ctime(self.t1)
+        print(f"fitting finished at {self.t1}")
+        print(f"fitting took {self.t1 - self.t0} seconds")
+        self.coef_ = wnta_coef
+
         return self.coef_
 
     def predict(self, X):
         Xs = X / self.scale_
         Xs = np.nan_to_num(Xs) # there are 0 values after scaling
-        # just get the selected features
-        Xs = self.selector.transform(Xs)
-        return Xs @ self.coef_.T  # weights need to be transposed (throws error otherwise)
-
-class WNTA2(LinearRegression, Ridge, ModelMixin):
-
-    """
-    from sklearn documentation:
-    Feature ranking with recursive feature elimination and cross-validated selection of the best number of features.
-    """
-
-    def __init__(self, alpha, positive = False, n = 1):
-        """
-        defines a forward sequential feature selector
-        """
-        self.n = n
-        # defining a feature selector object (with forward selection)
-        
-        super(Ridge, self).__init__(alpha=alpha, fit_intercept=False)
-        self.positive = positive
-        
-    def fit(self, X, Y):
-
-        self.scale_ = np.sqrt(np.sum(X ** 2, 0) / X.shape[0])
-        Xs = X / self.scale_
-        Xs = np.nan_to_num(Xs) # there are 0 values after scaling
-        ## recursive feature selection with cross validation.
-        ### returns the selected features that resulted in the highest cv score
-        self.selector = RFECV(LinearRegression(fit_intercept=False))
-        self.selector.fit(Xs, Y)
-
-        # attributes of the selector:
-        # ranking_ : returns ranking of the features
-        # support_ : returns True for selected features, False otherwise
-
-        Xs = self.selector.transform(Xs)   # getting the selected features
-        self.n_selected_feat = self.selector.n_features_ # how many features were selected
-        self.selected_feat   = range(X.shape)[self.selector.support_] # what are the selected features
-        ## do a ridge regression with the selected cortical tessels
-        super(Ridge, self).fit(Xs, Y)
-        return self.coef_
-
-    def _predict(self, X):
-        Xs = X / self.scale_
-        Xs = np.nan_to_num(Xs) # there are 0 values after scaling
-        # just get the selected features
-        Xs = self.selector.transform(Xs)
         return Xs @ self.coef_.T  # weights need to be transposed (throws error otherwise)
 
 class NNLS(BaseEstimator, ModelMixin):
