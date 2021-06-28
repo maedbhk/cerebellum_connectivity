@@ -576,7 +576,7 @@ def train_wnta(cortex = 'tessels0162',
             for e in range(2):
                 print(f"Doing {name} - {cortex} sc{e+1}")
                 config["name"] = name
-                config["model"] = "WNTA4"
+                config["model"] = "WNTA"
                 # config["param"] = {"n": n[i], "alpha":np.exp(logalpha[i])}
                 config["param"] = {"n": n[i], "alpha": np.exp(logalpha[i])}
                 config["X_data"] = cortex
