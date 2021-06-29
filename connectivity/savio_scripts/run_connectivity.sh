@@ -25,13 +25,13 @@ cd /global/scratch/maedbhking/projects/cerebellum_connectivity/connectivity/scri
 
 # atlases=(yeo7 yeo17 mdtb1002_007 mdtb1002_025 mdtb1002_050 mdtb1002_100 mdtb1002_150 mdtb1002_200)
 # atlases=(tessels0042 tessels0162 tessels0362 tessels0642 tessels1002)
-atlases=(mdtb_wb_007 mdtb_wb_025 arslan_50 arslan_100 arslan_200 arslan_250)
-models=(WTA ridge)
+# atlases=(mdtb_wb_007 mdtb_wb_025 arslan_50 arslan_100 arslan_200 arslan_250)
+# models=(WTA ridge)
 
-# train models
-for ((m=0; m<${#models[@]}; m++)); do \
-for ((a=0; a<${#atlases[@]}; a++)); do \
-python3 script_mk.py --cortex=${atlases[a]} --model_type=${models[m]} --train_or_eval="train"; done; done
+# # train models
+# for ((m=0; m<${#models[@]}; m++)); do \
+# for ((a=0; a<${#atlases[@]}; a++)); do \
+# python3 script_mk.py --cortex=${atlases[a]} --model_type=${models[m]} --train_or_eval="train"; done; done
 
 # evaluate models
 python3 script_mk.py --train_or_eval="eval"
@@ -39,8 +39,8 @@ python3 script_mk.py --train_or_eval="eval"
 # compare models
 python3 script_compare_models.py
 
-# run wta atlases
-atlases=(mdtb_wb_007 mdtb_wb_025)
-for ((a=0; a<${#atlases[@]}; a++)); do \
-python3 script_atlas.py --atlas=${atlases[a]}; done
+# # run wta atlases
+# atlases=(mdtb_wb_007 mdtb_wb_025)
+# for ((a=0; a<${#atlases[@]}; a++)); do \
+# python3 script_atlas.py --atlas=${atlases[a]}; done
 
