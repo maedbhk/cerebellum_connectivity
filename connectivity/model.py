@@ -129,7 +129,7 @@ class WNTA(Ridge, ModelMixin):
     2. use those cotrical tessels to do a regression for each voxel
     
     """
-    def __init__(self, alpha = 1, n=1 , positive = False):
+    def __init__(self, alpha = 1, n=1 , positive = False, feature_mask = []):
         """
         defines a forward sequential feature selector
         """
@@ -139,16 +139,16 @@ class WNTA(Ridge, ModelMixin):
         super(Ridge, self).__init__(alpha = alpha, fit_intercept= False)
         self.positive = positive
         self.alpha = alpha
+        self.feature_mask = feature_mask
 
 
         self.t0 = time.time()
         self.t0 = time.ctime(self.t0)
 
 
-        print(f"started fitting at {self.t0}")
-        
+        print(f"started fitting at {self.t0}")        
 
-    def forward_selection(self, X, Y, vox):
+    def forward_selection(self, X, Y, included):
         """
         1. start with evaluation of individual features
         2. select the one feature that results in the best performance
@@ -163,14 +163,15 @@ class WNTA(Ridge, ModelMixin):
         """
 
         # 1. starting with an empty list: the list will be filled with best features eventual
-        self.selected = [] # list containing selected features
+        # self.selected = [] # list containing selected features
         remaining = list(range(X.shape[1])) # list containing features that are to be examined
 
         # 2. loop over features
-        while (remaining) and (len(self.selected)< self.n): # while remaining is not empty and n features are not selected 
+        while (remaining) and (len(included)< self.n): # while remaining is not empty and n features are not selected 
             scores = pd.Series(np.empty((len(remaining))), index=remaining) # the scores will be stored in this series
-            for i in remaining:        
-                feats = self.selected +[i] # list containing the current features
+            for i in remaining:    
+                # print(i)    
+                feats = included +[i] # list containing the current features
                 # fit the model
                 ## get the features from X
                 X_feat = X[:, list(feats)]
@@ -184,51 +185,84 @@ class WNTA(Ridge, ModelMixin):
                 model = LinearRegression(fit_intercept=False).fit(Xs, Y)
                 ## get the score
                 score_i, _    = ev.calculate_R(Y, model.predict(Xs))
+                # print(score_i)
                 scores.loc[i] = score_i
 
             # find the feature/feature combination with the best score and add it to the selected features
             best = scores.idxmax()
-            self.selected.append(best)
+            included.append(int(best))
+            # selected.vstack([selected, int(best)])
             # update remaining
             ## remove the selected feature from remaining
             remaining.remove(best)
-        return
+        # print(f"in forward: {included}")
+        return included
         
     def fit(self, X, Y):
-
+        """
+        feature_mask is a numpy array (#cerebellar voxel-by-#cortical parcel)
+        with 1s for the selected feature for each voxel and 0s otherwise
+        the default is an empty list which will be set in the fit routine
+        """
         # get the scaling
         self.scale_ = np.sqrt(np.nansum(X ** 2, 0) / X.shape[0])
 
         # looping over cerebellar voxels
         num_vox = Y.shape[1]
         wnta_coef = np.zeros((Y.shape[1], X.shape[1]))
-        
+
+        if not self.feature_mask: # if the mask is empty, initialize it to be all zeros
+            self.feature_mask = np.zeros((Y.shape[1], X.shape[1]))
+
         for vox in range(num_vox):
+            selected = []
+            # print(f"initial selected {selected}")
+            # print(f"vox {vox}")
             # print(f"{vox}.", end = "", flush = True)
             ## get current voxel 
             y = Y[:, vox]
 
             if np.any(y): # there are voxels with all zeros. Those voxels are skipped and the corresponding coef will be 0
                 ## use forward selection method to get the best features for each cerebellar voxel
-                ### creates self.selected
-                self.forward_selection(X, y, vox)
+                # get the selected features for each cerebellar voxel based off of feature_mask
+                # print(selected)
+                if selected:
+                    # print("here")
+                    selected = np.argwhere(self.feature_mask[vox, :] == 1)[0] # get the selected features
+                    
+                else:
+                    # print("here2")
+                    selected = []
+
+                a = self.forward_selection(X, y, selected)
+                # print(f"a {a}")
+                # print(f"len a {len(a)}")
+                # print(f"selected before: {selected}")
+                selected.append(a[0])
+                # print(f"len selected after {len(selected)}")
+                # print(f"selected after: {selected}")
+                
+                # update the feature mask
+                self.feature_mask[vox, selected] = 1
 
                 ## use the selected featuers to do a ridge regression 
-                X_selected = X[:, self.selected]
+                X_selected = X[:, selected]
+
                 ### scale X_selected
                 scale_ = np.sqrt(np.nansum(X_selected ** 2, 0) / X_selected.shape[0])
                 Xs = X_selected / scale_
                 Xs = np.nan_to_num(Xs) # there are 0 values after scaling
 
+                # print(f"doing ridge regression")
                 super(Ridge, self).fit(Xs, y)
 
                 # fill in the elements of the coef
-                wnta_coef[vox, self.selected] = self.coef_
+                wnta_coef[vox, selected] = self.coef_
 
         self.t1 = time.time()
         self.t1 = time.ctime(self.t1)
-        print(f"fitting finished at {self.t1}")
-        print(f"fitting took {self.t1 - self.t0} seconds")
+        print(f"\nfitting finished at {self.t1}")
+        # print(f"fitting took {self.t1 - self.t0} seconds")
         self.coef_ = wnta_coef
 
         return self.coef_
