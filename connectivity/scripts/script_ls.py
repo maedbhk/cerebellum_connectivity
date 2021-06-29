@@ -1,4 +1,5 @@
 # import libraries
+from connectivity.scratch_model import ModelMixin
 import os, shutil
 # import click
 import numpy as np
@@ -145,10 +146,10 @@ def train_pls(
 
     config = run.get_default_train_config()
     num_models = len(n_components)
-
-    for e in range(2):
+    df_all = pd.DataFrame()
+    for i in range(num_models):
         # df_all = pd.DataFrame()
-        for i in range(num_models):
+        for e in range(2):
             name = f"pls_{cortex}_N{n_components[i]}"
 
             print(f"Doing {name} - {cortex} sc{e+1}")
@@ -168,7 +169,19 @@ def train_pls(
             config["hyperparameter"] = f"{n_components[i]:.0f}"
       
             # Model = run.train_models(config, save=True)
-            Model = run_connect.train_models(config, save=True)
+            Model, df = run_connect.train_models(config, save=True)
+
+            df_all = pd.concat([df_all, df])
+
+
+        # save out train summary
+        dirs = const.Dirs(exp_name=config["train_exp"])
+        fpath = os.path.join(dirs.conn_train_dir, "train_summary.csv")
+
+        if os.path.isfile(fpath):
+            df_all = pd.concat([df_all, pd.read_csv(fpath)])
+        # save out train summary
+        df_all.to_csv(fpath, index=False)
                    
     return
 # eval pls models
@@ -446,9 +459,10 @@ def train_ridge(
     ):
     config = run.get_default_train_config()
     num_models = len(logalpha)
-    for i in range(num_models):
-        name = f"ridge_{cortex}_A{logalpha[i]:.0f}"
-        for e in range(2):
+    df_all = pd.DataFrame()
+    for e in range(2):
+        for i in range(num_models):
+            name = f"ridge_{cortex}_A{logalpha[i]:.0f}"
             print(f"Doing {name} - {cortex} sc{e+1}")
             config["name"] = name
             config["param"] = {"alpha": np.exp(logalpha[i])}
@@ -465,7 +479,19 @@ def train_ridge(
             config["mode"] = "crossed"
             config["hyperparameter"] = f"{logalpha[i]:.0f}"
             # Model = run.train_models(config, save=True)
-            Model = run_connect.train_models(config, save=True)
+            Model, df = run_connect.train_models(config, save=True)
+            df_all = pd.concat([df_all, df])
+            print(df)
+
+
+        # save out train summary
+        dirs = const.Dirs(exp_name=config["train_exp"])
+        fpath = os.path.join(dirs.conn_train_dir, "train_summary.csv")
+
+        if os.path.isfile(fpath):
+            df_all = pd.concat([df_all, pd.read_csv(fpath)])
+        # save out train summary
+        df_all.to_csv(fpath, index=False)
 # eval ridge models    
 def eval_ridge(cortex = 'tessels0162', 
     logalpha = [-2], 
@@ -508,9 +534,11 @@ def train_lasso(
     ):
     config = run.get_default_train_config()
     num_models = len(logalpha)
-    for i in range(num_models):
-        name = f"lasso_{cortex}_A{logalpha[i]:.0f}"
-        for e in range(2):
+    df_all = pd.DataFrame()
+    for e in range(2):
+        
+        for i in range(num_models):
+            name = f"lasso_{cortex}_A{logalpha[i]:.0f}"
             print(f"Doing {name} - {cortex} sc{e+1}")
             config["name"] = name
             config["model"] = "LASSO"
@@ -527,7 +555,19 @@ def train_lasso(
             config["mode"] = "crossed"
             config["hyperparameter"] = f"{logalpha[i]:.0f}"
             # Model = run.train_models(config, save=True)
-            Model = run_connect.train_models(config, save=True)
+            Model, df = run_connect.train_models(config, save=True)
+            df_all = pd.concat([df_all, df])
+            # print(df)
+
+
+        # save out train summary
+        dirs = const.Dirs(exp_name=config["train_exp"])
+        fpath = os.path.join(dirs.conn_train_dir, "train_summary.csv")
+
+        if os.path.isfile(fpath):
+            df_all = pd.concat([df_all, pd.read_csv(fpath)])
+        # save out train summary
+        df_all.to_csv(fpath, index=False)
 # eval lasso models
 def eval_lasso(cortex = 'tessels0162', 
     logalpha = [-2], 
@@ -570,28 +610,45 @@ def train_wnta(cortex = 'tessels0162',
     config = run.get_default_train_config()
     num_logalpha = len(logalpha)
     num_n = len(n)
-    for i in range(num_n):
+    for e in range(2):
         for j in range(num_logalpha):
-            name = f"wnta4_{cortex}_N{n[i]:.0f}_A{logalpha[j]:.0f}"
-            for e in range(2):
+            for i in range(num_n):
+
+                if n[i] == 1:
+                    selected_features = []
+                else:
+                    # check if the model with n before the current n has been run
+                    pass
+                name = f"wnta4_{cortex}_N{n[i]:.0f}_A{logalpha[j]:.0f}"
                 print(f"Doing {name} - {cortex} sc{e+1}")
                 config["name"] = name
                 config["model"] = "WNTA"
                 # config["param"] = {"n": n[i], "alpha":np.exp(logalpha[i])}
-                config["param"] = {"n": n[i], "alpha": np.exp(logalpha[j])}
+                config["param"] = {"n": n[i], "alpha": np.exp(logalpha[j]), "feature_mask": selected_features}
                 config["X_data"] = cortex
                 config["weighting"] = 2
                 config["train_exp"] = f"sc{e+1}"
                 config["subjects"] = sn
                 config["weighting"] = True
                 config["averaging"] = "sess"
-                config["validate_model"] = True
-                config["validate_model"] = False # no need to validate the model?!
+                config["validate_model"] = False
                 config["cv_fold"] = 4 # other options: 'sess' or 'run' or None
                 config["mode"] = "crossed"
                 # config["hyperparameter"] = f"{n[j]:.0f}"
                 # Model = run.train_models(config, save=True)
-                Model = run_connect.train_models(config, save=True)
+                Model, df = run_connect.train_models(config, save=True)
+
+                print(Model[0].featuer_mask.shape)
+                selected_features = Model[0].feature_mask
+
+        # save out train summary
+        dirs = const.Dirs(exp_name=config["train_exp"])
+        fpath = os.path.join(dirs.conn_train_dir, "train_summary.csv")
+
+        if os.path.isfile(fpath):
+            df_all = pd.concat([df_all, pd.read_csv(fpath)])
+        # save out train summary
+        df_all.to_csv(fpath, index=False)
 
 def train_wnta3(cortex = 'tessels0162', 
     n = [1], 
