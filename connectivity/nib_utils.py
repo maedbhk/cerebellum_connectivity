@@ -15,7 +15,13 @@ from nilearn.surface import load_surf_data
 import connectivity.constants as const
 from connectivity import data as cdata
 
-def make_label_gifti_cortex(data, anatomical_struct='CortexLeft', label_names=None, column_names=None, label_RGBA=None):
+def make_label_gifti_cortex(
+    data, 
+    anatomical_struct='CortexLeft', 
+    label_names=None,
+    column_names=None, 
+    label_RGBA=None
+    ):
     """
     Generates a label GiftiImage from a numpy array
        @author joern.diedrichsen@googlemail.com, Feb 2019 (Python conversion: switt)
@@ -100,7 +106,11 @@ def make_label_gifti_cortex(data, anatomical_struct='CortexLeft', label_names=No
     gifti.labeltable.labels.extend(E_all)
     return gifti
 
-def make_func_gifti_cortex(data, anatomical_struct='CortexLeft', column_names=None):
+def make_func_gifti_cortex(
+    data, 
+    anatomical_struct='CortexLeft', 
+    column_names=None
+    ):
     """
     Generates a function GiftiImage from a numpy array
        @author joern.diedrichsen@googlemail.com, Feb 2019 (Python conversion: switt)
@@ -151,7 +161,9 @@ def make_func_gifti_cortex(data, anatomical_struct='CortexLeft', column_names=No
 
     return gifti
 
-def get_label_colors(fpath):
+def get_label_colors(
+    fpath
+    ):
     """get rgba for atlas (given by fpath)
 
     Args: 
@@ -168,14 +180,15 @@ def get_label_colors(fpath):
     for i,label in enumerate(labels):
         rgba[i,] = labels[i].rgba
 
-    cmap = LinearSegmentedColormap.from_list('mylist', rgba)
     cmap = LinearSegmentedColormap.from_list('mylist', rgba, N=len(rgba))
     mpl.cm.register_cmap("mycolormap", cmap)
     cpal = sns.color_palette("mycolormap", n_colors=len(rgba))
 
-    return rgba, cpal
+    return rgba, cpal, cmap
 
-def get_gifti_labels(fpath):
+def get_gifti_labels(
+    fpath
+    ):
     """get gifti labels for `img`
 
     Args: 
@@ -190,7 +203,10 @@ def get_gifti_labels(fpath):
 
     return list(labels)
 
-def binarize_vol(imgs, metric='max'):
+def binarize_vol(
+    imgs, 
+    metric='max'
+    ):
     """Binarizes niftis for `imgs` based on `metric`
     Args: 
         imgs (list of nib obj or list of str): list of nib objects or fullpath to niftis
@@ -216,7 +232,9 @@ def binarize_vol(imgs, metric='max'):
 
     return nib_obj[0]
 
-def subtract_vol(imgs):
+def subtract_vol(
+    imgs
+    ):
     """Binarizes niftis for `imgs` based on `metric`
     Args: 
         imgs (list of nib obj or list of str): list of nib objects or fullpath to niftis
@@ -251,7 +269,8 @@ def get_cortical_atlases():
     fpath = os.path.join(dirs.reg_dir, 'data', 'group')
     for path in list(Path(fpath).rglob('*.label.gii')):
         # if any(atlas_key in str(path) for atlas_key in atlas_keys):
-        fpaths.append(str(path))
+        path = str(path)
+        fpaths.append(path)
         atlas = path[0].split('/')[-1].split('.')[0]
         atlases.append(atlas)
 
@@ -274,7 +293,12 @@ def get_cerebellar_atlases():
     
     return fpaths, atlases
 
-def view_cerebellum(gifti, cscale=None, colorbar=True, title=True):
+def view_cerebellum(
+    gifti, 
+    cscale=None, 
+    colorbar=True, 
+    title=True
+    ):
     """Visualize data on suit flatmap, plots either *.func.gii or *.label.gii data
 
     Args: 
@@ -300,7 +324,16 @@ def view_cerebellum(gifti, cscale=None, colorbar=True, title=True):
 
     return view
 
-def view_cortex(gifti, hemisphere='R', cmap=None, cscale=None, atlas_type='inflated', symmetric_cmap=False, orientation='medial'):
+def view_cortex(
+    gifti, 
+    hemisphere='R', 
+    cmap=None, 
+    cscale=None, 
+    atlas_type='inflated', 
+    symmetric_cmap=False, 
+    orientation='medial', 
+    title=True
+    ):
     """Visualize data on inflated cortex, plots either *.func.gii or *.label.gii data
 
     Args: 
@@ -325,6 +358,10 @@ def view_cortex(gifti, hemisphere='R', cmap=None, cscale=None, atlas_type='infla
     if ('.func.' in gifti and cscale is None):
         cscale = [np.nanmin(func_data), np.nanmax(func_data)]
 
+    fname = None
+    if title:
+        fname = Path(gifti).name
+
     if '.func.' in gifti:
         view = view_surf(surf_mesh=surf_mesh, 
                         surf_map=func_data,
@@ -332,14 +369,14 @@ def view_cortex(gifti, hemisphere='R', cmap=None, cscale=None, atlas_type='infla
                         vmax=cscale[1],
                         cmap='CMRmap',
                         symmetric_cmap=symmetric_cmap,
-                        # title=title
+                        title=title
                         ) 
     elif '.label.' in gifti:   
         if hemisphere=='L':
             orientation = 'lateral'
         if cmap is None:
-            _, cmap = get_label_colors(fpath=gifti)
-        view = plot_surf_roi(surf_mesh, gifti, cmap=cmap, view=orientation)    
+            _, _, cmap = get_label_colors(fpath=gifti)
+        view = plot_surf_roi(surf_mesh, gifti, cmap=cmap, view=orientation, title=title)   
     
     return view
     

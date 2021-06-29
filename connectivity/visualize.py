@@ -17,22 +17,23 @@ import connectivity.nib_utils as nio
 plt.rcParams["axes.grid"] = False
 
 def train_summary(
-    summary_name="train_summary"
+    summary_name="train_summary",
+    exps=['sc1']
     ):
     """load train summary containing all metrics about training models.
     Summary across exps is concatenated and prefix 'train' is appended to cols.
     Args:
         summary_name (str): name of summary file
+        exps (list of str): default is ['sc1', 'sc2']
     Returns:
         pandas dataframe containing concatenated exp summary
     """
     # look at model summary for train results
     df_concat = pd.DataFrame()
-    for exp in ["sc1", "sc2"]:
+    for exp in exps:
         dirs = const.Dirs(exp_name=exp)
         fpath = os.path.join(dirs.conn_train_dir, f"{summary_name}.csv")
         df = pd.read_csv(fpath)
-        # df['train_exp'] = exp
         df_concat = pd.concat([df_concat, df])
 
     # rename cols
@@ -48,18 +49,20 @@ def train_summary(
     return df_concat
 
 def eval_summary(
-    summary_name="eval_summary"
+    summary_name="eval_summary",
+    exps=['sc2']
     ):
     """load eval summary containing all metrics about eval models.
     Summary across exps is concatenated and prefix 'eval' is appended to cols.
     Args:
         summary_name (str): name of summary file
+        exps (list of str): default is ['sc1', 'sc2']
     Returns:
         pandas dataframe containing concatenated exp summary
     """
     # look at model summary for eval results
     df_concat = pd.DataFrame()
-    for exp in ["sc1", "sc2"]:
+    for exp in exps:
         dirs = const.Dirs(exp_name=exp)
         fpath = os.path.join(dirs.conn_eval_dir, f"{summary_name}.csv")
         df = pd.read_csv(fpath)
@@ -73,12 +76,16 @@ def eval_summary(
             cols.append("eval_" + col)
 
     df_concat.columns = cols
+    df_concat['eval_model'] = df_concat['eval_name'].str.split('_').str[0]
+
+    # get noise ceilings
+    df_concat["eval_noiseceiling_Y"] = np.sqrt(df_concat.eval_noise_Y_R)
+    df_concat["eval_noiseceiling_XY"] = np.sqrt(df_concat.eval_noise_Y_R) * np.sqrt(df_concat.eval_noise_X_R)
 
     return df_concat
 
-def plot_train_predictions(
-    dataframe, 
-    exp='sc1', 
+def plot_train_predictions( 
+    exps=['sc1'], 
     x='train_name', 
     hue=None, 
     x_order=None, 
@@ -89,12 +96,14 @@ def plot_train_predictions(
     ):
     """plots training predictions (R CV) for all models in dataframe.
     Args:
-        dataframe (pandas dataframe): must contain 'train_name' and 'train_R_cv'
+        exps (list of str): default is ['sc1']
         hue (str or None): can be 'train_exp', 'Y_data' etc.
     """
+    # get train summary
+    dataframe = train_summary(exps=exps)
+
     # filter data
-    dataframe = dataframe[dataframe['train_model'].isin(
-                methods)].query(f'train_exp=="{exp}"')
+    dataframe = dataframe[dataframe['train_model'].isin(methods)]
 
     if (best_models):
         # get best model for each method
@@ -117,72 +126,91 @@ def plot_train_predictions(
 
     if save:
         dirs = const.Dirs()
-        plt.savefig(os.path.join(dirs.figure, f'train_predictions_{exp}.png'))
+        exp_fname = '_'.join(exps)
+        plt.savefig(os.path.join(dirs.figure, f'train_predictions_{exp_fname}.png'))
 
 def plot_eval_predictions(
-    dataframe, 
-    exp='sc2', 
-    x='eval_name', 
+    exps=['sc2'], 
+    x='eval_X_data', 
     hue=None, 
     x_order=None, 
     hue_order=None, 
-    save=True
+    save=True,
+    methods=['ridge', 'WTA'],
+    noiseceiling=True
     ):
     """plots training predictions (R CV) for all models in dataframe.
     Args:
-        dataframe (pandas dataframe): must contain 'train_name' and 'train_R_cv'
+        exps (list of str): default is ['sc2']
         hue (str or None): can be 'train_exp', 'Y_data' etc.
     """
+
+    dataframe = eval_summary(exps=exps)
+
+    # filter out methods
+    dataframe = dataframe[dataframe['eval_model'].isin(methods)]
+
+    # melt data into one column for easy plotting
+    cols = ["eval_noiseceiling_Y", "eval_noiseceiling_XY", "R_eval"]
+    df = pd.melt(dataframe, value_vars=cols, id_vars=set(dataframe.columns) - set(cols)).rename(
+        {"variable": "data_type", "value": "data"}, axis=1)
     
     # R
-    sns.factorplot(x=x, y="R_eval", hue=hue, data=dataframe.query(f'eval_exp=="{exp}"'), order=x_order, hue_order=hue_order, legend=False, ci=None, size=4, aspect=2)
+    sns.factorplot(x=x, y="R_eval", hue=hue, data=dataframe, order=x_order, hue_order=hue_order, style=hue, legend=False, ci=None, size=4, aspect=2)
     plt.title("Model Evaluation", fontsize=20)
     plt.tick_params(axis="both", which="major", labelsize=15)
     plt.xticks(rotation="45", ha="right")
     plt.xlabel("")
     plt.ylabel("R", fontsize=20)
     plt.legend(fontsize=15, bbox_to_anchor=(1.05, 1), loc='upper left')
-    plt.show()
 
+    if noiseceiling:
+        ax = sns.lineplot(x=x, y='eval_noiseceiling_Y', data=dataframe, color='k')
+        ax.lines[-1].set_linestyle("--")
+        sns.lineplot(x=x, y='eval_noiseceiling_XY', data=dataframe, color='k')
+        plt.xlabel("")
+
+    plt.show()
     if save:
         dirs = const.Dirs()
-        plt.savefig(os.path.join(dirs.figure, f'eval_predictions_{exp}.png'))
+        exp_fname = '_'.join(exps)
+        plt.savefig(os.path.join(dirs.figure, f'eval_predictions_{exp_fname}.png'))
 
 def plot_best_eval(
-    dataframe, 
-    exp="sc1", 
+    exps=['sc2'],
     save=True
     ):
     """plots evaluation predictions (R eval) for best model in dataframe for 'sc1' or 'sc2'
     Also plots model-dependent and model-independent noise ceilings.
     Args:
-        dataframe (pandas dataframe): must contain 'train_name' and 'train_R_cv'
-        exp (str): either 'sc1' or 'sc2'
+        exps (list of str): default is ['sc2']
         hue (str or None): default is 'eval_name'
     """
-    # get best model (from train CV)
-    best_model,_ = get_best_model(train_exp=exp)
+    # get evaluation dataframe
+    dataframe = eval_summary(exps=exps)
 
-    if exp is "sc1":
-        eval_exp = "sc2"
-    else:
-        eval_exp = "sc1"
+    dataframe_all = pd.DataFrame()
+    for exp in exps:
 
-    dataframe = dataframe.query(f'eval_exp=="{eval_exp}" and eval_name=="{best_model}"')
+        if exp is "sc1":
+            train_exp = "sc2"
+        else:
+            train_exp = "sc1"
 
-    # get noise ceilings
-    dataframe["eval_noiseceiling_Y"] = np.sqrt(dataframe.eval_noise_Y_R)
-    dataframe["eval_noiseceiling_XY"] = np.sqrt(dataframe.eval_noise_Y_R) * np.sqrt(dataframe.eval_noise_X_R)
+        best_model,_ = get_best_model(train_exp=train_exp)
+
+        dataframe = dataframe.query(f'eval_exp=="{exp}" and eval_name=="{best_model}"')
+        dataframe_all = pd.concat([dataframe_all, dataframe])
 
     # melt data into one column for easy plotting
     cols = ["eval_noiseceiling_Y", "eval_noiseceiling_XY", "R_eval"]
-    df = pd.melt(dataframe, value_vars=cols, id_vars=set(dataframe.columns) - set(cols)).rename(
+    df = pd.melt(dataframe_all, value_vars=cols, id_vars=set(dataframe_all.columns) - set(cols)).rename(
         {"variable": "data_type", "value": "data"}, axis=1
     )
 
     plt.figure(figsize=(8, 8))
     splot = sns.barplot(x="data_type", y="data", data=df)
-    plt.title(f"Model Evaluation (exp={exp}: best model={best_model})", fontsize=20)
+    plt.title(f"Model Evaluation: best model={best_model})", fontsize=20)
     plt.tick_params(axis="both", which="major", labelsize=15)
     plt.xlabel("")
     plt.ylabel("R", fontsize=20)
@@ -202,7 +230,8 @@ def plot_best_eval(
     plt.show()
     if save:
         dirs = const.Dirs()
-        plt.savefig(os.path.join(dirs.figure, f'best_eval_{exp}.png'))
+        exp_fname = '_'.join(exps)
+        plt.savefig(os.path.join(dirs.figure, f'best_eval_{exp_fname}.png'))
 
 def map_eval(
     data="R", 
@@ -461,7 +490,7 @@ def train_weights(
     exp="sc1", 
     model_name="ridge_tesselsWB162_alpha_6"
     ):
-    """gets training weights for a given model and summarizes into a dataframe
+    """gets training weights for a given model and summarizes into a dataframe_all
     averages the weights across the cerebellar voxels (1 x cortical ROIs)
     Args:
         exp (str): 'sc1' or 'sc2'
