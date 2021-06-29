@@ -39,8 +39,3 @@ python3 script_mk.py --train_or_eval="eval"
 # compare models
 python3 script_compare_models.py
 
-# # run wta atlases
-# atlases=(mdtb_wb_007 mdtb_wb_025)
-# for ((a=0; a<${#atlases[@]}; a++)); do \
-# python3 script_atlas.py --atlas=${atlases[a]}; done
-
