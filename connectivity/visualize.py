@@ -6,6 +6,7 @@ import re
 import glob
 import deepdish as dd
 from pathlib import Path
+import matplotlib.image as mpimg
 from collections import defaultdict
 import matplotlib.pyplot as plt
 
@@ -15,7 +16,9 @@ import connectivity.nib_utils as nio
 
 plt.rcParams["axes.grid"] = False
 
-def train_summary(summary_name="train_summary"):
+def train_summary(
+    summary_name="train_summary"
+    ):
     """load train summary containing all metrics about training models.
     Summary across exps is concatenated and prefix 'train' is appended to cols.
     Args:
@@ -44,7 +47,9 @@ def train_summary(summary_name="train_summary"):
 
     return df_concat
 
-def eval_summary(summary_name="eval_summary"):
+def eval_summary(
+    summary_name="eval_summary"
+    ):
     """load eval summary containing all metrics about eval models.
     Summary across exps is concatenated and prefix 'eval' is appended to cols.
     Args:
@@ -71,14 +76,37 @@ def eval_summary(summary_name="eval_summary"):
 
     return df_concat
 
-def plot_train_predictions(dataframe, exp='sc1', x='train_name', hue=None, x_order=None, hue_order=None, save=True):
+def plot_train_predictions(
+    dataframe, 
+    exp='sc1', 
+    x='train_name', 
+    hue=None, 
+    x_order=None, 
+    hue_order=None, 
+    save=True, 
+    best_models=True,
+    methods=['L2regression', 'WTA']
+    ):
     """plots training predictions (R CV) for all models in dataframe.
     Args:
         dataframe (pandas dataframe): must contain 'train_name' and 'train_R_cv'
         hue (str or None): can be 'train_exp', 'Y_data' etc.
     """
+    # filter data
+    dataframe = dataframe[dataframe['train_model'].isin(
+                methods)].query(f'train_exp=="{exp}"')
+
+    if (best_models):
+        # get best model for each method
+        df = dataframe.groupby(['train_X_data', 'train_model', 'train_hyperparameter']).mean().reset_index()
+
+        df1 = df.groupby(['train_X_data', 'train_model']
+                ).apply(lambda x: x['train_R_cv'].max()
+                ).reset_index(name='train_R_cv')
+    else:
+        df1 = dataframe
     # R
-    sns.factorplot(x=x, y="train_R_cv", hue=hue, data=dataframe.query(f'train_exp=="{exp}"'), order=x_order, hue_order=hue_order, legend=False, ci=None, size=4, aspect=2)
+    sns.factorplot(x=x, y="train_R_cv", hue=hue, data=df1, order=x_order, hue_order=hue_order, legend=False, ci=None, size=4, aspect=2)
     plt.title("Model Training (CV Predictions)", fontsize=20)
     plt.tick_params(axis="both", which="major", labelsize=15)
     plt.xticks(rotation="45", ha="right")
@@ -91,12 +119,21 @@ def plot_train_predictions(dataframe, exp='sc1', x='train_name', hue=None, x_ord
         dirs = const.Dirs()
         plt.savefig(os.path.join(dirs.figure, f'train_predictions_{exp}.png'))
 
-def plot_eval_predictions(dataframe, exp='sc2', x='eval_name', hue=None, x_order=None, hue_order=None, save=True):
+def plot_eval_predictions(
+    dataframe, 
+    exp='sc2', 
+    x='eval_name', 
+    hue=None, 
+    x_order=None, 
+    hue_order=None, 
+    save=True
+    ):
     """plots training predictions (R CV) for all models in dataframe.
     Args:
         dataframe (pandas dataframe): must contain 'train_name' and 'train_R_cv'
         hue (str or None): can be 'train_exp', 'Y_data' etc.
     """
+    
     # R
     sns.factorplot(x=x, y="R_eval", hue=hue, data=dataframe.query(f'eval_exp=="{exp}"'), order=x_order, hue_order=hue_order, legend=False, ci=None, size=4, aspect=2)
     plt.title("Model Evaluation", fontsize=20)
@@ -111,7 +148,11 @@ def plot_eval_predictions(dataframe, exp='sc2', x='eval_name', hue=None, x_order
         dirs = const.Dirs()
         plt.savefig(os.path.join(dirs.figure, f'eval_predictions_{exp}.png'))
 
-def plot_best_eval(dataframe, exp="sc1", save=True):
+def plot_best_eval(
+    dataframe, 
+    exp="sc1", 
+    save=True
+    ):
     """plots evaluation predictions (R eval) for best model in dataframe for 'sc1' or 'sc2'
     Also plots model-dependent and model-independent noise ceilings.
     Args:
@@ -148,8 +189,6 @@ def plot_best_eval(dataframe, exp="sc1", save=True):
     plt.xticks(
         [0, 1, 2], ["noise ceiling (data)", "noise ceiling (model)", "model predictions"], rotation="45", ha="right"
     )
-    # plt.legend(fontsize=15)
-
     # annotate barplot
     for p in splot.patches:
         splot.annotate(
@@ -165,7 +204,16 @@ def plot_best_eval(dataframe, exp="sc1", save=True):
         dirs = const.Dirs()
         plt.savefig(os.path.join(dirs.figure, f'best_eval_{exp}.png'))
 
-def map_eval(data="R", exp="sc1", model_name='best_model', colorbar=False, cscale=None, rois=True, atlas='MDTB_10Regions', save=True):
+def map_eval(
+    data="R", 
+    exp="sc1", 
+    model_name='best_model', 
+    colorbar=False, 
+    cscale=None, 
+    rois=True, 
+    atlas='MDTB_10Regions', 
+    save=True
+    ):
     """plot surface map for best model
     Args:
         gifti (str):
@@ -197,7 +245,11 @@ def map_eval(data="R", exp="sc1", model_name='best_model', colorbar=False, cscal
         roi_summary(fpath=os.path.join(fpath, f"group_{data}_{model}_{exp}_vox.nii"), atlas=atlas)
     return view
 
-def roi_summary(fpath, atlas='MDTB_10Regions', save=True):
+def roi_summary(
+    fpath, 
+    atlas='MDTB_10Regions', 
+    save=True
+    ):
     """plot roi summary of data in `fpath`
 
     Args: 
@@ -237,7 +289,15 @@ def roi_summary(fpath, atlas='MDTB_10Regions', save=True):
 
     return df1
 
-def map_model_comparison(model_name, exp, method='subtract', colorbar=True, rois=True, atlas='MDTB_10Regions', save=True):
+def map_model_comparison(
+    model_name, 
+    exp, 
+    method='subtract', 
+    colorbar=True, 
+    rois=True, 
+    atlas='MDTB_10Regions', 
+    save=True
+    ):
     """plot surface map for best model
     Args:
     """
@@ -260,7 +320,17 @@ def map_model_comparison(model_name, exp, method='subtract', colorbar=True, rois
     
     return view
 
-def map_weights(structure='cerebellum', exp='sc1', model_name='best_model', hemisphere='R', colorbar=False, cscale=None, rois=True, atlas='MDTB_10Regions', save=True):
+def map_weights(
+    structure='cerebellum', 
+    exp='sc1', 
+    model_name='best_model', 
+    hemisphere='R', 
+    colorbar=False, 
+    cscale=None, 
+    rois=True, 
+    atlas='MDTB_10Regions', 
+    save=True
+    ):
     """plot training weights for cortex or cerebellum
     Args: 
         gifti_func (str): '
@@ -294,7 +364,11 @@ def map_weights(structure='cerebellum', exp='sc1', model_name='best_model', hemi
         roi_summary(fpath=os.path.join(fpath, f"group_weights_cerebellum.nii"), atlas=atlas)
     return view
 
-def map_atlas(fpath, structure='cortex', save=True):
+def map_atlas(
+    fpath, 
+    structure='cortex', 
+    save=True
+    ):
     """General purpose function for plotting *.label.gii or *.func.gii parcellations (cortex or cerebellum)
     Args: 
         fpath (str): full path to atlas
@@ -316,7 +390,9 @@ def map_atlas(fpath, structure='cortex', save=True):
         dirs = const.Dirs()
         plt.savefig(os.path.join(dirs.figure, f'{Path(fpath).stem}_{structure}.png'))
 
-def get_best_model(train_exp):
+def get_best_model(
+    train_exp
+    ):
     """Get idx for best model based on either R_cv (or R_train)
     Args:
         exp (str): 'sc1' or 'sc2
@@ -343,7 +419,9 @@ def get_best_model(train_exp):
 
     return best_model, cortex
 
-def get_best_models(train_exp):
+def get_best_models(
+    train_exp
+    ):
     """Get model_names, cortex_names for best models (NNLS, ridge, WTA) based on R_cv
     Args:
         exp (str): 'sc1' or 'sc2
@@ -370,14 +448,19 @@ def get_best_models(train_exp):
 
     return model_names, cortex_names
 
-def get_eval_models(exp):
+def get_eval_models(
+    exp
+    ):
     dirs = const.Dirs(exp_name=exp)
     df = pd.read_csv(os.path.join(dirs.conn_eval_dir, 'eval_summary.csv'))
     df = df[['name', 'X_data']].drop_duplicates() # get unique model names
 
     return df['name'].to_list(), np.unique(df['X_data'].to_list())
 
-def train_weights(exp="sc1", model_name="ridge_tesselsWB162_alpha_6"):
+def train_weights(
+    exp="sc1", 
+    model_name="ridge_tesselsWB162_alpha_6"
+    ):
     """gets training weights for a given model and summarizes into a dataframe
     averages the weights across the cerebellar voxels (1 x cortical ROIs)
     Args:
@@ -411,7 +494,10 @@ def train_weights(exp="sc1", model_name="ridge_tesselsWB162_alpha_6"):
 
     return pd.DataFrame.from_dict(data_dict)
 
-def plot_train_weights(dataframe, hue=None):
+def plot_train_weights(
+    dataframe, 
+    hue=None
+    ):
     """plots training weights in dataframe
     Args:
         dataframe (pandas dataframe): must contain 'ROI' and 'weights' cols
@@ -428,7 +514,9 @@ def plot_train_weights(dataframe, hue=None):
     plt.xlabel("# of ROIs", fontsize=20)
     plt.ylabel("Weights", fontsize=20)
 
-def show_distance_matrix(roi='tessels0042'):
+def show_distance_matrix(
+    roi='tessels0042'
+    ):
     """Plot matrix of distances for cortical `roi`
     Args: 
         roi (str): default is 'tessels0042'
@@ -443,3 +531,18 @@ def show_distance_matrix(roi='tessels0042'):
     plt.imshow(distances)
     plt.colorbar()
     plt.show()
+
+def plot_png(
+    fpath, 
+    ax=None
+    ):
+    if os.path.isfile(fpath):
+        img = mpimg.imread(fpath)
+    else:
+        print("image does not exist")
+
+    if ax is None:
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+
+    ax.imshow(img, origin='upper', vmax=abs(img).max(), vmin=-abs(img).max(), aspect='equal')

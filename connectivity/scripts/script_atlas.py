@@ -12,6 +12,7 @@ from connectivity import make_atlas
 
 def run(atlas, glm='glm7'):
     labels = {}
+    
     # loop over exp
     for exp in ['sc1', 'sc2']:
         labels[exp] = make_atlas.model_wta(const.return_subjs, exp, glm, atlas)
