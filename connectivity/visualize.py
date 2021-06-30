@@ -9,6 +9,7 @@ from pathlib import Path
 import matplotlib.image as mpimg
 from collections import defaultdict
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 
 import connectivity.data as cdata
 import connectivity.constants as const
@@ -121,7 +122,7 @@ def plot_train_predictions(
     plt.xticks(rotation="45", ha="right")
     plt.xlabel("")
     plt.ylabel("R", fontsize=20)
-    plt.legend(fontsize=15, bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.legend(fontsize=15, bbox_to_anchor=(1.05, 1), loc='upper left', frameon=False)
     plt.show()
 
     if save:
@@ -162,14 +163,14 @@ def plot_eval_predictions(
     plt.xticks(rotation="45", ha="right")
     plt.xlabel("")
     plt.ylabel("R", fontsize=20)
-    plt.legend(fontsize=15, bbox_to_anchor=(1.05, 1), loc='upper left')
 
     if noiseceiling:
         ax = sns.lineplot(x=x, y='eval_noiseceiling_Y', data=dataframe, color='k')
         ax.lines[-1].set_linestyle("--")
         sns.lineplot(x=x, y='eval_noiseceiling_XY', data=dataframe, color='k')
         plt.xlabel("")
-
+    
+    plt.legend(fontsize=15, bbox_to_anchor=(1.05, 1), loc='upper left', frameon=False)
     plt.show()
     if save:
         dirs = const.Dirs()
@@ -294,7 +295,7 @@ def roi_summary(
     rois = cdata.read_suit_nii(atlas_dir + f'/{atlas}.nii')
 
     # get roi colors
-    rgba, cpal = nio.get_label_colors(fpath=atlas_dir + f'/{atlas}.label.gii')
+    rgba, cpal = nio.get_gifti_colors(fpath=atlas_dir + f'/{atlas}.label.gii')
     labels = nio.get_gifti_labels(fpath=atlas_dir + f'/{atlas}.label.gii')
 
     df_all = pd.DataFrame()
@@ -486,63 +487,6 @@ def get_eval_models(
 
     return df['name'].to_list(), np.unique(df['X_data'].to_list())
 
-def train_weights(
-    exp="sc1", 
-    model_name="ridge_tesselsWB162_alpha_6"
-    ):
-    """gets training weights for a given model and summarizes into a dataframe_all
-    averages the weights across the cerebellar voxels (1 x cortical ROIs)
-    Args:
-        exp (str): 'sc1' or 'sc2'
-        model_name (str): default is 'ridge_tesselsWB162_alpha_6'
-    Returns:
-        pandas dataframe containing 'ROI', 'weights', 'subj', 'exp'
-    """
-    data_dict = defaultdict(list)
-    dirs = const.Dirs(exp_name=exp)
-    trained_models = glob.glob(os.path.join(dirs.conn_train_dir, model_name, "*.h5"))
-
-    for fname in trained_models:
-
-        # Get the model from file
-        fitted_model = dd.io.load(fname)
-        regex = r"_(s\d+)."
-        subj = re.findall(regex, fname)[0]
-        weights = np.nanmean(fitted_model.coef_, 0)
-
-        data = {
-            "ROI": np.arange(1, len(weights) + 1),
-            "weights": weights,
-            "subj": [subj] * len(weights),
-            "exp": [exp] * len(weights),
-        }
-
-        # append data for each subj
-        for k, v in data.items():
-            data_dict[k].extend(v)
-
-    return pd.DataFrame.from_dict(data_dict)
-
-def plot_train_weights(
-    dataframe, 
-    hue=None
-    ):
-    """plots training weights in dataframe
-    Args:
-        dataframe (pandas dataframe): must contain 'ROI' and 'weights' cols
-        hue (str or None): default is None
-    """
-    plt.figure(figsize=(8, 8))
-    sns.lineplot(x="ROI", y="weights", hue=hue, data=dataframe, ci=None)
-
-    exp = dataframe["exp"].unique()[0]
-
-    plt.axhline(linewidth=2, color="r")
-    plt.title(f"Cortical weights averaged across subjects for {exp}")
-    plt.tick_params(axis="both", which="major", labelsize=15)
-    plt.xlabel("# of ROIs", fontsize=20)
-    plt.ylabel("Weights", fontsize=20)
-
 def show_distance_matrix(
     roi='tessels0042'
     ):
@@ -561,10 +505,13 @@ def show_distance_matrix(
     plt.colorbar()
     plt.show()
 
-def plot_png(
-    fpath, 
-    ax=None
-    ):
+def plot_png(fpath, ax=None):
+    """ Plots a png image from `fpath`
+        
+    Args:
+        fpath (str): full path to image to plot
+        ax (bool): figure axes. Default is None
+    """
     if os.path.isfile(fpath):
         img = mpimg.imread(fpath)
     else:
@@ -575,3 +522,38 @@ def plot_png(
         ax = fig.add_subplot(111)
 
     ax.imshow(img, origin='upper', vmax=abs(img).max(), vmin=-abs(img).max(), aspect='equal')
+
+def make_colorbar(fpath, ax=None):
+    """Makes colorbar for *.label.gii file
+        
+    Args:
+        fpath (str): full path to *.label.gii
+        ax (ax or None):
+    """
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(1, 10))
+
+    rgba, cpal, cmap = nio.get_gifti_colors(fpath)
+
+    labels = nio.get_gifti_labels(fpath)
+
+    bounds = np.arange(cmap.N + 1)
+
+    norm = mpl.colors.BoundaryNorm(bounds, cmap.N)
+    cb3 = mpl.colorbar.ColorbarBase(ax, cmap=cmap.reversed(cmap), 
+                                    norm=norm,
+                                    ticks=bounds,
+                                    format='%s',
+                                    orientation='vertical',
+                                    )
+    cb3.set_ticklabels(labels[::-1])  
+    cb3.ax.tick_params(size=0)
+    cb3.set_ticks(bounds+.5)
+    cb3.ax.tick_params(axis='y', which='major', labelsize=30)
+
+    dirs = const.Dirs()
+    fname = Path(fpath).name
+    plt.savefig(os.path.join(dirs.figure,  fname.split('.')[0] + '-colorbar.png'), bbox_inches='tight')
+
+    return cb3
+

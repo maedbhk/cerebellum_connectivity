@@ -161,19 +161,23 @@ def make_func_gifti_cortex(
 
     return gifti
 
-def get_label_colors(
+def get_gifti_colors(
     fpath
     ):
-    """get rgba for atlas (given by fpath)
+    """get gifti labels for fpath (should be *.label.gii)
 
     Args: 
-        fpath (str): full path to atlas
+        fpath (str or nib obj): full path to atlas
     Returns: 
         rgba (np array): shape num_labels x num_rgba
+        cpal (matplotlib color palette)
+        cmap (matplotlib colormap)
     """
     dirs = const.Dirs()
 
-    img = nib.load(fpath)
+    if isinstance(fpath, str):
+        img = nib.load(fpath)
+
     labels = img.labeltable.labels
 
     rgba = np.zeros((len(labels),4))
@@ -189,10 +193,10 @@ def get_label_colors(
 def get_gifti_labels(
     fpath
     ):
-    """get gifti labels for `img`
+    """get gifti labels for fpath (should be *.label.gii)
 
     Args: 
-        img (str or nib obj): full path to atlas (*.label.gii) or nib obj
+        fpath (str or nib obj): full path to atlas (*.label.gii) or nib obj
     Returns: 
         labels (list): list of label names
     """
@@ -297,14 +301,19 @@ def view_cerebellum(
     gifti, 
     cscale=None, 
     colorbar=True, 
-    title=True
+    title=True,
+    new_figure=True,
+    outpath=None
     ):
-    """Visualize data on suit flatmap, plots either *.func.gii or *.label.gii data
+    """Visualize (optionally saves) data on suit flatmap, plots either *.func.gii or *.label.gii data
 
     Args: 
         gifti (str): full path to gifti image
         cscale (list or None): default is None
         colorbar (bool): default is False.
+        title (bool): default is True
+        new_figure (bool): default is True. If false, appends to current axis. 
+        outpath (str or None): full path to filename. If None, figure is not saved to file
     """
 
     # full path to surface
@@ -316,11 +325,18 @@ def view_cerebellum(
     elif '.label.' in gifti:
         overlay_type = 'label'
 
-    view = flatmap.plot(gifti, surf=surf_mesh, overlay_type=overlay_type, cscale=cscale, colorbar=True, new_figure=True) # implement colorbar
+    view = flatmap.plot(gifti, surf=surf_mesh, overlay_type=overlay_type, cscale=cscale, colorbar=colorbar, new_figure=new_figure) # implement colorbar
 
     if title:
         fname = Path(gifti).name
         view.set_title(fname.split('.')[0])
+
+    if outpath:
+        if '.png' in outpath:
+            format = 'png'
+        elif '.svg' in outpath:
+            format = 'svg'
+        plt.savefig(outpath, dpi=300, format=format, bbox_inches='tight')
 
     return view
 
@@ -329,19 +345,23 @@ def view_cortex(
     hemisphere='R', 
     cmap=None, 
     cscale=None, 
-    atlas_type='inflated', 
-    symmetric_cmap=False, 
+    atlas_type='inflated',  
     orientation='medial', 
-    title=True
+    title=True,
+    outpath=None
     ):
-    """Visualize data on inflated cortex, plots either *.func.gii or *.label.gii data
+    """Visualize (optionally saves) data on inflated cortex, plots either *.func.gii or *.label.gii data
 
     Args: 
         gifti (str): fullpath to file: *.func.gii or *.label.gii
-        bg_map (str or np array or None): 
-        map_type (str): 'func' or 'label'
         hemisphere (str): 'R' or 'L'
+        cmap (matplotlib colormap or None):
+        cscale (int or None):
         atlas_type (str): 'inflated', 'very_inflated' (see fs_LR dir)
+        orientation (str): 'medial' or 'lateral'
+        title (bool): default is True
+        outpath (str or None): default is None. file not saved to disk
+
     """
     # initialise directories
     dirs = const.Dirs()
@@ -354,29 +374,21 @@ def view_cortex(
     title = fname.split('.')[0]
         
     # Determine scale
-    func_data = load_surf_data(gifti)
     if ('.func.' in gifti and cscale is None):
+        func_data = load_surf_data(gifti)
         cscale = [np.nanmin(func_data), np.nanmax(func_data)]
 
     fname = None
     if title:
         fname = Path(gifti).name
+    
+    if hemisphere=='L':
+        orientation = 'lateral'
 
-    if '.func.' in gifti:
-        view = view_surf(surf_mesh=surf_mesh, 
-                        surf_map=func_data,
-                        vmin=cscale[0], 
-                        vmax=cscale[1],
-                        cmap='CMRmap',
-                        symmetric_cmap=symmetric_cmap,
-                        title=title
-                        ) 
-    elif '.label.' in gifti:   
-        if hemisphere=='L':
-            orientation = 'lateral'
-        if cmap is None:
-            _, _, cmap = get_label_colors(fpath=gifti)
-        view = plot_surf_roi(surf_mesh, gifti, cmap=cmap, view=orientation, title=title)   
+    if cmap is None:
+        _, _, cmap = get_gifti_colors(fpath=gifti)
+
+    view = plot_surf_roi(surf_mesh, gifti, cmap=cmap, view=orientation, title=title, output_file=outpath) 
     
     return view
     

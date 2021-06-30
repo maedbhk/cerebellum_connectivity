@@ -26,7 +26,7 @@ def run(atlas, glm='glm7'):
     cio.make_dirs(fpath)
 
     # get label colors
-    rgba, _ = nio.get_label_colors(fpath=os.path.join(dirs.reg_dir, 'data', 'group', f'{atlas}.R.label.gii'))
+    rgba, _ = nio.get_gifti_colors(fpath=os.path.join(dirs.reg_dir, 'data', 'group', f'{atlas}.R.label.gii'))
 
     make_atlas.save_maps_cerebellum(data=labels_concat, 
                         fpath=os.path.join(fpath, f'{atlas}_wta_suit'),
