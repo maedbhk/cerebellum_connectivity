@@ -605,7 +605,7 @@ def eval_lasso(cortex = 'tessels0162',
 
 # train wnta models
 def train_wnta(cortex = 'tessels0162', 
-    n_max = 3, 
+    n = [1, 2], 
     logalpha = [-2],
     sn=const.return_subjs):
 
@@ -614,12 +614,12 @@ def train_wnta(cortex = 'tessels0162',
     df_all = pd.DataFrame()
     for e in range(2):
         for j in range(num_logalpha):
-            name = f"wnta2_{cortex}_N{n_max:.0f}_A{logalpha[j]:.0f}"
+            name = f"wnta_{cortex}_N{n:.0f}_A{logalpha[j]:.0f}"
             print(f"Doing {name} - {cortex} sc{e+1}")
             config["name"] = name
-            config["model"] = "WNTA2"
+            config["model"] = "WNTA"
             # config["param"] = {"n": n[i], "alpha":np.exp(logalpha[i])}
-            config["param"] = {"n_max": n_max, "alpha": np.exp(logalpha[j])}
+            config["param"] = {"n_features_to_select": n, "alpha": np.exp(logalpha[j])}
             config["X_data"] = cortex
             config["weighting"] = 2
             config["train_exp"] = f"sc{e+1}"
@@ -631,7 +631,7 @@ def train_wnta(cortex = 'tessels0162',
             config["mode"] = "crossed"
             # config["hyperparameter"] = f"{n[j]:.0f}"
             # Model = run.train_models(config, save=True)
-            Model, df = run_wnta.train_models_wnta(config, save=True)
+            Model, df = run_wnta.train_wnta(config, save=True)
 
                 # selected_features = Model[0].feature_mask
 
