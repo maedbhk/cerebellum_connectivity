@@ -37,5 +37,6 @@ def run(summary='train'):
         df_all.to_csv(fpath, index=False)
 
 if __name__ == "__main__":
-    run()
+    run(summary='train')
+    run(summary='eval')
 
