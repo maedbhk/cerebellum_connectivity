@@ -6,44 +6,85 @@ from matplotlib.gridspec import GridSpec
 import numpy as np
 import os
 import pandas as pd
+from pathlib import Path
 
-from connectivity import visualize
+from connectivity import visualize as vis
+from connectivity import nib_utils as nio
 import connectivity.constants as const 
 
-def plotting_style():
-    plt.style.use('seaborn-poster') # ggplot
-    plt.rc('font', family='sans-serif') 
-    plt.rc('font', serif='Helvetica Neue') 
-    plt.rc('text', usetex='false') 
-    plt.rcParams['lines.linewidth'] = 6
-    plt.rc('xtick', labelsize=14)     
-    plt.rc('ytick', labelsize=14)
-    plt.rcParams.update({'font.size': 14})
-    plt.rcParams["axes.labelweight"] = "regular"
-    plt.rcParams["font.weight"] = "regular"
-    plt.rcParams["savefig.format"] = 'svg'
-    plt.rc("axes.spines", top=False, right=False) # removes certain axes
+def make_image(
+    outpath,
+    atlases=['yeo7'], 
+    structure='cortex',
+    format='png',
+    colorbar=True
+    ):
+    """makes png containing other pngs
+
+    Args: 
+        outpath (str): full path to saved file on disk
+        atlases (list of str): default is ['yeo7']
+        structure (str): default is 'cortex'
+        format (str): default is 'png'
+    """
+    dirs = const.Dirs()
+
+    if structure=='cortex':
+        fpaths, _ = nio.get_cortical_atlases(atlas_keys=atlases)
+    elif structure=='cerebellum':
+        fpaths, _ = nio.get_cerebellar_atlases(atlas_keys=atlases)
+    
+    png_paths = []
+    for fpath in fpaths:
+        fname = '-'.join(Path(fpath).stem.split('.')[:2])
+        atlas_path = os.path.join(dirs.figure, f'{fname}-{structure}.{format}')
+        if not os.path.isfile(atlas_path):
+            vis.map_atlas(fpath, structure=structure, outpath=atlas_path, colorbar=False)
+        png_paths.append(atlas_path)
+    
+    if colorbar:
+        # make colorbar separately
+        fname = Path(fpath).stem.split('.')[0]
+        colorbar_path = os.path.join(dirs.figure, f'{fname}-colorbar.png')
+        if not os.path.isfile(colorbar_path):
+            nio.view_colorbar(fpath=fpath, outpath=colorbar_path)
+        png_paths.append(colorbar_path)
+    
+    img = vis.join_png(fpaths=png_paths, outpath=outpath)
+
+    return img
 
 def fig1():
     plt.clf()
 
-    plotting_style()
+    vis.plotting_style()
 
-    # fig = plt.figure()
-    fig = plt.figure(figsize=(15,15))
-    gs = GridSpec(3, 2, figure=fig)
+    dirs = const.Dirs()
+    A = os.path.join(dirs.figure, f'yeo7-cortex.png')
+    if not os.path.isfile(A):
+        make_image(A, atlases=['yeo7'], structure='cortex', colorbar=False)
 
-    x_pos = -0.2
+    A2 = os.path.join(dirs.figure, f'yeo7-cerebellum.png')
+    if not os.path.isfile(A2):
+        make_image(A2, atlases=['Buckner7', 'yeo7_wta'], structure='cerebellum', colorbar=True)
+
+    fig = plt.figure()
+    gs = GridSpec(2, 2, figure=fig)
+
+    x_pos = -0.1
     y_pos = 1.02
 
     ax1 = fig.add_subplot(gs[0, 0])
-    # visualize.png_plot(filename=atlas, ax=ax1)
-    ax1.text(x_pos, 1.0, 'A', transform=ax1.transAxes, fontsize=60, verticalalignment='top')
-    ax1.yaxis.label.set_size(50)
-    ax1.tick_params(axis='x', which='major', labelsize=50, rotation=45)
+    vis.plot_png(A, ax=ax1)
+    ax1.text(x_pos, 1.0, 'A', transform=ax1.transAxes, fontsize=40, verticalalignment='top')
     ax1.axis('off')
 
-    plt.subplots_adjust(left=0.125, bottom=0.001, right=2.0, top=2.0, wspace=.2, hspace=.3)
-    
-    dirs = const.Dirs()
-    plt.savefig(os.path.join(dirs.figure, 'fig1'), bbox_inches="tight", dpi=300)
+    ax2 = fig.add_subplot(gs[0, 1])
+    vis.plot_png(A2, ax=ax2)
+    ax2.axis('off')
+
+    ax3 = fig.add_subplot(gs[1,0])
+    vis.plot_eval_predictions(exps=['sc2'], methods=['WTA'], hue=None, noiseceiling=True, ax=ax3)
+
+    # plt.subplots_adjust(left=0.125, bottom=0.001, right=2.0, top=2.0, wspace=.2, hspace=.3)
+    plt.savefig(os.path.join(dirs.figure, 'fig1.png'), bbox_inches="tight", dpi=300)

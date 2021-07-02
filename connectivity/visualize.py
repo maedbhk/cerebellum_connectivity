@@ -2,12 +2,10 @@ import os
 import pandas as pd
 import numpy as np
 import seaborn as sns
-import re
 import glob
-import deepdish as dd
 from pathlib import Path
 import matplotlib.image as mpimg
-from collections import defaultdict
+from PIL import Image
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 
@@ -15,7 +13,22 @@ import connectivity.data as cdata
 import connectivity.constants as const
 import connectivity.nib_utils as nio
 
-plt.rcParams["axes.grid"] = False
+def plotting_style():
+    plt.style.use('seaborn-poster') # ggplot
+    plt.rc('font', family='sans-serif') 
+    plt.rc('font', serif='Helvetica Neue') 
+    plt.rc('text', usetex='false') 
+    plt.rcParams['lines.linewidth'] = 6
+    plt.rc('xtick', labelsize=14)   
+    plt.rc('ytick', labelsize=14)
+    
+    plt.rcParams.update({'font.size': 16})
+    plt.rcParams["axes.labelweight"] = "regular"
+    plt.rcParams["font.weight"] = "regular"
+    plt.rcParams["savefig.format"] = 'svg'
+    plt.rcParams["savefig.dpi"] = 300
+    plt.rc("axes.spines", top=False, right=False) # removes certain axes
+    plt.rcParams["axes.grid"] = False
 
 def train_summary(
     summary_name="train_summary",
@@ -138,7 +151,9 @@ def plot_eval_predictions(
     hue_order=None, 
     save=True,
     methods=['ridge', 'WTA'],
-    noiseceiling=True
+    noiseceiling=True,
+    ax=None,
+    title=False
     ):
     """plots training predictions (R CV) for all models in dataframe.
     Args:
@@ -152,26 +167,20 @@ def plot_eval_predictions(
     dataframe = dataframe[dataframe['eval_model'].isin(methods)]
 
     # melt data into one column for easy plotting
-    cols = ["eval_noiseceiling_Y", "eval_noiseceiling_XY", "R_eval"]
-    df = pd.melt(dataframe, value_vars=cols, id_vars=set(dataframe.columns) - set(cols)).rename(
-        {"variable": "data_type", "value": "data"}, axis=1)
-    
-    # R
-    sns.factorplot(x=x, y="R_eval", hue=hue, data=dataframe, order=x_order, hue_order=hue_order, style=hue, legend=False, ci=None, size=4, aspect=2)
-    plt.title("Model Evaluation", fontsize=20)
-    plt.tick_params(axis="both", which="major", labelsize=15)
+    ax = sns.lineplot(x=x, y="R_eval", hue=hue, data=dataframe, legend=True, ax=ax) # size=4, aspect=2, order=x_order, hue_order=hue_order,
     plt.xticks(rotation="45", ha="right")
-    plt.xlabel("")
-    plt.ylabel("R", fontsize=20)
+    ax.set_xlabel("")
+    ax.set_ylabel("R")
 
     if noiseceiling:
-        ax = sns.lineplot(x=x, y='eval_noiseceiling_Y', data=dataframe, color='k')
+        ax = sns.lineplot(x=x, y='eval_noiseceiling_Y', data=dataframe, color='k', ax=ax)
         ax.lines[-1].set_linestyle("--")
-        sns.lineplot(x=x, y='eval_noiseceiling_XY', data=dataframe, color='k')
-        plt.xlabel("")
+        # sns.lineplot(x=x, y='eval_noiseceiling_XY', data=dataframe, color='k')
+        ax.set_xlabel("")
+
+    if title:
+        plt.title("Model Evaluation", fontsize=20)
     
-    plt.legend(fontsize=15, bbox_to_anchor=(1.05, 1), loc='upper left', frameon=False)
-    plt.show()
     if save:
         dirs = const.Dirs()
         exp_fname = '_'.join(exps)
@@ -396,29 +405,28 @@ def map_weights(
 
 def map_atlas(
     fpath, 
-    structure='cortex', 
-    save=True
+    structure='cerebellum', 
+    colorbar=False,
+    title=False,
+    outpath=None
     ):
-    """General purpose function for plotting *.label.gii or *.func.gii parcellations (cortex or cerebellum)
+    """General purpose function for plotting (optionally saving) *.label.gii or *.func.gii parcellations (cortex or cerebellum)
     Args: 
         fpath (str): full path to atlas
-        anatomical_structure (str): default is 'cerebellum'. other options: 'cortex'
+        structure (str): default is 'cerebellum'. other options: 'cortex'
+        colorbar (bool): default is False. If False, saves colorbar separately to disk.
+        save (bool): default is True.
     Returns:
         viewing object to visualize parcellations
     """
-    # initialize directory
-    dirs = const.Dirs()
-
     if structure=='cerebellum':
-        return nio.view_cerebellum(gifti=fpath) 
+        view = nio.view_cerebellum(gifti=fpath, colorbar=colorbar, outpath=outpath, title=title) 
     elif structure=='cortex':
-        return nio.view_cortex(gifti=fpath)
+        view = nio.view_cortex(gifti=fpath, outpath=outpath, title=title)
     else:
         print('please provide a valid parcellation')
     
-    if save:
-        dirs = const.Dirs()
-        plt.savefig(os.path.join(dirs.figure, f'{Path(fpath).stem}_{structure}.png'))
+    return view
 
 def get_best_model(
     train_exp
@@ -505,7 +513,10 @@ def show_distance_matrix(
     plt.colorbar()
     plt.show()
 
-def plot_png(fpath, ax=None):
+def plot_png(
+    fpath, 
+    ax=None
+    ):
     """ Plots a png image from `fpath`
         
     Args:
@@ -523,37 +534,50 @@ def plot_png(fpath, ax=None):
 
     ax.imshow(img, origin='upper', vmax=abs(img).max(), vmin=-abs(img).max(), aspect='equal')
 
-def make_colorbar(fpath, ax=None):
-    """Makes colorbar for *.label.gii file
-        
-    Args:
-        fpath (str): full path to *.label.gii
-        ax (ax or None):
+def join_png(
+    fpaths, 
+    outpath=None, 
+    offset=0
+    ):
+    """Join together pngs into one png
+
+    Args: 
+        fpaths (list of str): full path(s) to images
+        outpath (str): full path to new image. If None, saved in current directory.
+        offset (int): default is 0. 
     """
-    if ax is None:
-        fig, ax = plt.subplots(figsize=(1, 10))
 
-    rgba, cpal, cmap = nio.get_gifti_colors(fpath)
+    # join images together
+    images = [Image.open(x) for x in fpaths]
 
-    labels = nio.get_gifti_labels(fpath)
+    # resize all images (keep ratio aspect) based on size of min image
+    sizes = ([(np.sum(i.size), i.size ) for i in images])
+    min_sum = sorted(sizes)[0][0]
 
-    bounds = np.arange(cmap.N + 1)
+    images_resized = []
+    for s, i in zip(sizes, images):
+        resize_ratio = int(np.floor(s[0] / min_sum))
+        orig_size = list(s[1])
+        if resize_ratio>1:
+            resize_ratio = resize_ratio - 1.5
+        new_size = tuple([int(np.round(x / resize_ratio)) for x in orig_size])
+        images_resized.append(Image.fromarray(np.asarray(i.resize(new_size))))
 
-    norm = mpl.colors.BoundaryNorm(bounds, cmap.N)
-    cb3 = mpl.colorbar.ColorbarBase(ax, cmap=cmap.reversed(cmap), 
-                                    norm=norm,
-                                    ticks=bounds,
-                                    format='%s',
-                                    orientation='vertical',
-                                    )
-    cb3.set_ticklabels(labels[::-1])  
-    cb3.ax.tick_params(size=0)
-    cb3.set_ticks(bounds+.5)
-    cb3.ax.tick_params(axis='y', which='major', labelsize=30)
+    widths, heights = zip(*(i.size for i in images_resized))
 
-    dirs = const.Dirs()
-    fname = Path(fpath).name
-    plt.savefig(os.path.join(dirs.figure,  fname.split('.')[0] + '-colorbar.png'), bbox_inches='tight')
+    total_width = sum(widths)
+    max_height = max(heights)
 
-    return cb3
+    new_im = Image.new('RGB', (total_width, max_height), (255, 255, 255))
+
+    x_offset = 0
+    for im in images_resized:
+        new_im.paste(im, (x_offset,0))
+        x_offset += im.size[0] - offset
+
+    if not outpath:
+        outpath = 'concat_image.png'
+    new_im.save(outpath)
+
+    return new_im
 
