@@ -611,41 +611,47 @@ def train_wnta(cortex = 'tessels0162',
 
     config = run.get_default_train_config()
     num_logalpha = len(logalpha)
+    num_n = len(n)
     df_all = pd.DataFrame()
     for e in range(2):
-        for j in range(num_logalpha):
-            name = f"wnta_{cortex}_N{n:.0f}_A{logalpha[j]:.0f}"
-            print(f"Doing {name} - {cortex} sc{e+1}")
-            config["name"] = name
-            config["model"] = "WNTA"
-            # config["param"] = {"n": n[i], "alpha":np.exp(logalpha[i])}
-            config["param"] = {"n_features_to_select": n, "alpha": np.exp(logalpha[j])}
-            config["X_data"] = cortex
-            config["weighting"] = 2
-            config["train_exp"] = f"sc{e+1}"
-            config["subjects"] = sn
-            config["weighting"] = True
-            config["averaging"] = "sess"
-            config["validate_model"] = True
-            config["cv_fold"] = 4 # other options: 'sess' or 'run' or None
-            config["mode"] = "crossed"
-            # config["hyperparameter"] = f"{n[j]:.0f}"
-            # Model = run.train_models(config, save=True)
-            Model, df = run_wnta.train_wnta(config, save=True)
+        for i in range(num_n):
+            for j in range(num_logalpha):
+                name = f"wnta_{cortex}_N{n[i]:.0f}_A{logalpha[j]:.0f}"
+                print(f"Doing {name} - sc{e+1}")
+                config["name"] = name
+                config["model"] = "WNTA"
+                # config["param"] = {"n": n[i], "alpha":np.exp(logalpha[i])}
+                config["param"] = {"n_features_to_select": n[i], "alpha": np.exp(logalpha[j])}
+                config["X_data"] = cortex
+                config["weighting"] = 2
+                config["train_exp"] = f"sc{e+1}"
+                config["subjects"] = sn
+                config["weighting"] = True
+                config["averaging"] = "sess"
+                config["validate_model"] = True
+                config["cv_fold"] = 4 # other options: 'sess' or 'run' or None
+                config["mode"] = "crossed"
+                # config["hyperparameter"] = f"{n[j]:.0f}"
+                # Model = run.train_models(config, save=True)
+                Model, df = run_wnta.train_wnta(config, save=True)
 
-                # selected_features = Model[0].feature_mask
+                df_all = pd.concat([df_all, df])
+            # print(df)
 
-    # save out train summary
-    dirs = const.Dirs(exp_name=config["train_exp"])
-    fpath = os.path.join(dirs.conn_train_dir, "train_summary.csv")
 
-    if os.path.isfile(fpath):
-        df_all = pd.concat([df_all, pd.read_csv(fpath)])
-    # save out train summary
-    df_all.to_csv(fpath, index=False)
+        # save out train summary
+        dirs = const.Dirs(exp_name=config["train_exp"])
+        fpath = os.path.join(dirs.conn_train_dir, "train_summary.csv")
+
+        if os.path.isfile(fpath):
+            df_all = pd.concat([df_all, pd.read_csv(fpath)])
+        # save out train summary
+        df_all.to_csv(fpath, index=False)
+
+    
 
 def select_nwinners(cortex = 'tessels0162', 
-    n_max = 3,  
+    n = [1, 2, 3],  
     sn=const.return_subjs):
 
     config = run.get_default_train_config()
@@ -654,9 +660,8 @@ def select_nwinners(cortex = 'tessels0162',
     for e in range(2):
 
         for s in sn:
-            print(s)
             # looping over ns and selecting features recursively
-            for n in range(1, n_max + 1):
+            for n in range(1, len(n)+1):
                 name = f"winners_{cortex}_N{n:.0f}"
                 print(f"Doing {name} - {cortex} sc{e+1}")
                 config["name"] = name
@@ -674,9 +679,19 @@ def select_nwinners(cortex = 'tessels0162',
                 config["mode"] = "crossed"
                 # config["hyperparameter"] = f"{n[j]:.0f}"
                 # Model = run.train_models(config, save=True)
-                if n == 1:
+
+                # TO SPEED THINGS UP:
+                # path to previous model
+                name_previous = f"winners_{cortex}_N{n-1:.0f}"
+                model_path = run_wnta._get_model_name(train_name=name_previous, exp=config["train_exp"], subj_id=s)
+                if (n == 1) or not (os.path.isfile(model_path)): 
+                    # if n = 1 or the model selection hasn't been done, start from scratch
                     Winner = None
+                else: # otherwise, start from the previous model
+                    # load in the previous model
+                    Winner = dd.io.load(model_path)
                 
+                # run the current model
                 Winner = run_wnta.select_winners(config, save=True, winner_model = Winner)
 
     return
