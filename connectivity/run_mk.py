@@ -178,7 +178,8 @@ def train_models(config, save=False):
         data = {
             "subj_id": subj,
             "rmse_train": models[-1].rmse_train,
-            "R_train": models[-1].R_train
+            "R_train": models[-1].R_train,
+            "num_regions": X.shape[1]
             }
 
         # run cross validation and collect metrics (rmse and R)
@@ -274,7 +275,9 @@ def eval_models(config):
 
         # get rmse
         rmse = mean_squared_error(Y, Y_pred, squared=False)
-        data = {"rmse_eval": rmse, "subj_id": subj}
+        data = {"rmse_eval": rmse, 
+                "subj_id": subj,
+                "num_regions": X.shape[1]}
 
         # Copy over all scalars or strings to eval_all dataframe:
         for key, value in config.items():

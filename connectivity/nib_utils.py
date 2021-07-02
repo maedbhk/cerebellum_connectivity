@@ -15,7 +15,13 @@ from nilearn.surface import load_surf_data
 import connectivity.constants as const
 from connectivity import data as cdata
 
-def make_label_gifti_cortex(data, anatomical_struct='CortexLeft', label_names=None, column_names=None, label_RGBA=None):
+def make_label_gifti_cortex(
+    data, 
+    anatomical_struct='CortexLeft', 
+    label_names=None,
+    column_names=None, 
+    label_RGBA=None
+    ):
     """
     Generates a label GiftiImage from a numpy array
        @author joern.diedrichsen@googlemail.com, Feb 2019 (Python conversion: switt)
@@ -100,7 +106,11 @@ def make_label_gifti_cortex(data, anatomical_struct='CortexLeft', label_names=No
     gifti.labeltable.labels.extend(E_all)
     return gifti
 
-def make_func_gifti_cortex(data, anatomical_struct='CortexLeft', column_names=None):
+def make_func_gifti_cortex(
+    data, 
+    anatomical_struct='CortexLeft', 
+    column_names=None
+    ):
     """
     Generates a function GiftiImage from a numpy array
        @author joern.diedrichsen@googlemail.com, Feb 2019 (Python conversion: switt)
@@ -151,35 +161,48 @@ def make_func_gifti_cortex(data, anatomical_struct='CortexLeft', column_names=No
 
     return gifti
 
-def get_label_colors(fpath):
-    """get rgba for atlas (given by fpath)
+def get_gifti_colors(
+    fpath,
+    ignore_0=True
+    ):
+    """get gifti labels for fpath (should be *.label.gii)
 
     Args: 
-        fpath (str): full path to atlas
+        fpath (str or nib obj): full path to atlas
+        ignore_0 (bool): default is True. ignores 0 index
     Returns: 
         rgba (np array): shape num_labels x num_rgba
+        cpal (matplotlib color palette)
+        cmap (matplotlib colormap)
     """
     dirs = const.Dirs()
 
-    img = nib.load(fpath)
+    if isinstance(fpath, str):
+        img = nib.load(fpath)
+
     labels = img.labeltable.labels
 
     rgba = np.zeros((len(labels),4))
     for i,label in enumerate(labels):
         rgba[i,] = labels[i].rgba
+    
+    if ignore_0:
+        rgba = rgba[1:]
+        labels = labels[1:]
 
-    cmap = LinearSegmentedColormap.from_list('mylist', rgba)
     cmap = LinearSegmentedColormap.from_list('mylist', rgba, N=len(rgba))
     mpl.cm.register_cmap("mycolormap", cmap)
     cpal = sns.color_palette("mycolormap", n_colors=len(rgba))
 
-    return rgba, cpal
+    return rgba, cpal, cmap
 
-def get_gifti_labels(fpath):
-    """get gifti labels for `img`
+def get_gifti_labels(
+    fpath
+    ):
+    """get gifti labels for fpath (should be *.label.gii)
 
     Args: 
-        img (str or nib obj): full path to atlas (*.label.gii) or nib obj
+        fpath (str or nib obj): full path to atlas (*.label.gii) or nib obj
     Returns: 
         labels (list): list of label names
     """
@@ -190,7 +213,10 @@ def get_gifti_labels(fpath):
 
     return list(labels)
 
-def binarize_vol(imgs, metric='max'):
+def binarize_vol(
+    imgs, 
+    metric='max'
+    ):
     """Binarizes niftis for `imgs` based on `metric`
     Args: 
         imgs (list of nib obj or list of str): list of nib objects or fullpath to niftis
@@ -216,7 +242,9 @@ def binarize_vol(imgs, metric='max'):
 
     return nib_obj[0]
 
-def subtract_vol(imgs):
+def subtract_vol(
+    imgs
+    ):
     """Binarizes niftis for `imgs` based on `metric`
     Args: 
         imgs (list of nib obj or list of str): list of nib objects or fullpath to niftis
@@ -241,8 +269,14 @@ def subtract_vol(imgs):
 
     return nib_obj[0]
 
-def get_cortical_atlases():
+def get_cortical_atlases(atlas_keys=None):
     """returns: fpaths (list of str): list to all cortical atlases (*.label.gii) 
+    Args:
+        atlas_keys (None or list of str): default is None. 
+
+    Returns: 
+        fpaths (list of str): full path to cerebellar atlases
+        atlases (list of str): names of cerebellar atlases
     """
     dirs = const.Dirs()
 
@@ -250,15 +284,27 @@ def get_cortical_atlases():
     atlases = []
     fpath = os.path.join(dirs.reg_dir, 'data', 'group')
     for path in list(Path(fpath).rglob('*.label.gii')):
-        # if any(atlas_key in str(path) for atlas_key in atlas_keys):
-        fpaths.append(str(path))
-        atlas = path[0].split('/')[-1].split('.')[0]
-        atlases.append(atlas)
+        path = str(path)
+        atlas = path.split('/')[-1].split('.')[0]
+        if atlas_keys:
+            if any(atlas_key in str(path) for atlas_key in atlas_keys):
+                fpaths.append(path)
+                atlases.append(atlas)
+        else:
+            fpaths.append(path)
+            atlases.append(atlas)
 
     return fpaths, atlases
 
-def get_cerebellar_atlases():
+def get_cerebellar_atlases(atlas_keys=None):
     """returns: fpaths (list of str): list of full paths to cerebellar atlases
+
+    Args:
+        atlas_keys (None or list of str): default is None. 
+
+    Returns: 
+        fpaths (list of str): full path to cerebellar atlases
+        atlases (list of str): names of cerebellar atlases
     """
     dirs = const.Dirs()
 
@@ -268,19 +314,34 @@ def get_cerebellar_atlases():
     fpath = os.path.join(dirs.base_dir, 'cerebellar_atlases')
     for path in list(Path(fpath).rglob('*.label.gii')):
         path = str(path)
-        fpaths.append(path)
         atlas = path.split('/')[-1].split('.')[0]
-        atlases.append(atlas)
+        if atlas_keys:
+            if any(atlas_key in str(path) for atlas_key in atlas_keys):
+                fpaths.append(path)
+                atlases.append(atlas)
+        else:
+            fpaths.append(path)
+            atlases.append(atlas)
     
     return fpaths, atlases
 
-def view_cerebellum(gifti, cscale=None, colorbar=True, title=True):
-    """Visualize data on suit flatmap, plots either *.func.gii or *.label.gii data
+def view_cerebellum(
+    gifti, 
+    cscale=None, 
+    colorbar=True, 
+    title=True,
+    new_figure=True,
+    outpath=None
+    ):
+    """Visualize (optionally saves) data on suit flatmap, plots either *.func.gii or *.label.gii data
 
     Args: 
         gifti (str): full path to gifti image
         cscale (list or None): default is None
         colorbar (bool): default is False.
+        title (bool): default is True
+        new_figure (bool): default is True. If false, appends to current axis. 
+        outpath (str or None): full path to filename. If None, figure is not saved to file
     """
 
     # full path to surface
@@ -292,54 +353,116 @@ def view_cerebellum(gifti, cscale=None, colorbar=True, title=True):
     elif '.label.' in gifti:
         overlay_type = 'label'
 
-    view = flatmap.plot(gifti, surf=surf_mesh, overlay_type=overlay_type, cscale=cscale, colorbar=True, new_figure=True) # implement colorbar
+    view = flatmap.plot(gifti, surf=surf_mesh, overlay_type=overlay_type, cscale=cscale, colorbar=colorbar, new_figure=new_figure) # implement colorbar
 
     if title:
         fname = Path(gifti).name
         view.set_title(fname.split('.')[0])
 
+    if outpath:
+        if '.png' in outpath:
+            format = 'png'
+        elif '.svg' in outpath:
+            format = 'svg'
+        plt.savefig(outpath, dpi=300, format=format, bbox_inches='tight', pad_inches=0)
+
     return view
 
-def view_cortex(gifti, hemisphere='R', cmap=None, cscale=None, atlas_type='inflated', symmetric_cmap=False, orientation='medial'):
-    """Visualize data on inflated cortex, plots either *.func.gii or *.label.gii data
+def view_cortex(
+    gifti, 
+    hemisphere='R', 
+    cmap=None, 
+    cscale=None, 
+    atlas_type='inflated',  
+    orientation='medial', 
+    title=True,
+    outpath=None
+    ):
+    """Visualize (optionally saves) data on inflated cortex, plots either *.func.gii or *.label.gii data
 
     Args: 
         gifti (str): fullpath to file: *.func.gii or *.label.gii
-        bg_map (str or np array or None): 
-        map_type (str): 'func' or 'label'
         hemisphere (str): 'R' or 'L'
+        cmap (matplotlib colormap or None):
+        cscale (int or None):
         atlas_type (str): 'inflated', 'very_inflated' (see fs_LR dir)
+        orientation (str): 'medial' or 'lateral'
+        title (bool): default is True
+        outpath (str or None): default is None. file not saved to disk
+
     """
     # initialise directories
     dirs = const.Dirs()
 
+    if '.R.' in gifti:
+        hemisphere = 'R'
+    elif '.L.' in gifti:
+        hemisphere = 'L'
+
     # get surface mesh
     surf_mesh = os.path.join(dirs.reg_dir, 'data', 'group', f'fs_LR.32k.{hemisphere}.{atlas_type}.surf.gii')
 
-    # load surf data from file
-    fname = Path(gifti).name
-    title = fname.split('.')[0]
-        
     # Determine scale
-    func_data = load_surf_data(gifti)
     if ('.func.' in gifti and cscale is None):
+        func_data = load_surf_data(gifti)
         cscale = [np.nanmin(func_data), np.nanmax(func_data)]
 
-    if '.func.' in gifti:
-        view = view_surf(surf_mesh=surf_mesh, 
-                        surf_map=func_data,
-                        vmin=cscale[0], 
-                        vmax=cscale[1],
-                        cmap='CMRmap',
-                        symmetric_cmap=symmetric_cmap,
-                        # title=title
-                        ) 
-    elif '.label.' in gifti:   
-        if hemisphere=='L':
-            orientation = 'lateral'
-        if cmap is None:
-            _, cmap = get_label_colors(fpath=gifti)
-        view = plot_surf_roi(surf_mesh, gifti, cmap=cmap, view=orientation)    
+    fname = None
+    if title:
+        fname = Path(gifti).name
+        fname.split('.')[0]
+    
+    if hemisphere=='L':
+        orientation = 'lateral'
+
+    if cmap is None:
+        _, _, cmap = get_gifti_colors(fpath=gifti)
+
+    view = plot_surf_roi(surf_mesh, gifti, cmap=cmap, view=orientation, title=fname) 
+
+    if outpath:
+        if '.png' in outpath:
+            format = 'png'
+        elif '.svg' in outpath:
+            format = 'svg'
+        plt.savefig(outpath, dpi=300, format=format, bbox_inches='tight', pad_inches=0)
     
     return view
+
+def view_colorbar(
+    fpath, 
+    outpath=None
+    ):
+    """Makes colorbar for *.label.gii file
+        
+    Args:
+        fpath (str): full path to *.label.gii
+        outpath (str or None): default is None. file not saved to disk.
+    """
+    plt.figure()
+    fig, ax = plt.subplots(figsize=(1,10)) # figsize=(1, 10)
+    # fig, ax = plt.figure()
+
+    rgba, cpal, cmap = get_gifti_colors(fpath)
+    labels = get_gifti_labels(fpath)
+
+    bounds = np.arange(cmap.N + 1)
+
+    norm = mpl.colors.BoundaryNorm(bounds, cmap.N)
+    cb3 = mpl.colorbar.ColorbarBase(ax, cmap=cmap.reversed(cmap), 
+                                    norm=norm,
+                                    ticks=bounds,
+                                    format='%s',
+                                    orientation='vertical',
+                                    )
+    cb3.set_ticklabels(labels[::-1])  
+    cb3.ax.tick_params(size=0)
+    cb3.set_ticks(bounds+.5)
+    cb3.ax.tick_params(axis='y', which='major', labelsize=30)
+
+    if outpath:
+        plt.savefig(outpath, bbox_inches='tight', dpi=150)
+
+    return cb3
+
     

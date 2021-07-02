@@ -12,6 +12,7 @@ from connectivity import make_atlas
 
 def run(atlas, glm='glm7'):
     labels = {}
+    
     # loop over exp
     for exp in ['sc1', 'sc2']:
         labels[exp] = make_atlas.model_wta(const.return_subjs, exp, glm, atlas)
@@ -25,7 +26,7 @@ def run(atlas, glm='glm7'):
     cio.make_dirs(fpath)
 
     # get label colors
-    rgba, _ = nio.get_label_colors(fpath=os.path.join(dirs.reg_dir, 'data', 'group', f'{atlas}.R.label.gii'))
+    rgba, _ = nio.get_gifti_colors(fpath=os.path.join(dirs.reg_dir, 'data', 'group', f'{atlas}.R.label.gii'))
 
     make_atlas.save_maps_cerebellum(data=labels_concat, 
                         fpath=os.path.join(fpath, f'{atlas}_wta_suit'),
