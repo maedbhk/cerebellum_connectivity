@@ -127,11 +127,6 @@ class WINNERS(ModelMixin):
 
     def __init__(self, n_features_to_select = 1):
         self.n_featrues_to_select = n_features_to_select
-
-        self.t0 = time.time()
-        self.t0 = time.ctime(self.t0)
-
-        print(f"started fitting at {self.t0}") 
         
     def add_features(self, X, y, selected = []):
        
@@ -213,15 +208,11 @@ class WINNERS(ModelMixin):
                 # update support 
                 self.support_[vox, feats] = int(1)
 
-        self.t1 = time.time()
-        self.t1 = time.ctime(self.t1)
-        print(f"\nfitting finished at {self.t1}")
-
         return self.support_
         
 class WNTA(Ridge, ModelMixin):
 
-    def __init__(self, winner_model = None, alpha = 0, positive = False, n_features_to_select = 1):
+    def __init__(self, winner_model = None, alpha = 0, n_features_to_select = 1):
         """
         should be initialized with an instance of WINNERS class. 
         if None is entered, it will start from scratch, create an instance of WINNERS 
@@ -233,9 +224,9 @@ class WNTA(Ridge, ModelMixin):
 
         if winner_model is None:
             # initialize a winner model class
-            self.winner = WINNERS(n_features_to_select = n_features_to_select)
+            self.winner_model = WINNERS(n_features_to_select = n_features_to_select)
         else: 
-            self.winner = winner_model
+            self.winner_model = winner_model
             
 
         self.n_features_to_select = n_features_to_select
@@ -246,11 +237,11 @@ class WNTA(Ridge, ModelMixin):
         self.scale_ = np.sqrt(np.nansum(X ** 2, 0) / X.shape[0])
 
         # first get the winners
-        if hasattr(self.winner, "support_"): # if it has support_ then it's already been done 
-            self.winner.n_featrues_to_select = self.n_features_to_select # update the number of features to be selected
-            self.feature_mask = self.winner.set_support_(X, Y, self.winner.support_)
+        if hasattr(self.winner_model, "support_"): # if it has support_ then it's already been done 
+            self.winner_model.n_featrues_to_select = self.n_features_to_select # update the number of features to be selected
+            self.feature_mask = self.winner_model.set_support_(X, Y, self.winner_model.support_)
         else: # then it hasn't been done, so do it
-            self.feature_mask = self.winner.set_support_(X, Y)
+            self.feature_mask = self.winner_model.set_support_(X, Y)
             
         # loop over voxels and fit ridge
         wnta_coef = np.zeros((Y.shape[1], X.shape[1]))
