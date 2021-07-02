@@ -474,7 +474,8 @@ def train_wnta(config, save = True):
         cio.save_dict_as_JSON(os.path.join(fpath, "train_config.json"), config)
 
     # path to folder with n-winner feature models
-    winner_name = f"winners_{config['X_data']}_N{config['n_features_to_select']:.0f}"
+    n = config['param']['n_features_to_select']
+    winner_name = f"winners_{config['X_data']}_N{n:.0f}"
 
     # Loop over subjects and train
     for subj in config["subjects"]:
@@ -495,8 +496,8 @@ def train_wnta(config, save = True):
         winner_model = dd.io.load(winner_path)
 
         # update the winner_model attribute of the wnta model
-        model_update = setattr(new_model, "winner_model", winner_model)
-        models[-1].append(model_update)
+        new_model.winner_model = winner_model
+        models.append(new_model)
 
         # fit the model
         models[-1].fit(X, Y)
