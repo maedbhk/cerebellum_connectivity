@@ -7,7 +7,7 @@ from pathlib import Path
 import matplotlib.image as mpimg
 from PIL import Image
 import matplotlib.pyplot as plt
-import matplotlib as mpl
+import re
 
 import connectivity.data as cdata
 import connectivity.constants as const
@@ -19,6 +19,7 @@ def plotting_style():
     plt.rc('font', serif='Helvetica Neue') 
     plt.rc('text', usetex='false') 
     plt.rcParams['lines.linewidth'] = 6
+    plt.rcParams['lines.markersize'] = 7
     plt.rc('xtick', labelsize=14)   
     plt.rc('ytick', labelsize=14)
     
@@ -49,6 +50,8 @@ def train_summary(
         fpath = os.path.join(dirs.conn_train_dir, f"{summary_name}.csv")
         df = pd.read_csv(fpath)
         df_concat = pd.concat([df_concat, df])
+    
+    df_concat['atlas'] = df_concat['X_data'].apply(lambda x: _add_atlas(x))
 
     # rename cols
     cols = []
@@ -81,6 +84,8 @@ def eval_summary(
         fpath = os.path.join(dirs.conn_eval_dir, f"{summary_name}.csv")
         df = pd.read_csv(fpath)
         df_concat = pd.concat([df_concat, df])
+    
+    df_concat['atlas'] = df_concat['X_data'].apply(lambda x: _add_atlas(x))
 
     cols = []
     for col in df_concat.columns:
@@ -97,6 +102,50 @@ def eval_summary(
     df_concat["eval_noiseceiling_XY"] = np.sqrt(df_concat.eval_noise_Y_R) * np.sqrt(df_concat.eval_noise_X_R)
 
     return df_concat
+
+def roi_summary(
+    fpaths, 
+    atlas='MDTB_10Regions', 
+    save=True
+    ):
+    """plot roi summary of data in `fpath`
+
+    Args: 
+        fpath (str): full path to nifti image
+        atlas (str): default is 'MDTB_10Regions.nii'. assumes that atlases are saved in /cerebellar_atlases/
+    Returns: 
+        plots barplot of roi summary
+    """
+    dirs = const.Dirs()
+
+    # get rois for `atlas`
+    atlas_dir = os.path.join(dirs.base_dir, 'cerebellar_atlases')
+    rois = cdata.read_suit_nii(atlas_dir + f'/{atlas}.nii')
+
+    # get roi colors
+    rgba, cpal = nio.get_gifti_colors(fpath=atlas_dir + f'/{atlas}.label.gii')
+    labels = nio.get_gifti_labels(fpath=atlas_dir + f'/{atlas}.label.gii')
+
+    df_all = pd.DataFrame()
+    for fpath in fpaths:
+        data = cdata.read_suit_nii(fpath)
+        roi_mean, regs = cdata.average_by_roi(data, rois)
+        fname = Path(fpath).stem
+        df1 = pd.DataFrame({'roi_mean': list(np.hstack(roi_mean)),
+                        'regions': list(regs),
+                        'labels': list(labels),
+                        'fnames': np.repeat(fname, len(regs))})
+        df_all = pd.concat([df_all, df1])
+
+    return df_all
+
+def _add_atlas(x):
+    """returns abbrev. atlas name from `X_data` column
+    """
+    atlas = x.split('_')[0]
+    atlas = ''.join(re.findall(r"[a-zA-Z]", atlas)).lower()
+
+    return atlas
 
 def plot_train_predictions( 
     exps=['sc1'], 
@@ -145,7 +194,7 @@ def plot_train_predictions(
 
 def plot_eval_predictions(
     exps=['sc2'], 
-    x='eval_X_data', 
+    x='eval_num_regions', 
     hue=None, 
     x_order=None, 
     hue_order=None, 
@@ -166,11 +215,11 @@ def plot_eval_predictions(
     # filter out methods
     dataframe = dataframe[dataframe['eval_model'].isin(methods)]
 
-    # melt data into one column for easy plotting
-    ax = sns.lineplot(x=x, y="R_eval", hue=hue, data=dataframe, legend=True, ax=ax) # size=4, aspect=2, order=x_order, hue_order=hue_order,
+    ax = sns.lineplot(x=x, y="R_eval", hue=hue, legend=True, data=dataframe, ax=ax) # size=4, aspect=2, order=x_order, hue_order=hue_order,,
     plt.xticks(rotation="45", ha="right")
     ax.set_xlabel("")
     ax.set_ylabel("R")
+    plt.legend(bbox_to_anchor=(0, 1), loc='upper left', ncol=1, frameon=False)
 
     if noiseceiling:
         ax = sns.lineplot(x=x, y='eval_noiseceiling_Y', data=dataframe, color='k', ax=ax)
@@ -185,6 +234,38 @@ def plot_eval_predictions(
         dirs = const.Dirs()
         exp_fname = '_'.join(exps)
         plt.savefig(os.path.join(dirs.figure, f'eval_predictions_{exp_fname}.png'))
+
+def plot_predictions_WTA(
+    data='eval', 
+    method='WTA',
+    save=True,
+    format='png'
+    ):
+    """plot eval predictions
+    """
+    if data=='eval':
+        df = eval_summary()
+        df = df[df['eval_model'].isin([method])]
+        x='eval_num_regions'; y="R_eval"; hue='eval_atlas'
+    elif data=='train':
+        df = train_summary()
+        df = df[df['train_model'].isin([method])]
+        x='train_num_regions'; y='train_R_cv'; hue='train_atlas'
+                                                
+    paper_rc = {'lines.linewidth': 3}                  
+    sns.set_context("paper", rc=paper_rc) 
+    sns.factorplot(x=x, y=y, hue=hue, legend=False, data=df, ax=None, size=4, aspect=2)
+    plt.xticks(rotation='45', fontsize=18);
+    plt.yticks(fontsize=20)
+    plt.legend(fontsize=20, frameon=False, bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.ylabel('R', fontsize=20)
+    plt.xlabel('Regions', fontsize=20);
+    paper_rc = {'lines.linewidth': 6}                  
+    sns.set_context("paper", rc=paper_rc) 
+    
+    if save:
+        dirs = const.Dirs()
+        plt.savefig(os.path.join(dirs.figure, f'{method}_predictions_{data}.{format}'), format=format, dpi=300, bbox_inches="tight")
 
 def plot_best_eval(
     exps=['sc2'],
@@ -243,6 +324,17 @@ def plot_best_eval(
         exp_fname = '_'.join(exps)
         plt.savefig(os.path.join(dirs.figure, f'best_eval_{exp_fname}.png'))
 
+def plot_roi(save=True):
+    plt.figure()
+    sns.barplot(x='labels', y='roi_mean', data=df1.query('regions!=0'), palette=cpal[1:])
+    plt.xticks(rotation=45)
+    plt.xlabel(atlas)
+    plt.ylabel('ROI mean')
+
+    if save:
+        dirs = const.Dirs()
+        plt.savefig(os.path.join(dirs.figure, f'{atlas}_summary.png'))
+
 def map_eval(
     data="R", 
     exp="sc1", 
@@ -283,50 +375,6 @@ def map_eval(
     if rois:
         roi_summary(fpath=os.path.join(fpath, f"group_{data}_{model}_{exp}_vox.nii"), atlas=atlas)
     return view
-
-def roi_summary(
-    fpath, 
-    atlas='MDTB_10Regions', 
-    save=True
-    ):
-    """plot roi summary of data in `fpath`
-
-    Args: 
-        fpath (str): full path to nifti image
-        atlas (str): default is 'MDTB_10Regions.nii'. assumes that atlases are saved in /cerebellar_atlases/
-    Returns: 
-        plots barplot of roi summary
-    """
-    dirs = const.Dirs()
-
-    # get rois for `atlas`
-    atlas_dir = os.path.join(dirs.base_dir, 'cerebellar_atlases')
-    rois = cdata.read_suit_nii(atlas_dir + f'/{atlas}.nii')
-
-    # get roi colors
-    rgba, cpal = nio.get_gifti_colors(fpath=atlas_dir + f'/{atlas}.label.gii')
-    labels = nio.get_gifti_labels(fpath=atlas_dir + f'/{atlas}.label.gii')
-
-    df_all = pd.DataFrame()
-    data = cdata.read_suit_nii(fpath)
-    roi_mean, regs = cdata.average_by_roi(data, rois)
-    fname = Path(fpath).stem
-    df1 = pd.DataFrame({'roi_mean': list(np.hstack(roi_mean)),
-                    'regions': list(regs),
-                    'labels': list(labels),
-                    'fnames': np.repeat(fname, len(regs))})
-    
-    plt.figure()
-    sns.barplot(x='labels', y='roi_mean', data=df1.query('regions!=0'), palette=cpal[1:])
-    plt.xticks(rotation=45)
-    plt.xlabel(atlas)
-    plt.ylabel('ROI mean')
-
-    if save:
-        dirs = const.Dirs()
-        plt.savefig(os.path.join(dirs.figure, f'{atlas}_summary.png'))
-
-    return df1
 
 def map_model_comparison(
     model_name, 

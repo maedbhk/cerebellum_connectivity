@@ -85,6 +85,7 @@ def fig1():
 
     ax3 = fig.add_subplot(gs[1,0])
     vis.plot_eval_predictions(exps=['sc2'], methods=['WTA'], hue=None, noiseceiling=True, ax=ax3)
+    ax3.text(x_pos, 1.2, 'B', transform=ax3.transAxes, fontsize=40, verticalalignment='top')
 
     # plt.subplots_adjust(left=0.125, bottom=0.001, right=2.0, top=2.0, wspace=.2, hspace=.3)
     plt.savefig(os.path.join(dirs.figure, 'fig1.png'), bbox_inches="tight", dpi=300)
