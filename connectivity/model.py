@@ -161,11 +161,17 @@ class WINNERS(ModelMixin):
                 Xs = np.nan_to_num(Xs) # there are 0 values after scaling
 
                 ## fit the model
-                mod = LinearRegression(fit_intercept=False).fit(Xs, y)
+                ### 1. get regression coefficient
+                B = (np.linalg.inv(X_feat.T@X_feat))@X_feat.T@y
+                ### 2. get predicted values
+                y_pred = X_feat@B
+                # R = y - X_feat@B
+                # mod = LinearRegression(fit_intercept=False).fit(Xs, y)
 
                 ## get the score and put it in scores
                 ## get the score
-                score_i, _    = ev.calculate_R(y, mod.predict(Xs))
+                score_i, _    = ev.calculate_R(y, y_pred)
+                # print(score_i)
                 scores.loc[i] = score_i
                                 
 
@@ -197,6 +203,7 @@ class WINNERS(ModelMixin):
 
         # loop over voxels
         for vox in range(Y.shape[1]):
+            # print(vox, end = "", flush=True)
 
             if np.any(Y[:, vox]):
                 # get the selected features for the current voxel
