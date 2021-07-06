@@ -636,8 +636,6 @@ def train_wnta(cortex = 'tessels0162',
                 Model, df = run_wnta.train_wnta(config, save=True)
 
                 df_all = pd.concat([df_all, df])
-            # print(df)
-
 
         # save out train summary
         dirs = const.Dirs(exp_name=config["train_exp"])
@@ -651,7 +649,7 @@ def train_wnta(cortex = 'tessels0162',
     
 
 def select_nwinners(cortex = 'tessels0162', 
-    n = [1, 2, 3],  
+    ns = [1, 2, 3],  
     sn=const.return_subjs):
 
     config = run.get_default_train_config()
@@ -661,7 +659,7 @@ def select_nwinners(cortex = 'tessels0162',
 
         for s in sn:
             # looping over ns and selecting features recursively
-            for n in range(1, len(n)+1):
+            for n in ns:
                 name = f"winners_{cortex}_N{n:.0f}"
                 print(f"Doing {name} - {cortex} sc{e+1}")
                 config["name"] = name
@@ -681,14 +679,25 @@ def select_nwinners(cortex = 'tessels0162',
                 # Model = run.train_models(config, save=True)
 
                 # TO SPEED THINGS UP:
-                # path to previous model
-                name_previous = f"winners_{cortex}_N{n-1:.0f}"
-                model_path = run_wnta._get_model_name(train_name=name_previous, exp=config["train_exp"], subj_id=s)
+                # searching whether any file corresponding to previous models exist (searcihng back to 1)
+                for nn in range(n-1, 0, -1):
+                    # path to previous model
+                    name_previous = f"winners_{cortex}_N{nn:.0f}"
+                    model_path = run_wnta._get_model_name(train_name=name_previous, exp=config["train_exp"], subj_id=s)
+
+                    # break the loop as soon as a model is found
+                    if os.path.isfile(model_path):
+                        print(f"found one breaking {nn}")
+                        break
+
                 if (n == 1) or not (os.path.isfile(model_path)): 
+                    print(f"scratch")
                     # if n = 1 or the model selection hasn't been done, start from scratch
                     Winner = None
                 else: # otherwise, start from the previous model
                     # load in the previous model
+                    print(f"here")
+                    print(model_path)
                     Winner = dd.io.load(model_path)
                 
                 # run the current model
