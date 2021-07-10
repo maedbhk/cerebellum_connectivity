@@ -2,34 +2,52 @@ import os
 import pandas as pd
 import numpy as np
 import seaborn as sns
-import re
 import glob
-import deepdish as dd
 from pathlib import Path
-from collections import defaultdict
+import matplotlib.image as mpimg
+from PIL import Image
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 
 import connectivity.data as cdata
 import connectivity.constants as const
 import connectivity.nib_utils as nio
 
-plt.rcParams["axes.grid"] = False
+def plotting_style():
+    plt.style.use('seaborn-poster') # ggplot
+    plt.rc('font', family='sans-serif') 
+    plt.rc('font', serif='Helvetica Neue') 
+    plt.rc('text', usetex='false') 
+    plt.rcParams['lines.linewidth'] = 6
+    plt.rc('xtick', labelsize=14)   
+    plt.rc('ytick', labelsize=14)
+    
+    plt.rcParams.update({'font.size': 16})
+    plt.rcParams["axes.labelweight"] = "regular"
+    plt.rcParams["font.weight"] = "regular"
+    plt.rcParams["savefig.format"] = 'svg'
+    plt.rcParams["savefig.dpi"] = 300
+    plt.rc("axes.spines", top=False, right=False) # removes certain axes
+    plt.rcParams["axes.grid"] = False
 
-def train_summary(summary_name="train_summary"):
+def train_summary(
+    summary_name="train_summary",
+    exps=['sc1']
+    ):
     """load train summary containing all metrics about training models.
     Summary across exps is concatenated and prefix 'train' is appended to cols.
     Args:
         summary_name (str): name of summary file
+        exps (list of str): default is ['sc1', 'sc2']
     Returns:
         pandas dataframe containing concatenated exp summary
     """
     # look at model summary for train results
     df_concat = pd.DataFrame()
-    for exp in ["sc1", "sc2"]:
+    for exp in exps:
         dirs = const.Dirs(exp_name=exp)
         fpath = os.path.join(dirs.conn_train_dir, f"{summary_name}.csv")
         df = pd.read_csv(fpath)
-        # df['train_exp'] = exp
         df_concat = pd.concat([df_concat, df])
 
     # rename cols
@@ -44,17 +62,21 @@ def train_summary(summary_name="train_summary"):
 
     return df_concat
 
-def eval_summary(summary_name="eval_summary"):
+def eval_summary(
+    summary_name="eval_summary",
+    exps=['sc2']
+    ):
     """load eval summary containing all metrics about eval models.
     Summary across exps is concatenated and prefix 'eval' is appended to cols.
     Args:
         summary_name (str): name of summary file
+        exps (list of str): default is ['sc1', 'sc2']
     Returns:
         pandas dataframe containing concatenated exp summary
     """
     # look at model summary for eval results
     df_concat = pd.DataFrame()
-    for exp in ["sc1", "sc2"]:
+    for exp in exps:
         dirs = const.Dirs(exp_name=exp)
         fpath = os.path.join(dirs.conn_eval_dir, f"{summary_name}.csv")
         df = pd.read_csv(fpath)
@@ -68,88 +90,143 @@ def eval_summary(summary_name="eval_summary"):
             cols.append("eval_" + col)
 
     df_concat.columns = cols
+    df_concat['eval_model'] = df_concat['eval_name'].str.split('_').str[0]
+
+    # get noise ceilings
+    df_concat["eval_noiseceiling_Y"] = np.sqrt(df_concat.eval_noise_Y_R)
+    df_concat["eval_noiseceiling_XY"] = np.sqrt(df_concat.eval_noise_Y_R) * np.sqrt(df_concat.eval_noise_X_R)
 
     return df_concat
 
-def plot_train_predictions(dataframe, exp='sc1', x='train_name', hue=None, x_order=None, hue_order=None, save=True):
+def plot_train_predictions( 
+    exps=['sc1'], 
+    x='train_name', 
+    hue=None, 
+    x_order=None, 
+    hue_order=None, 
+    save=True, 
+    best_models=True,
+    methods=['L2regression', 'WTA']
+    ):
     """plots training predictions (R CV) for all models in dataframe.
     Args:
-        dataframe (pandas dataframe): must contain 'train_name' and 'train_R_cv'
+        exps (list of str): default is ['sc1']
         hue (str or None): can be 'train_exp', 'Y_data' etc.
     """
+    # get train summary
+    dataframe = train_summary(exps=exps)
+
+    # filter data
+    dataframe = dataframe[dataframe['train_model'].isin(methods)]
+
+    if (best_models):
+        # get best model for each method
+        df = dataframe.groupby(['train_X_data', 'train_model', 'train_hyperparameter']).mean().reset_index()
+
+        df1 = df.groupby(['train_X_data', 'train_model']
+                ).apply(lambda x: x['train_R_cv'].max()
+                ).reset_index(name='train_R_cv')
+    else:
+        df1 = dataframe
     # R
-    sns.factorplot(x=x, y="train_R_cv", hue=hue, data=dataframe.query(f'train_exp=="{exp}"'), order=x_order, hue_order=hue_order, legend=False, ci=None, size=4, aspect=2)
+    sns.factorplot(x=x, y="train_R_cv", hue=hue, data=df1, order=x_order, hue_order=hue_order, legend=False, ci=None, size=4, aspect=2)
     plt.title("Model Training (CV Predictions)", fontsize=20)
     plt.tick_params(axis="both", which="major", labelsize=15)
     plt.xticks(rotation="45", ha="right")
     plt.xlabel("")
     plt.ylabel("R", fontsize=20)
-    plt.legend(fontsize=15, bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.legend(fontsize=15, bbox_to_anchor=(1.05, 1), loc='upper left', frameon=False)
     plt.show()
 
     if save:
         dirs = const.Dirs()
-        plt.savefig(os.path.join(dirs.figure, f'train_predictions_{exp}.png'))
+        exp_fname = '_'.join(exps)
+        plt.savefig(os.path.join(dirs.figure, f'train_predictions_{exp_fname}.png'))
 
-def plot_eval_predictions(dataframe, exp='sc2', x='eval_name', hue=None, x_order=None, hue_order=None, save=True):
+def plot_eval_predictions(
+    exps=['sc2'], 
+    x='eval_X_data', 
+    hue=None, 
+    x_order=None, 
+    hue_order=None, 
+    save=True,
+    methods=['ridge', 'WTA'],
+    noiseceiling=True,
+    ax=None,
+    title=False
+    ):
     """plots training predictions (R CV) for all models in dataframe.
     Args:
-        dataframe (pandas dataframe): must contain 'train_name' and 'train_R_cv'
+        exps (list of str): default is ['sc2']
         hue (str or None): can be 'train_exp', 'Y_data' etc.
     """
-    # R
-    sns.factorplot(x=x, y="R_eval", hue=hue, data=dataframe.query(f'eval_exp=="{exp}"'), order=x_order, hue_order=hue_order, legend=False, ci=None, size=4, aspect=2)
-    plt.title("Model Evaluation", fontsize=20)
-    plt.tick_params(axis="both", which="major", labelsize=15)
-    plt.xticks(rotation="45", ha="right")
-    plt.xlabel("")
-    plt.ylabel("R", fontsize=20)
-    plt.legend(fontsize=15, bbox_to_anchor=(1.05, 1), loc='upper left')
-    plt.show()
 
+    dataframe = eval_summary(exps=exps)
+
+    # filter out methods
+    dataframe = dataframe[dataframe['eval_model'].isin(methods)]
+
+    # melt data into one column for easy plotting
+    ax = sns.lineplot(x=x, y="R_eval", hue=hue, data=dataframe, legend=True, ax=ax) # size=4, aspect=2, order=x_order, hue_order=hue_order,
+    plt.xticks(rotation="45", ha="right")
+    ax.set_xlabel("")
+    ax.set_ylabel("R")
+
+    if noiseceiling:
+        ax = sns.lineplot(x=x, y='eval_noiseceiling_Y', data=dataframe, color='k', ax=ax)
+        ax.lines[-1].set_linestyle("--")
+        # sns.lineplot(x=x, y='eval_noiseceiling_XY', data=dataframe, color='k')
+        ax.set_xlabel("")
+
+    if title:
+        plt.title("Model Evaluation", fontsize=20)
+    
     if save:
         dirs = const.Dirs()
-        plt.savefig(os.path.join(dirs.figure, f'eval_predictions_{exp}.png'))
+        exp_fname = '_'.join(exps)
+        plt.savefig(os.path.join(dirs.figure, f'eval_predictions_{exp_fname}.png'))
 
-def plot_best_eval(dataframe, exp="sc1", save=True):
+def plot_best_eval(
+    exps=['sc2'],
+    save=True
+    ):
     """plots evaluation predictions (R eval) for best model in dataframe for 'sc1' or 'sc2'
     Also plots model-dependent and model-independent noise ceilings.
     Args:
-        dataframe (pandas dataframe): must contain 'train_name' and 'train_R_cv'
-        exp (str): either 'sc1' or 'sc2'
+        exps (list of str): default is ['sc2']
         hue (str or None): default is 'eval_name'
     """
-    # get best model (from train CV)
-    best_model,_ = get_best_model(train_exp=exp)
+    # get evaluation dataframe
+    dataframe = eval_summary(exps=exps)
 
-    if exp is "sc1":
-        eval_exp = "sc2"
-    else:
-        eval_exp = "sc1"
+    dataframe_all = pd.DataFrame()
+    for exp in exps:
 
-    dataframe = dataframe.query(f'eval_exp=="{eval_exp}" and eval_name=="{best_model}"')
+        if exp is "sc1":
+            train_exp = "sc2"
+        else:
+            train_exp = "sc1"
 
-    # get noise ceilings
-    dataframe["eval_noiseceiling_Y"] = np.sqrt(dataframe.eval_noise_Y_R)
-    dataframe["eval_noiseceiling_XY"] = np.sqrt(dataframe.eval_noise_Y_R) * np.sqrt(dataframe.eval_noise_X_R)
+        best_model,_ = get_best_model(train_exp=train_exp)
+
+        dataframe = dataframe.query(f'eval_exp=="{exp}" and eval_name=="{best_model}"')
+        dataframe_all = pd.concat([dataframe_all, dataframe])
 
     # melt data into one column for easy plotting
     cols = ["eval_noiseceiling_Y", "eval_noiseceiling_XY", "R_eval"]
-    df = pd.melt(dataframe, value_vars=cols, id_vars=set(dataframe.columns) - set(cols)).rename(
+    df = pd.melt(dataframe_all, value_vars=cols, id_vars=set(dataframe_all.columns) - set(cols)).rename(
         {"variable": "data_type", "value": "data"}, axis=1
     )
 
     plt.figure(figsize=(8, 8))
     splot = sns.barplot(x="data_type", y="data", data=df)
-    plt.title(f"Model Evaluation (exp={exp}: best model={best_model})", fontsize=20)
+    plt.title(f"Model Evaluation: best model={best_model})", fontsize=20)
     plt.tick_params(axis="both", which="major", labelsize=15)
     plt.xlabel("")
     plt.ylabel("R", fontsize=20)
     plt.xticks(
         [0, 1, 2], ["noise ceiling (data)", "noise ceiling (model)", "model predictions"], rotation="45", ha="right"
     )
-    # plt.legend(fontsize=15)
-
     # annotate barplot
     for p in splot.patches:
         splot.annotate(
@@ -163,9 +240,19 @@ def plot_best_eval(dataframe, exp="sc1", save=True):
     plt.show()
     if save:
         dirs = const.Dirs()
-        plt.savefig(os.path.join(dirs.figure, f'best_eval_{exp}.png'))
+        exp_fname = '_'.join(exps)
+        plt.savefig(os.path.join(dirs.figure, f'best_eval_{exp_fname}.png'))
 
-def map_eval(data="R", exp="sc1", model_name='best_model', colorbar=False, cscale=None, rois=True, atlas='MDTB_10Regions', save=True):
+def map_eval(
+    data="R", 
+    exp="sc1", 
+    model_name='best_model', 
+    colorbar=False, 
+    cscale=None, 
+    rois=True, 
+    atlas='MDTB_10Regions', 
+    save=True
+    ):
     """plot surface map for best model
     Args:
         gifti (str):
@@ -197,7 +284,11 @@ def map_eval(data="R", exp="sc1", model_name='best_model', colorbar=False, cscal
         roi_summary(fpath=os.path.join(fpath, f"group_{data}_{model}_{exp}_vox.nii"), atlas=atlas)
     return view
 
-def roi_summary(fpath, atlas='MDTB_10Regions', save=True):
+def roi_summary(
+    fpath, 
+    atlas='MDTB_10Regions', 
+    save=True
+    ):
     """plot roi summary of data in `fpath`
 
     Args: 
@@ -213,7 +304,7 @@ def roi_summary(fpath, atlas='MDTB_10Regions', save=True):
     rois = cdata.read_suit_nii(atlas_dir + f'/{atlas}.nii')
 
     # get roi colors
-    rgba, cpal = nio.get_label_colors(fpath=atlas_dir + f'/{atlas}.label.gii')
+    rgba, cpal = nio.get_gifti_colors(fpath=atlas_dir + f'/{atlas}.label.gii')
     labels = nio.get_gifti_labels(fpath=atlas_dir + f'/{atlas}.label.gii')
 
     df_all = pd.DataFrame()
@@ -237,7 +328,15 @@ def roi_summary(fpath, atlas='MDTB_10Regions', save=True):
 
     return df1
 
-def map_model_comparison(model_name, exp, method='subtract', colorbar=True, rois=True, atlas='MDTB_10Regions', save=True):
+def map_model_comparison(
+    model_name, 
+    exp, 
+    method='subtract', 
+    colorbar=True, 
+    rois=True, 
+    atlas='MDTB_10Regions', 
+    save=True
+    ):
     """plot surface map for best model
     Args:
     """
@@ -260,7 +359,17 @@ def map_model_comparison(model_name, exp, method='subtract', colorbar=True, rois
     
     return view
 
-def map_weights(structure='cerebellum', exp='sc1', model_name='best_model', hemisphere='R', colorbar=False, cscale=None, rois=True, atlas='MDTB_10Regions', save=True):
+def map_weights(
+    structure='cerebellum', 
+    exp='sc1', 
+    model_name='best_model', 
+    hemisphere='R', 
+    colorbar=False, 
+    cscale=None, 
+    rois=True, 
+    atlas='MDTB_10Regions', 
+    save=True
+    ):
     """plot training weights for cortex or cerebellum
     Args: 
         gifti_func (str): '
@@ -294,29 +403,34 @@ def map_weights(structure='cerebellum', exp='sc1', model_name='best_model', hemi
         roi_summary(fpath=os.path.join(fpath, f"group_weights_cerebellum.nii"), atlas=atlas)
     return view
 
-def map_atlas(fpath, structure='cortex', save=True):
-    """General purpose function for plotting *.label.gii or *.func.gii parcellations (cortex or cerebellum)
+def map_atlas(
+    fpath, 
+    structure='cerebellum', 
+    colorbar=False,
+    title=False,
+    outpath=None
+    ):
+    """General purpose function for plotting (optionally saving) *.label.gii or *.func.gii parcellations (cortex or cerebellum)
     Args: 
         fpath (str): full path to atlas
-        anatomical_structure (str): default is 'cerebellum'. other options: 'cortex'
+        structure (str): default is 'cerebellum'. other options: 'cortex'
+        colorbar (bool): default is False. If False, saves colorbar separately to disk.
+        save (bool): default is True.
     Returns:
         viewing object to visualize parcellations
     """
-    # initialize directory
-    dirs = const.Dirs()
-
     if structure=='cerebellum':
-        return nio.view_cerebellum(gifti=fpath) 
+        view = nio.view_cerebellum(gifti=fpath, colorbar=colorbar, outpath=outpath, title=title) 
     elif structure=='cortex':
-        return nio.view_cortex(gifti=fpath)
+        view = nio.view_cortex(gifti=fpath, outpath=outpath, title=title)
     else:
         print('please provide a valid parcellation')
     
-    if save:
-        dirs = const.Dirs()
-        plt.savefig(os.path.join(dirs.figure, f'{Path(fpath).stem}_{structure}.png'))
+    return view
 
-def get_best_model(train_exp):
+def get_best_model(
+    train_exp
+    ):
     """Get idx for best model based on either R_cv (or R_train)
     Args:
         exp (str): 'sc1' or 'sc2
@@ -343,7 +457,9 @@ def get_best_model(train_exp):
 
     return best_model, cortex
 
-def get_best_models(train_exp):
+def get_best_models(
+    train_exp
+    ):
     """Get model_names, cortex_names for best models (NNLS, ridge, WTA) based on R_cv
     Args:
         exp (str): 'sc1' or 'sc2
@@ -370,65 +486,18 @@ def get_best_models(train_exp):
 
     return model_names, cortex_names
 
-def get_eval_models(exp):
+def get_eval_models(
+    exp
+    ):
     dirs = const.Dirs(exp_name=exp)
     df = pd.read_csv(os.path.join(dirs.conn_eval_dir, 'eval_summary.csv'))
     df = df[['name', 'X_data']].drop_duplicates() # get unique model names
 
     return df['name'].to_list(), np.unique(df['X_data'].to_list())
 
-def train_weights(exp="sc1", model_name="ridge_tesselsWB162_alpha_6"):
-    """gets training weights for a given model and summarizes into a dataframe
-    averages the weights across the cerebellar voxels (1 x cortical ROIs)
-    Args:
-        exp (str): 'sc1' or 'sc2'
-        model_name (str): default is 'ridge_tesselsWB162_alpha_6'
-    Returns:
-        pandas dataframe containing 'ROI', 'weights', 'subj', 'exp'
-    """
-    data_dict = defaultdict(list)
-    dirs = const.Dirs(exp_name=exp)
-    trained_models = glob.glob(os.path.join(dirs.conn_train_dir, model_name, "*.h5"))
-
-    for fname in trained_models:
-
-        # Get the model from file
-        fitted_model = dd.io.load(fname)
-        regex = r"_(s\d+)."
-        subj = re.findall(regex, fname)[0]
-        weights = np.nanmean(fitted_model.coef_, 0)
-
-        data = {
-            "ROI": np.arange(1, len(weights) + 1),
-            "weights": weights,
-            "subj": [subj] * len(weights),
-            "exp": [exp] * len(weights),
-        }
-
-        # append data for each subj
-        for k, v in data.items():
-            data_dict[k].extend(v)
-
-    return pd.DataFrame.from_dict(data_dict)
-
-def plot_train_weights(dataframe, hue=None):
-    """plots training weights in dataframe
-    Args:
-        dataframe (pandas dataframe): must contain 'ROI' and 'weights' cols
-        hue (str or None): default is None
-    """
-    plt.figure(figsize=(8, 8))
-    sns.lineplot(x="ROI", y="weights", hue=hue, data=dataframe, ci=None)
-
-    exp = dataframe["exp"].unique()[0]
-
-    plt.axhline(linewidth=2, color="r")
-    plt.title(f"Cortical weights averaged across subjects for {exp}")
-    plt.tick_params(axis="both", which="major", labelsize=15)
-    plt.xlabel("# of ROIs", fontsize=20)
-    plt.ylabel("Weights", fontsize=20)
-
-def show_distance_matrix(roi='tessels0042'):
+def show_distance_matrix(
+    roi='tessels0042'
+    ):
     """Plot matrix of distances for cortical `roi`
     Args: 
         roi (str): default is 'tessels0042'
@@ -443,3 +512,72 @@ def show_distance_matrix(roi='tessels0042'):
     plt.imshow(distances)
     plt.colorbar()
     plt.show()
+
+def plot_png(
+    fpath, 
+    ax=None
+    ):
+    """ Plots a png image from `fpath`
+        
+    Args:
+        fpath (str): full path to image to plot
+        ax (bool): figure axes. Default is None
+    """
+    if os.path.isfile(fpath):
+        img = mpimg.imread(fpath)
+    else:
+        print("image does not exist")
+
+    if ax is None:
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+
+    ax.imshow(img, origin='upper', vmax=abs(img).max(), vmin=-abs(img).max(), aspect='equal')
+
+def join_png(
+    fpaths, 
+    outpath=None, 
+    offset=0
+    ):
+    """Join together pngs into one png
+
+    Args: 
+        fpaths (list of str): full path(s) to images
+        outpath (str): full path to new image. If None, saved in current directory.
+        offset (int): default is 0. 
+    """
+
+    # join images together
+    images = [Image.open(x) for x in fpaths]
+
+    # resize all images (keep ratio aspect) based on size of min image
+    sizes = ([(np.sum(i.size), i.size ) for i in images])
+    min_sum = sorted(sizes)[0][0]
+
+    images_resized = []
+    for s, i in zip(sizes, images):
+        resize_ratio = int(np.floor(s[0] / min_sum))
+        orig_size = list(s[1])
+        if resize_ratio>1:
+            resize_ratio = resize_ratio - 1.5
+        new_size = tuple([int(np.round(x / resize_ratio)) for x in orig_size])
+        images_resized.append(Image.fromarray(np.asarray(i.resize(new_size))))
+
+    widths, heights = zip(*(i.size for i in images_resized))
+
+    total_width = sum(widths)
+    max_height = max(heights)
+
+    new_im = Image.new('RGB', (total_width, max_height), (255, 255, 255))
+
+    x_offset = 0
+    for im in images_resized:
+        new_im.paste(im, (x_offset,0))
+        x_offset += im.size[0] - offset
+
+    if not outpath:
+        outpath = 'concat_image.png'
+    new_im.save(outpath)
+
+    return new_im
+
