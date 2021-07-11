@@ -142,75 +142,6 @@ def get_default_eval_config():
     return config
 
 
-def train_models(config, save=False):
-    """Trains a specific model class on X and Y data from a specific experiment for subjects listed in config.
-
-    Args:
-        config (dict): Training configuration, returned from get_default_train_config()
-        save (bool): Optional; Save fitted models automatically to disk.
-    Returns:
-        models (list): list of trained models for subjects listed in config.
-        train_all (pd dataframe): dataframe containing
-    """
-
-    dirs = const.Dirs(exp_name=config["train_exp"], glm=config["glm"])
-    models = []
-    train_all = defaultdict(list)
-    # Store the training configuration in model directory
-    if save:
-        fpath = os.path.join(dirs.conn_train_dir, config["name"])
-        cio.make_dirs(fpath)
-        cio.save_dict_as_JSON(os.path.join(fpath, "train_config.json"), config)
-
-    # Loop over subjects and train
-    for subj in config["subjects"]:
-        print(f"Training model on {subj}")
-
-        # get data
-        Y, Y_info, X, X_info = _get_data(config=config, exp=config["train_exp"], subj=subj)
-
-        # Generate new model and put in the list
-        new_model = getattr(model, config["model"])(**config["param"])
-        models.append(new_model)
-
-        # cross the sessions
-        if config["mode"] == "crossed":
-            Y = np.r_[Y[Y_info.sess == 2, :], Y[Y_info.sess == 1, :]]
-
-        # Fit model, get train and validate metrics
-        models[-1].fit(X, Y)
-        models[-1].rmse_train, models[-1].R_train = train_metrics(models[-1], X, Y)
-
-        # collect train metrics (rmse and R)
-        data = {
-            "subj_id": subj,
-            "rmse_train": models[-1].rmse_train,
-            "R_train": models[-1].R_train
-            }
-
-        # run cross validation and collect metrics (rmse and R)
-        if config['validate_model']:
-            models[-1].rmse_cv, models[-1].R_cv = validate_metrics(models[-1], X, Y, X_info, config["cv_fold"])
-            data.update({"rmse_cv": models[-1].rmse_cv,
-                        "R_cv": models[-1].R_cv
-                        })
-
-        # Copy over all scalars or strings from config to eval dict:
-        for key, value in config.items():
-            if not isinstance(value, (list, dict)):
-                data.update({key: value})
-
-        for k, v in data.items():
-            train_all[k].append(v)
-
-        # Save the fitted model to disk if required
-        if save:
-            fname = _get_model_name(train_name=config["name"], exp=config["train_exp"], subj_id=subj)
-            dd.io.save(fname, models[-1], compression=None)
-
-    return models, pd.DataFrame.from_dict(train_all)
-
-
 def train_metrics(model, X, Y):
     """computes training metrics (rmse and R) on X and Y
 
@@ -444,6 +375,7 @@ def select_winners(config, winner_model = None, save = True):
         else:
             support_ = winner_model.support_
         new_model.set_support_(X, Y, support_ = support_)
+        # new_model = new_model.select_winners(X, Y, winner_model = winner_model)
 
         # Save the class of selected regressors
         if save:
