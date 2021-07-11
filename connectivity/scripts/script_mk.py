@@ -547,8 +547,9 @@ def run(cortex="tessels0362",
 
             for (best_model, cortex) in zip(models, cortex_names):
 
-                # save voxel/vertex maps for best training weights
-                save_weight_maps(model_name=best_model, cortex=cortex, train_exp=f"sc{2-exp}")
+                # save voxel/vertex maps for best training weights (for group parcellations only)
+                if 'wb_indv' not in cortex:
+                    save_weight_maps(model_name=best_model, cortex=cortex, train_exp=f"sc{2-exp}")
 
                 # delete training models that are suboptimal (save space)
                 if delete_train:
