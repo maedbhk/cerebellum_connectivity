@@ -3,7 +3,7 @@ import os
 import time
 import numpy as np
 import pandas as pd
-import quadprog as qp
+# import quadprog as qp
 # import cvxopt
 from scipy import sparse
 from sklearn.base import BaseEstimator
@@ -122,6 +122,90 @@ class WTA(LinearRegression, ModelMixin):
         Xs = X / self.scale_
         Xs = np.nan_to_num(Xs) # there are 0 values after scaling
         return Xs @ self.coef_.T  # weights need to be transposed (throws error otherwise)
+
+class NNLS(BaseEstimator, ModelMixin):
+    """
+    Fast implementation of a multivariate Non-negative least squares (NNLS) regression
+    Allows for both L2 and L1 penality on regression coefficients (i.e. Elastic-net like).
+    Regression model is transformed into a quadratic programming problem and then solved
+    using the  quadprog module
+    """
+
+    def __init__(self, alpha=0, gamma=0, solver = "cvxopt"):
+        """
+        Constructor. Input:
+            alpha (double):
+                L2-regularisation
+            gamma (double):
+                L1-regularisation (0 def)
+            solver
+                Library for solving quadratic programming problem
+        """
+        self.alpha = alpha
+        self.gamma = gamma
+        self.solver = solver
+
+    def fit(self, X, Y):
+        """
+        Fitting of NNLS model including scaling of X matrix
+        """
+        N, P1 = X.shape
+        P2 = Y.shape[1]
+        self.scale_ = np.sqrt(np.sum(X ** 2, 0) / X.shape[0])
+        Xs = X / self.scale_
+        Xs = np.nan_to_num(Xs) # there are 0 values after scaling
+        G = Xs.T @ Xs + np.eye(P1) * self.alpha
+        a = Xs.T @ Y - self.gamma
+        C = np.eye(P1)
+        b = np.zeros((P1,))
+        self.coef_ = np.zeros((P2, P1))
+        if (self.solver=="quadprog"):
+            for i in range(P2):
+                self.coef_[i, :] = qp.solve_qp(G, a[:, i], C, b, 0)[0]
+        elif (self.solver=="cvxopt"):
+            Gc = cvxopt.matrix(G)
+            Cc = cvxopt.matrix(-1*C)
+            bc = cvxopt.matrix(b)
+            inVa = cvxopt.matrix(np.zeros((P1,)))
+            for i in range(P2):
+                ac = cvxopt.matrix(-a[:,i])
+                sol = cvxopt.solvers.qp(Gc,ac,Cc,bc,initvals=inVa)
+                self.coef_[i, :] = np.array(sol['x']).reshape((P1,))
+                inVa = sol['x']
+
+
+    def predict(self, X):
+        Xs = X / self.scale_
+        Xs = np.nan_to_num(Xs) # there are 0 values after scaling
+        return Xs @ self.coef_.T 
+
+class PLSRegress(PLSRegression, ModelMixin):
+    """
+        PLS regression connectivity model
+        for more info:
+            https://ogrisel.github.io/scikit-learn.org/sklearn-tutorial/modules/generated/sklearn.pls.PLSRegression.html
+            from sklearn.pls import PLSCanonical, PLSRegression, CCA
+            https://scikit-learn.org/stable/modules/generated/sklearn.cross_decomposition.PLSRegression.html
+            pls2_mod = PLSRegression(n_components = N, algorithm = method)
+    """
+
+    def __init__(self, n_components = 1):
+        super().__init__(n_components =n_components)
+        
+    def fit(self, X, Y):
+        """
+        uses nipals algorithm 
+        """
+
+        Xs = X / np.sqrt(np.sum(X**2,0)/X.shape[0]) # Control scaling 
+
+        Xs = np.nan_to_num(Xs)
+        return super().fit(Xs,Y)
+
+    def predict(self, X):
+        Xs = X / np.sqrt(np.sum(X**2,0)/X.shape[0]) # Control scaling 
+        Xs = np.nan_to_num(Xs)
+        return super().predict(Xs)
 
 class WINNERS(ModelMixin):
 
@@ -279,87 +363,3 @@ class WNTA(Ridge, ModelMixin):
         Xs = X / self.scale_
         Xs = np.nan_to_num(Xs) # there are 0 values after scaling
         return Xs @ self.coef_.T  # weights need to be transposed (throws error otherwise)
-
-class NNLS(BaseEstimator, ModelMixin):
-    """
-    Fast implementation of a multivariate Non-negative least squares (NNLS) regression
-    Allows for both L2 and L1 penality on regression coefficients (i.e. Elastic-net like).
-    Regression model is transformed into a quadratic programming problem and then solved
-    using the  quadprog module
-    """
-
-    def __init__(self, alpha=0, gamma=0, solver = "cvxopt"):
-        """
-        Constructor. Input:
-            alpha (double):
-                L2-regularisation
-            gamma (double):
-                L1-regularisation (0 def)
-            solver
-                Library for solving quadratic programming problem
-        """
-        self.alpha = alpha
-        self.gamma = gamma
-        self.solver = solver
-
-    def fit(self, X, Y):
-        """
-        Fitting of NNLS model including scaling of X matrix
-        """
-        N, P1 = X.shape
-        P2 = Y.shape[1]
-        self.scale_ = np.sqrt(np.sum(X ** 2, 0) / X.shape[0])
-        Xs = X / self.scale_
-        Xs = np.nan_to_num(Xs) # there are 0 values after scaling
-        G = Xs.T @ Xs + np.eye(P1) * self.alpha
-        a = Xs.T @ Y - self.gamma
-        C = np.eye(P1)
-        b = np.zeros((P1,))
-        self.coef_ = np.zeros((P2, P1))
-        if (self.solver=="quadprog"):
-            for i in range(P2):
-                self.coef_[i, :] = qp.solve_qp(G, a[:, i], C, b, 0)[0]
-        elif (self.solver=="cvxopt"):
-            Gc = cvxopt.matrix(G)
-            Cc = cvxopt.matrix(-1*C)
-            bc = cvxopt.matrix(b)
-            inVa = cvxopt.matrix(np.zeros((P1,)))
-            for i in range(P2):
-                ac = cvxopt.matrix(-a[:,i])
-                sol = cvxopt.solvers.qp(Gc,ac,Cc,bc,initvals=inVa)
-                self.coef_[i, :] = np.array(sol['x']).reshape((P1,))
-                inVa = sol['x']
-
-
-    def predict(self, X):
-        Xs = X / self.scale_
-        Xs = np.nan_to_num(Xs) # there are 0 values after scaling
-        return Xs @ self.coef_.T 
-
-class PLSRegress(PLSRegression, ModelMixin):
-    """
-        PLS regression connectivity model
-        for more info:
-            https://ogrisel.github.io/scikit-learn.org/sklearn-tutorial/modules/generated/sklearn.pls.PLSRegression.html
-            from sklearn.pls import PLSCanonical, PLSRegression, CCA
-            https://scikit-learn.org/stable/modules/generated/sklearn.cross_decomposition.PLSRegression.html
-            pls2_mod = PLSRegression(n_components = N, algorithm = method)
-    """
-
-    def __init__(self, n_components = 1):
-        super().__init__(n_components =n_components)
-        
-    def fit(self, X, Y):
-        """
-        uses nipals algorithm 
-        """
-
-        Xs = X / np.sqrt(np.sum(X**2,0)/X.shape[0]) # Control scaling 
-
-        Xs = np.nan_to_num(Xs)
-        return super().fit(Xs,Y)
-
-    def predict(self, X):
-        Xs = X / np.sqrt(np.sum(X**2,0)/X.shape[0]) # Control scaling 
-        Xs = np.nan_to_num(Xs)
-        return super().predict(Xs)
