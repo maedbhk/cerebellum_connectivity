@@ -83,8 +83,10 @@ def run_subtract(
         for cortex in df['X_data'].unique():
 
             # grab full paths to trained models for `cortex` and filter out `methods`
-            imgs = [os.path.join(dirs.conn_eval_dir, model, f'group_{metric}_vox.nii') for model in df['name'] if cortex in model] 
-            imgs = [img for img in imgs if any(k in img for k in methods)]
+            imgs=[]
+            for method in methods:
+                img = [os.path.join(dirs.conn_eval_dir, model, f'group_{metric}_vox.nii') for model in df['name'] if cortex and method in model][0]
+                imgs.append(img)
 
             # make and save differene map
             nib_obj = nio.subtract_vol(imgs)
@@ -110,7 +112,7 @@ def _get_eval_summary(
     return df
 
 def run():
-    run_binarize()
+    # run_binarize()
     run_subtract()
 
 if __name__ == "__main__":

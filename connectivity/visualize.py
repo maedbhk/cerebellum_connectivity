@@ -18,11 +18,11 @@ def plotting_style():
     plt.rc('font', family='sans-serif') 
     plt.rc('font', serif='Helvetica Neue') 
     plt.rc('text', usetex='false') 
-    plt.rcParams['lines.linewidth'] = 6
+    plt.rcParams['lines.linewidth'] = 2
     plt.rc('xtick', labelsize=14)   
     plt.rc('ytick', labelsize=14)
     
-    plt.rcParams.update({'font.size': 16})
+    plt.rcParams.update({'font.size': 8})
     plt.rcParams["axes.labelweight"] = "regular"
     plt.rcParams["font.weight"] = "regular"
     plt.rcParams["savefig.format"] = 'svg'
