@@ -6,7 +6,6 @@ def from_savio():
     os.system("rsync -avrz maedbhking@dtn.brc.berkeley.edu:/global/scratch/maedbhking/projects/cerebellum_connectivity/data/sc1/conn_models/eval/ /Users/maedbhking/Documents/cerebellum_connectivity/data/sc1/conn_models/eval/")
 
     # os.system("rsync -avrz maedbhking@dtn.brc.berkeley.edu:/global/scratch/maedbhking/projects/cerebellum_connectivity/data/cerebellar_atlases/ /Users/maedbhking/Documents/cerebellum_connectivity/data/cerebellar_atlases/")
-
     # os.system("rsync -avrz maedbhking@dtn.brc.berkeley.edu:/global/scratch/maedbhking/projects/cerebellum_connectivity/data/sc1/RegionOfInterest/data/group/ /Users/maedbhking/Documents/cerebellum_connectivity/data/sc1/RegionOfInterest/data/group/")
     
     for exp in range(2):
