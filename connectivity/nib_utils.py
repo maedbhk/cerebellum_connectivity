@@ -262,7 +262,7 @@ def subtract_vol(
 
     data = np.vstack(data_all)
 
-    data_diff = data[0] - data[1]
+    data_diff = data[1] - data[0]
     
     # compute 3D vol for `labels`
     nib_obj = cdata.convert_cerebellum_to_nifti(data_diff)
