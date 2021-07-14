@@ -193,6 +193,7 @@ def plot_train_predictions(
         plt.savefig(os.path.join(dirs.figure, f'train_predictions_{exp_fname}.png'))
 
 def plot_eval_predictions(
+    dataframe=None,
     exps=['sc2'], 
     x='eval_num_regions', 
     hue=None, 
@@ -202,15 +203,15 @@ def plot_eval_predictions(
     methods=['ridge', 'WTA'],
     noiseceiling=True,
     ax=None,
-    title=False
+    title=False,
     ):
     """plots training predictions (R CV) for all models in dataframe.
     Args:
         exps (list of str): default is ['sc2']
         hue (str or None): can be 'train_exp', 'Y_data' etc.
     """
-
-    dataframe = eval_summary(exps=exps)
+    if not dataframe:
+        dataframe = eval_summary(exps=exps)
 
     # filter out methods
     dataframe = dataframe[dataframe['eval_model'].isin(methods)]
@@ -381,9 +382,10 @@ def map_model_comparison(
     exp, 
     method='subtract', 
     colorbar=True, 
-    rois=True, 
+    rois=False, 
     atlas='MDTB_10Regions', 
-    save=True
+    save=True,
+    title=False
     ):
     """plot surface map for best model
     Args:
@@ -396,7 +398,7 @@ def map_model_comparison(
     fpath_gii = glob.glob(f'{fpath}/*{method}*{model_name}*.gii*')
     fpath_nii = glob.glob(f'{fpath}/*{method}*{model_name}*.nii*')
 
-    view = nio.view_cerebellum(fpath_gii[0], cscale=None, colorbar=colorbar)
+    view = nio.view_cerebellum(fpath_gii[0], cscale=None, colorbar=colorbar, title=title)
 
     if save:
         dirs = const.Dirs()
