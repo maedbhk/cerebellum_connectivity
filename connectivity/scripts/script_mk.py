@@ -109,6 +109,7 @@ def train_ridge(
     log_online=False,
     log_locally=True,
     model_ext=None,
+    experimenter=None
     ):
     """Train model
 
@@ -122,6 +123,7 @@ def train_ridge(
         log_online (bool): log results to ML tracking platform
         log_locally (bool): log results locally
         model_ext (str or None): add additional information to base model name
+        experimenter (str or None): 'mk' or 'ls' or None
     Returns:
         Appends summary data for each model and subject into `train_summary.csv`
         Returns pandas dataframe of train_summary
@@ -162,7 +164,10 @@ def train_ridge(
 
     # save out train summary
     dirs = const.Dirs(exp_name=train_exp)
-    fpath = os.path.join(dirs.conn_train_dir, "train_summary.csv")
+    if experimenter:
+        fpath = os.path.join(dirs.conn_train_dir, f'train_summary_{experimenter}.csv')
+    else:
+        fpath = os.path.join(dirs.conn_train_dir, f'train_summary.csv')
 
     # save out weight maps
     if config['save_weights']:
@@ -183,6 +188,7 @@ def train_WTA(
     log_online=False,
     log_locally=True,
     model_ext=None,
+    experimenter=None
     ):
     """Train model
 
@@ -196,6 +202,7 @@ def train_WTA(
         log_online (bool): log results to ML tracking platform
         log_locally (bool): log results locally
         model_ext (str or None): add additional information to base model name
+        experimenter (str or None): 'mk' 'sh' etc.
     Returns:
         Appends summary data for each model and subject into `train_summary.csv`
         Returns pandas dataframe of train_summary
@@ -234,7 +241,10 @@ def train_WTA(
 
     # save out train summary
     dirs = const.Dirs(exp_name=train_exp)
-    fpath = os.path.join(dirs.conn_train_dir, "train_summary.csv")
+    if experimenter:
+        fpath = os.path.join(dirs.conn_train_dir, f'train_summary_{experimenter}.csv')
+    else:
+        fpath = os.path.join(dirs.conn_train_dir, f'train_summary.csv')
 
     # save out weight maps
     if config['save_weights']:
@@ -256,6 +266,7 @@ def train_NNLS(
     log_online=False,
     log_locally=True,
     model_ext=None,
+    experimenter=None
     ):
     """Train model
 
@@ -269,6 +280,7 @@ def train_NNLS(
         log_online (bool): log results to ML tracking platform
         log_locally (bool): log results locally
         model_ext (str or None): add additional information to base model name
+        experimenter (str or None): 'mk' or 'ls' or None
     Returns:
         Appends summary data for each model and subject into `train_summary.csv`
         Returns pandas dataframe of train_summary
@@ -310,7 +322,10 @@ def train_NNLS(
 
     # save out train summary
     dirs = const.Dirs(exp_name=train_exp)
-    fpath = os.path.join(dirs.conn_train_dir, "train_summary.csv")
+    if experimenter:
+        fpath = os.path.join(dirs.conn_train_dir, f'train_summary_{experimenter}.csv')
+    else:
+        fpath = os.path.join(dirs.conn_train_dir, f'train_summary.csv')
 
     # save out weight maps
     if config['save_weights']:
@@ -434,6 +449,7 @@ def eval_model(
     cerebellum="cerebellum_suit",
     log_online=False,
     log_locally=True,
+    experimenter=None
     ):
     """Evaluate model(s)
 
@@ -445,7 +461,7 @@ def eval_model(
         cerebellum (str): cerebellar ROI
         log_online (bool): log results to ML tracking platform
         log_locally (bool): log results locally
-        model_ext (str or None): add additional information to base model name.
+        experimenter (str or None): 'mk' or 'ls' or None
     Returns:
         Appends eval data for each model and subject into `eval_summary.csv`
         Returns pandas dataframe of eval_summary
@@ -483,9 +499,14 @@ def eval_model(
     if log_online:
         log_to_neptune(dataframe=df, config=config, modeltype="eval")
 
+    # eval summary
+    if experimenter:
+        eval_fpath = os.path.join(dirs.conn_eval_dir, f'eval_summary_{experimenter}.csv')
+    else:
+        eval_fpath = os.path.join(dirs.conn_eval_dir, f'eval_summary.csv')
+
     # concat data to eval summary (if file already exists)
     if log_locally:
-        eval_fpath = os.path.join(dirs.conn_eval_dir, f"eval_summary.csv")
         if os.path.isfile(eval_fpath):
             df = pd.concat([df, pd.read_csv(eval_fpath)])
         df.to_csv(eval_fpath, index=False)
