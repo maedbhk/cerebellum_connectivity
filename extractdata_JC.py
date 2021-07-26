@@ -17,14 +17,14 @@ import math
 
 
 #extract the cortex data X
-Xdata=data.Dataset(experiment="sc1",glm="glm7",roi="tessels0162",subj_id="s02")
+Xdata=data.Dataset(experiment="sc2",glm="glm7",roi="tessels0162",subj_id="s02")
 Xdata.load_mat()
 X, X_info=Xdata.get_data(averaging="sess", weighting=True) #averaging="none": the largest one; obtain the original data witout any averaging
                                                             #averaging="exp", the smallest one
                                                             #averaging ="sess" the middle size one
 
 #extrct the cerebellum data Y
-Ydata=data.Dataset(experiment="sc1",glm="glm7",roi="cerebellum_suit",subj_id="s02")
+Ydata=data.Dataset(experiment="sc1",glm="glm7",roi="cerebellum_suit3",subj_id="s02")
 Ydata.load_mat() # Import the data from Matlab
 Y, Y_info = Ydata.get_data(averaging="sess",weighting = True)
 

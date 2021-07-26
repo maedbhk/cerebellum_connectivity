@@ -12,7 +12,7 @@ import timeit
 import datetime
 import scipy
     
-class SSmoothLR_Ridge:
+class SSmooth_Ridge:
     """
         Low-rank least squares estimation:
         Separate smoothness penaltyies on the cortex and cerebellum
@@ -146,7 +146,6 @@ class SSmoothLR_Ridge:
 
         self.C_est=self.U@self.V.T
         return self
- 
     
 def Laplacian(dist_mat, dis_threshold=1):
     """
@@ -158,3 +157,6 @@ def Laplacian(dist_mat, dis_threshold=1):
     L=np.diag(num_edge)-adjacen_mat
         
     return L
+
+def convert(n):
+    return str(datetime.timedelta(seconds = n))
