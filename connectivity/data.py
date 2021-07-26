@@ -41,7 +41,7 @@ class Dataset:
         data: None
     """
 
-    def __init__(self, experiment="sc1", glm="glm7", roi="cerebellum_suit", subj_id="s03"):
+    def __init__(self, experiment="sc1", glm="glm7", roi="cerebellum_suit", subj_id="s02"):
         """Inits Dataset."""
         self.exp = experiment
         self.glm = glm

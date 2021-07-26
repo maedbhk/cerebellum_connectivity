@@ -191,4 +191,69 @@ def sim_fun(C, estim_R=20, num_vox_cortex=400, num_vox_cere=100, n_obs=40, sd_er
 #    print('The CV lambda value is:')
 #    print(lambda1_cv)   
     
+#Simulation function
+def sim_fun(C, smooth_para, estim_R=20, num_vox_cortex=400, num_vox_cere=100, n_obs=40, sd_err=0.3, lambda_input=1):
+    '''
+    true_R: rank of the true pattern
+    estim_R: rank of the estimated pattern
+    num_vox_cortex: the number of voxels in cortex
+    num_vox_cere: the number of voxels in cerebellum
+    n_obs: the number of observations
+    lambda is set to be 1
+    C: the true C
+    U: the true U used for constructing the C
+    V: the true V used for constructing the C
+    '''
+
+    #Step 1. Generate data 
+    X_train=generate_X(n_obs, num_vox_cortex,smooth_para) #generate the training covariate martix X_train
+    #C, U, V=generate_C(true_R,num_vox_cortex,num_vox_cere) # generate true coefficient matrix C for each simulation along 
+                                                           # with the correpsonding singular vectors
+    X_dist_mat=distance_mat(math.sqrt(num_vox_cortex)) #generate distance matrix for cortex (400*400)
+    Y_dist_mat=distance_mat(math.sqrt(num_vox_cere)) # generate distance matrix for cerebellumn (100*100)
+    E_train=np.random.normal(loc=0.0, scale=sd_err,size=(n_obs, num_vox_cere)) #generate the error matrix E for training set
+                                                                            # from iid N(0,sd_err)
+    Y_train=X_train@C+E_train #construct the response matrix for training set Y_train
+
+    
+    #Step 2. Using iterative method to estimate C
+    ##where rank  of C is set to be 10, lambda=1
+    Fit_training=LowRankSmoothLS(rank=estim_R, lambda1=lambda_input) # estim_R is the estimated rank predefined, here we may want to specify
+                                            # a larger estim_R to clearly see if the rank trend at the true rank point
+    Fit_training.fit_iterative2(X_train, Y_train, X_dist_mat, Y_dist_mat) #implement the iterative fitting
+    
+    #Generate testing set used for evaluation
+    X_test=generate_X(n_obs, num_vox_cortex,smooth_para) #generate test X_test
+    E_test=np.random.normal(loc=0.0, scale=sd_err,size=(n_obs, num_vox_cere)) #generate test error matrix E_test
+    Y_test=X_test@C+E_test
+        
+    #Step 3. Evaluate the performance of estimation and store the calculation at each component
+    sing_val_Chat=np.zeros(estim_R) #store the singular values of the estimated C
+    C_est_err=np.zeros(estim_R) #store the cumulative estimation error
+    predic_err_ontest=np.zeros(estim_R) #store the cumulative prediction error on test set
+    predic_err_ontraining=np.zeros(estim_R) #store the cumulative prediction error on training set
+
+    for i in range(estim_R):
+        #calculate the singular values of the estimated C for each component
+        sing_val_Chat[i]=LA.norm(Fit_training.U[:,i])*LA.norm(Fit_training.V[:,i])
+        #calculate the cumulative estimated C
+        Cumu_Ci=Fit_training.U[:,0:(i+1)]@Fit_training.V[:,0:(i+1)].T
+        #calculate the cumulative estimation error
+        C_est_err[i]=LA.norm(C-Cumu_Ci)
+        #calculate the cumulative prediction error
+        predic_err_ontest[i]=LA.norm(Y_test-X_test@Cumu_Ci)
+        #calculate the prediction error on training set
+        predic_err_ontraining[i]=LA.norm(Y_train-X_train@Cumu_Ci)
+
+
+   
+    return sing_val_Chat, C_est_err, predic_err_ontest, predic_err_ontraining
+    #return 
+    #       
+    #       (1). rhe cumulative estimation error for C (a vector of lenght estim_R)
+    #       (2). the cumulative prediction error for Y on test set (a vector of lenght estim_R)
+    #       (3). the cumulative prediction error for Y on trsining set(a vector of lenght estim_R)
+    #       (4). if this simulation result converge or not (True/False)
+
+
 

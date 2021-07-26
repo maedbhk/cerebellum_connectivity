@@ -12,23 +12,24 @@ import connectivity.constants as const
 import os
 import matplotlib.pyplot as plt
 import pandas as pd
+import math
 
 
 
 #extract the cortex data X
-Xdata=data.Dataset(experiment="sc1",glm="glm7",roi="tessels1442",subj_id="s02")
+Xdata=data.Dataset(experiment="sc1",glm="glm7",roi="tessels0162",subj_id="s02")
 Xdata.load_mat()
-X, X_info=Xdata.get_data(averaging="none", weighting=False) #averaging="none": the largest one; obtain the original data witout any averaging
+X, X_info=Xdata.get_data(averaging="sess", weighting=True) #averaging="none": the largest one; obtain the original data witout any averaging
                                                             #averaging="exp", the smallest one
                                                             #averaging ="sess" the middle size one
 
 #extrct the cerebellum data Y
 Ydata=data.Dataset(experiment="sc1",glm="glm7",roi="cerebellum_suit",subj_id="s02")
 Ydata.load_mat() # Import the data from Matlab
-Y, Y_info = Ydata.get_data(averaging="none",weighting = False)
+Y, Y_info = Ydata.get_data(averaging="sess",weighting = True)
 
 #obtain the distance matrix for cortex
-Xdist, Xcoord =data.get_distance_matrix('tessels1442')
+Xdist, Xcoord =data.get_distance_matrix('tessels0162')
 
 #obtain the distance matrix for cerebellum
 Ydist, Ycoord =data.get_distance_matrix('cerebellum_suit')
@@ -40,8 +41,8 @@ X_cortex_dist=pd.DataFrame(Xdist)
 Y_cere_dist=pd.DataFrame(Ydist)   
 X_cortex_coord=pd.DataFrame(Xcoord)   
 Y_cere_coord=pd.DataFrame(Ycoord)  
-X_cortex.to_csv('X_cortex_sc1_02_none_weightF.csv')
-Y_cere.to_csv('Y_cere_sc1_02_none_weightF.csv')
+X_cortex.to_csv('X_cortex0162_sc1_02_sess_weight.csv')
+Y_cere.to_csv('Y_cere_sc1_02_sess_weight_suit3.csv')
 X_cortex_dist.to_csv('X_cortex_parceldist02.csv')
 Y_cere_dist.to_csv('Y_cere_parceldist02.csv')
 
