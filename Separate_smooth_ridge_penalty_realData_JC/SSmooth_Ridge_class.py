@@ -148,9 +148,9 @@ class SSmooth_Ridge:
         return self
 
     
-    def fit_ite_comp_sparse(self, X, Y, X_dist_mat, Y_dist_mat, X_dis_threshold=17.5, Y_dis_threshold=3):
+    def fit_ite_comp_spsolve(self, X, Y, X_dist_mat, Y_dist_mat, X_dis_threshold=17.5, Y_dis_threshold=3):
         """
-            Using sparse matrix inverse to estimate v
+            Using spsolve function to estimate u and v: solve the sparse linear system Ax=b 
             X: cortical matrix
             Y: cerebellumn matrix
             cor_dist_mat: cortical distance matrix
@@ -202,7 +202,8 @@ class SSmooth_Ridge:
                 #solution_u=minimize(self.objective_u, self.u_r, method='BFGS', jac=True)
                 #u_est, resid1, rank1, s1=LA.lstsq(LA.norm(v_r)**2*self.XTX+self.lambda1*self.L_X, self.X.T@Y_res@v_r,rcond=None)
                 start_time1=timeit.default_timer()
-                u_est=LA.solve(LA.norm(v_r)**2*self.XTX+self.lambda_cor*self.L_X_ridge, self.X.T@Y_res@v_r)
+                sparse_mat1=scipy.sparse.csr_matrix(LA.norm(v_r)**2*self.XTX+self.lambda_cor*self.L_X_ridge)
+                u_est=scipy.sparse.linalg.spsolve(sparse_mat1, self.X.T@Y_res@v_r)
                 end_time1=timeit.default_timer()
                 dlt_time1=convert(end_time1-start_time1)
                 print(f"time used to calulate u_est: {dlt_time1}")
@@ -211,16 +212,14 @@ class SSmooth_Ridge:
                 norm_ur=LA.norm(u_est)
                 print(f'||u_r||={norm_ur}')
                 print(f'dlt_u={dlt_u}')
-                u_r=u_est
+                u_r=np.array(u_est)
                 
                 #when fix u, estimate v
                 #solution_v=minimize(self.objective_v, self.v_r, method='BFGS', jac=True)
                 #v_est, resid2, rank2, s2=LA.lstsq(u_r@self.XTX@u_r*np.eye(self.ncol)+self.lambda1*self.L_Y, Y_res.T@self.X@u_r, rcond=None)
                 start_time2=timeit.default_timer()
-                #using sparse matrix techniques to calculate inverse
-                orig=u_r.T@self.XTX@u_r*np.eye(self.C_ncol)+self.lambda_cere*self.L_Y_ridge
-                sparse_mat=scipy.sparse.csr_matrix(orig)
-                v_est=np.linalg.pinv(sparse_mat.toarray())@Y_res.T@self.X@u_r
+                sparse_mat2=scipy.sparse.csr_matrix(u_r.T@self.XTX@u_r*np.eye(self.C_ncol)+self.lambda_cere*self.L_Y_ridge)
+                v_est=scipy.sparse.linalg.spsolve(sparse_mat2, Y_res.T@self.X@u_r)
                 end_time2=timeit.default_timer()
                 dlt_time2=convert(end_time2-start_time2)
                 print(f"time used to calulate v_est: {dlt_time2}")
@@ -229,7 +228,7 @@ class SSmooth_Ridge:
                 norm_vr=LA.norm(v_est)
                 print(f'||v_r||= {norm_vr}')
                 print(f'dlt_v= {dlt_v}')
-                v_r=v_est
+                v_r=np.array(v_est)
                 
                 C_r=np.outer(u_r, v_r)
                 norm_Cr=LA.norm(C_r)
@@ -260,8 +259,7 @@ class SSmooth_Ridge:
 
         self.C_est=self.U@self.V.T
         return self
-
-
+    
     
 def Laplacian(dist_mat, dis_threshold=1):
     """
