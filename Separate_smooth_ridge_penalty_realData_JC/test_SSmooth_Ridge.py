@@ -39,7 +39,7 @@ alp_cere=1
 start_time=timeit.default_timer()
 
 Fit_real=SSR.SSmooth_Ridge(rank=estim_R,lambda_cor=lamb_cor, lambda_cere=lamb_cere, alpha_cor=alp_cor, alpha_cere=alp_cere)
-Fit_real.fit_ite_comp_sparse(X_cortex02, Y_cere02, X_cortex_eucldist02, Y_cere_eucldist02 ,X_dis_threshold=17.5, Y_dis_threshold=3)
+Fit_real.fit_ite_comp_spsolve(X_cortex02, Y_cere02, X_cortex_eucldist02, Y_cere_eucldist02 ,X_dis_threshold=17.5, Y_dis_threshold=3)
 
 end_time=timeit.default_timer()
     
