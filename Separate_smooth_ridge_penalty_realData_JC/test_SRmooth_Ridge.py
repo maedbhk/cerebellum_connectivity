@@ -1,13 +1,13 @@
 import numpy as np
 import pandas as pd
-from scipy.optimize import minimize #this package is used when finding the minimizer of the objective
+#from scipy.optimize import minimize #this package is used when finding the minimizer of the objective
 from numpy import linalg as LA #this package is used when calculating the norm
-import seaborn as sns #this package is used when ploting matrix C
-import matplotlib.pyplot as plt
-from scipy.ndimage import gaussian_filter
+#import seaborn as sns #this package is used when ploting matrix C
+#import matplotlib.pyplot as plt
+#from scipy.ndimage import gaussian_filter
 import random #set seed
 import math
-from scipy.spatial import distance_matrix
+#from scipy.spatial import distance_matrix
 import timeit
 import datetime
 import scipy
@@ -39,7 +39,7 @@ alp_cere=1
 start_time=timeit.default_timer()
 
 Fit_real=SSR.SSmooth_Ridge(rank=estim_R,lambda_cor=lamb_cor, lambda_cere=lamb_cere, alpha_cor=alp_cor, alpha_cere=alp_cere)
-Fit_real.fit_ite_comp(X_cortex02, Y_cere02, X_cortex_eucldist02, Y_cere_eucldist02 ,X_dis_threshold=17.5, Y_dis_threshold=3)
+Fit_real.fit_ite_comp_sparse(X_cortex02, Y_cere02, X_cortex_eucldist02, Y_cere_eucldist02 ,X_dis_threshold=17.5, Y_dis_threshold=3)
 
 end_time=timeit.default_timer()
     
