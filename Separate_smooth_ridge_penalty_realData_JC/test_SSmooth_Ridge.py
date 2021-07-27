@@ -46,3 +46,8 @@ end_time=timeit.default_timer()
 #calculate the time 
 time_used=convert(end_time-start_time)
 time_used
+
+for r in range(10):
+    pred_res=np.array(Y_cere02)-np.array(X_cortex02)@Fit_real.U[:,0:(r+1)]@Fit_real.V[:,0:(r+1)].T
+    pred_err=LA.norm(pred_res)
+    print(f"rank={r+1}, pred_err={pred_err}")
