@@ -513,6 +513,8 @@ def eval_model(
         
 def log_models(exp):
     dirs = const.Dirs(exp_name=exp)
+
+    summary._concat_summary()
     dataframe = pd.read_csv(os.path.join(dirs.conn_train_dir, "train_summary.csv"))
 
     # groupby train_name
@@ -563,9 +565,6 @@ def run(cortex="tessels0362",
             # get best model (for each method and parcellation)
             models, cortex_names = summary.get_best_models(train_exp=f"sc{2-exp}")
 
-            # get best train model (of all models run) (based on train CV)
-            # best_model, cortex = summary.get_best_model(train_exp=f"sc{2-exp}")
-
             for (best_model, cortex) in zip(models, cortex_names):
 
                 # save voxel/vertex maps for best training weights (for group parcellations only)
@@ -580,8 +579,10 @@ def run(cortex="tessels0362",
                         if best_model != Path(fpath).name:
                             shutil.rmtree(fpath)
 
-                # test best train model
-                eval_model(model_name=best_model, cortex=cortex, train_exp=f"sc{2-exp}", eval_exp=f"sc{exp+1}")
+                # test best train model (if it hasn't already been evaluated)
+                dirs = const.Dirs(exp_name=f"sc{exp+1}")
+                if not os.path.isdir(os.path.join(dirs.conn_eval_dir, best_model)):
+                    eval_model(model_name=best_model, cortex=cortex, train_exp=f"sc{2-exp}", eval_exp=f"sc{exp+1}")
 
 
 if __name__ == "__main__":

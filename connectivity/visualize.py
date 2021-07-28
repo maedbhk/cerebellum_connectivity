@@ -42,7 +42,12 @@ def _concat_summary(summary_name='train_summary'):
     for exp in ['sc1', 'sc2']:
 
         dirs = const.Dirs(exp_name=exp)
-        os.chdir(dirs.conn_train_dir)
+        
+        if summary_name=='train_summary':
+            os.chdir(dirs.conn_train_dir)
+        elif summary_name=='eval_summary':
+            os.chdir(dirs.conn_eval_dir)
+       
         files = glob.glob(f'*{summary_name}_*')
 
         df_all = pd.DataFrame()
@@ -50,22 +55,24 @@ def _concat_summary(summary_name='train_summary'):
             df = pd.read_csv(file)
             df_all = pd.concat([df_all, df])
 
-        df_all.to_csv('train_summary.csv')
+        df_all.to_csv(f'{summary_name}.csv')
 
 def train_summary(
     summary_name="train_summary",
-    exps=['sc1']
+    exps=['sc1'], 
+    models_to_exclude=['NNLS', 'PLSRegress']
     ):
     """load train summary containing all metrics about training models.
     Summary across exps is concatenated and prefix 'train' is appended to cols.
     Args:
         summary_name (str): name of summary file
         exps (list of str): default is ['sc1', 'sc2']
+        models_to_exclude (list of str or None):
     Returns:
         pandas dataframe containing concatenated exp summary
     """
     # concat summary
-    _concat_summary(summary_name='train_summary')
+    _concat_summary(summary_name)
 
     # look at model summary for train results
     df_concat = pd.DataFrame()
@@ -87,11 +94,15 @@ def train_summary(
 
     df_concat.columns = cols
 
+    if models_to_exclude:
+        df_concat[~df_concat['train_model'].isin(models_to_exclude)]
+
     return df_concat
 
 def eval_summary(
     summary_name="eval_summary",
-    exps=['sc2']
+    exps=['sc2'], 
+    models_to_exclude=['NNLS', 'PLSRegress']
     ):
     """load eval summary containing all metrics about eval models.
     Summary across exps is concatenated and prefix 'eval' is appended to cols.
@@ -102,7 +113,7 @@ def eval_summary(
         pandas dataframe containing concatenated exp summary
     """
     # concat summary
-    _concat_summary(summary_name='eval_summary')
+    _concat_summary(summary_name)
 
     # look at model summary for eval results
     df_concat = pd.DataFrame()
@@ -127,6 +138,9 @@ def eval_summary(
     # get noise ceilings
     df_concat["eval_noiseceiling_Y"] = np.sqrt(df_concat.eval_noise_Y_R)
     df_concat["eval_noiseceiling_XY"] = np.sqrt(df_concat.eval_noise_Y_R) * np.sqrt(df_concat.eval_noise_X_R)
+
+    if models_to_exclude:
+        df_concat[~df_concat['eval_model'].isin(models_to_exclude)]
 
     return df_concat
 
@@ -175,6 +189,7 @@ def _add_atlas(x):
     return atlas
 
 def plot_train_predictions( 
+    dataframe=None,
     exps=['sc1'], 
     x='train_name', 
     hue=None, 
@@ -189,8 +204,9 @@ def plot_train_predictions(
         exps (list of str): default is ['sc1']
         hue (str or None): can be 'train_exp', 'Y_data' etc.
     """
-    # get train summary
-    dataframe = train_summary(exps=exps)
+    if not dataframe:
+        # get train summary
+        dataframe = train_summary(exps=exps)
 
     # filter data
     dataframe = dataframe[dataframe['train_model'].isin(methods)]
@@ -296,6 +312,7 @@ def plot_predictions_WTA(
         plt.savefig(os.path.join(dirs.figure, f'{method}_predictions_{data}.{format}'), format=format, dpi=300, bbox_inches="tight")
 
 def plot_best_eval(
+    dataframe=None,
     exps=['sc2'],
     save=True
     ):
@@ -305,8 +322,9 @@ def plot_best_eval(
         exps (list of str): default is ['sc2']
         hue (str or None): default is 'eval_name'
     """
-    # get evaluation dataframe
-    dataframe = eval_summary(exps=exps)
+    if not dataframe:
+        # get evaluation dataframe
+        dataframe = eval_summary(exps=exps)
 
     dataframe_all = pd.DataFrame()
     for exp in exps:
@@ -383,9 +401,6 @@ def map_eval(
         dirs = const.Dirs(exp_name="sc2")
     else:
         dirs = const.Dirs(exp_name="sc1")
-
-    # get evaluation
-    df_eval = eval_summary()
 
     # get best model
     model = model_name
@@ -515,20 +530,18 @@ def get_best_model(
         model name (str)
     """
     # load train summary (contains R CV of all trained models)
-    dirs = const.Dirs(exp_name=train_exp)
-    fpath = os.path.join(dirs.conn_train_dir, "train_summary.csv")
-    df = pd.read_csv(fpath)
+    df = train_summary(exps=[train_exp])
 
     # get mean values for each model
     tmp = df.groupby(["name", "X_data"]).mean().reset_index()
 
     # get best model (based on R CV or R train)
     try: 
-        best_model = tmp[tmp["R_cv"] == tmp["R_cv"].max()]["name"].values[0]
-        cortex = tmp[tmp["R_cv"] == tmp["R_cv"].max()]["X_data"].values[0]
+        best_model = tmp[tmp["train_R_cv"] == tmp["train_R_cv"].max()]["train_name"].values[0]
+        cortex = tmp[tmp["train_R_cv"] == tmp["train_R_cv"].max()]["train_X_data"].values[0]
     except:
-        best_model = tmp[tmp["R_train"] == tmp["R_train"].max()]["name"].values[0]
-        cortex = tmp[tmp["R_train"] == tmp["R_train"].max()]["X_data"].values[0]
+        best_model = tmp[tmp["R_train"] == tmp["R_train"].max()]["train_name"].values[0]
+        cortex = tmp[tmp["R_train"] == tmp["R_train"].max()]["train_X_data"].values[0]
 
     print(f"best model for {train_exp} is {best_model}")
 
@@ -544,33 +557,30 @@ def get_best_models(
         model_names (list of str), cortex_names (list of str)
     """
     # load train summary (contains R CV of all trained models)
-    dirs = const.Dirs(exp_name=train_exp)
-    fpath = os.path.join(dirs.conn_train_dir, "train_summary.csv")
-    df = pd.read_csv(fpath)
+    df = train_summary(exps=[train_exp])
 
-    tmp = df.groupby(['X_data', 'model', 'hyperparameter', 'name']
+    tmp = df.groupby(['train_X_data', 'train_model', 'train_hyperparameter', 'train_name']
                 ).mean().reset_index()
 
-    tmp1 = tmp.groupby(['X_data', 'model']
-            ).apply(lambda x: x['R_cv'].max()
-            ).reset_index(name='R_cv')
+    tmp1 = tmp.groupby(['train_X_data', 'train_model']
+            ).apply(lambda x: x['train_R_cv'].max()
+            ).reset_index(name='train_R_cv')
 
-    tmp2 = tmp1.merge(tmp, on=['X_data', 'model', 'R_cv'])
+    tmp2 = tmp1.merge(tmp, on=['train_X_data', 'train_model', 'train_R_cv'])
 
-    model_names = list(tmp2['name'])
+    model_names = list(tmp2['train_name'])
 
-    cortex_names = list(tmp2['X_data'])
+    cortex_names = list(tmp2['train_X_data'])
 
     return model_names, cortex_names
 
 def get_eval_models(
     exp
     ):
-    dirs = const.Dirs(exp_name=exp)
-    df = pd.read_csv(os.path.join(dirs.conn_eval_dir, 'eval_summary.csv'))
-    df = df[['name', 'X_data']].drop_duplicates() # get unique model names
+    df = eval_summary(exps=[exp])
+    df = df[['eval_name', 'eval_X_data']].drop_duplicates() # get unique model names
 
-    return df['name'].to_list(), np.unique(df['X_data'].to_list())
+    return df['eval_name'].to_list(), np.unique(df['eval_X_data'].to_list())
 
 def show_distance_matrix(
     roi='tessels0042'
