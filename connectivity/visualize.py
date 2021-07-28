@@ -465,6 +465,8 @@ def get_best_model(
     Returns:
         model name (str)
     """
+    _concat_summary(summary_name='train_summary')
+
     # load train summary (contains R CV of all trained models)
     dirs = const.Dirs(exp_name=train_exp)
     fpath = os.path.join(dirs.conn_train_dir, "train_summary.csv")
@@ -494,6 +496,8 @@ def get_best_models(
     Returns:
         model_names (list of str), cortex_names (list of str)
     """
+    _concat_summary(summary_name='train_summary')
+
     # load train summary (contains R CV of all trained models)
     dirs = const.Dirs(exp_name=train_exp)
     fpath = os.path.join(dirs.conn_train_dir, "train_summary.csv")
@@ -517,6 +521,8 @@ def get_best_models(
 def get_eval_models(
     exp
     ):
+    _concat_summary(summary_name='eval_summary')
+    
     dirs = const.Dirs(exp_name=exp)
     df = pd.read_csv(os.path.join(dirs.conn_eval_dir, 'eval_summary.csv'))
     df = df[['name', 'X_data']].drop_duplicates() # get unique model names

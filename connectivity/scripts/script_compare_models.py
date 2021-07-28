@@ -8,6 +8,7 @@ import SUITPy.flatmap as flatmap
 import connectivity.constants as const
 import connectivity.nib_utils as nio
 from connectivity import io 
+from connectivity import visualize as summary
 
 def run_binarize(
     glm='glm7', 
@@ -25,7 +26,8 @@ def run_binarize(
     # loop over experiments
     for exp in range(2):
         
-        df = _get_eval_summary(exp, glm)
+        df = summary.eval_summary(exps=[f"sc{exp+1}"])
+        df = df[['eval_name', 'eval_X_data']].drop_duplicates() # get unique model names
 
         # get outpath
         dirs = const.Dirs(exp_name=f"sc{exp+1}", glm=glm)
@@ -33,10 +35,10 @@ def run_binarize(
         io.make_dirs(fpath)
 
         # loop over cortical parcellations
-        for cortex in df['X_data'].unique():
+        for cortex in df['eval_X_data'].unique():
 
             # grab full paths to trained models for `cortex` and filter out `methods`
-            imgs = [os.path.join(dirs.conn_eval_dir, model, f'group_{metric}_vox.nii') for model in df['name'] if cortex in model] 
+            imgs = [os.path.join(dirs.conn_eval_dir, model, f'group_{metric}_vox.nii') for model in df['eval_name'] if cortex in model] 
             imgs = [img for img in imgs if any(k in img for k in methods)]
 
             # get binarized difference map
@@ -73,18 +75,21 @@ def run_subtract(
     # loop over experiments
     for exp in range(2):
         
-        df = _get_eval_summary(exp, glm)
+        df = summary.eval_summary(exps=[f"sc{exp+1}"])
+        df = df[['eval_name', 'eval_X_data']].drop_duplicates() # get unique model names
 
         dirs = const.Dirs(exp_name=f"sc{exp+1}", glm=glm)
         fpath = os.path.join(dirs.conn_eval_dir, 'model_comparison')
         io.make_dirs(fpath)
 
         # loop over cortical parcellations
-        for cortex in df['X_data'].unique():
+        for cortex in df['eval_X_data'].unique():
 
             # grab full paths to trained models for `cortex` and filter out `methods`
-            imgs = [os.path.join(dirs.conn_eval_dir, model, f'group_{metric}_vox.nii') for model in df['name'] if cortex in model] 
-            imgs = [img for img in imgs if any(k in img for k in methods)]
+            imgs=[]
+            for method in methods:
+                img = [os.path.join(dirs.conn_eval_dir, model, f'group_{metric}_vox.nii') for model in df['eval_name'] if cortex and method in model][0]
+                imgs.append(img)
 
             # make and save differene map
             nib_obj = nio.subtract_vol(imgs)
@@ -97,17 +102,6 @@ def run_subtract(
             # make and save gifti image
             gii_img = flatmap.make_func_gifti(data=surf_data)
             nib.save(gii_img, os.path.join(fpath, f'group_difference_subtract_{fname}_{metric}_{cortex}.func.gii'))
-   
-def _get_eval_summary(
-    exp, 
-    glm
-    ):
-    # get eval summary
-    dirs = const.Dirs(exp_name=f"sc{exp+1}", glm=glm)
-    df = pd.read_csv(os.path.join(dirs.conn_eval_dir, 'eval_summary.csv'))
-    df = df[['name', 'X_data']].drop_duplicates() # get unique model names
-
-    return df
 
 def run():
     # run_binarize()
