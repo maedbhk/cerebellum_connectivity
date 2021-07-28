@@ -93,7 +93,7 @@ def train_summary(
     df_concat.columns = cols
 
     if models_to_exclude:
-        df_concat[~df_concat['train_model'].isin(models_to_exclude)]
+        df_concat = df_concat[~df_concat['train_model'].isin(models_to_exclude)]
 
     return df_concat
 
@@ -136,7 +136,7 @@ def eval_summary(
     df_concat["eval_noiseceiling_XY"] = np.sqrt(df_concat.eval_noise_Y_R) * np.sqrt(df_concat.eval_noise_X_R)
 
     if models_to_exclude:
-        df_concat[~df_concat['eval_model'].isin(models_to_exclude)]
+        df_concat = df_concat[~df_concat['eval_model'].isin(models_to_exclude)]
 
     return df_concat
 
