@@ -109,9 +109,9 @@ def _get_eval_summary(
 
     return df
 
-# def run():
-#     # run_binarize()
-#     run_subtract()
+def run():
+    # run_binarize()
+    run_subtract()
 
-# if __name__ == "__main__":
-#     run()
+if __name__ == "__main__":
+    run()
