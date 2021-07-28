@@ -18,18 +18,39 @@ def plotting_style():
     plt.rc('font', family='sans-serif') 
     plt.rc('font', serif='Helvetica Neue') 
     plt.rc('text', usetex='false') 
-    plt.rcParams['lines.linewidth'] = 6
-    plt.rcParams['lines.markersize'] = 7
+    plt.rcParams['lines.linewidth'] = 2
     plt.rc('xtick', labelsize=14)   
     plt.rc('ytick', labelsize=14)
     
-    plt.rcParams.update({'font.size': 16})
+    plt.rcParams.update({'font.size': 8})
     plt.rcParams["axes.labelweight"] = "regular"
     plt.rcParams["font.weight"] = "regular"
     plt.rcParams["savefig.format"] = 'svg'
     plt.rcParams["savefig.dpi"] = 300
     plt.rc("axes.spines", top=False, right=False) # removes certain axes
     plt.rcParams["axes.grid"] = False
+
+def _concat_summary(summary_name='train_summary'):
+    """concat dataframes from different experimenters
+
+    Args: 
+        summary_name (str): 'train_summary' or 'eval_summary'
+
+    Returns: 
+        saves concatenated dataframe <summary_name>.csv to disk
+    """
+    for exp in ['sc1', 'sc2']:
+
+        dirs = const.Dirs(exp_name=exp)
+        os.chdir(dirs.conn_train_dir)
+        files = glob.glob(f'*{summary_name}_*')
+
+        df_all = pd.DataFrame()
+        for file in files:
+            df = pd.read_csv(file)
+            df_all = pd.concat([df_all, df])
+
+        df_all.to_csv('train_summary.csv')
 
 def train_summary(
     summary_name="train_summary",
@@ -43,6 +64,9 @@ def train_summary(
     Returns:
         pandas dataframe containing concatenated exp summary
     """
+    # concat summary
+    _concat_summary(summary_name='train_summary')
+
     # look at model summary for train results
     df_concat = pd.DataFrame()
     for exp in exps:
@@ -77,6 +101,9 @@ def eval_summary(
     Returns:
         pandas dataframe containing concatenated exp summary
     """
+    # concat summary
+    _concat_summary(summary_name='eval_summary')
+
     # look at model summary for eval results
     df_concat = pd.DataFrame()
     for exp in exps:
@@ -325,16 +352,16 @@ def plot_best_eval(
         exp_fname = '_'.join(exps)
         plt.savefig(os.path.join(dirs.figure, f'best_eval_{exp_fname}.png'))
 
-def plot_roi(save=True):
-    plt.figure()
-    sns.barplot(x='labels', y='roi_mean', data=df1.query('regions!=0'), palette=cpal[1:])
-    plt.xticks(rotation=45)
-    plt.xlabel(atlas)
-    plt.ylabel('ROI mean')
+# def plot_roi(dataframe, save=True):
+#     plt.figure()
+#     sns.barplot(x='labels', y='roi_mean', data=dataframe.query('regions!=0'), palette=cpal[1:])
+#     plt.xticks(rotation=45)
+#     plt.xlabel(atlas)
+#     plt.ylabel('ROI mean')
 
-    if save:
-        dirs = const.Dirs()
-        plt.savefig(os.path.join(dirs.figure, f'{atlas}_summary.png'))
+#     if save:
+#         dirs = const.Dirs()
+#         plt.savefig(os.path.join(dirs.figure, f'{atlas}_summary.png'))
 
 def map_eval(
     data="R", 

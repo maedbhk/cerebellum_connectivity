@@ -301,6 +301,7 @@ def convert_cortex_to_gifti(data, atlas):
     Returns:
         List of gifti-img (left + right hemisphere)
         anatomical_structure (list of hemisphere names)
+        subj_id (str or None): if `subj_id` is None, group atlas is used (default)
     """
     dirs = const.Dirs()
     hemName = ['L','R']
@@ -318,7 +319,11 @@ def convert_cortex_to_gifti(data, atlas):
         c_data = np.insert(data,0,np.nan)
         mapped_data = c_data[labels]
         # Make the gifti imae   gifti img
-        gifti_img.append(nio.make_func_gifti_cortex(data=mapped_data[:,None], anatomical_struct=anatomical_struct[h]))
+        gii = nio.make_func_gifti_cortex(
+            data=mapped_data[:,None], 
+            anatomical_struct=anatomical_struct[h]
+            )
+        gifti_img.append(gii)
     return gifti_img, hemName
 
 def get_distance_matrix(roi):

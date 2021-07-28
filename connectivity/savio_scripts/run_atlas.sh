@@ -23,7 +23,7 @@ export PYTHONPATH
 
 cd /global/scratch/maedbhking/projects/cerebellum_connectivity/connectivity/scripts
 
-atlases=(yeo7 yeo17 mdtb1002_007 mdtb1002_010)
+atlases=(mdtb_wb_007 mdtb_wb_025)
 glm=glm7
 
 for ((i=0; i<${#atlases[@]}; i++)); do \
