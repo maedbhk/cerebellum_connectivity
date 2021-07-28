@@ -513,6 +513,8 @@ def eval_model(
         
 def log_models(exp):
     dirs = const.Dirs(exp_name=exp)
+
+    summary._concat_summary()
     dataframe = pd.read_csv(os.path.join(dirs.conn_train_dir, "train_summary.csv"))
 
     # groupby train_name
