@@ -565,9 +565,6 @@ def run(cortex="tessels0362",
             # get best model (for each method and parcellation)
             models, cortex_names = summary.get_best_models(train_exp=f"sc{2-exp}")
 
-            # get best train model (of all models run) (based on train CV)
-            # best_model, cortex = summary.get_best_model(train_exp=f"sc{2-exp}")
-
             for (best_model, cortex) in zip(models, cortex_names):
 
                 # save voxel/vertex maps for best training weights (for group parcellations only)
