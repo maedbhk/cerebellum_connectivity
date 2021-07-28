@@ -1,6 +1,6 @@
 #!/bin/bash
 # Job name:
-#SBATCH --job-name=connect_train_evalute
+#SBATCH --job-name=make_atlas
 #
 # Account:
 #SBATCH --account=fc_cerebellum
@@ -12,7 +12,7 @@
 #SBATCH --qos=savio_normal
 #
 # Wall clock limit:
-#SBATCH --time=30:00:00
+#SBATCH --time=02:00:00
 #
 ## Command(s) to run:
 module load python/3.7
@@ -23,8 +23,8 @@ export PYTHONPATH
 
 cd /global/scratch/maedbhking/projects/cerebellum_connectivity/connectivity/scripts
 
-# run connectivity models (eval)
-python3 script_mk.py --train_or_eval="eval"
+atlases=(mdtb_wb_007 mdtb_wb_025)
+glm=glm7
 
-# run difference scripts
-python3 script_compare_models.py
+for ((i=0; i<${#atlases[@]}; i++)); do \
+python3 script_atlas.py --glm=${glm} --atlas=${atlases[i]}; done

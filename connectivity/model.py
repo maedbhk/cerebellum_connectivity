@@ -116,6 +116,7 @@ class WTA(LinearRegression, ModelMixin):
         # for v in range(num_vox):
         #     self.coef_[v, self.labels[v]] = wta_coef_[v]
         self.coef_[np.arange(num_vox), self.labels] = wta_coef_
+        self.labels = self.labels + 1 # we don't want zero-indexed label
         return self.coef_, self.labels
 
     def predict(self, X):

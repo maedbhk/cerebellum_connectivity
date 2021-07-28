@@ -7,14 +7,12 @@ import nibabel as nib
 import glob
 from scipy.stats import mode
 from random import seed, sample
-from collections import defaultdict
 import neptune
 from pathlib import Path
 import SUITPy.flatmap as flatmap
 
 import connectivity.constants as const
 import connectivity.io as cio
-import connectivity.nib_utils as nio
 from connectivity import data as cdata
 import connectivity.run_mk as run_connect
 from connectivity import visualize as summary
@@ -35,7 +33,6 @@ def delete_conn_files():
                 except:
                     os.remove(f)
     print("deleting training and evaluation connectivity data")
-
 
 def split_subjects(
     subj_ids, 
@@ -64,7 +61,6 @@ def split_subjects(
     train_subjs = list([x for x in subj_ids if x not in test_subjs])
 
     return train_subjs, test_subjs
-
 
 def log_to_neptune(
     dataframe, 
@@ -105,7 +101,6 @@ def log_to_neptune(
             neptune.set_property(k, v)
     neptune.stop()
 
-
 def train_ridge(
     hyperparameter,
     train_exp="sc1",
@@ -114,6 +109,7 @@ def train_ridge(
     log_online=False,
     log_locally=True,
     model_ext=None,
+    experimenter=None
     ):
     """Train model
 
@@ -127,6 +123,7 @@ def train_ridge(
         log_online (bool): log results to ML tracking platform
         log_locally (bool): log results locally
         model_ext (str or None): add additional information to base model name
+        experimenter (str or None): 'mk' or 'ls' or None
     Returns:
         Appends summary data for each model and subject into `train_summary.csv`
         Returns pandas dataframe of train_summary
@@ -167,7 +164,10 @@ def train_ridge(
 
     # save out train summary
     dirs = const.Dirs(exp_name=train_exp)
-    fpath = os.path.join(dirs.conn_train_dir, "train_summary.csv")
+    if experimenter:
+        fpath = os.path.join(dirs.conn_train_dir, f'train_summary_{experimenter}.csv')
+    else:
+        fpath = os.path.join(dirs.conn_train_dir, f'train_summary.csv')
 
     # save out weight maps
     if config['save_weights']:
@@ -180,14 +180,15 @@ def train_ridge(
         # save out train summary
         df_all.to_csv(fpath, index=False)
 
-
 def train_WTA(
     train_exp="sc1",
     cortex="tessels0642",
     cerebellum="cerebellum_suit",
+    positive=True,
     log_online=False,
     log_locally=True,
     model_ext=None,
+    experimenter=None
     ):
     """Train model
 
@@ -197,9 +198,11 @@ def train_WTA(
         train_exp (str): 'sc1' or 'sc2'
         cortex (str): cortical ROI
         cerebellum (str): cerebellar ROI
+        positive (bool): if True, take only positive coeficients, if False, take absolute
         log_online (bool): log results to ML tracking platform
         log_locally (bool): log results locally
         model_ext (str or None): add additional information to base model name
+        experimenter (str or None): 'mk' 'sh' etc.
     Returns:
         Appends summary data for each model and subject into `train_summary.csv`
         Returns pandas dataframe of train_summary
@@ -215,7 +218,7 @@ def train_WTA(
     if model_ext is not None:
         name = f"{name}_{model_ext}"
     config["name"] = name
-    config["param"] = {"positive": True}
+    config["param"] = {"positive": positive}
     config["model"] = 'WTA'
     config["X_data"] = cortex
     config["Y_data"] = cerebellum
@@ -238,14 +241,14 @@ def train_WTA(
 
     # save out train summary
     dirs = const.Dirs(exp_name=train_exp)
-    fpath = os.path.join(dirs.conn_train_dir, "train_summary.csv")
+    if experimenter:
+        fpath = os.path.join(dirs.conn_train_dir, f'train_summary_{experimenter}.csv')
+    else:
+        fpath = os.path.join(dirs.conn_train_dir, f'train_summary.csv')
 
     # save out weight maps
     if config['save_weights']:
         save_weight_maps(model_name=name, cortex=cortex, train_exp=train_exp)
-         # this is temporary but if we want this to be permanent,
-         # we should make a separate key 'save_wta'
-        save_wta_maps(model_name=name, cortex=cortex, train_exp=train_exp) 
 
     # concat data to model_summary (if file already exists)
     if log_locally:
@@ -253,7 +256,6 @@ def train_WTA(
             df_all = pd.concat([df_all, pd.read_csv(fpath)])
         # save out train summary
         df_all.to_csv(fpath, index=False)
-
 
 def train_NNLS(
     alphas,
@@ -264,6 +266,7 @@ def train_NNLS(
     log_online=False,
     log_locally=True,
     model_ext=None,
+    experimenter=None
     ):
     """Train model
 
@@ -277,6 +280,7 @@ def train_NNLS(
         log_online (bool): log results to ML tracking platform
         log_locally (bool): log results locally
         model_ext (str or None): add additional information to base model name
+        experimenter (str or None): 'mk' or 'ls' or None
     Returns:
         Appends summary data for each model and subject into `train_summary.csv`
         Returns pandas dataframe of train_summary
@@ -303,7 +307,7 @@ def train_NNLS(
         config["averaging"] = "sess"
         config["train_exp"] = train_exp
         config["subjects"] = train_subjs
-        config["validate_model"] = True
+        config["validate_model"] = False
         config["cv_fold"] = 4
         config["mode"] = "crossed"
         config["hyperparameter"] = f"{alpha:.0f}_{gamma:.0f}"
@@ -318,7 +322,10 @@ def train_NNLS(
 
     # save out train summary
     dirs = const.Dirs(exp_name=train_exp)
-    fpath = os.path.join(dirs.conn_train_dir, "train_summary.csv")
+    if experimenter:
+        fpath = os.path.join(dirs.conn_train_dir, f'train_summary_{experimenter}.csv')
+    else:
+        fpath = os.path.join(dirs.conn_train_dir, f'train_summary.csv')
 
     # save out weight maps
     if config['save_weights']:
@@ -330,7 +337,6 @@ def train_NNLS(
             df_all = pd.concat([df_all, pd.read_csv(fpath)])
         # save out train summary
         df_all.to_csv(fpath, index=False)
-
 
 def save_weight_maps(
         model_name, 
@@ -369,58 +375,20 @@ def save_weight_maps(
     save_maps_cerebellum(data=np.stack(cereb_weights_all, axis=0), 
                         fpath=os.path.join(fpath, 'group_weights_cerebellum'))
 
-    save_maps_cortex(data=np.stack(cortex_weights_all, axis=0),
-                    atlas=cortex,
-                    fpath=os.path.join(fpath, 'group_weights_cortex'))
+    # save maps to disk for cortex
+    data = np.stack(cortex_weights_all, axis=0)
+    func_giis, hem_names = cdata.convert_cortex_to_gifti(data=np.nanmean(data, axis=0), atlas=cortex)
+    for (func_gii, hem) in zip(func_giis, hem_names):
+        nib.save(func_gii, os.path.join(fpath, f'group_weights_cortex.{hem}.func.gii'))
 
     print('saving cortical and cerebellar weights to disk')
-
-
-def save_wta_maps(
-        model_name, 
-        cortex, 
-        train_exp
-        ):
-    """Save weight maps to disk for cortex and cerebellum
-
-    Args: 
-        model_name (str): model_name (folder in conn_train_dir)
-        cortex (str): cortex model name (example: tesselsWB162)
-        train_exp (str): 'sc1' or 'sc2'
-    Returns: 
-        saves nifti/gifti to disk
-    """
-    # set directory
-    dirs = const.Dirs(exp_name=train_exp)
-
-    # get model path
-    fpath = os.path.join(dirs.conn_train_dir, model_name)
-
-    # get trained subject models
-    model_fnames = glob.glob(os.path.join(fpath, '*.h5'))
-
-    labels_all = []
-    for model_fname in model_fnames:
-
-        # read model data
-        data = cio.read_hdf5(model_fname)
-        
-        # append labels
-        labels_all.append(data.labels)
-
-    # save maps to disk for cerebellum and cortex
-    save_maps_cerebellum(data=np.stack(labels_all, axis=0), 
-                        fpath=os.path.join(fpath, 'group_wta_cerebellum'),
-                        group='mode',
-                        nifti=True)
-
 
 def save_maps_cerebellum(
     data, 
     fpath='/',
     group='nanmean', 
     gifti=True, 
-    nifti=False, 
+    nifti=True, 
     column_names=[], 
     label_RGBA=[],
     label_names=[],
@@ -473,36 +441,6 @@ def save_maps_cerebellum(
     
     return gii_img
 
-
-def save_maps_cortex(
-    data, 
-    atlas, 
-    fpath='/', 
-    group_average=True
-    ):
-    """Takes list of np arrays, averages list and
-    saves gifti map to disk
-
-    Args: 
-        data (np array): np array of shape (N x 32492)
-        fpath (str): save path for output file
-        atlas (str): cortex atlas name (example: tessels0162)
-        group_average (bool): default is True, averages data np arrays 
-    Returns: 
-        saves gifti image to disk for left and right hemispheres
-    """
-    # average data
-    if group_average:
-        data = np.nanmean(data, axis=0)
-
-    # get functional gifti
-    func_giis, hem_names = cdata.convert_cortex_to_gifti(data=data, atlas=atlas)
-    
-    # save giftis to file
-    for (func_gii, hem) in zip(func_giis, hem_names):
-        nib.save(func_gii, fpath + f'.{hem}.func.gii')
-
-
 def eval_model(
     model_name,
     train_exp="sc1",
@@ -511,6 +449,7 @@ def eval_model(
     cerebellum="cerebellum_suit",
     log_online=False,
     log_locally=True,
+    experimenter=None
     ):
     """Evaluate model(s)
 
@@ -522,7 +461,7 @@ def eval_model(
         cerebellum (str): cerebellar ROI
         log_online (bool): log results to ML tracking platform
         log_locally (bool): log results locally
-        model_ext (str or None): add additional information to base model name.
+        experimenter (str or None): 'mk' or 'ls' or None
     Returns:
         Appends eval data for each model and subject into `eval_summary.csv`
         Returns pandas dataframe of eval_summary
@@ -560,19 +499,38 @@ def eval_model(
     if log_online:
         log_to_neptune(dataframe=df, config=config, modeltype="eval")
 
+    # eval summary
+    if experimenter:
+        eval_fpath = os.path.join(dirs.conn_eval_dir, f'eval_summary_{experimenter}.csv')
+    else:
+        eval_fpath = os.path.join(dirs.conn_eval_dir, f'eval_summary.csv')
+
     # concat data to eval summary (if file already exists)
     if log_locally:
-        eval_fpath = os.path.join(dirs.conn_eval_dir, f"eval_summary.csv")
         if os.path.isfile(eval_fpath):
             df = pd.concat([df, pd.read_csv(eval_fpath)])
         df.to_csv(eval_fpath, index=False)
+        
+def log_models(exp):
+    dirs = const.Dirs(exp_name=exp)
 
+    summary._concat_summary()
+    dataframe = pd.read_csv(os.path.join(dirs.conn_train_dir, "train_summary.csv"))
+
+    # groupby train_name
+    dataframe = dataframe.groupby('name').first().reset_index()[['name', 'train_exp', 'X_data', 'Y_data', 'model', 'glm', 'averaging', 'validate_model', 'weighting']]
+    
+    fpath = os.path.join(dirs.base_dir, 'model_logs.csv')
+    if os.path.isfile(fpath):
+        dataframe = pd.concat([dataframe, pd.read_csv(fpath)])
+   
+    # save out train summary
+    dataframe.to_csv(fpath, index=False)
 
 @click.command()
 @click.option("--cortex")
 @click.option("--model_type")
 @click.option("--train_or_eval")
-
 
 def run(cortex="tessels0362", 
         model_type="ridge", 
@@ -582,7 +540,7 @@ def run(cortex="tessels0362",
 
     Args: 
         cortex (str): 'tesselsWB162', 'tesselsWB642' etc.
-        model_type (str): 'WTA' or 'ridge' or 
+        model_type (str): 'WTA' or 'ridge' or 'NNLS'
         train_or_test (str): 'train' or 'eval'
     """
     print(f'doing model {train_or_eval}')
@@ -597,27 +555,34 @@ def run(cortex="tessels0362",
                 train_NNLS(alphas=[0], gammas=[0], train_exp=f"sc{exp+1}", cortex=cortex)
             else:
                 print('please enter a model (ridge, WTA, NNLS)')
+            
+            # log models
+            log_models(exp=f"sc{exp+1}")
 
     elif train_or_eval=="eval":
         for exp in range(2):
+            
+            # get best model (for each method and parcellation)
+            models, cortex_names = summary.get_best_models(train_exp=f"sc{2-exp}")
 
-            # get best train model (based on train CV)
-            best_model = summary.get_best_model(train_exp=f"sc{2-exp}")
-            cortex = best_model.split('_')[1] # assumes that training model follows convention <model_type>_<cortex_name>_<other>
+            for (best_model, cortex) in zip(models, cortex_names):
 
-            # save voxel/vertex maps for best training weights
-            save_weight_maps(model_name=best_model, cortex=cortex, train_exp=f"sc{2-exp}")
+                # save voxel/vertex maps for best training weights (for group parcellations only)
+                if 'wb_indv' not in cortex:
+                    save_weight_maps(model_name=best_model, cortex=cortex, train_exp=f"sc{2-exp}")
 
-            # delete training models that are suboptimal (save space)
-            if delete_train:
-                dirs = const.Dirs(exp_name=f"sc{2-exp}")
-                model_fpaths = [f.path for f in os.scandir(dirs.conn_train_dir) if f.is_dir()]
-                for fpath in model_fpaths:
-                    if best_model != Path(fpath).name:
-                        shutil.rmtree(fpath)
+                # delete training models that are suboptimal (save space)
+                if delete_train:
+                    dirs = const.Dirs(exp_name=f"sc{2-exp}")
+                    model_fpaths = [f.path for f in os.scandir(dirs.conn_train_dir) if f.is_dir()]
+                    for fpath in model_fpaths:
+                        if best_model != Path(fpath).name:
+                            shutil.rmtree(fpath)
 
-            # test best train model
-            eval_model(model_name=best_model, cortex=cortex, train_exp=f"sc{2-exp}", eval_exp=f"sc{exp+1}")
+                # test best train model (if it hasn't already been evaluated)
+                dirs = const.Dirs(exp_name=f"sc{exp+1}")
+                if not os.path.isdir(os.path.join(dirs.conn_eval_dir, best_model)):
+                    eval_model(model_name=best_model, cortex=cortex, train_exp=f"sc{2-exp}", eval_exp=f"sc{exp+1}")
 
 
 if __name__ == "__main__":

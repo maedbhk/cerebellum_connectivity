@@ -2,40 +2,84 @@ import os
 import pandas as pd
 import numpy as np
 import seaborn as sns
-import re
 import glob
-import deepdish as dd
-from collections import defaultdict
+from pathlib import Path
+import matplotlib.image as mpimg
+from PIL import Image
 import matplotlib.pyplot as plt
-import SUITPy.flatmap as flatmap
-from nilearn.plotting import view_surf
-import nibabel as nib
+import matplotlib as mpl
 
 import connectivity.data as cdata
-import connectivity.sparsity as csparsity
 import connectivity.constants as const
 import connectivity.nib_utils as nio
 
-plt.rcParams["axes.grid"] = False
+def plotting_style():
+    plt.style.use('seaborn-poster') # ggplot
+    plt.rc('font', family='sans-serif') 
+    plt.rc('font', serif='Helvetica Neue') 
+    plt.rc('text', usetex='false') 
+    plt.rcParams['lines.linewidth'] = 2
+    plt.rc('xtick', labelsize=14)   
+    plt.rc('ytick', labelsize=14)
+    
+    plt.rcParams.update({'font.size': 8})
+    plt.rcParams["axes.labelweight"] = "regular"
+    plt.rcParams["font.weight"] = "regular"
+    plt.rcParams["savefig.format"] = 'svg'
+    plt.rcParams["savefig.dpi"] = 300
+    plt.rc("axes.spines", top=False, right=False) # removes certain axes
+    plt.rcParams["axes.grid"] = False
 
+def _concat_summary(summary_name='train_summary'):
+    """concat dataframes from different experimenters
 
-def train_summary(summary_name="train_summary", save_online=True):
+    Args: 
+        summary_name (str): 'train_summary' or 'eval_summary'
+
+    Returns: 
+        saves concatenated dataframe <summary_name>.csv to disk
+    """
+    for exp in ['sc1', 'sc2']:
+
+        dirs = const.Dirs(exp_name=exp)
+        
+        if summary_name=='train_summary':
+            os.chdir(dirs.conn_train_dir)
+        elif summary_name=='eval_summary':
+            os.chdir(dirs.conn_eval_dir)
+       
+        files = glob.glob(f'*{summary_name}_*')
+
+        df_all = pd.DataFrame()
+        for file in files:
+            df = pd.read_csv(file)
+            df_all = pd.concat([df_all, df])
+
+        df_all.to_csv(f'{summary_name}.csv')
+
+def train_summary(
+    summary_name="train_summary",
+    exps=['sc1'], 
+    models_to_exclude=['NNLS', 'PLSRegress']
+    ):
     """load train summary containing all metrics about training models.
-
     Summary across exps is concatenated and prefix 'train' is appended to cols.
-
     Args:
         summary_name (str): name of summary file
+        exps (list of str): default is ['sc1', 'sc2']
+        models_to_exclude (list of str or None):
     Returns:
         pandas dataframe containing concatenated exp summary
     """
+    # concat summary
+    _concat_summary(summary_name)
+
     # look at model summary for train results
     df_concat = pd.DataFrame()
-    for exp in ["sc1", "sc2"]:
+    for exp in exps:
         dirs = const.Dirs(exp_name=exp)
         fpath = os.path.join(dirs.conn_train_dir, f"{summary_name}.csv")
         df = pd.read_csv(fpath)
-        # df['train_exp'] = exp
         df_concat = pd.concat([df_concat, df])
 
     # rename cols
@@ -48,25 +92,30 @@ def train_summary(summary_name="train_summary", save_online=True):
 
     df_concat.columns = cols
 
-    if save_online:
-        log_online(dataframe=df_concat)
+    if models_to_exclude:
+        df_concat = df_concat[~df_concat['train_model'].isin(models_to_exclude)]
 
     return df_concat
 
-
-def eval_summary(summary_name="eval_summary"):
+def eval_summary(
+    summary_name="eval_summary",
+    exps=['sc2'], 
+    models_to_exclude=['NNLS', 'PLSRegress']
+    ):
     """load eval summary containing all metrics about eval models.
-
     Summary across exps is concatenated and prefix 'eval' is appended to cols.
-
     Args:
         summary_name (str): name of summary file
+        exps (list of str): default is ['sc1', 'sc2']
     Returns:
         pandas dataframe containing concatenated exp summary
     """
+    # concat summary
+    _concat_summary(summary_name)
+
     # look at model summary for eval results
     df_concat = pd.DataFrame()
-    for exp in ["sc1", "sc2"]:
+    for exp in exps:
         dirs = const.Dirs(exp_name=exp)
         fpath = os.path.join(dirs.conn_eval_dir, f"{summary_name}.csv")
         df = pd.read_csv(fpath)
@@ -80,77 +129,151 @@ def eval_summary(summary_name="eval_summary"):
             cols.append("eval_" + col)
 
     df_concat.columns = cols
+    df_concat['eval_model'] = df_concat['eval_name'].str.split('_').str[0]
+
+    # get noise ceilings
+    df_concat["eval_noiseceiling_Y"] = np.sqrt(df_concat.eval_noise_Y_R)
+    df_concat["eval_noiseceiling_XY"] = np.sqrt(df_concat.eval_noise_Y_R) * np.sqrt(df_concat.eval_noise_X_R)
+
+    if models_to_exclude:
+        df_concat = df_concat[~df_concat['eval_model'].isin(models_to_exclude)]
 
     return df_concat
 
-
-def log_online(dataframe):
-    # group df by train name and take first row (not interested in results here)
-    dataframe = dataframe.groupby('train_name').first().reset_index()[['train_name', 'train_exp', 'train_X_data', 'train_Y_data', 'train_model', 'train_glm','train_averaging']]
-
-    dirs = const.Dirs()
-    dataframe.to_csv(os.path.join(dirs.base_dir, 'model_logs.csv'))
-
-
-def plot_train_predictions(dataframe, x='train_name', hue=None, x_order=None, hue_order=None):
+def plot_train_predictions( 
+    dataframe=None,
+    exps=['sc1'], 
+    x='train_name', 
+    hue=None, 
+    x_order=None, 
+    hue_order=None, 
+    save=True, 
+    best_models=True,
+    methods=['L2regression', 'WTA']
+    ):
     """plots training predictions (R CV) for all models in dataframe.
-
     Args:
-        dataframe (pandas dataframe): must contain 'train_name' and 'train_R_cv'
+        exps (list of str): default is ['sc1']
         hue (str or None): can be 'train_exp', 'Y_data' etc.
     """
-    plt.figure(figsize=(15, 10))
+    if not dataframe:
+        # get train summary
+        dataframe = train_summary(exps=exps)
+
+    # filter data
+    dataframe = dataframe[dataframe['train_model'].isin(methods)]
+
+    if (best_models):
+        # get best model for each method
+        df = dataframe.groupby(['train_X_data', 'train_model', 'train_hyperparameter']).mean().reset_index()
+
+        df1 = df.groupby(['train_X_data', 'train_model']
+                ).apply(lambda x: x['train_R_cv'].max()
+                ).reset_index(name='train_R_cv')
+    else:
+        df1 = dataframe
     # R
-    sns.factorplot(x=x, y="train_R_cv", hue=hue, data=dataframe, order=x_order, hue_order=hue_order, legend=False, ci=None, size=4, aspect=2)
+    sns.factorplot(x=x, y="train_R_cv", hue=hue, data=df1, order=x_order, hue_order=hue_order, legend=False, ci=None, size=4, aspect=2)
     plt.title("Model Training (CV Predictions)", fontsize=20)
     plt.tick_params(axis="both", which="major", labelsize=15)
     plt.xticks(rotation="45", ha="right")
     plt.xlabel("")
     plt.ylabel("R", fontsize=20)
-    plt.legend(fontsize=15, bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.legend(fontsize=15, bbox_to_anchor=(1.05, 1), loc='upper left', frameon=False)
+    plt.show()
 
+    if save:
+        dirs = const.Dirs()
+        exp_fname = '_'.join(exps)
+        plt.savefig(os.path.join(dirs.figure, f'train_predictions_{exp_fname}.png'))
 
-def plot_eval_predictions(dataframe, exp="sc1"):
-    """plots evaluation predictions (R eval) for best model in dataframe for 'sc1' or 'sc2'
-
-    Also plots model-dependent and model-independent noise ceilings.
-
+def plot_eval_predictions(
+    dataframe=None,
+    exps=['sc2'], 
+    x='eval_X_data', 
+    hue=None, 
+    x_order=None, 
+    hue_order=None, 
+    save=True,
+    methods=['ridge', 'WTA'],
+    noiseceiling=True,
+    ax=None,
+    title=False
+    ):
+    """plots training predictions (R CV) for all models in dataframe.
     Args:
-        dataframe (pandas dataframe): must contain 'train_name' and 'train_R_cv'
-        exp (str): either 'sc1' or 'sc2'
+        exps (list of str): default is ['sc2']
+        hue (str or None): can be 'train_exp', 'Y_data' etc.
+    """
+    if not dataframe:
+        dataframe = eval_summary(exps=exps)
+
+    # filter out methods
+    dataframe = dataframe[dataframe['eval_model'].isin(methods)]
+
+    # melt data into one column for easy plotting
+    ax = sns.lineplot(x=x, y="R_eval", hue=hue, data=dataframe, legend=True, ax=ax) # size=4, aspect=2, order=x_order, hue_order=hue_order,
+    plt.xticks(rotation="45", ha="right")
+    ax.set_xlabel("")
+    ax.set_ylabel("R")
+
+    if noiseceiling:
+        ax = sns.lineplot(x=x, y='eval_noiseceiling_Y', data=dataframe, color='k', ax=ax)
+        ax.lines[-1].set_linestyle("--")
+        # sns.lineplot(x=x, y='eval_noiseceiling_XY', data=dataframe, color='k')
+        ax.set_xlabel("")
+
+    if title:
+        plt.title("Model Evaluation", fontsize=20)
+    
+    if save:
+        dirs = const.Dirs()
+        exp_fname = '_'.join(exps)
+        plt.savefig(os.path.join(dirs.figure, f'eval_predictions_{exp_fname}.png'))
+
+def plot_best_eval(
+    dataframe=None,
+    exps=['sc2'],
+    save=True
+    ):
+    """plots evaluation predictions (R eval) for best model in dataframe for 'sc1' or 'sc2'
+    Also plots model-dependent and model-independent noise ceilings.
+    Args:
+        exps (list of str): default is ['sc2']
         hue (str or None): default is 'eval_name'
     """
-    # get best model (from train CV)
-    best_model = get_best_model(train_exp=exp)
+    if not dataframe:
+        # get evaluation dataframe
+        dataframe = eval_summary(exps=exps)
 
-    if exp is "sc1":
-        eval_exp = "sc2"
-    else:
-        eval_exp = "sc1"
+    dataframe_all = pd.DataFrame()
+    for exp in exps:
 
-    dataframe = dataframe.query(f'eval_exp=="{eval_exp}" and eval_name=="{best_model}"')
+        if exp is "sc1":
+            train_exp = "sc2"
+        else:
+            train_exp = "sc1"
 
-    # get noise ceilings
-    dataframe["eval_noiseceiling_Y"] = np.sqrt(dataframe.eval_noise_Y_R)
-    dataframe["eval_noiseceiling_XY"] = np.sqrt(dataframe.eval_noise_Y_R) * np.sqrt(dataframe.eval_noise_X_R)
+        best_model,_ = get_best_model(train_exp=train_exp)
+
+        dataframe = dataframe.query(f'eval_exp=="{exp}" and eval_name=="{best_model}"')
+        dataframe_all = pd.concat([dataframe_all, dataframe])
 
     # melt data into one column for easy plotting
     cols = ["eval_noiseceiling_Y", "eval_noiseceiling_XY", "R_eval"]
-    df = pd.melt(dataframe, value_vars=cols, id_vars=set(dataframe.columns) - set(cols)).rename(
+    df = pd.melt(dataframe_all, value_vars=cols, id_vars=set(dataframe_all.columns) - set(cols)).rename(
         {"variable": "data_type", "value": "data"}, axis=1
     )
 
     plt.figure(figsize=(8, 8))
     splot = sns.barplot(x="data_type", y="data", data=df)
-    plt.title(f"Model Evaluation (exp={exp}: best model={best_model})", fontsize=20)
+    plt.title(f"Model Evaluation: best model={best_model})", fontsize=20)
     plt.tick_params(axis="both", which="major", labelsize=15)
     plt.xlabel("")
     plt.ylabel("R", fontsize=20)
     plt.xticks(
         [0, 1, 2], ["noise ceiling (data)", "noise ceiling (model)", "model predictions"], rotation="45", ha="right"
     )
-    # plt.legend(fontsize=15)
-
     # annotate barplot
     for p in splot.patches:
         splot.annotate(
@@ -161,228 +284,339 @@ def plot_eval_predictions(dataframe, exp="sc1"):
             xytext=(0, 10),
             textcoords="offset points",
         )
+    plt.show()
+    if save:
+        dirs = const.Dirs()
+        exp_fname = '_'.join(exps)
+        plt.savefig(os.path.join(dirs.figure, f'best_eval_{exp_fname}.png'))
 
-
-def plot_eval_map(gifti_func="group_R_vox", exp="sc1", model=None, cscale=None, symmetric_cmap=False):
+def map_eval(
+    data="R", 
+    exp="sc1", 
+    model_name='best_model', 
+    colorbar=False, 
+    cscale=None, 
+    rois=True, 
+    atlas='MDTB_10Regions', 
+    save=True
+    ):
     """plot surface map for best model
-
     Args:
         gifti (str):
         model (None or model name):
         exp (str): 'sc1' or 'sc2'
-
     """
     if exp == "sc1":
         dirs = const.Dirs(exp_name="sc2")
     else:
         dirs = const.Dirs(exp_name="sc1")
 
-    # get evaluation
-    df_eval = eval_summary()
-
     # get best model
-    if not model:
-        model = get_best_model(train_exp=exp)
+    model = model_name
+    if model_name=="best_model":
+        model,_ = get_best_model(train_exp=exp)
 
     # plot map
-    surf_data = os.path.join(dirs.conn_eval_dir, model, f"{gifti_func}.func.gii")
-    view = nio.view_cerebellum(data=surf_data, cscale=cscale, symmetric_cmap=symmetric_cmap) #symmetric_cmap=False,
+    fpath = os.path.join(dirs.conn_eval_dir, model)
+    view = nio.view_cerebellum(gifti=os.path.join(fpath, f"group_{data}_vox.func.gii"), cscale=cscale, colorbar=colorbar)
+
+    if save:
+        dirs = const.Dirs()
+        plt.savefig(os.path.join(dirs.figure, f'map_{data}_eval.png'))
+
+    if rois:
+        roi_summary(fpath=os.path.join(fpath, f"group_{data}_{model}_{exp}_vox.nii"), atlas=atlas)
     return view
 
+def roi_summary(
+    fpath, 
+    atlas='MDTB_10Regions', 
+    save=True
+    ):
+    """plot roi summary of data in `fpath`
 
-def plot_train_map(gifti_func='group_weights_cerebellum', exp='sc1', model=None, cscale=None, hemisphere='R', symmetric_cmap=False):
+    Args: 
+        fpath (str): full path to nifti image
+        atlas (str): default is 'MDTB_10Regions.nii'. assumes that atlases are saved in /cerebellar_atlases/
+    Returns: 
+        plots barplot of roi summary
+    """
+    dirs = const.Dirs()
+
+    # get rois for `atlas`
+    atlas_dir = os.path.join(dirs.base_dir, 'cerebellar_atlases')
+    rois = cdata.read_suit_nii(atlas_dir + f'/{atlas}.nii')
+
+    # get roi colors
+    rgba, cpal = nio.get_gifti_colors(fpath=atlas_dir + f'/{atlas}.label.gii')
+    labels = nio.get_gifti_labels(fpath=atlas_dir + f'/{atlas}.label.gii')
+
+    df_all = pd.DataFrame()
+    data = cdata.read_suit_nii(fpath)
+    roi_mean, regs = cdata.average_by_roi(data, rois)
+    fname = Path(fpath).stem
+    df1 = pd.DataFrame({'roi_mean': list(np.hstack(roi_mean)),
+                    'regions': list(regs),
+                    'labels': list(labels),
+                    'fnames': np.repeat(fname, len(regs))})
+    
+    plt.figure()
+    sns.barplot(x='labels', y='roi_mean', data=df1.query('regions!=0'), palette=cpal[1:])
+    plt.xticks(rotation=45)
+    plt.xlabel(atlas)
+    plt.ylabel('ROI mean')
+
+    if save:
+        dirs = const.Dirs()
+        plt.savefig(os.path.join(dirs.figure, f'{atlas}_summary.png'))
+
+    return df1
+
+def map_model_comparison(
+    model_name, 
+    exp, 
+    method='subtract', 
+    colorbar=True, 
+    rois=True, 
+    atlas='MDTB_10Regions', 
+    save=True
+    ):
+    """plot surface map for best model
+    Args:
+    """
+
+    # initialize directories
+    dirs = const.Dirs(exp_name=exp)
+
+    fpath = os.path.join(dirs.conn_eval_dir, 'model_comparison')
+    fpath_gii = glob.glob(f'{fpath}/*{method}*{model_name}*.gii*')
+    fpath_nii = glob.glob(f'{fpath}/*{method}*{model_name}*.nii*')
+
+    view = nio.view_cerebellum(fpath_gii[0], cscale=None, colorbar=colorbar)
+
+    if save:
+        dirs = const.Dirs()
+        plt.savefig(os.path.join(dirs.figure, f'{model_name}_model_comparison_{exp}_{method}.png'))
+
+    if rois:
+        roi_summary(fpath=fpath_nii[0], atlas=atlas)
+    
+    return view
+
+def map_weights(
+    structure='cerebellum', 
+    exp='sc1', 
+    model_name='best_model', 
+    hemisphere='R', 
+    colorbar=False, 
+    cscale=None, 
+    rois=True, 
+    atlas='MDTB_10Regions', 
+    save=True
+    ):
+    """plot training weights for cortex or cerebellum
+    Args: 
+        gifti_func (str): '
+    """
     # initialise directories
     dirs = const.Dirs(exp_name=exp)
 
-    # get evaluation
-    df_eval = eval_summary()
-
     # get best model
-    if not model:
-        model = get_best_model(train_exp=exp)
+    model = model_name
+    if model_name=='best_model':
+        model,_ = get_best_model(train_exp=exp)
     
+    # get path to model
+    fpath = os.path.join(dirs.conn_train_dir, model)
+
     # plot either cerebellum or cortex
-    if 'cerebellum' in gifti_func:
-        surf_fname = os.path.join(dirs.conn_train_dir, model, f"{gifti_func}.func.gii")
-        view = nio.view_cerebellum(data=surf_fname, cscale=cscale, symmetric_cmap=symmetric_cmap)
-    elif 'cortex' in gifti_func:
-        if hemisphere=='R':
-            hem_name = 'CortexRight'
-        elif hemisphere=='L':
-            hem_name = 'CortexLeft'
-        surf_fname = os.path.join(dirs.conn_train_dir, model, f"{gifti_func}.{hem_name}.func.gii")
-        view = nio.view_cortex(data=surf_fname, cscale=cscale, hemisphere=hemisphere, symmetric_cmap=symmetric_cmap)
+    if structure=='cerebellum':
+        surf_fname = fpath + f'/group_weights_{structure}.func.gii'
+        view = nio.view_cerebellum(gifti=surf_fname, cscale=cscale, colorbar=colorbar)
+    elif structure=='cortex':
+        surf_fname =  fpath + f"/group_weights_{structure}.{hemisphere}.func.gii"
+        view = nio.view_cortex(gifti=surf_fname, cscale=cscale)
     else:
         print("gifti must contain either cerebellum or cortex in name")
+    
+    if save:
+        dirs = const.Dirs()
+        plt.savefig(os.path.join(dirs.figure, f'{model}_{structure}_{hemisphere}_weights_{exp}.png'))
+
+    if (rois) & (structure=='cerebellum'):
+        roi_summary(fpath=os.path.join(fpath, f"group_weights_cerebellum.nii"), atlas=atlas)
     return view
 
-
-def plot_winner_map(roi='tessels0042', exp='sc1', cscale=None, symmetric_cmap=False):
-    """Plot winner-take-all map for `roi` for `exp`
-
+def map_atlas(
+    fpath, 
+    structure='cerebellum', 
+    colorbar=False,
+    title=False,
+    outpath=None
+    ):
+    """General purpose function for plotting (optionally saving) *.label.gii or *.func.gii parcellations (cortex or cerebellum)
     Args: 
-        roi (str): 'tessels0042', 'tessels1002' etc.
-        exp (str): 'sc1' or 'sc2'
-        cscale (bool): default is None
-        symmetric_cmap (bool): default is False
-    Returns: 
-        Returns view object for visualizing winner map
+        fpath (str): full path to atlas
+        structure (str): default is 'cerebellum'. other options: 'cortex'
+        colorbar (bool): default is False. If False, saves colorbar separately to disk.
+        save (bool): default is True.
+    Returns:
+        viewing object to visualize parcellations
     """
-    dirs = const.Dirs(exp_name=exp)
-
-    surf_fname = os.path.join(dirs.conn_train_dir, f'WTA_{roi}', "group_wta_cerebellum.label.gii")
-    view = nio.view_cerebellum(data=surf_fname, cscale=cscale, symmetric_cmap=symmetric_cmap)
-
+    if structure=='cerebellum':
+        view = nio.view_cerebellum(gifti=fpath, colorbar=colorbar, outpath=outpath, title=title) 
+    elif structure=='cortex':
+        view = nio.view_cortex(gifti=fpath, outpath=outpath, title=title)
+    else:
+        print('please provide a valid parcellation')
+    
     return view
 
-
-def get_best_model(train_exp):
-    """Get idx for best ridge based on either R_cv (or R_train)
-
+def get_best_model(
+    train_exp
+    ):
+    """Get idx for best model based on either R_cv (or R_train)
     Args:
         exp (str): 'sc1' or 'sc2
     Returns:
         model name (str)
     """
     # load train summary (contains R CV of all trained models)
-    dirs = const.Dirs(exp_name=train_exp)
-    fpath = os.path.join(dirs.conn_train_dir, "train_summary.csv")
-    df = pd.read_csv(fpath)
+    df = train_summary(exps=[train_exp])
 
     # get mean values for each model
-    tmp = df.groupby("name").mean().reset_index()
+    tmp = df.groupby(["name", "X_data"]).mean().reset_index()
 
     # get best model (based on R CV or R train)
     try: 
-        best_model = tmp[tmp["R_cv"] == tmp["R_cv"].max()]["name"].values[0]
+        best_model = tmp[tmp["train_R_cv"] == tmp["train_R_cv"].max()]["train_name"].values[0]
+        cortex = tmp[tmp["train_R_cv"] == tmp["train_R_cv"].max()]["train_X_data"].values[0]
     except:
-        best_model = tmp[tmp["R_train"] == tmp["R_train"].max()]["name"].values[0]
+        best_model = tmp[tmp["R_train"] == tmp["R_train"].max()]["train_name"].values[0]
+        cortex = tmp[tmp["R_train"] == tmp["R_train"].max()]["train_X_data"].values[0]
 
     print(f"best model for {train_exp} is {best_model}")
 
-    return best_model
+    return best_model, cortex
 
-
-def train_weights(exp="sc1", model_name="ridge_tesselsWB162_alpha_6"):
-    """gets training weights for a given model and summarizes into a dataframe
-
-    averages the weights across the cerebellar voxels (1 x cortical ROIs)
-
+def get_best_models(
+    train_exp
+    ):
+    """Get model_names, cortex_names for best models (NNLS, ridge, WTA) based on R_cv
     Args:
-        exp (str): 'sc1' or 'sc2'
-        model_name (str): default is 'ridge_tesselsWB162_alpha_6'
+        exp (str): 'sc1' or 'sc2
     Returns:
-        pandas dataframe containing 'ROI', 'weights', 'subj', 'exp'
+        model_names (list of str), cortex_names (list of str)
     """
-    data_dict = defaultdict(list)
-    dirs = const.Dirs(exp_name=exp)
-    trained_models = glob.glob(os.path.join(dirs.conn_train_dir, model_name, "*.h5"))
+    # load train summary (contains R CV of all trained models)
+    df = train_summary(exps=[train_exp])
 
-    for fname in trained_models:
+    tmp = df.groupby(['train_X_data', 'train_model', 'train_hyperparameter', 'train_name']
+                ).mean().reset_index()
 
-        # Get the model from file
-        fitted_model = dd.io.load(fname)
-        regex = r"_(s\d+)."
-        subj = re.findall(regex, fname)[0]
-        weights = np.nanmean(fitted_model.coef_, 0)
+    tmp1 = tmp.groupby(['train_X_data', 'train_model']
+            ).apply(lambda x: x['train_R_cv'].max()
+            ).reset_index(name='train_R_cv')
 
-        data = {
-            "ROI": np.arange(1, len(weights) + 1),
-            "weights": weights,
-            "subj": [subj] * len(weights),
-            "exp": [exp] * len(weights),
-        }
+    tmp2 = tmp1.merge(tmp, on=['train_X_data', 'train_model', 'train_R_cv'])
 
-        # append data for each subj
-        for k, v in data.items():
-            data_dict[k].extend(v)
+    model_names = list(tmp2['train_name'])
 
-    return pd.DataFrame.from_dict(data_dict)
+    cortex_names = list(tmp2['train_X_data'])
 
+    return model_names, cortex_names
 
-def plot_train_weights(dataframe, hue=None):
-    """plots training weights in dataframe
+def get_eval_models(
+    exp
+    ):
+    df = eval_summary(exps=[exp])
+    df = df[['eval_name', 'eval_X_data']].drop_duplicates() # get unique model names
 
-    Args:
-        dataframe (pandas dataframe): must contain 'ROI' and 'weights' cols
-        hue (str or None): default is None
-    """
-    plt.figure(figsize=(8, 8))
-    sns.lineplot(x="ROI", y="weights", hue=hue, data=dataframe, ci=None)
+    return df['eval_name'].to_list(), np.unique(df['eval_X_data'].to_list())
 
-    exp = dataframe["exp"].unique()[0]
-
-    plt.axhline(linewidth=2, color="r")
-    plt.title(f"Cortical weights averaged across subjects for {exp}")
-    plt.tick_params(axis="both", which="major", labelsize=15)
-    plt.xlabel("# of ROIs", fontsize=20)
-    plt.ylabel("Weights", fontsize=20)
-
-
-def plot_parcellation(parcellation=None, anatomical_structure='cerebellum', hemisphere=None):
-    """General purpose function for plotting parcellations (cortex or cerebellum)
-
-    Args: 
-        parcellation (str):  any of the following: 'yeo7', 'yeo17', 'MDTB_10', 'tessels<num>', 'buckner7', 'buckner17'
-        anatomical_structure (str): default is 'cerebellum'. other options: 'cortex'
-        hemisphere (None or str): default is None. other options are 'L' and 'R'
-    Returns:
-        viewing object to visualize parcellations
-    """
-    # initialize directory
-    dirs = const.Dirs()
-
-    if parcellation=='MDTB_10':
-        surf_labels = os.path.join(flatmap._surf_dir,'MDTB_10Regions.label.gii')
-    elif parcellation=='yeo7':
-        surf_labels = os.path.join(dirs.fs_lr_dir, f'Yeo_JNeurophysiol11_7Networks.32k.{hemisphere}.label.gii')
-    elif parcellation=='yeo17':
-        surf_labels = os.path.join(dirs.fs_lr_dir, f'Yeo_JNeurophysiol11_17Networks.32k.{hemisphere}.label.gii')
-    elif parcellation=='buckner7':
-        surf_labels = os.path.join(flatmap._surf_dir,'Buckner_7Networks.label.gii')
-    elif parcellation=='buckner17':
-        surf_labels = os.path.join(flatmap._surf_dir,'Buckner_17Networks.label.gii')
-    elif 'tessels' in parcellation:
-        parcellation = ''.join(re.findall(r'[1-9]', parcellation))
-        surf_labels = os.path.join(dirs.fs_lr_dir, f'Icosahedron-{parcellation}.32k.{hemisphere}.label.gii')
-    else:
-        print('please provide a valid parcellation')
-    
-    if anatomical_structure=='cerebellum':
-        try:
-            return nio.view_cerebellum(data=surf_labels)
-        except:
-            surf_mesh = os.path.join(flatmap._surf_dir,'FLAT.surf.gii')
-            return view_surf(surf_mesh=surf_mesh, symmetric_cmap=False, colorbar=False)  
-
-    elif anatomical_structure=='cortex':
-        try:
-            return nio.view_cortex(data=surf_labels, hemisphere=hemisphere)
-        except:
-            surf_mesh = os.path.join(dirs.fs_lr_dir, f'fs_LR.32k.{hemisphere}.inflated.surf.gii')
-            return view_surf(surf_mesh=surf_mesh, symmetric_cmap=False, black_bg=True, colorbar=False) 
-    else:
-        print("please provide a valid anatomical structure, either 'cerebellum' or 'cortex'")
-
-
-def plot_distance_matrix(roi='tessels0042', hemisphere='R'):
-    """Plot matrix of distances for cortical `roi` and `hemisphere`
-
+def show_distance_matrix(
+    roi='tessels0042'
+    ):
+    """Plot matrix of distances for cortical `roi`
     Args: 
         roi (str): default is 'tessels0042'
-        hemisphere (str): 'R' or 'L'
     Returns: 
         plots distance matrix
     """
 
-    # get labels for `hemisphere`
-    labels = csparsity.get_labels_hemisphere(roi, hemisphere)
-
     # get distances for `roi` and `hemisphere`
     distances = cdata.get_distance_matrix(roi=roi)[0]
-    distances = distances[labels,][:, labels]
 
     # visualize matrix of distances
     plt.imshow(distances)
     plt.colorbar()
     plt.show()
+
+def plot_png(
+    fpath, 
+    ax=None
+    ):
+    """ Plots a png image from `fpath`
+        
+    Args:
+        fpath (str): full path to image to plot
+        ax (bool): figure axes. Default is None
+    """
+    if os.path.isfile(fpath):
+        img = mpimg.imread(fpath)
+    else:
+        print("image does not exist")
+
+    if ax is None:
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+
+    ax.imshow(img, origin='upper', vmax=abs(img).max(), vmin=-abs(img).max(), aspect='equal')
+
+def join_png(
+    fpaths, 
+    outpath=None, 
+    offset=0
+    ):
+    """Join together pngs into one png
+
+    Args: 
+        fpaths (list of str): full path(s) to images
+        outpath (str): full path to new image. If None, saved in current directory.
+        offset (int): default is 0. 
+    """
+
+    # join images together
+    images = [Image.open(x) for x in fpaths]
+
+    # resize all images (keep ratio aspect) based on size of min image
+    sizes = ([(np.sum(i.size), i.size ) for i in images])
+    min_sum = sorted(sizes)[0][0]
+
+    images_resized = []
+    for s, i in zip(sizes, images):
+        resize_ratio = int(np.floor(s[0] / min_sum))
+        orig_size = list(s[1])
+        if resize_ratio>1:
+            resize_ratio = resize_ratio - 1.5
+        new_size = tuple([int(np.round(x / resize_ratio)) for x in orig_size])
+        images_resized.append(Image.fromarray(np.asarray(i.resize(new_size))))
+
+    widths, heights = zip(*(i.size for i in images_resized))
+
+    total_width = sum(widths)
+    max_height = max(heights)
+
+    new_im = Image.new('RGB', (total_width, max_height), (255, 255, 255))
+
+    x_offset = 0
+    for im in images_resized:
+        new_im.paste(im, (x_offset,0))
+        x_offset += im.size[0] - offset
+
+    if not outpath:
+        outpath = 'concat_image.png'
+    new_im.save(outpath)
+
+    return new_im
+

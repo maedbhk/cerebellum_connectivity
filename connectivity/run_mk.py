@@ -1,11 +1,8 @@
 import os
-import sys
-import glob
 import numpy as np
-import json
+import time
 import deepdish as dd
 import pandas as pd
-import copy
 from collections import defaultdict
 from sklearn.model_selection import cross_val_score
 from sklearn.metrics import mean_squared_error
@@ -13,10 +10,8 @@ from sklearn.metrics import mean_squared_error
 import connectivity.io as cio
 from connectivity import data as cdata
 import connectivity.constants as const
-import connectivity.sparsity as csparsity
 import connectivity.model as model
 import connectivity.evaluation as ev
-import connectivity.nib_utils as nio
 
 import warnings
 
@@ -90,7 +85,6 @@ def get_default_train_config():
     }
     return config
 
-
 def get_default_eval_config():
     """Defaults for evaluating model(s).
 
@@ -141,7 +135,6 @@ def get_default_eval_config():
     }
     return config
 
-
 def train_models(config, save=False):
     """Trains a specific model class on X and Y data from a specific experiment for subjects listed in config.
 
@@ -185,7 +178,8 @@ def train_models(config, save=False):
         data = {
             "subj_id": subj,
             "rmse_train": models[-1].rmse_train,
-            "R_train": models[-1].R_train
+            "R_train": models[-1].R_train,
+            "num_regions": X.shape[1]
             }
 
         # run cross validation and collect metrics (rmse and R)
@@ -200,16 +194,19 @@ def train_models(config, save=False):
             if not isinstance(value, (list, dict)):
                 data.update({key: value})
 
-        for k, v in data.items():
-            train_all[k].append(v)
-
         # Save the fitted model to disk if required
         if save:
             fname = _get_model_name(train_name=config["name"], exp=config["train_exp"], subj_id=subj)
             dd.io.save(fname, models[-1], compression=None)
 
-    return models, pd.DataFrame.from_dict(train_all)
+            # add date/timestamp to dict (to keep track of models)
+            timestamp = time.ctime(os.path.getctime(fname))
+            data.update({'timestamp': timestamp})
 
+        for k, v in data.items():
+            train_all[k].append(v)
+
+    return models, pd.DataFrame.from_dict(train_all)
 
 def train_metrics(model, X, Y):
     """computes training metrics (rmse and R) on X and Y
@@ -229,7 +226,6 @@ def train_metrics(model, X, Y):
 
     return rmse_train, R_train
 
-
 def validate_metrics(model, X, Y, X_info, cv_fold):
     """computes CV training metrics (rmse and R) on X and Y
 
@@ -248,7 +244,6 @@ def validate_metrics(model, X, Y, X_info, cv_fold):
     r_cv_all = cross_val_score(model, X, Y, scoring=ev.calculate_R_cv, cv=cv_fold)
 
     return np.nanmean(rmse_cv_all), np.nanmean(r_cv_all)
-
 
 def eval_models(config):
     """Evaluates a specific model class on X and Y data from a specific experiment for subjects listed in config.
@@ -280,7 +275,9 @@ def eval_models(config):
 
         # get rmse
         rmse = mean_squared_error(Y, Y_pred, squared=False)
-        data = {"rmse_eval": rmse, "subj_id": subj}
+        data = {"rmse_eval": rmse, 
+                "subj_id": subj,
+                "num_regions": X.shape[1]}
 
         # Copy over all scalars or strings to eval_all dataframe:
         for key, value in config.items():
@@ -291,10 +288,6 @@ def eval_models(config):
         evals = _get_eval(Y=Y, Y_pred=Y_pred, Y_info=Y_info, X_info=X_info)
         data.update(evals)
 
-        # add sparsity metric (voxels)
-        sparsity_results = _get_sparsity(config, fitted_model)
-        data.update(sparsity_results)
-
         # add evaluation (voxels)
         if config["save_maps"]:
             for k, v in data.items():
@@ -304,13 +297,17 @@ def eval_models(config):
         # don't save voxel data to summary
         data = {k: v for k, v in data.items() if "vox" not in k}
 
+        # add model timestamp
+        # add date/timestamp to dict (to keep track of models)
+        timestamp = time.ctime(os.path.getctime(fname))
+        data.update({'timestamp': timestamp})
+
         # append data for each subj
         for k, v in data.items():
             eval_all[k].append(v)
     
     # Return list of models
     return pd.DataFrame.from_dict(eval_all), eval_voxels
-
 
 def _get_eval(Y, Y_pred, Y_info, X_info):
     """Compute evaluation, returning summary and voxel data.
@@ -357,7 +354,6 @@ def _get_eval(Y, Y_pred, Y_info, X_info):
 
     return data
 
-
 def _get_data(config, exp, subj):
     """get X and Y data for exp and subj
 
@@ -394,7 +390,6 @@ def _get_data(config, exp, subj):
     X, X_info = Xdata.get_data(averaging=config["averaging"], weighting=config["weighting"])
 
     return Y, Y_info, X, X_info
-
 
 def _get_model_name(train_name, exp, subj_id):
     """returns path/name for connectivity training model outputs.
