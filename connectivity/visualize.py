@@ -30,6 +30,28 @@ def plotting_style():
     plt.rc("axes.spines", top=False, right=False) # removes certain axes
     plt.rcParams["axes.grid"] = False
 
+def _concat_summary(summary_name='train_summary'):
+    """concat dataframes from different experimenters
+
+    Args: 
+        summary_name (str): 'train_summary' or 'eval_summary'
+
+    Returns: 
+        saves concatenated dataframe <summary_name>.csv to disk
+    """
+    for exp in ['sc1', 'sc2']:
+
+        dirs = const.Dirs(exp_name=exp)
+        os.chdir(dirs.conn_train_dir)
+        files = glob.glob(f'*{summary_name}_*')
+
+        df_all = pd.DataFrame()
+        for file in files:
+            df = pd.read_csv(file)
+            df_all = pd.concat([df_all, df])
+
+        df_all.to_csv('train_summary.csv')
+
 def train_summary(
     summary_name="train_summary",
     exps=['sc1']
@@ -42,6 +64,9 @@ def train_summary(
     Returns:
         pandas dataframe containing concatenated exp summary
     """
+    # concat summary
+    _concat_summary(summary_name='train_summary')
+
     # look at model summary for train results
     df_concat = pd.DataFrame()
     for exp in exps:
@@ -74,6 +99,9 @@ def eval_summary(
     Returns:
         pandas dataframe containing concatenated exp summary
     """
+    # concat summary
+    _concat_summary(summary_name='eval_summary')
+
     # look at model summary for eval results
     df_concat = pd.DataFrame()
     for exp in exps:
