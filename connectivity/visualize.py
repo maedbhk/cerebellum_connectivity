@@ -95,6 +95,8 @@ def train_summary(
     if models_to_exclude:
         df_concat = df_concat[~df_concat['train_model'].isin(models_to_exclude)]
 
+    df_concat['train_hyperparameter'] = df_concat['train_hyperparameter'].fillna(value=0)
+
     return df_concat
 
 def eval_summary(
