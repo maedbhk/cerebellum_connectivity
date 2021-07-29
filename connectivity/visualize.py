@@ -92,10 +92,19 @@ def train_summary(
 
     df_concat.columns = cols
 
+    # add hyperparameter for wnta models (was NaN before) - this should be fixed in modeling routine
+    wnta = df_concat.query('train_model=="WNTA"')
+    wnta['train_hyperparameter'] = wnta['train_name'].str.split('_').str.get(-1)
+
+    # get rest of dataframe
+    other = df_concat.query('train_model!="WNTA"')
+
+    #concat dataframes
+    df_concat = pd.concat([wnta, other])
+    df_concat['train_hyperparameter'] = df_concat['train_hyperparameter'].astype(float)
+
     if models_to_exclude:
         df_concat = df_concat[~df_concat['train_model'].isin(models_to_exclude)]
-
-    df_concat['train_hyperparameter'] = df_concat['train_hyperparameter'].fillna(value=0)
 
     return df_concat
 
@@ -525,6 +534,8 @@ def get_best_models(
     model_names = list(tmp2['train_name'])
 
     cortex_names = list(tmp2['train_X_data'])
+
+    keyboard
 
     return model_names, cortex_names
 
