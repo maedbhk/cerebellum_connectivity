@@ -109,7 +109,7 @@ def train_ridge(
     log_online=False,
     log_locally=True,
     model_ext=None,
-    experimenter=None
+    experimenter='mk'
     ):
     """Train model
 
@@ -188,7 +188,7 @@ def train_WTA(
     log_online=False,
     log_locally=True,
     model_ext=None,
-    experimenter=None
+    experimenter='mk'
     ):
     """Train model
 
@@ -266,7 +266,7 @@ def train_NNLS(
     log_online=False,
     log_locally=True,
     model_ext=None,
-    experimenter=None
+    experimenter='mk'
     ):
     """Train model
 
@@ -449,7 +449,7 @@ def eval_model(
     cerebellum="cerebellum_suit",
     log_online=False,
     log_locally=True,
-    experimenter=None
+    experimenter='mk'
     ):
     """Evaluate model(s)
 
@@ -514,11 +514,10 @@ def eval_model(
 def log_models(exp):
     dirs = const.Dirs(exp_name=exp)
 
-    summary._concat_summary()
-    dataframe = pd.read_csv(os.path.join(dirs.conn_train_dir, "train_summary.csv"))
+    dataframe = summary.train_summary(exps=[exp])
 
     # groupby train_name
-    dataframe = dataframe.groupby('name').first().reset_index()[['name', 'train_exp', 'X_data', 'Y_data', 'model', 'glm', 'averaging', 'validate_model', 'weighting']]
+    dataframe = dataframe.groupby('name').first().reset_index()[['train_name', 'train_exp', 'train_X_data', 'train_Y_data', 'train_model', 'train_glm', 'train_averaging', 'train_validate_model', 'train_weighting']]
     
     fpath = os.path.join(dirs.base_dir, 'model_logs.csv')
     if os.path.isfile(fpath):
