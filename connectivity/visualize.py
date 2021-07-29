@@ -93,8 +93,10 @@ def train_summary(
     df_concat.columns = cols
 
     # add hyperparameter for wnta models (was NaN before) - this should be fixed in modeling routine
+    # add NTakeAll number to `train_model` (WNTA_N<1>)
     wnta = df_concat.query('train_model=="WNTA"')
     wnta['train_hyperparameter'] = wnta['train_name'].str.split('_').str.get(-1)
+    wnta['train_model'] = wnta['train_model'] + '_' + wnta['train_name'].str.split('_').str.get(-3)
 
     # get rest of dataframe
     other = df_concat.query('train_model!="WNTA"')
@@ -522,20 +524,11 @@ def get_best_models(
     # load train summary (contains R CV of all trained models)
     df = train_summary(exps=[train_exp])
 
-    tmp = df.groupby(['train_X_data', 'train_model', 'train_hyperparameter', 'train_name']
-                ).mean().reset_index()
+    df_mean = df.groupby(['train_X_data', 'train_model', 'train_name'], sort=True).apply(lambda x: x['train_R_cv'].mean()).reset_index(name='train_R_cv_mean')
+    df_best = df_mean.groupby(['train_X_data', 'train_model']).apply(lambda x: x[['train_R_cv_mean', 'train_name']].max()).reset_index()
 
-    tmp1 = tmp.groupby(['train_X_data', 'train_model']
-            ).apply(lambda x: x['train_R_cv'].max()
-            ).reset_index(name='train_R_cv')
-
-    tmp2 = tmp1.merge(tmp, on=['train_X_data', 'train_model', 'train_R_cv'])
-
-    model_names = list(tmp2['train_name'])
-
-    cortex_names = list(tmp2['train_X_data'])
-
-    keyboard
+    model_names = list(df_best['train_name'])
+    cortex_names = list(df_best['train_X_data'])
 
     return model_names, cortex_names
 
