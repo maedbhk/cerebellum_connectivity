@@ -579,9 +579,9 @@ def run(cortex="tessels0362",
                             shutil.rmtree(fpath)
 
                 # test best train model (if it hasn't already been evaluated)
-                dirs = const.Dirs(exp_name=f"sc{exp+1}")
-                if not os.path.isdir(os.path.join(dirs.conn_eval_dir, best_model)):
-                    eval_model(model_name=best_model, cortex=cortex, train_exp=f"sc{2-exp}", eval_exp=f"sc{exp+1}")
+                # dirs = const.Dirs(exp_name=f"sc{exp+1}")
+                # if not os.path.isdir(os.path.join(dirs.conn_eval_dir, best_model)):
+                eval_model(model_name=best_model, cortex=cortex, train_exp=f"sc{2-exp}", eval_exp=f"sc{exp+1}")
 
 
 if __name__ == "__main__":
