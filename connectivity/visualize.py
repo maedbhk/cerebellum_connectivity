@@ -92,17 +92,21 @@ def train_summary(
 
     df_concat.columns = cols
 
-    # add hyperparameter for wnta models (was NaN before) - this should be fixed in modeling routine
-    # add NTakeAll number to `train_model` (WNTA_N<1>)
-    wnta = df_concat.query('train_model=="WNTA"')
-    wnta['train_hyperparameter'] = wnta['train_name'].str.split('_').str.get(-1)
-    wnta['train_model'] = wnta['train_model'] + '_' + wnta['train_name'].str.split('_').str.get(-3)
+    try: 
+        # add hyperparameter for wnta models (was NaN before) - this should be fixed in modeling routine
+        # add NTakeAll number to `train_model` (WNTA_N<1>)
+        wnta = df_concat.query('train_model=="WNTA"')
+        wnta['train_hyperparameter'] = wnta['train_name'].str.split('_').str.get(-1)
+        wnta['train_model'] = wnta['train_model'] + '_' + wnta['train_name'].str.split('_').str.get(-3)
 
-    # get rest of dataframe
-    other = df_concat.query('train_model!="WNTA"')
+        # get rest of dataframe
+        other = df_concat.query('train_model!="WNTA"')
 
-    #concat dataframes
-    df_concat = pd.concat([wnta, other])
+        #concat dataframes
+        df_concat = pd.concat([wnta, other])
+    except: 
+        pass
+    
     df_concat['train_hyperparameter'] = df_concat['train_hyperparameter'].astype(float)
 
     if models_to_exclude:
@@ -143,6 +147,18 @@ def eval_summary(
 
     df_concat.columns = cols
     df_concat['eval_model'] = df_concat['eval_name'].str.split('_').str[0]
+
+    try: 
+        wnta = df_concat.query('eval_model=="WNTA"')
+        wnta['eval_model'] = wnta['eval_model'] + '_' + wnta['eval_name'].str.split('_').str.get(-3)
+
+        # get rest of dataframe
+        other = df_concat.query('eval_model!="WNTA"')
+
+        #concat dataframes
+        df_concat = pd.concat([wnta, other])
+    except:
+        pass
 
     # get noise ceilings
     df_concat["eval_noiseceiling_Y"] = np.sqrt(df_concat.eval_noise_Y_R)
