@@ -533,7 +533,7 @@ def get_best_models(
     ):
     """Get model_names, cortex_names for best models (NNLS, ridge, WTA) based on R_cv
     Args:
-        exp (str): 'sc1' or 'sc2
+        train_exp (str): 'sc1' or 'sc2
     Returns:
         model_names (list of str), cortex_names (list of str)
     """

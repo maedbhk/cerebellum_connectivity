@@ -17,23 +17,6 @@ from connectivity import data as cdata
 import connectivity.run_mk as run_connect
 from connectivity import visualize as summary
 
-
-def delete_conn_files():
-    """delete any pre-existing connectivity output."""
-    for exp in ["sc1", "sc2"]:
-        dirs = const.Dirs(exp_name=exp, glm="glm7")
-        filelists = [
-            glob.glob(os.path.join(dirs.conn_train_dir, "*")),
-            glob.glob(os.path.join(dirs.conn_eval_dir, "*")),
-        ]
-        for filelist in filelists:
-            for f in filelist:
-                try:
-                    shutil.rmtree(f)
-                except:
-                    os.remove(f)
-    print("deleting training and evaluation connectivity data")
-
 def split_subjects(
     subj_ids, 
     test_size=0.3
@@ -510,8 +493,15 @@ def eval_model(
         if os.path.isfile(eval_fpath):
             df = pd.concat([df, pd.read_csv(eval_fpath)])
         df.to_csv(eval_fpath, index=False)
+
+def _delete_models(exp, best_model):
+    dirs = const.Dirs(exp_name=exp)
+    model_fpaths = [f.path for f in os.scandir(dirs.conn_train_dir) if f.is_dir()]
+    for fpath in model_fpaths:
+        if best_model != Path(fpath).name:
+            shutil.rmtree(fpath)
         
-def log_models(exp):
+def _log_models(exp):
     dirs = const.Dirs(exp_name=exp)
 
     dataframe = summary.train_summary(exps=[exp])
@@ -525,6 +515,34 @@ def log_models(exp):
    
     # save out train summary
     dataframe.to_csv(fpath, index=False)
+
+def _check_eval(model_name, train_exp, eval_exp):
+    """determine if `model_name` should be evaluated
+
+    Args: 
+        model_name (str): 
+        train_exp (str): 
+        eval_exp (str):
+    Returns: 
+        eval (bool)
+    """
+    
+    train_subjs, _ = split_subjects(const.return_subjs, test_size=0.3)
+
+    eval = True
+    # check if trained model is complete (all `train_subjs`)
+    dirs = const.Dirs(exp_name=train_exp)
+    for subj in train_subjs:
+        fname = f'{model_name}_{subj}.h5'
+        if not os.path.exists(os.path.join(dirs.conn_train_dir, model_name, fname)):
+            return False
+
+    # check if trained model has already been evaluted 
+    dirs = const.Dirs(exp_name=eval_exp)
+    if os.path.isdir(os.path.join(dirs.conn_eval_dir, model_name)):
+        eval = False
+
+    return eval
 
 @click.command()
 @click.option("--cortex")
@@ -556,7 +574,7 @@ def run(cortex="tessels0362",
                 print('please enter a model (ridge, WTA, NNLS)')
             
             # log models
-            log_models(exp=f"sc{exp+1}")
+            _log_models(exp=f"sc{exp+1}")
 
     elif train_or_eval=="eval":
         for exp in range(2):
@@ -565,23 +583,23 @@ def run(cortex="tessels0362",
             models, cortex_names = summary.get_best_models(train_exp=f"sc{2-exp}")
 
             for (best_model, cortex) in zip(models, cortex_names):
+                
+                # should trained model be evaluated?
+                eval = _check_eval(model_name=best_model, train_exp=f"sc{2-exp}", eval_exp=f"sc{exp+1}")
 
-                # save voxel/vertex maps for best training weights (for group parcellations only)
-                if 'wb_indv' not in cortex:
-                    save_weight_maps(model_name=best_model, cortex=cortex, train_exp=f"sc{2-exp}")
+                if eval:
+                    # save voxel/vertex maps for best training weights (for group parcellations only)
+                    if 'wb_indv' not in cortex:
+                        save_weight_maps(model_name=best_model, cortex=cortex, train_exp=f"sc{2-exp}")
 
-                # delete training models that are suboptimal (save space)
-                if delete_train:
-                    dirs = const.Dirs(exp_name=f"sc{2-exp}")
-                    model_fpaths = [f.path for f in os.scandir(dirs.conn_train_dir) if f.is_dir()]
-                    for fpath in model_fpaths:
-                        if best_model != Path(fpath).name:
-                            shutil.rmtree(fpath)
+                    # delete training models that are suboptimal (save space)
+                    if delete_train:
+                        _delete_models(exp=f"sc{2-exp}", best_model=best_model)
 
-                # test best train model (if it hasn't already been evaluated)
-                # dirs = const.Dirs(exp_name=f"sc{exp+1}")
-                # if not os.path.isdir(os.path.join(dirs.conn_eval_dir, best_model)):
-                eval_model(model_name=best_model, cortex=cortex, train_exp=f"sc{2-exp}", eval_exp=f"sc{exp+1}")
+                    # test best train model
+                    eval_model(model_name=best_model, cortex=cortex, train_exp=f"sc{2-exp}", eval_exp=f"sc{exp+1}")
+                else:
+                    print(f'{best_model} was not evaluated')
 
 
 if __name__ == "__main__":
