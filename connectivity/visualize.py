@@ -193,11 +193,11 @@ def eval_summary(
     df_concat['eval_model'] = df_concat['eval_name'].str.split('_').str[0]
 
     try: 
-        wnta = df_concat.query('eval_model=="WNTA"')
+        wnta = df_concat.query('eval_model=="wnta"')
         wnta['eval_model'] = wnta['eval_model'] + '_' + wnta['eval_name'].str.split('_').str.get(-3)
 
         # get rest of dataframe
-        other = df_concat.query('eval_model!="WNTA"')
+        other = df_concat.query('eval_model!="wnta"')
 
         #concat dataframes
         df_concat = pd.concat([wnta, other])
@@ -215,14 +215,15 @@ def eval_summary(
 
 def roi_summary(
     fpaths, 
-    atlas='MDTB_10Regions', 
+    atlas_path, 
+    atlas,
     save=True
     ):
     """plot roi summary of data in `fpath`
 
     Args: 
         fpath (str): full path to nifti image
-        atlas (str): default is 'MDTB_10Regions.nii'. assumes that atlases are saved in /cerebellar_atlases/
+        atlas_path (str): full path to atlas  (e.g., ./MDTB_10Regions.nii')
     Returns: 
         plots barplot of roi summary
     """
@@ -230,10 +231,10 @@ def roi_summary(
 
     # get rois for `atlas`
     atlas_dir = os.path.join(dirs.base_dir, 'cerebellar_atlases')
-    rois = cdata.read_suit_nii(atlas_dir + f'/{atlas}.nii')
+    rois = cdata.read_suit_nii(atlas_path) 
 
     # get roi colors
-    rgba, cpal = nio.get_gifti_colors(fpath=atlas_dir + f'/{atlas}.label.gii')
+    rgba, cpal, cmap = nio.get_gifti_colors(fpath=atlas_dir + f'/{atlas}.label.gii')
     labels = nio.get_gifti_labels(fpath=atlas_dir + f'/{atlas}.label.gii')
 
     df_all = pd.DataFrame()
@@ -306,8 +307,6 @@ def plot_eval_predictions(
     exps=['sc2'], 
     x='eval_num_regions', 
     hue=None, 
-    x_order=None, 
-    hue_order=None, 
     save=True,
     methods=['ridge', 'WTA'],
     noiseceiling=True,
@@ -325,17 +324,19 @@ def plot_eval_predictions(
     # filter out methods
     dataframe = dataframe[dataframe['eval_model'].isin(methods)]
 
-    ax = sns.lineplot(x=x, y="R_eval", hue=hue, legend=True, data=dataframe, ax=ax) # size=4, aspect=2, order=x_order, hue_order=hue_order,,
-    plt.xticks(rotation="45", ha="right")
-    ax.set_xlabel("")
-    ax.set_ylabel("R")
-    plt.legend(bbox_to_anchor=(0, 1), loc='upper left', ncol=1, frameon=False)
-
     if noiseceiling:
+        ax = sns.lineplot(x=x, y="R_eval", hue=hue, legend=True, data=dataframe, ci=None)
         ax = sns.lineplot(x=x, y='eval_noiseceiling_Y', data=dataframe, color='k', ax=ax)
         ax.lines[-1].set_linestyle("--")
         # sns.lineplot(x=x, y='eval_noiseceiling_XY', data=dataframe, color='k')
         ax.set_xlabel("")
+        ax.set_ylabel("R")
+    else:
+        sns.factorplot(x=x, y="R_eval", hue=hue, data=dataframe, ci=None, legend=False, size=4, aspect=2) # size=4, aspect=2, order=x_order, hue_order=hue_order,,
+        plt.xticks(rotation="45", ha="right")
+        plt.xlabel("")
+        plt.ylabel("R")
+        plt.legend(fontsize=15, bbox_to_anchor=(1.05, 1), loc='upper left', frameon=False)
 
     if title:
         plt.title("Model Evaluation", fontsize=20)
@@ -436,26 +437,14 @@ def plot_best_eval(
         exp_fname = '_'.join(exps)
         plt.savefig(os.path.join(dirs.figure, f'best_eval_{exp_fname}.png'))
 
-# def plot_roi(dataframe, save=True):
-#     plt.figure()
-#     sns.barplot(x='labels', y='roi_mean', data=dataframe.query('regions!=0'), palette=cpal[1:])
-#     plt.xticks(rotation=45)
-#     plt.xlabel(atlas)
-#     plt.ylabel('ROI mean')
-
-#     if save:
-#         dirs = const.Dirs()
-#         plt.savefig(os.path.join(dirs.figure, f'{atlas}_summary.png'))
-
 def map_eval(
     data="R", 
     exp="sc1", 
     model_name='best_model', 
     colorbar=False, 
-    cscale=None, 
-    rois=True, 
-    atlas='MDTB_10Regions', 
-    save=True
+    cscale=None,  
+    save=True,
+    title=True
     ):
     """plot surface map for best model
     Args:
@@ -475,25 +464,20 @@ def map_eval(
 
     # plot map
     fpath = os.path.join(dirs.conn_eval_dir, model)
-    view = nio.view_cerebellum(gifti=os.path.join(fpath, f"group_{data}_vox.func.gii"), cscale=cscale, colorbar=colorbar)
+    view = nio.view_cerebellum(gifti=os.path.join(fpath, f"group_{data}_vox.func.gii"), cscale=cscale, colorbar=colorbar, title=title)
 
     if save:
         dirs = const.Dirs()
         plt.savefig(os.path.join(dirs.figure, f'map_{data}_eval.png'))
 
-    if rois:
-        roi_summary(fpath=os.path.join(fpath, f"group_{data}_{model}_{exp}_vox.nii"), atlas=atlas)
     return view
 
 def map_model_comparison(
     model_name, 
     exp, 
-    method='subtract', 
     colorbar=True, 
-    rois=False, 
-    atlas='MDTB_10Regions', 
     save=True,
-    title=False
+    title=True
     ):
     """plot surface map for best model
     Args:
@@ -503,17 +487,14 @@ def map_model_comparison(
     dirs = const.Dirs(exp_name=exp)
 
     fpath = os.path.join(dirs.conn_eval_dir, 'model_comparison')
-    fpath_gii = glob.glob(f'{fpath}/*{method}*{model_name}*.gii*')
-    fpath_nii = glob.glob(f'{fpath}/*{method}*{model_name}*.nii*')
+    fpath_gii = glob.glob(f'{fpath}/*subtract*{model_name}*.gii*')
+    fpath_nii = glob.glob(f'{fpath}/*subtract*{model_name}*.nii*')
 
     view = nio.view_cerebellum(fpath_gii[0], cscale=None, colorbar=colorbar, title=title)
 
     if save:
         dirs = const.Dirs()
-        plt.savefig(os.path.join(dirs.figure, f'{model_name}_model_comparison_{exp}_{method}.png'))
-
-    if rois:
-        roi_summary(fpath=fpath_nii[0], atlas=atlas)
+        plt.savefig(os.path.join(dirs.figure, f'{model_name}_model_comparison_{exp}_subtract.png'))
     
     return view
 
@@ -524,8 +505,6 @@ def map_weights(
     hemisphere='R', 
     colorbar=False, 
     cscale=None, 
-    rois=True, 
-    atlas='MDTB_10Regions', 
     save=True
     ):
     """plot training weights for cortex or cerebellum
@@ -557,8 +536,6 @@ def map_weights(
         dirs = const.Dirs()
         plt.savefig(os.path.join(dirs.figure, f'{model}_{structure}_{hemisphere}_weights_{exp}.png'))
 
-    if (rois) & (structure=='cerebellum'):
-        roi_summary(fpath=os.path.join(fpath, f"group_weights_cerebellum.nii"), atlas=atlas)
     return view
 
 def map_atlas(
@@ -599,7 +576,7 @@ def get_best_model(
     df = train_summary(exps=[train_exp])
 
     # get mean values for each model
-    tmp = df.groupby(["name", "X_data"]).mean().reset_index()
+    tmp = df.groupby(["train_name", "train_X_data"]).mean().reset_index()
 
     # get best model (based on R CV or R train)
     try: 
