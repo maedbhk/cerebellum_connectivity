@@ -8,6 +8,7 @@ import matplotlib.image as mpimg
 from PIL import Image
 import matplotlib.pyplot as plt
 import re
+from random import seed, sample
 
 import connectivity.data as cdata
 import connectivity.constants as const
@@ -57,6 +58,34 @@ def _concat_summary(summary_name='train_summary'):
 
         df_all.to_csv(f'{summary_name}.csv')
 
+def split_subjects(
+    subj_ids, 
+    test_size=0.3
+    ):
+    """Randomly divide subject list into train and test subsets.
+
+    Train subjects are used to train, validate, and test models(s).
+    Test subjects are kept until the end of the project to evaluate
+    the best (and final) model.
+
+    Args:
+        subj_ids (list): list of subject ids (e.g., ['s01', 's02'])
+        test_size (int): size of test set
+    Returns:
+        train_subjs (list of subject ids), test_subjs (list of subject ids)
+    """
+    # set random seed
+    seed(1)
+
+    # get number of subjects in test (round down)
+    num_in_test = int(np.floor(test_size * len(subj_ids)))
+
+    # select test set
+    test_subjs = list(sample(subj_ids, num_in_test))
+    train_subjs = list([x for x in subj_ids if x not in test_subjs])
+
+    return train_subjs, test_subjs
+
 def train_summary(
     summary_name="train_summary",
     exps=['sc1'], 
@@ -74,6 +103,8 @@ def train_summary(
     # concat summary
     _concat_summary(summary_name)
 
+    train_subjs, _ = split_subjects(const.return_subjs)
+
     # look at model summary for train results
     df_concat = pd.DataFrame()
     for exp in exps:
@@ -81,6 +112,9 @@ def train_summary(
         fpath = os.path.join(dirs.conn_train_dir, f"{summary_name}.csv")
         df = pd.read_csv(fpath)
         df_concat = pd.concat([df_concat, df])
+
+    # select trained subjects 
+    df_concat = df_concat[df_concat['subj_id'].isin(train_subjs)]
     
     df_concat['atlas'] = df_concat['X_data'].apply(lambda x: _add_atlas(x))
 
@@ -111,6 +145,7 @@ def train_summary(
     
     df_concat['train_hyperparameter'] = df_concat['train_hyperparameter'].astype(float)
 
+
     if models_to_exclude:
         df_concat = df_concat[~df_concat['train_model'].isin(models_to_exclude)]
 
@@ -132,6 +167,8 @@ def eval_summary(
     # concat summary
     _concat_summary(summary_name)
 
+    train_subjs, _ = split_subjects(const.return_subjs)
+
     # look at model summary for eval results
     df_concat = pd.DataFrame()
     for exp in exps:
@@ -139,6 +176,9 @@ def eval_summary(
         fpath = os.path.join(dirs.conn_eval_dir, f"{summary_name}.csv")
         df = pd.read_csv(fpath)
         df_concat = pd.concat([df_concat, df])
+
+    # select trained subjects 
+    df_concat = df_concat[df_concat['subj_id'].isin(train_subjs)]
     
     df_concat['atlas'] = df_concat['X_data'].apply(lambda x: _add_atlas(x))
 
@@ -247,7 +287,7 @@ def plot_train_predictions(
     else:
         df1 = dataframe
     # R
-    sns.factorplot(x=x, y="train_R_cv", hue=hue, data=df1, order=x_order, hue_order=hue_order, legend=False, ci=None, size=4, aspect=2)
+    sns.factorplot(x=x, y="train_R_cv", hue=hue, data=df1, order=x_order, hue_order=hue_order, ci=None, legend=False, size=4, aspect=2)
     plt.title("Model Training (CV Predictions)", fontsize=20)
     plt.tick_params(axis="both", which="major", labelsize=15)
     plt.xticks(rotation="45", ha="right")
