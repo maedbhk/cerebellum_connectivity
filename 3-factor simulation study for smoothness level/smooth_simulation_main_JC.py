@@ -10,6 +10,9 @@ import plotting_simuresults_smooth_JC as plt_sim
 simu_num=50 #number of runs for each case (each case means setting specific sde, smooth_index, lambda)
 estim_R=20 # define the estimated rank 
 rank=5 #define the true rank of true C
+Num_vox_cortex=400 #number of voxlels in the cortex (# of columns in X)
+Num_vox_cere=100  #number of voxels in the cerebellum (# of columns in Y)
+N_obs=40 ## of rows in the data (both X and Y)
 
 #varying factors
 #(1).
@@ -26,7 +29,7 @@ for i in range(len(smooth_index)): #loop among the smooth levels
     smooth=smooth_index[i]
     print(f'Smooth parameter: {smooth_index[i]}')
     
-    trueC, U, V=sg2.generate_C(rank=rank, nrow=400, ncol=100,smooth_para=smooth) 
+    trueC, U, V=sg2.generate_C(rank=rank, nrow=Num_vox_cortex, ncol=Num_vox_cere,smooth_para=smooth) 
     u, s, vh=LA.svd(trueC) #obtain the SVD to true C
     s_trueC=s[0:estim_R]
     
@@ -48,7 +51,8 @@ for i in range(len(smooth_index)): #loop among the smooth levels
         for j in range(simu_num): 
             
             print(f'Simulation number: {j+1}')
-            sing_val_C_hat[j],C_est_err[j],predic_err_ontest[j], predic_err_ontraining[j]=sg2.sim_fun(C=trueC,smooth_para=smooth,estim_R=estim_R,sd_err=sde,lambda_input=lambda1)
+            sing_val_C_hat[j],C_est_err[j],predic_err_ontest[j], predic_err_ontraining[j]=sg2.sim_fun(C=trueC,smooth_para=smooth,estim_R=estim_R,num_vox_cortex=Num_vox_cortex, num_vox_cere=Num_vox_cere, n_obs=N_obs,sd_err=sde,lambda_input=lambda1)
+                                                                                                        
         
         sing_val_C_hat_overlambda[ind]=np.mean(sing_val_C_hat, axis=0)
         C_est_err_overlambda[ind]=np.mean(C_est_err, axis=0)

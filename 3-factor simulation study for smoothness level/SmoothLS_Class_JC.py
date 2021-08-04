@@ -38,7 +38,6 @@ class LowRankSmoothLS:
             Y: cerebellumn matrix
             cor_dist_mat: cortical distance matrix
             cere_dist_mat: cerebellumn distance matrix
-            x0: initial values for the unknown parameters
         """
         
         self.X=X
