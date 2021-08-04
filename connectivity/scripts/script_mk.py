@@ -426,8 +426,16 @@ def save_maps_cerebellum(
 
 def save_lasso_maps(
     model_name, 
-    train_exp
+    train_exp, 
+    stat='count'
     ):
+    """save lasso maps for cerebellum (count number of non-zero cortical coef)
+
+    Args:
+        model_name (str): full name of trained model
+        train_exp (str): 'sc1' or 'sc2'
+        stat (str): 'count' or 'percent'
+    """
     # set directory
     dirs = const.Dirs(exp_name=train_exp)
 
@@ -445,11 +453,17 @@ def save_lasso_maps(
         
         # count number of non-zero weights
         data_nonzero = np.count_nonzero(data.coef_, axis=1)
+
+        if stat=='count':
+            pass # do nothing
+        elif stat=='percent':
+            num_regs = data.coef_.shape[1]
+            data_nonzero = np.divide(data_nonzero,  num_regs)*100
         cereb_lasso_all.append(data_nonzero)
 
     # save maps to disk for cerebellum
     save_maps_cerebellum(data=np.stack(cereb_lasso_all, axis=0), 
-                        fpath=os.path.join(fpath, 'group_lasso_cerebellum'))
+                        fpath=os.path.join(fpath, f'group_lasso_{stat}_cerebellum'))
 
 def eval_model(
     model_name,
@@ -613,11 +627,16 @@ def run(cortex="tessels0362",
                 
                 # should trained model be evaluated?
                 eval = _check_eval(model_name=best_model, train_exp=f"sc{2-exp}", eval_exp=f"sc{exp+1}")
+
+                ### TEMP ###
+                if 'lasso' in best_model:
+                    save_lasso_maps(model_name=best_model, train_exp=f"sc{2-exp}", stat='percent') 
                 
                 if eval:
                     # save voxel/vertex maps for best training weights (for group parcellations only)
                     if 'wb_indv' not in cortex:
-                        save_weight_maps(model_name=best_model, train_exp=f"sc{2-exp}")
+                        save_weight_maps(model_name=best_model, train_exp=f"sc{2-exp}", stat='count')
+                        save_weight_maps(model_name=best_model, train_exp=f"sc{2-exp}", stat='percent')
 
                     if 'lasso' in best_model:
                         save_lasso_maps(model_name=best_model, train_exp=f"sc{2-exp}")  
