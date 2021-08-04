@@ -613,12 +613,7 @@ def run(cortex="tessels0362",
                 
                 # should trained model be evaluated?
                 eval = _check_eval(model_name=best_model, train_exp=f"sc{2-exp}", eval_exp=f"sc{exp+1}")
-
-                # TEMP
-                if 'lasso' in best_model:
-                    save_lasso_maps(model_name=best_model, train_exp=f"sc{2-exp}") 
-                # TEMP
-
+                
                 if eval:
                     # save voxel/vertex maps for best training weights (for group parcellations only)
                     if 'wb_indv' not in cortex:
