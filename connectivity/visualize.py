@@ -472,6 +472,34 @@ def map_eval(
 
     return view
 
+def map_lasso(
+    model_name,
+    exp="sc1", 
+    colorbar=False, 
+    cscale=None,  
+    save=True,
+    title=True
+    ):
+    """plot surface map for best model
+    Args:
+        model (None or model name):
+        exp (str): 'sc1' or 'sc2'
+    """
+    if exp == "sc1":
+        dirs = const.Dirs(exp_name="sc2")
+    else:
+        dirs = const.Dirs(exp_name="sc1")
+
+    # plot map
+    fpath = os.path.join(dirs.conn_train_dir, model_name)
+    view = nio.view_cerebellum(gifti=os.path.join(fpath, f"group_lasso_cerebellum.func.gii"), cscale=cscale, colorbar=colorbar, title=title)
+
+    if save:
+        dirs = const.Dirs()
+        plt.savefig(os.path.join(dirs.figure, f'map_lasso_{model_name}.png'))
+
+    return view
+
 def map_model_comparison(
     model_name, 
     exp, 
