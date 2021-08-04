@@ -424,6 +424,33 @@ def save_maps_cerebellum(
     
     return gii_img
 
+def save_lasso_maps(
+    model_name, 
+    train_exp
+    ):
+    # set directory
+    dirs = const.Dirs(exp_name=train_exp)
+
+    # get model path
+    fpath = os.path.join(dirs.conn_train_dir, model_name)
+
+    # get trained subject models
+    model_fnames = glob.glob(os.path.join(fpath, '*.h5'))
+
+    cereb_lasso_all = []
+    for model_fname in model_fnames:
+
+        # read model data
+        data = cio.read_hdf5(model_fname)
+        
+        # count number of non-zero weights
+        data_nonzero = np.count_nonzero(data.coef_, axis=1)
+        cereb_lasso_all.append(data_nonzero)
+
+    # save maps to disk for cerebellum
+    save_maps_cerebellum(data=np.stack(cereb_lasso_all, axis=0), 
+                        fpath=os.path.join(fpath, 'group_lasso_cerebellum'))
+
 def eval_model(
     model_name,
     train_exp="sc1",
@@ -587,10 +614,18 @@ def run(cortex="tessels0362",
                 # should trained model be evaluated?
                 eval = _check_eval(model_name=best_model, train_exp=f"sc{2-exp}", eval_exp=f"sc{exp+1}")
 
+                # TEMP
+                if 'lasso' in best_model:
+                    save_lasso_maps(model_name=best_model, train_exp=f"sc{2-exp}") 
+                # TEMP
+
                 if eval:
                     # save voxel/vertex maps for best training weights (for group parcellations only)
                     if 'wb_indv' not in cortex:
-                        save_weight_maps(model_name=best_model, cortex=cortex, train_exp=f"sc{2-exp}")
+                        save_weight_maps(model_name=best_model, train_exp=f"sc{2-exp}")
+
+                    if 'lasso' in best_model:
+                        save_lasso_maps(model_name=best_model, train_exp=f"sc{2-exp}")  
 
                     # delete training models that are suboptimal (save space)
                     if delete_train:
