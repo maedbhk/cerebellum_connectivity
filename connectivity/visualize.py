@@ -94,8 +94,25 @@ def train_summary(
 
     df_concat.columns = cols
 
+    try: 
+        # add hyperparameter for wnta models (was NaN before) - this should be fixed in modeling routine
+        # add NTakeAll number to `train_model` (WNTA_N<1>)
+        wnta = df_concat.query('train_model=="WNTA"')
+        wnta['train_hyperparameter'] = wnta['train_name'].str.split('_').str.get(-1)
+        wnta['train_model'] = wnta['train_model'] + '_' + wnta['train_name'].str.split('_').str.get(-3)
+
+        # get rest of dataframe
+        other = df_concat.query('train_model!="WNTA"')
+
+        #concat dataframes
+        df_concat = pd.concat([wnta, other])
+    except: 
+        pass
+    
+    df_concat['train_hyperparameter'] = df_concat['train_hyperparameter'].astype(float)
+
     if models_to_exclude:
-        df_concat[~df_concat['train_model'].isin(models_to_exclude)]
+        df_concat = df_concat[~df_concat['train_model'].isin(models_to_exclude)]
 
     return df_concat
 
@@ -135,12 +152,24 @@ def eval_summary(
     df_concat.columns = cols
     df_concat['eval_model'] = df_concat['eval_name'].str.split('_').str[0]
 
+    try: 
+        wnta = df_concat.query('eval_model=="WNTA"')
+        wnta['eval_model'] = wnta['eval_model'] + '_' + wnta['eval_name'].str.split('_').str.get(-3)
+
+        # get rest of dataframe
+        other = df_concat.query('eval_model!="WNTA"')
+
+        #concat dataframes
+        df_concat = pd.concat([wnta, other])
+    except:
+        pass
+
     # get noise ceilings
     df_concat["eval_noiseceiling_Y"] = np.sqrt(df_concat.eval_noise_Y_R)
     df_concat["eval_noiseceiling_XY"] = np.sqrt(df_concat.eval_noise_Y_R) * np.sqrt(df_concat.eval_noise_X_R)
 
     if models_to_exclude:
-        df_concat[~df_concat['eval_model'].isin(models_to_exclude)]
+        df_concat = df_concat[~df_concat['eval_model'].isin(models_to_exclude)]
 
     return df_concat
 
@@ -191,7 +220,7 @@ def _add_atlas(x):
 def plot_train_predictions( 
     dataframe=None,
     exps=['sc1'], 
-    x='train_name', 
+    x='train_num_regions', 
     hue=None, 
     x_order=None, 
     hue_order=None, 
@@ -204,7 +233,7 @@ def plot_train_predictions(
         exps (list of str): default is ['sc1']
         hue (str or None): can be 'train_exp', 'Y_data' etc.
     """
-    if not dataframe:
+    if dataframe is None:
         # get train summary
         dataframe = train_summary(exps=exps)
 
@@ -213,11 +242,8 @@ def plot_train_predictions(
 
     if (best_models):
         # get best model for each method
-        df = dataframe.groupby(['train_X_data', 'train_model', 'train_hyperparameter']).mean().reset_index()
-
-        df1 = df.groupby(['train_X_data', 'train_model']
-                ).apply(lambda x: x['train_R_cv'].max()
-                ).reset_index(name='train_R_cv')
+        model_names, _ = get_best_models(dataframe=dataframe)
+        df1 = dataframe[dataframe['train_name'].isin(model_names)]
     else:
         df1 = dataframe
     # R
@@ -248,12 +274,12 @@ def plot_eval_predictions(
     ax=None,
     title=False,
     ):
-    """plots training predictions (R CV) for all models in dataframe.
+    """plots eval predictions (R CV) for all models in dataframe.
     Args:
         exps (list of str): default is ['sc2']
         hue (str or None): can be 'train_exp', 'Y_data' etc.
     """
-    if not dataframe:
+    if dataframe is None:
         dataframe = eval_summary(exps=exps)
 
     # filter out methods
@@ -322,7 +348,7 @@ def plot_best_eval(
         exps (list of str): default is ['sc2']
         hue (str or None): default is 'eval_name'
     """
-    if not dataframe:
+    if dataframe is None:
         # get evaluation dataframe
         dataframe = eval_summary(exps=exps)
 
@@ -548,29 +574,35 @@ def get_best_model(
     return best_model, cortex
 
 def get_best_models(
-    train_exp
+    dataframe=None,
+    train_exp='sc1'
     ):
     """Get model_names, cortex_names for best models (NNLS, ridge, WTA) based on R_cv
     Args:
-        exp (str): 'sc1' or 'sc2
+        dataframe (pd dataframe or None):
+        train_exp (str): 'sc1' or 'sc2' or None (if dataframe is given)
     Returns:
         model_names (list of str), cortex_names (list of str)
     """
     # load train summary (contains R CV of all trained models)
-    df = train_summary(exps=[train_exp])
+    if dataframe is None:
+        dataframe = train_summary(exps=[train_exp])
 
-    tmp = df.groupby(['train_X_data', 'train_model', 'train_hyperparameter', 'train_name']
+    df_mean = dataframe.groupby(['train_X_data', 'train_model', 'train_name'], sort=True).apply(lambda x: x['train_R_cv'].mean()).reset_index(name='train_R_cv_mean')
+    df_best = df_mean.groupby(['train_X_data', 'train_model']).apply(lambda x: x[['train_name', 'train_R_cv_mean']].max()).reset_index()
+
+    tmp = dataframe.groupby(['train_X_data', 'train_model', 'train_hyperparameter', 'train_name']
                 ).mean().reset_index()
 
-    tmp1 = tmp.groupby(['train_X_data', 'train_model']
-            ).apply(lambda x: x['train_R_cv'].max()
-            ).reset_index(name='train_R_cv')
+    # group by `X_data` and `model`
+    grouped =  tmp.groupby(['train_X_data', 'train_model'])
 
-    tmp2 = tmp1.merge(tmp, on=['train_X_data', 'train_model', 'train_R_cv'])
-
-    model_names = list(tmp2['train_name'])
-
-    cortex_names = list(tmp2['train_X_data'])
+    model_names = []; cortex_names = []
+    for name, group in grouped:
+        model_name = group.sort_values(by='train_R_cv', ascending=False)['train_name'].head(1).tolist()[0]
+        cortex_name = group.sort_values(by='train_R_cv', ascending=False)['train_X_data'].head(1).tolist()[0]
+        model_names.append(model_name)
+        cortex_names.append(cortex_name)
 
     return model_names, cortex_names
 
