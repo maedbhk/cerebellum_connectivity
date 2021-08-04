@@ -26,15 +26,16 @@ X_cortex02 = pd.read_csv("X_cortex0162_sc1_02_sess_weight.csv").iloc[:, 1:] # re
 Y_cere02=pd.read_csv("Y_cere_sc1_02_sess_weight_suit3.csv").iloc[:,1:] # read the large size data
 
 #First, preprocessing the data by centering the data X and Y
-X_mean=np.array([X_cortex02.mean(axis=0)]*int(X_cortex02.shape[0]))
-X_preprocess=X_cortex02-X_mean
+#X_mean=np.array([X_cortex02.mean(axis=0)]*int(X_cortex02.shape[0]))
+#X_preprocess=X_cortex02-X_mean
+X_preprocess=X_cortex02
 
-Y_mean=np.array([Y_cere02.mean(axis=0)]*int(Y_cere02.shape[0]))
-Y_preprocess=Y_cere02-Y_mean
-
+#Y_mean=np.array([Y_cere02.mean(axis=0)]*int(Y_cere02.shape[0]))
+#Y_preprocess=Y_cere02-Y_mean
+Y_preprocess=Y_cere02
 
 #Using ridge model to fit the data
-ridge_model=model.L2regression(alpha=math.exp(4)) #using the default value alpha=e^8
+ridge_model=model.L2regression(alpha=math.exp(6)) #using the default value alpha=e^8
 #ridge_model=model.L2regression() #using the default value alpha=1
 ridge_model.fit(X_preprocess, Y_preprocess)
 
@@ -53,11 +54,11 @@ X_cortex_sc2_02 = pd.read_csv("X_cortex0162_sc2_02_sess_weight.csv").iloc[:, 1:]
 Y_cere_sc2_02=pd.read_csv("Y_cere_sc2_02_sess_weight.csv").iloc[:,1:]
 
 
-X_cortex_sc2_02_mean=np.array([X_cortex_sc2_02.mean(axis=0)]*int(X_cortex_sc2_02.shape[0]))
-X_test=X_cortex_sc2_02-X_cortex_sc2_02_mean
+#X_cortex_sc2_02_mean=np.array([X_cortex_sc2_02.mean(axis=0)]*int(X_cortex_sc2_02.shape[0]))
+#X_test=X_cortex_sc2_02-X_cortex_sc2_02_mean
 
-Y_cere_sc2_02_mean=np.array([Y_cere_sc2_02.mean(axis=0)]*int(Y_cere_sc2_02.shape[0]))
-Y_test=Y_cere_sc2_02-Y_cere_sc2_02_mean
+#Y_cere_sc2_02_mean=np.array([Y_cere_sc2_02.mean(axis=0)]*int(Y_cere_sc2_02.shape[0]))
+#Y_test=Y_cere_sc2_02-Y_cere_sc2_02_mean
 
 X_test=X_cortex_sc2_02
 Y_test=Y_cere_sc2_02
