@@ -461,9 +461,13 @@ def save_lasso_maps(
             data_nonzero = np.divide(data_nonzero,  num_regs)*100
         cereb_lasso_all.append(data_nonzero)
 
+    fname = 'group_lasso_cerebellum'
+    if stat=='percent':
+        fname = f'group_lasso_{stat}_cerebellum'
+
     # save maps to disk for cerebellum
     save_maps_cerebellum(data=np.stack(cereb_lasso_all, axis=0), 
-                        fpath=os.path.join(fpath, f'group_lasso_{stat}_cerebellum'))
+                        fpath=os.path.join(fpath, fname))
 
 def eval_model(
     model_name,
