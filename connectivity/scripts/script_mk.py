@@ -635,11 +635,11 @@ def run(cortex="tessels0362",
                 if eval:
                     # save voxel/vertex maps for best training weights (for group parcellations only)
                     if 'wb_indv' not in cortex:
-                        save_weight_maps(model_name=best_model, train_exp=f"sc{2-exp}", stat='count')
-                        save_weight_maps(model_name=best_model, train_exp=f"sc{2-exp}", stat='percent')
+                        save_weight_maps(model_name=best_model, train_exp=f"sc{2-exp}")
 
                     if 'lasso' in best_model:
-                        save_lasso_maps(model_name=best_model, train_exp=f"sc{2-exp}")  
+                        save_lasso_maps(model_name=best_model, train_exp=f"sc{2-exp}", stat='count')  
+                        save_lasso_maps(model_name=best_model, train_exp=f"sc{2-exp}", stat='percent')
 
                     # delete training models that are suboptimal (save space)
                     if delete_train:
