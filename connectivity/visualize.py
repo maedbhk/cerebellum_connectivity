@@ -8,6 +8,7 @@ import matplotlib.image as mpimg
 from PIL import Image
 import matplotlib.pyplot as plt
 import re
+from random import seed, sample
 
 import connectivity.data as cdata
 import connectivity.constants as const
@@ -18,7 +19,7 @@ def plotting_style():
     plt.rc('font', family='sans-serif') 
     plt.rc('font', serif='Helvetica Neue') 
     plt.rc('text', usetex='false') 
-    plt.rcParams['lines.linewidth'] = 2
+    plt.rcParams['lines.linewidth'] = 3
     plt.rc('xtick', labelsize=14)   
     plt.rc('ytick', labelsize=14)
     
@@ -57,6 +58,34 @@ def _concat_summary(summary_name='train_summary'):
 
         df_all.to_csv(f'{summary_name}.csv')
 
+def split_subjects(
+    subj_ids, 
+    test_size=0.3
+    ):
+    """Randomly divide subject list into train and test subsets.
+
+    Train subjects are used to train, validate, and test models(s).
+    Test subjects are kept until the end of the project to evaluate
+    the best (and final) model.
+
+    Args:
+        subj_ids (list): list of subject ids (e.g., ['s01', 's02'])
+        test_size (int): size of test set
+    Returns:
+        train_subjs (list of subject ids), test_subjs (list of subject ids)
+    """
+    # set random seed
+    seed(1)
+
+    # get number of subjects in test (round down)
+    num_in_test = int(np.floor(test_size * len(subj_ids)))
+
+    # select test set
+    test_subjs = list(sample(subj_ids, num_in_test))
+    train_subjs = list([x for x in subj_ids if x not in test_subjs])
+
+    return train_subjs, test_subjs
+
 def train_summary(
     summary_name="train_summary",
     exps=['sc1'], 
@@ -74,6 +103,8 @@ def train_summary(
     # concat summary
     _concat_summary(summary_name)
 
+    train_subjs, _ = split_subjects(const.return_subjs)
+
     # look at model summary for train results
     df_concat = pd.DataFrame()
     for exp in exps:
@@ -81,6 +112,9 @@ def train_summary(
         fpath = os.path.join(dirs.conn_train_dir, f"{summary_name}.csv")
         df = pd.read_csv(fpath)
         df_concat = pd.concat([df_concat, df])
+
+    # select trained subjects 
+    df_concat = df_concat[df_concat['subj_id'].isin(train_subjs)]
     
     df_concat['atlas'] = df_concat['X_data'].apply(lambda x: _add_atlas(x))
 
@@ -111,6 +145,7 @@ def train_summary(
     
     df_concat['train_hyperparameter'] = df_concat['train_hyperparameter'].astype(float)
 
+
     if models_to_exclude:
         df_concat = df_concat[~df_concat['train_model'].isin(models_to_exclude)]
 
@@ -132,6 +167,8 @@ def eval_summary(
     # concat summary
     _concat_summary(summary_name)
 
+    train_subjs, _ = split_subjects(const.return_subjs)
+
     # look at model summary for eval results
     df_concat = pd.DataFrame()
     for exp in exps:
@@ -139,6 +176,9 @@ def eval_summary(
         fpath = os.path.join(dirs.conn_eval_dir, f"{summary_name}.csv")
         df = pd.read_csv(fpath)
         df_concat = pd.concat([df_concat, df])
+
+    # select trained subjects 
+    df_concat = df_concat[df_concat['subj_id'].isin(train_subjs)]
     
     df_concat['atlas'] = df_concat['X_data'].apply(lambda x: _add_atlas(x))
 
@@ -153,11 +193,11 @@ def eval_summary(
     df_concat['eval_model'] = df_concat['eval_name'].str.split('_').str[0]
 
     try: 
-        wnta = df_concat.query('eval_model=="WNTA"')
+        wnta = df_concat.query('eval_model=="wnta"')
         wnta['eval_model'] = wnta['eval_model'] + '_' + wnta['eval_name'].str.split('_').str.get(-3)
 
         # get rest of dataframe
-        other = df_concat.query('eval_model!="WNTA"')
+        other = df_concat.query('eval_model!="wnta"')
 
         #concat dataframes
         df_concat = pd.concat([wnta, other])
@@ -174,40 +214,41 @@ def eval_summary(
     return df_concat
 
 def roi_summary(
-    fpaths, 
-    atlas='MDTB_10Regions', 
-    save=True
+    data_fpath, 
+    atlas_nifti,
+    atlas_gifti, 
+    plot=False
     ):
     """plot roi summary of data in `fpath`
 
     Args: 
-        fpath (str): full path to nifti image
-        atlas (str): default is 'MDTB_10Regions.nii'. assumes that atlases are saved in /cerebellar_atlases/
+        data_fpath (str): full path to nifti image
+        atlas_nifti (str): full path to nifti atlas  (e.g., ./MDTB_10Regions.nii')
+        atlas_gifti (str): full path to gifti atlas (e.g., ./MDTB_10Regions.label.gii)
+        plot (bool): default is False
     Returns: 
-        plots barplot of roi summary
+        dataframe (pd dataframe)
     """
-    dirs = const.Dirs()
-
     # get rois for `atlas`
-    atlas_dir = os.path.join(dirs.base_dir, 'cerebellar_atlases')
-    rois = cdata.read_suit_nii(atlas_dir + f'/{atlas}.nii')
+    rois = cdata.read_suit_nii(atlas_nifti) 
 
     # get roi colors
-    rgba, cpal = nio.get_gifti_colors(fpath=atlas_dir + f'/{atlas}.label.gii')
-    labels = nio.get_gifti_labels(fpath=atlas_dir + f'/{atlas}.label.gii')
+    rgba, cpal, cmap = nio.get_gifti_colors(fpath=atlas_gifti, ignore_0=True)
+    labels = nio.get_gifti_labels(fpath=atlas_gifti)
 
-    df_all = pd.DataFrame()
-    for fpath in fpaths:
-        data = cdata.read_suit_nii(fpath)
-        roi_mean, regs = cdata.average_by_roi(data, rois)
-        fname = Path(fpath).stem
-        df1 = pd.DataFrame({'roi_mean': list(np.hstack(roi_mean)),
-                        'regions': list(regs),
-                        'labels': list(labels),
-                        'fnames': np.repeat(fname, len(regs))})
-        df_all = pd.concat([df_all, df1])
-
-    return df_all
+    data = cdata.read_suit_nii(data_fpath)
+    roi_mean, regs = cdata.average_by_roi(data, rois)
+    df = pd.DataFrame({'mean': list(np.hstack(roi_mean)),
+                    'regions': list(regs),
+                    'labels': list(labels)
+                    })
+    if plot:
+        plt.figure(figsize=(8,8))
+        df = df.query('regions!=0')
+        sns.barplot(x='labels', y='mean', data=df, palette=cpal)
+        plt.xticks(rotation='45')
+        plt.xlabel('')
+    return df
 
 def _add_atlas(x):
     """returns abbrev. atlas name from `X_data` column
@@ -225,6 +266,7 @@ def plot_train_predictions(
     x_order=None, 
     hue_order=None, 
     save=True, 
+    title=False,
     best_models=True,
     methods=['L2regression', 'WTA']
     ):
@@ -247,27 +289,27 @@ def plot_train_predictions(
     else:
         df1 = dataframe
     # R
-    sns.factorplot(x=x, y="train_R_cv", hue=hue, data=df1, order=x_order, hue_order=hue_order, legend=False, ci=None, size=4, aspect=2)
-    plt.title("Model Training (CV Predictions)", fontsize=20)
+    sns.factorplot(x=x, y="train_R_cv", hue=hue, data=df1, order=x_order, hue_order=hue_order, ci=None, legend=False, size=4, aspect=2)
+    if title:
+        plt.title("Model Training (CV Predictions)", fontsize=20)
     plt.tick_params(axis="both", which="major", labelsize=15)
-    plt.xticks(rotation="45", ha="right")
+    plt.xticks(rotation="45", ha="right", fontsize=10)
     plt.xlabel("")
-    plt.ylabel("R", fontsize=20)
-    plt.legend(fontsize=15, bbox_to_anchor=(1.05, 1), loc='upper left', frameon=False)
-    plt.show()
+    plt.ylabel("R (cv)", fontsize=20)
+    if hue:
+        plt.legend(fontsize=15, bbox_to_anchor=(1.05, 1), loc='upper left', frameon=False)
 
     if save:
         dirs = const.Dirs()
         exp_fname = '_'.join(exps)
-        plt.savefig(os.path.join(dirs.figure, f'train_predictions_{exp_fname}.png'))
+        meth_fname = '_'.join(methods)
+        plt.savefig(os.path.join(dirs.figure, f'train_predictions_{exp_fname}_{meth_fname}_{x}.png'), pad_inches=0.1, bbox_inches='tight')
 
 def plot_eval_predictions(
     dataframe=None,
     exps=['sc2'], 
     x='eval_num_regions', 
     hue=None, 
-    x_order=None, 
-    hue_order=None, 
     save=True,
     methods=['ridge', 'WTA'],
     noiseceiling=True,
@@ -285,17 +327,23 @@ def plot_eval_predictions(
     # filter out methods
     dataframe = dataframe[dataframe['eval_model'].isin(methods)]
 
-    ax = sns.lineplot(x=x, y="R_eval", hue=hue, legend=True, data=dataframe, ax=ax) # size=4, aspect=2, order=x_order, hue_order=hue_order,,
-    plt.xticks(rotation="45", ha="right")
-    ax.set_xlabel("")
-    ax.set_ylabel("R")
-    plt.legend(bbox_to_anchor=(0, 1), loc='upper left', ncol=1, frameon=False)
-
     if noiseceiling:
+        plt.figure(figsize=(8,8))
+        ax = sns.lineplot(x=x, y="R_eval", hue=hue, legend=True, data=dataframe)
         ax = sns.lineplot(x=x, y='eval_noiseceiling_Y', data=dataframe, color='k', ax=ax)
+        ax.legend(fontsize=15, bbox_to_anchor=(1.05, 1), loc='upper left', frameon=False)
+        plt.xticks(rotation="45", ha="right", fontsize=10)
         ax.lines[-1].set_linestyle("--")
-        # sns.lineplot(x=x, y='eval_noiseceiling_XY', data=dataframe, color='k')
         ax.set_xlabel("")
+        ax.set_ylabel("R")
+    else:
+        plt.figure(figsize=(8,8))
+        sns.factorplot(x=x, y="R_eval", hue=hue, data=dataframe, legend=False, size=4, aspect=2) # size=4, aspect=2, order=x_order, hue_order=hue_order,,
+        plt.xticks(rotation="45", ha="right")
+        plt.xlabel("")
+        plt.ylabel("R")
+        if hue:
+            plt.legend(fontsize=15, bbox_to_anchor=(1.05, 1), loc='upper left', frameon=False)
 
     if title:
         plt.title("Model Evaluation", fontsize=20)
@@ -303,9 +351,10 @@ def plot_eval_predictions(
     if save:
         dirs = const.Dirs()
         exp_fname = '_'.join(exps)
-        plt.savefig(os.path.join(dirs.figure, f'eval_predictions_{exp_fname}.png'))
+        meth_fname = '_'.join(methods)
+        plt.savefig(os.path.join(dirs.figure, f'eval_predictions_{exp_fname}_{meth_fname}_{x}.png'), pad_inches=0, bbox_inches='tight')
 
-def plot_predictions_WTA(
+def plot_predictions_atlas(
     data='eval', 
     method='WTA',
     save=True,
@@ -335,7 +384,7 @@ def plot_predictions_WTA(
     
     if save:
         dirs = const.Dirs()
-        plt.savefig(os.path.join(dirs.figure, f'{method}_predictions_{data}.{format}'), format=format, dpi=300, bbox_inches="tight")
+        plt.savefig(os.path.join(dirs.figure, f'{method}_predictions_{data}_atlas.{format}'), format=format, dpi=300, bbox_inches="tight")
 
 def plot_best_eval(
     dataframe=None,
@@ -396,26 +445,14 @@ def plot_best_eval(
         exp_fname = '_'.join(exps)
         plt.savefig(os.path.join(dirs.figure, f'best_eval_{exp_fname}.png'))
 
-# def plot_roi(dataframe, save=True):
-#     plt.figure()
-#     sns.barplot(x='labels', y='roi_mean', data=dataframe.query('regions!=0'), palette=cpal[1:])
-#     plt.xticks(rotation=45)
-#     plt.xlabel(atlas)
-#     plt.ylabel('ROI mean')
-
-#     if save:
-#         dirs = const.Dirs()
-#         plt.savefig(os.path.join(dirs.figure, f'{atlas}_summary.png'))
-
 def map_eval(
     data="R", 
     exp="sc1", 
     model_name='best_model', 
     colorbar=False, 
-    cscale=None, 
-    rois=True, 
-    atlas='MDTB_10Regions', 
-    save=True
+    cscale=None,  
+    save=True,
+    title=True
     ):
     """plot surface map for best model
     Args:
@@ -435,25 +472,51 @@ def map_eval(
 
     # plot map
     fpath = os.path.join(dirs.conn_eval_dir, model)
-    view = nio.view_cerebellum(gifti=os.path.join(fpath, f"group_{data}_vox.func.gii"), cscale=cscale, colorbar=colorbar)
+    view = nio.view_cerebellum(gifti=os.path.join(fpath, f"group_{data}_vox.func.gii"), cscale=cscale, colorbar=colorbar, title=title)
 
     if save:
         dirs = const.Dirs()
-        plt.savefig(os.path.join(dirs.figure, f'map_{data}_eval.png'))
+        plt.savefig(os.path.join(dirs.figure, f'map_{exp}_{model_name}_{data}_eval.png'))
 
-    if rois:
-        roi_summary(fpath=os.path.join(fpath, f"group_{data}_{model}_{exp}_vox.nii"), atlas=atlas)
+    return view
+
+def map_lasso(
+    model_name,
+    exp="sc1", 
+    stat='percent',
+    colorbar=False, 
+    cscale=None,  
+    save=True,
+    title=None
+    ):
+    """plot surface map for best model
+    Args:
+        model (None or model name):
+        exp (str): 'sc1' or 'sc2'
+    """
+    dirs = const.Dirs(exp_name=exp)
+
+    # plot map
+    fpath = os.path.join(dirs.conn_train_dir, model_name)
+
+    fname = "group_lasso_cerebellum"
+    if stat=='percent':
+        fname = f"group_lasso_percent_cerebellum"
+
+    view = nio.view_cerebellum(gifti=os.path.join(fpath, f'{fname}.func.gii'), cscale=cscale, colorbar=colorbar, title=title)
+
+    if save:
+        dirs = const.Dirs()
+        plt.savefig(os.path.join(dirs.figure, f'map_{fname}_{model_name}.png'))
+
     return view
 
 def map_model_comparison(
     model_name, 
     exp, 
-    method='subtract', 
     colorbar=True, 
-    rois=False, 
-    atlas='MDTB_10Regions', 
     save=True,
-    title=False
+    title=True
     ):
     """plot surface map for best model
     Args:
@@ -463,17 +526,14 @@ def map_model_comparison(
     dirs = const.Dirs(exp_name=exp)
 
     fpath = os.path.join(dirs.conn_eval_dir, 'model_comparison')
-    fpath_gii = glob.glob(f'{fpath}/*{method}*{model_name}*.gii*')
-    fpath_nii = glob.glob(f'{fpath}/*{method}*{model_name}*.nii*')
+    fpath_gii = glob.glob(f'{fpath}/*subtract*{model_name}*.gii*')
+    fpath_nii = glob.glob(f'{fpath}/*subtract*{model_name}*.nii*')
 
     view = nio.view_cerebellum(fpath_gii[0], cscale=None, colorbar=colorbar, title=title)
 
     if save:
         dirs = const.Dirs()
-        plt.savefig(os.path.join(dirs.figure, f'{model_name}_model_comparison_{exp}_{method}.png'))
-
-    if rois:
-        roi_summary(fpath=fpath_nii[0], atlas=atlas)
+        plt.savefig(os.path.join(dirs.figure, f'{model_name}_model_comparison_{exp}_subtract.png'))
     
     return view
 
@@ -484,8 +544,6 @@ def map_weights(
     hemisphere='R', 
     colorbar=False, 
     cscale=None, 
-    rois=True, 
-    atlas='MDTB_10Regions', 
     save=True
     ):
     """plot training weights for cortex or cerebellum
@@ -517,8 +575,6 @@ def map_weights(
         dirs = const.Dirs()
         plt.savefig(os.path.join(dirs.figure, f'{model}_{structure}_{hemisphere}_weights_{exp}.png'))
 
-    if (rois) & (structure=='cerebellum'):
-        roi_summary(fpath=os.path.join(fpath, f"group_weights_cerebellum.nii"), atlas=atlas)
     return view
 
 def map_atlas(
@@ -559,7 +615,7 @@ def get_best_model(
     df = train_summary(exps=[train_exp])
 
     # get mean values for each model
-    tmp = df.groupby(["name", "X_data"]).mean().reset_index()
+    tmp = df.groupby(["train_name", "train_X_data"]).mean().reset_index()
 
     # get best model (based on R CV or R train)
     try: 
@@ -575,18 +631,24 @@ def get_best_model(
 
 def get_best_models(
     dataframe=None,
-    train_exp='sc1'
+    train_exp='sc1',
+    method=None
     ):
     """Get model_names, cortex_names for best models (NNLS, ridge, WTA) based on R_cv
     Args:
         dataframe (pd dataframe or None):
         train_exp (str): 'sc1' or 'sc2' or None (if dataframe is given)
+        method (str or None): filter models by method
     Returns:
         model_names (list of str), cortex_names (list of str)
     """
     # load train summary (contains R CV of all trained models)
     if dataframe is None:
         dataframe = train_summary(exps=[train_exp])
+
+     # filter dataframe by method
+    if method is not None:
+        dataframe = dataframe[dataframe['train_model']==method]
 
     df_mean = dataframe.groupby(['train_X_data', 'train_model', 'train_name'], sort=True).apply(lambda x: x['train_R_cv'].mean()).reset_index(name='train_R_cv_mean')
     df_best = df_mean.groupby(['train_X_data', 'train_model']).apply(lambda x: x[['train_name', 'train_R_cv_mean']].max()).reset_index()
