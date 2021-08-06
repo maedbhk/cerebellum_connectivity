@@ -179,6 +179,8 @@ def get_gifti_colors(
 
     if isinstance(fpath, str):
         img = nib.load(fpath)
+    else:
+        img = fpath
 
     labels = img.labeltable.labels
 
@@ -208,6 +210,8 @@ def get_gifti_labels(
     """
     if isinstance(fpath, str):
         img = nib.load(fpath)
+    else:
+        img = fpath
 
     labels = img.labeltable.get_labels_as_dict().values()
 
