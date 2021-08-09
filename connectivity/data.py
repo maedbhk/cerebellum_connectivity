@@ -234,7 +234,11 @@ class Dataset:
 
         return data, data_info
 
-def convert_to_vol(data, xyz, voldef):
+def convert_to_vol(
+    data, 
+    xyz, 
+    voldef
+    ):
     """
     This function converts 1D numpy array data to 3D vol space, and returns nib obj
     that can then be saved out as a nifti file
@@ -264,7 +268,9 @@ def convert_to_vol(data, xyz, voldef):
     nib_obj = nib.Nifti1Image(vol_data, mat)
     return nib_obj
 
-def convert_cerebellum_to_nifti(data):
+def convert_cerebellum_to_nifti(
+    data
+    ):
     """
     Args:
         data (np-arrray): N x 6937 length data array
@@ -293,15 +299,19 @@ def convert_cerebellum_to_nifti(data):
         raise(NameError('data needs to be 1 or 2-dimensional'))
     return nii_mapped
 
-def convert_cortex_to_gifti(data, atlas):
+def convert_cortex_to_gifti(
+    data, 
+    atlas, 
+    column_names=None
+    ):
     """
     Args:
         data (np-arrray): 1d-array
         atlas (str): cortical atlas name (e.g. tessels0162)
+        column_names (list or None): default is None
     Returns:
         List of gifti-img (left + right hemisphere)
         anatomical_structure (list of hemisphere names)
-        subj_id (str or None): if `subj_id` is None, group atlas is used (default)
     """
     dirs = const.Dirs()
     hemName = ['L','R']
@@ -318,11 +328,10 @@ def convert_cortex_to_gifti(data, atlas):
         # Fastest way: prepend a NaN for ROI 0 (medial wall)
         c_data = np.insert(data,0,np.nan)
         mapped_data = c_data[labels]
-        # Make the gifti imae   gifti img
         gii = nio.make_func_gifti_cortex(
-            data=mapped_data[:,None], 
-            anatomical_struct=anatomical_struct[h]
-            )
+            data=mapped_data, # was mapped_data[:,None]
+            anatomical_struct=anatomical_struct[h],
+            column_names=column_names)
         gifti_img.append(gii)
     return gifti_img, hemName
 

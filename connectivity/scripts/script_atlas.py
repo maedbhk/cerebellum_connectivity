@@ -4,7 +4,7 @@ import os
 import connectivity.constants as const
 import connectivity.io as cio
 import connectivity.nib_utils as nio
-from connectivity import make_atlas
+from connectivity import connect_atlas as catlas
 
 @click.command()
 @click.option("--atlas")
@@ -15,7 +15,7 @@ def run(atlas, glm='glm7'):
     
     # loop over exp
     for exp in ['sc1', 'sc2']:
-        labels[exp] = make_atlas.model_wta(const.return_subjs, exp, glm, atlas)
+        labels[exp] = catlas.model_wta(const.return_subjs, exp, glm, atlas)
 
     # concat labels across exps
     labels_concat = np.concatenate((labels['sc1'], labels['sc2']))
@@ -26,9 +26,9 @@ def run(atlas, glm='glm7'):
     cio.make_dirs(fpath)
 
     # get label colors
-    rgba, _ = nio.get_gifti_colors(fpath=os.path.join(dirs.reg_dir, 'data', 'group', f'{atlas}.R.label.gii'))
+    rgba, cpal, cmap = nio.get_gifti_colors(fpath=os.path.join(dirs.reg_dir, 'data', 'group', f'{atlas}.R.label.gii'))
 
-    make_atlas.save_maps_cerebellum(data=labels_concat, 
+    catlas.save_maps_cerebellum(data=labels_concat, 
                         fpath=os.path.join(fpath, f'{atlas}_wta_suit'),
                         group='mode',
                         nifti=True,

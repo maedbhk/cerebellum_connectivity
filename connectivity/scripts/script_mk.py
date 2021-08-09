@@ -15,6 +15,7 @@ import connectivity.constants as const
 import connectivity.io as cio
 from connectivity import data as cdata
 import connectivity.run_mk as run_connect
+from connectivity import connect_maps as cmaps
 from connectivity import visualize as summary
 
 def split_subjects(
@@ -154,7 +155,7 @@ def train_ridge(
 
     # save out weight maps
     if config['save_weights']:
-        save_weight_maps(model_name=name, cortex=cortex, train_exp=train_exp)
+        cmaps.weight_maps(model_name=name, cortex=cortex, train_exp=train_exp)
 
     # concat data to model_summary (if file already exists)
     if log_locally:
@@ -231,7 +232,7 @@ def train_WTA(
 
     # save out weight maps
     if config['save_weights']:
-        save_weight_maps(model_name=name, cortex=cortex, train_exp=train_exp)
+        cmaps.weight_maps(model_name=name, cortex=cortex, train_exp=train_exp)
 
     # concat data to model_summary (if file already exists)
     if log_locally:
@@ -312,7 +313,7 @@ def train_NNLS(
 
     # save out weight maps
     if config['save_weights']:
-        save_weight_maps(model_name=name, cortex=cortex, train_exp=train_exp)
+        cmaps.weight_maps(model_name=name, cortex=cortex, train_exp=train_exp)
 
     # concat data to model_summary (if file already exists)
     if log_locally:
@@ -320,51 +321,6 @@ def train_NNLS(
             df_all = pd.concat([df_all, pd.read_csv(fpath)])
         # save out train summary
         df_all.to_csv(fpath, index=False)
-
-def save_weight_maps(
-        model_name, 
-        cortex, 
-        train_exp
-        ):
-    """Save weight maps to disk for cortex and cerebellum
-
-    Args: 
-        model_name (str): model_name (folder in conn_train_dir)
-        cortex (str): cortex model name (example: tesselsWB162)
-        train_exp (str): 'sc1' or 'sc2'
-    Returns: 
-        saves nifti/gifti to disk
-    """
-    # set directory
-    dirs = const.Dirs(exp_name=train_exp)
-
-    # get model path
-    fpath = os.path.join(dirs.conn_train_dir, model_name)
-
-    # get trained subject models
-    model_fnames = glob.glob(os.path.join(fpath, '*.h5'))
-
-    cereb_weights_all = []; cortex_weights_all = []
-    for model_fname in model_fnames:
-
-        # read model data
-        data = cio.read_hdf5(model_fname)
-        
-        # append cerebellar and cortical weights
-        cereb_weights_all.append(np.nanmean(data.coef_, axis=1))
-        cortex_weights_all.append(np.nanmean(data.coef_, axis=0))
-
-    # save maps to disk for cerebellum and cortex
-    save_maps_cerebellum(data=np.stack(cereb_weights_all, axis=0), 
-                        fpath=os.path.join(fpath, 'group_weights_cerebellum'))
-
-    # save maps to disk for cortex
-    data = np.stack(cortex_weights_all, axis=0)
-    func_giis, hem_names = cdata.convert_cortex_to_gifti(data=np.nanmean(data, axis=0), atlas=cortex)
-    for (func_gii, hem) in zip(func_giis, hem_names):
-        nib.save(func_gii, os.path.join(fpath, f'group_weights_cortex.{hem}.func.gii'))
-
-    print('saving cortical and cerebellar weights to disk')
 
 def save_maps_cerebellum(
     data, 
@@ -423,51 +379,6 @@ def save_maps_cerebellum(
         nib.save(gii_img, fpath + f'.{out_name}.gii')
     
     return gii_img
-
-def save_lasso_maps(
-    model_name, 
-    train_exp, 
-    stat='count'
-    ):
-    """save lasso maps for cerebellum (count number of non-zero cortical coef)
-
-    Args:
-        model_name (str): full name of trained model
-        train_exp (str): 'sc1' or 'sc2'
-        stat (str): 'count' or 'percent'
-    """
-    # set directory
-    dirs = const.Dirs(exp_name=train_exp)
-
-    # get model path
-    fpath = os.path.join(dirs.conn_train_dir, model_name)
-
-    # get trained subject models
-    model_fnames = glob.glob(os.path.join(fpath, '*.h5'))
-
-    cereb_lasso_all = []
-    for model_fname in model_fnames:
-
-        # read model data
-        data = cio.read_hdf5(model_fname)
-        
-        # count number of non-zero weights
-        data_nonzero = np.count_nonzero(data.coef_, axis=1)
-
-        if stat=='count':
-            pass # do nothing
-        elif stat=='percent':
-            num_regs = data.coef_.shape[1]
-            data_nonzero = np.divide(data_nonzero,  num_regs)*100
-        cereb_lasso_all.append(data_nonzero)
-
-    fname = 'group_lasso_cerebellum'
-    if stat=='percent':
-        fname = f'group_lasso_{stat}_cerebellum'
-
-    # save maps to disk for cerebellum
-    save_maps_cerebellum(data=np.stack(cereb_lasso_all, axis=0), 
-                        fpath=os.path.join(fpath, fname))
 
 def eval_model(
     model_name,
@@ -632,23 +543,11 @@ def run(cortex="tessels0362",
                 # should trained model be evaluated?
                 eval = _check_eval(model_name=best_model, train_exp=f"sc{2-exp}", eval_exp=f"sc{exp+1}")
 
-                ### TEMP ###
-                if 'lasso' in best_model:
-                    save_lasso_maps(model_name=best_model, train_exp=f"sc{2-exp}", stat='percent') 
-                
+                # delete training models that are suboptimal (save space)
+                if delete_train:
+                    _delete_models(exp=f"sc{2-exp}", best_model=best_model)
+
                 if eval:
-                    # save voxel/vertex maps for best training weights (for group parcellations only)
-                    if 'wb_indv' not in cortex:
-                        save_weight_maps(model_name=best_model, train_exp=f"sc{2-exp}")
-
-                    if 'lasso' in best_model:
-                        save_lasso_maps(model_name=best_model, train_exp=f"sc{2-exp}", stat='count')  
-                        save_lasso_maps(model_name=best_model, train_exp=f"sc{2-exp}", stat='percent')
-
-                    # delete training models that are suboptimal (save space)
-                    if delete_train:
-                        _delete_models(exp=f"sc{2-exp}", best_model=best_model)
-
                     # test best train model
                     eval_model(model_name=best_model, cortex=cortex, train_exp=f"sc{2-exp}", eval_exp=f"sc{exp+1}")
                 else:
