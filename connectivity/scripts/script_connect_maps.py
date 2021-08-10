@@ -18,14 +18,14 @@ def run(atlas='MDTB_10Regions'):
         models, cortex_names = summary.get_best_models(train_exp=f"sc{2-exp}")
 
         for (best_model, cortex) in zip(models, cortex_names):
-            
+
             # save voxel/vertex maps for best training weights (for group parcellations only)
             # if 'wb_indv' not in cortex:
-            #     cmaps.weight_maps(model_name=best_model, train_exp=f"sc{2-exp}")
+            #     cmaps.weight_maps(model_name=best_model, cortex=cortex, train_exp=f"sc{2-exp}")
 
             if 'lasso' in best_model:
-                cmaps.lasso_maps_cerebellum(model_name=best_model, 
-                                            train_exp=f"sc{2-exp}") 
+                # cmaps.lasso_maps_cerebellum(model_name=best_model, 
+                #                             train_exp=f"sc{2-exp}") 
 
                 cmaps.lasso_maps_cortex(model_name=best_model, 
                                     train_exp=f"sc{2-exp}", 

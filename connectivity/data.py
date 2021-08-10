@@ -35,7 +35,6 @@ import connectivity.nib_utils as nio
 
 """
 
-
 class Dataset:
     """Dataset class, holds betas for one region, one experiment, one subject for connectivity modelling.
 
@@ -306,7 +305,7 @@ def convert_cortex_to_gifti(
     ):
     """
     Args:
-        data (np-arrray): 1d-array
+        data (np-array): 1d- or 2d-array
         atlas (str): cortical atlas name (e.g. tessels0162)
         column_names (list or None): default is None
     Returns:
@@ -324,12 +323,20 @@ def convert_cortex_to_gifti(
         gii_data = nib.load(gii_path)
         labels = gii_data.darrays[0].data[:]
 
-        # Fill the corresponding vertices
         # Fastest way: prepend a NaN for ROI 0 (medial wall)
-        c_data = np.insert(data,0,np.nan)
-        mapped_data = c_data[labels]
+        if data.ndim==1:
+            c_data = np.insert(data, 0, np.nan)
+            mapped_data = c_data[labels, None]
+        elif data.ndim==2:
+            c_data_all = []
+            for col in np.arange(data.shape[1]):
+                c_data_all.append(np.insert(data[:, col], 0, np.nan))
+            c_data = np.stack(c_data_all)
+            c_data = np.reshape(c_data, (c_data.shape[1], c_data.shape[0]))
+            mapped_data = c_data[labels,]
+
         gii = nio.make_func_gifti_cortex(
-            data=mapped_data, # was mapped_data[:,None]
+            data=mapped_data,
             anatomical_struct=anatomical_struct[h],
             column_names=column_names)
         gifti_img.append(gii)

@@ -193,13 +193,13 @@ def lasso_maps_cortex(
         region_number_suit = cdata.read_suit_nii(cerebellum_fpath)
 
         # get average for each parcel
-        data_mean_roi = cdata.average_by_roi(data=coef, region_number_suit=region_number_suit)
+        data_mean_roi, region_numbers = cdata.average_by_roi(data=coef, region_number_suit=region_number_suit)
 
         cortex_all.append(data_mean_roi)
 
     # save maps to disk for cortex
     group_cortex = np.nanmean(np.stack(cortex_all), axis=0)
-    column_names = [f'Region{idx}' for idx in np.arange(group_cortex.shape[0])]
+    column_names = [f'Region{idx}' for idx in region_numbers]
     func_giis, hem_names = cdata.convert_cortex_to_gifti(data=group_cortex, atlas=cortex, column_names=column_names)
     for (func_gii, hem) in zip(func_giis, hem_names):
         nib.save(func_gii, os.path.join(fpath, f'group_lasso_cortex.{hem}.func.gii'))
