@@ -31,8 +31,9 @@ def run(atlas='MDTB_10Regions'):
             #     cmaps.weight_maps(model_name=best_model, cortex=cortex, train_exp=f"sc{2-exp}")
 
             if 'lasso' in best_model:
-                # cmaps.lasso_maps_cerebellum(model_name=best_model, 
-                #                             train_exp=f"sc{2-exp}") 
+                
+                cmaps.lasso_maps_cerebellum(model_name=best_model, 
+                                            train_exp=f"sc{2-exp}") 
 
                 func_giis, hem_names = cmaps.lasso_maps_cortex(model_name=best_model, 
                                         train_exp=f"sc{2-exp}", 
