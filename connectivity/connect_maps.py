@@ -149,13 +149,9 @@ def lasso_maps_cerebellum(
                 data_nonzero = np.divide(data_nonzero,  num_regs)*100
             cereb_lasso_all.append(data_nonzero)
 
-        fname = 'group_lasso_cerebellum'
-        if stat=='percent':
-            fname = f'group_lasso_{stat}_cerebellum'
-
         # save maps to disk for cerebellum
         save_maps_cerebellum(data=np.stack(cereb_lasso_all, axis=0), 
-                        fpath=os.path.join(fpath, fname))
+                        fpath=os.path.join(fpath, f'group_lasso_{stat}_cerebellum'))
 
 def lasso_maps_cortex(
     model_name, 
@@ -201,5 +197,5 @@ def lasso_maps_cortex(
     group_cortex = np.nanmean(np.stack(cortex_all), axis=0)
     column_names = [f'Region{idx}' for idx in region_numbers]
     func_giis, hem_names = cdata.convert_cortex_to_gifti(data=group_cortex, atlas=cortex, column_names=column_names)
-    for (func_gii, hem) in zip(func_giis, hem_names):
-        nib.save(func_gii, os.path.join(fpath, f'group_lasso_cortex.{hem}.func.gii'))
+
+    return func_giis, hem_names
