@@ -305,7 +305,7 @@ def convert_cortex_to_gifti(
     ):
     """
     Args:
-        data (np-array): 1d- or 2d-array
+        data (np-array): 1d- (cortical regions,) or 2d-array (cortical regions x columns)
         atlas (str): cortical atlas name (e.g. tessels0162)
         column_names (list or None): default is None
     Returns:
