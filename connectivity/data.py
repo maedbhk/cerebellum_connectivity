@@ -300,14 +300,18 @@ def convert_cerebellum_to_nifti(
 
 def convert_cortex_to_gifti(
     data, 
-    atlas, 
-    column_names=None
+    atlas,
+    data_type='func',
+    column_names=None,
+    label_names=None,
     ):
     """
     Args:
         data (np-array): 1d- (cortical regions,) or 2d-array (cortical regions x columns)
         atlas (str): cortical atlas name (e.g. tessels0162)
+        data_type (str): 'func' or 'label'. default is 'func'
         column_names (list or None): default is None
+        label_names (list or None): default is None
     Returns:
         List of gifti-img (left + right hemisphere)
         anatomical_structure (list of hemisphere names)
@@ -335,11 +339,18 @@ def convert_cortex_to_gifti(
             c_data = np.reshape(c_data, (c_data.shape[1], c_data.shape[0]))
             mapped_data = c_data[labels,]
 
-        gii = nio.make_func_gifti_cortex(
-            data=mapped_data,
-            anatomical_struct=anatomical_struct[h],
-            column_names=column_names)
+        if data_type=='func':
+            gii = nio.make_func_gifti_cortex(
+                data=mapped_data,
+                anatomical_struct=anatomical_struct[h],
+                column_names=column_names)
+        elif data_type=='label':
+            gii = nio.make_label_gifti_cortex(
+                data=mapped_data,
+                anatomical_struct=anatomical_struct[h],
+                label_names=label_names)
         gifti_img.append(gii)
+        
     return gifti_img, hemName
 
 def get_distance_matrix(roi):
@@ -473,7 +484,7 @@ def average_by_roi(data, region_number_suit):
         reg_index = region_number_suit == region_numbers[r]
 
         # get data for the region
-        reg_data = data[:,reg_index].mean(axis=1)
+        reg_data = np.nanmean(data[:,reg_index], axis=1) # was np.mean
 
         # fill in data_roi
         data_mean_roi[:, r] = reg_data

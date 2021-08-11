@@ -34,5 +34,9 @@ cd /global/scratch/maedbhking/projects/cerebellum_connectivity/connectivity/scri
 
 # run connectivity maps
 atlases=(MDTB_10Regions MDTB_10subregions Buckner_17Networks)
+weights=positive
+data_type=(label func)
+
 for ((a=0; a<${#atlases[@]}; a++)); do \
-    python3 script_connect_maps.py --atlas=${atlases[a]}; done
+    for ((b=0; b<${#data_type[@]}; b++)); do \
+        python3 script_connect_maps.py --atlas=${atlases[a]} --weights=${weights} --data_type=${data_type[b]}; done; done

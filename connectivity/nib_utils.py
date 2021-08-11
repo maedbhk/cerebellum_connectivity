@@ -70,7 +70,7 @@ def make_label_gifti_cortex(
     if label_names is None:
         label_names = []
         for i in range(num_labels):
-            label_names.append("label-{:02d}".format(i))
+            label_names.append("label-{:02d}".format(i+1))
 
     # Create label.gii structure
     C = nib.gifti.GiftiMetaData.from_dict({
@@ -218,6 +218,26 @@ def get_gifti_labels(
 
     return list(label_dict.values())
 
+def get_gifti_columns(fpath):
+    """get column names from gifti
+
+    Args: 
+        fpath (str or nib obj): full path to atlas (*.label.gii) or nib obj
+    Returns: 
+        column_names (list): list of column names
+    """
+    if isinstance(fpath, str):
+        img = nib.load(fpath)
+    else:
+        img = fpath
+
+    column_names = []
+    for col in img.darrays:
+        col_name =  list(col.metadata.values())[0]
+        column_names.append(col_name)
+
+    return column_names
+
 def binarize_vol(
     imgs, 
     metric='max'
@@ -334,9 +354,11 @@ def view_cerebellum(
     gifti, 
     cscale=None, 
     colorbar=True, 
-    title=None,
+    title=True,
     new_figure=True,
-    outpath=None
+    save=False,
+    cmap='jet',
+    labels=None
     ):
     """Visualize (optionally saves) data on suit flatmap, plots either *.func.gii or *.label.gii data
 
@@ -346,92 +368,114 @@ def view_cerebellum(
         colorbar (bool): default is False.
         title (bool): default is True
         new_figure (bool): default is True. If false, appends to current axis. 
-        outpath (str or None): full path to filename. If None, figure is not saved to file
+        save (bool): default is False
+        cmap (str or matplotlib colormap): default is 'jet'
+        labels (list): list of labels for *.label.gii. default is None
     """
+    # figure out if 3D or 4D
+    img = nib.load(gifti)
 
-    # full path to surface
-    surf_mesh = os.path.join(flatmap._surf_dir,'FLAT.surf.gii')
-
-    # determine overlay
+    # determine overlay and get metadata
+    # get column names
     if '.func.' in gifti:
         overlay_type = 'func'
     elif '.label.' in gifti:
         overlay_type = 'label'
+        _, _, cmap = get_gifti_colors(img)
+        labels = get_gifti_labels(img)
 
-    view = flatmap.plot(gifti, surf=surf_mesh, overlay_type=overlay_type, cscale=cscale, colorbar=colorbar, new_figure=new_figure) # implement colorbar
+    for (data, col) in zip(img.darrays, get_gifti_columns(img)):
 
-    if title is not None:
-        view.set_title(title)
+        view = flatmap.plot(data.data, 
+        overlay_type=overlay_type, 
+        cscale=cscale, 
+        cmap=cmap, 
+        label_names=labels, 
+        colorbar=colorbar, 
+        new_figure=new_figure
+        )
 
-    if outpath:
-        if '.png' in outpath:
-            format = 'png'
-        elif '.svg' in outpath:
-            format = 'svg'
-        plt.savefig(outpath, dpi=300, format=format, bbox_inches='tight', pad_inches=0)
+        # print title
+        fname = Path(gifti).name.split('.')[0]
+        if title:
+            view.set_title(f'{fname}-{col}')
 
-    return view
+        # save to disk
+        if save:
+            dirs = const.Dirs()
+            outpath = os.path.join(dirs.figure, f'{fname}-{col}.png')
+            plt.savefig(outpath, dpi=300, format='png', bbox_inches='tight', pad_inches=0)
+
+        plt.show()
 
 def view_cortex(
     gifti, 
-    hemisphere='R', 
-    cmap=None, 
-    cscale=None, 
-    atlas_type='inflated',  
+    surf_mesh=None,
+    cscale=None,  
     orientation='medial', 
     title=True,
-    outpath=None
+    save=False,
+    cmap='jet'
     ):
     """Visualize (optionally saves) data on inflated cortex, plots either *.func.gii or *.label.gii data
 
     Args: 
         gifti (str): fullpath to file: *.func.gii or *.label.gii
-        hemisphere (str): 'R' or 'L'
+        surf_mesh (str or None): fullpath to surface mesh file *.inflated.surf.gii. If None, takes mesh from `FS_LR` Dir
         cmap (matplotlib colormap or None):
         cscale (int or None):
-        atlas_type (str): 'inflated', 'very_inflated' (see fs_LR dir)
         orientation (str): 'medial' or 'lateral'
         title (bool): default is True
-        outpath (str or None): default is None. file not saved to disk
-
+        save (bool): 'default is False',
+        cmap (str or matplotlib colormap): 'default is "jet"' 
     """
     # initialise directories
     dirs = const.Dirs()
+
+    # figure out if 3D or 4D
+    img = nib.load(gifti)
 
     if '.R.' in gifti:
         hemisphere = 'R'
     elif '.L.' in gifti:
         hemisphere = 'L'
 
-    # get surface mesh
-    surf_mesh = os.path.join(dirs.reg_dir, 'data', 'group', f'fs_LR.32k.{hemisphere}.{atlas_type}.surf.gii')
+    # determine overlay and get metadata
+    # get column names
+    if '.func.' in gifti:
+        overlay_type = 'func'
+    elif '.label.' in gifti:
+        overlay_type = 'label'
+        _, _, cmap = get_gifti_colors(img)
+        labels = get_gifti_labels(img)
 
-    # Determine scale
-    if ('.func.' in gifti and cscale is None):
-        func_data = load_surf_data(gifti)
-        cscale = [np.nanmin(func_data), np.nanmax(func_data)]
+    for (data, col) in zip(img.darrays, get_gifti_columns(img)):
+        
+        if hemisphere=='L':
+            orientation = 'lateral'
 
-    fname = None
-    if title:
-        fname = Path(gifti).name
-        fname.split('.')[0]
+        # get average mesh
+        if not surf_mesh:
+            surf_mesh = os.path.join(dirs.reg_dir, 'data', 'group', f'fs_LR.32k.{hemisphere}.inflated.surf.gii')
+
+        # print title
+        fname = Path(gifti).name.split('.')[0]
+        title_name = None
+        if title:
+            title_name = f'{fname}-{col}-{orientation}'
+        
+        # plot to surface
+        view = view_surf(surf_mesh=surf_mesh, 
+                        surf_map=np.nan_to_num(data.data), 
+                        cmap=cmap, 
+                        # view=orientation, 
+                        title=title_name
+                        ) 
+        if save:
+            outpath = os.path.join(dirs.figure, f'{fname}-{col}.png')
+            plt.savefig(outpath, dpi=300, format='png', bbox_inches='tight', pad_inches=0)
     
-    if hemisphere=='L':
-        orientation = 'lateral'
-
-    if cmap is None:
-        _, _, cmap = get_gifti_colors(fpath=gifti)
-
-    view = plot_surf_roi(surf_mesh, gifti, cmap=cmap, view=orientation, title=fname) 
-
-    if outpath:
-        if '.png' in outpath:
-            format = 'png'
-        elif '.svg' in outpath:
-            format = 'svg'
-        plt.savefig(outpath, dpi=300, format=format, bbox_inches='tight', pad_inches=0)
-    
-    return view
+        view.open_in_browser()
 
 def view_colorbar(
     fpath, 

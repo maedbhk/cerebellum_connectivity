@@ -9,8 +9,22 @@ import connectivity.constants as const
 
 @click.command()
 @click.option("--atlas")
+@click.option("--weights")
+@click.option("--data_type")
 
-def run(atlas='MDTB_10Regions'):
+def run(
+    atlas='MDTB_10Regions', 
+    weights='positive', 
+    data_type='label'
+    ):
+
+    """ creates cortical connectivity maps for lasso (functional and lasso)
+
+    Args: 
+        atlas (str): default is 'MDTB_10Regions'
+        weights (str): 'positive' or 'absolute'. default is 'positive'
+        data_type (str): 'func' or 'label'. default is 'label'
+    """
 
     cerebellum_fpath = os.path.join(flatmap._base_dir, 'example_data', f'{atlas}.nii')
 
@@ -33,16 +47,19 @@ def run(atlas='MDTB_10Regions'):
             if 'lasso' in best_model:
                 
                 cmaps.lasso_maps_cerebellum(model_name=best_model, 
-                                            train_exp=f"sc{2-exp}") 
+                                            train_exp=f"sc{2-exp}",
+                                            weights=weights) 
 
-                func_giis, hem_names = cmaps.lasso_maps_cortex(model_name=best_model, 
+                giis, hem_names = cmaps.lasso_maps_cortex(model_name=best_model, 
                                         train_exp=f"sc{2-exp}", 
                                         cortex=cortex, 
-                                        cerebellum_fpath=cerebellum_fpath
+                                        cerebellum_fpath=cerebellum_fpath,
+                                        weights=weights,
+                                        data_type=data_type
                                         ) 
 
-                for (func_gii, hem) in zip(func_giis, hem_names):
-                    nib.save(func_gii, os.path.join(fpath, f'group_lasso_cortex_{atlas}.{hem}.func.gii'))
+                for (gii, hem) in zip(giis, hem_names):
+                    nib.save(gii, os.path.join(fpath, f'group_lasso_{weights}_{atlas}_cortex.{hem}.{data_type}.gii'))
 
 if __name__ == "__main__":
     run()
