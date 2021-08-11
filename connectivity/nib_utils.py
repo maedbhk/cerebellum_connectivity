@@ -213,9 +213,10 @@ def get_gifti_labels(
     else:
         img = fpath
 
-    labels = img.labeltable.get_labels_as_dict().values()
+    # labels = img.labeltable.get_labels_as_dict().values()
+    label_dict = img.labeltable.get_labels_as_dict()
 
-    return list(labels)
+    return list(label_dict.values())
 
 def binarize_vol(
     imgs, 
