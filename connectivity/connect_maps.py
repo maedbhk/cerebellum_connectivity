@@ -9,6 +9,7 @@ import SUITPy.flatmap as flatmap
 import connectivity.constants as const
 import connectivity.io as cio
 from connectivity import data as cdata
+from connectivity import nib_utils as nio
 
 def save_maps_cerebellum(
     data, 
@@ -164,9 +165,13 @@ def lasso_maps_cortex(
     model_name, 
     train_exp,
     cortex,
-    cerebellum_fpath,
+    cerebellum_nifti,
+    cerebellum_gifti,
     weights='positive',
-    data_type='func'
+    data_type='func',
+    label_names=None,
+    label_RGBA=None,
+    column_names=None
     ):
     """save lasso maps for cerebellum (count number of non-zero cortical coef)
 
@@ -181,6 +186,9 @@ def lasso_maps_cortex(
         cerebellum_fpath (str): full path to cerebellum atlas (*.nii)
         weights (str): 'positive' or 'absolute' (neg + pos). default is positive
         data_type (str): 'func' or 'label'. default is 'label'
+        label_names (list or None):
+        label_RGBA (list or None):
+        column_names (list or None):
     """
     # set directory
     dirs = const.Dirs(exp_name=train_exp)
@@ -201,7 +209,7 @@ def lasso_maps_cortex(
         coef = np.reshape(data.coef_, (data.coef_.shape[1], data.coef_.shape[0]))
         
         # get atlas parcels
-        region_number_suit = cdata.read_suit_nii(cerebellum_fpath)
+        region_number_suit = cdata.read_suit_nii(cerebellum_nifti)
 
         if weights=='positive':
             coef[coef <= 0] = np.nan
@@ -217,16 +225,20 @@ def lasso_maps_cortex(
         if data_type=='func':
             data = data_mean_roi[:,1:]
             column_names = reg_names
-            label_names = None
         elif data_type=='label':
             data = np.argmax(np.nan_to_num(data_mean_roi[:,1:]), axis=1) + 1
-            column_names = None
             label_names = reg_names
+            label_RGBA, cpal, cmap = nio.get_gifti_colors(fpath=cerebellum_gifti)
 
         cortex_all.append(data)
 
     # save maps to disk for cortex
     group_cortex = np.nanmean(np.stack(cortex_all), axis=0)
-    giis, hem_names = cdata.convert_cortex_to_gifti(data=group_cortex, atlas=cortex, column_names=column_names, label_names=label_names, data_type=data_type)
+    giis, hem_names = cdata.convert_cortex_to_gifti(data=group_cortex, 
+                                                atlas=cortex, 
+                                                column_names=column_names, 
+                                                label_names=label_names, 
+                                                label_RGBA=label_RGBA,
+                                                data_type=data_type)
 
     return giis, hem_names

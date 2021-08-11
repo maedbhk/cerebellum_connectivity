@@ -26,7 +26,8 @@ def run(
         data_type (str): 'func' or 'label'. default is 'label'
     """
 
-    cerebellum_fpath = os.path.join(flatmap._base_dir, 'example_data', f'{atlas}.nii')
+    cerebellum_nifti = os.path.join(flatmap._base_dir, 'example_data', f'{atlas}.nii')
+    cerebellum_gifti = os.path.join(flatmap._base_dir, 'example_data', f'{atlas}.label.gii')
 
     for exp in range(2):
 
@@ -53,7 +54,8 @@ def run(
                 giis, hem_names = cmaps.lasso_maps_cortex(model_name=best_model, 
                                         train_exp=f"sc{2-exp}", 
                                         cortex=cortex, 
-                                        cerebellum_fpath=cerebellum_fpath,
+                                        cerebellum_nifti=cerebellum_nifti,
+                                        cerebellum_gifti=cerebellum_gifti,
                                         weights=weights,
                                         data_type=data_type
                                         ) 

@@ -304,6 +304,7 @@ def convert_cortex_to_gifti(
     data_type='func',
     column_names=None,
     label_names=None,
+    label_RGBA=None
     ):
     """
     Args:
@@ -348,7 +349,8 @@ def convert_cortex_to_gifti(
             gii = nio.make_label_gifti_cortex(
                 data=mapped_data,
                 anatomical_struct=anatomical_struct[h],
-                label_names=label_names)
+                label_names=label_names,
+                label_RGBA=label_RGBA)
         gifti_img.append(gii)
         
     return gifti_img, hemName
