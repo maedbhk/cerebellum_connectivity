@@ -411,7 +411,7 @@ def view_cerebellum(
 def view_cortex(
     gifti, 
     surf_mesh=None,
-    cscale=None,  
+    symmetric_cmap=False,  
     orientation='medial', 
     title=True,
     save=False,
@@ -446,7 +446,7 @@ def view_cortex(
         overlay_type = 'func'
     elif '.label.' in gifti:
         overlay_type = 'label'
-        _, _, cmap = get_gifti_colors(img)
+        rgba, cpal, cmap= get_gifti_colors(img, ignore_0=False)
         labels = get_gifti_labels(img)
 
     for (data, col) in zip(img.darrays, get_gifti_columns(img)):
@@ -465,17 +465,23 @@ def view_cortex(
             title_name = f'{fname}-{col}-{orientation}'
         
         # plot to surface
-        view = view_surf(surf_mesh=surf_mesh, 
-                        surf_map=np.nan_to_num(data.data), 
-                        cmap=cmap, 
-                        # view=orientation, 
-                        title=title_name
-                        ) 
+        if '.func.' in gifti:
+            view = view_surf(surf_mesh, 
+                            surf_map=np.nan_to_num(data.data), 
+                            cmap=cmap, 
+                            symmetric_cmap=symmetric_cmap,
+                            # view=orientation, 
+                            title=title_name
+                            )
+            view.open_in_browser() 
+            
+        elif '.label.' in gifti:
+            view = plot_surf_roi(surf_mesh, roi_map=data.data, cmap=cmap)
+            plt.show()
+
         if save:
             outpath = os.path.join(dirs.figure, f'{fname}-{col}.png')
             plt.savefig(outpath, dpi=300, format='png', bbox_inches='tight', pad_inches=0)
-    
-        view.open_in_browser()
 
 def view_colorbar(
     fpath, 
