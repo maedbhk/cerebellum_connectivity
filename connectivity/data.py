@@ -313,6 +313,7 @@ def convert_cortex_to_gifti(
         data_type (str): 'func' or 'label'. default is 'func'
         column_names (list or None): default is None
         label_names (list or None): default is None
+        label_RGBA (list or None): default is None
     Returns:
         List of gifti-img (left + right hemisphere)
         anatomical_structure (list of hemisphere names)
@@ -327,6 +328,9 @@ def convert_cortex_to_gifti(
         gii_path = os.path.join(dirs.reg_dir, 'data', 'group', f'{atlas}.{hem}.label.gii')
         gii_data = nib.load(gii_path)
         labels = gii_data.darrays[0].data[:]
+
+        # ensure that data is float
+        data = data.astype(float)
 
         # Fastest way: prepend a NaN for ROI 0 (medial wall)
         if data.ndim==1:

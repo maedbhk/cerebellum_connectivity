@@ -9,7 +9,7 @@ import matplotlib as mpl
 import seaborn as sns
 from matplotlib.colors import LinearSegmentedColormap
 import SUITPy.flatmap as flatmap
-from nilearn.plotting import view_surf, plot_surf_roi
+from nilearn.plotting import view_surf
 from nilearn.surface import load_surf_data
 
 import connectivity.constants as const
@@ -49,11 +49,14 @@ def make_label_gifti_cortex(
 
     num_labels = len(np.unique(data))
 
+    # check for 0 labels
+    zero_label = 0 in data
+
     # Create naming and coloring if not specified in varargin
     # Make columnNames if empty
     if column_names is None:
         column_names = []
-        for i in range(num_labels):
+        for i in range(num_cols):
             column_names.append("col_{:02d}".format(i+1))
 
     # Determine color scale if empty
@@ -65,22 +68,24 @@ def make_label_gifti_cortex(
         label_RGBA = np.zeros([num_labels,4])
         for i in range(num_labels):
             label_RGBA[i] = color[i]
+        if zero_label:
+            label_RGBA = np.vstack([[0,0,0,1], label_RGBA[1:,]])
 
     # Create label names
     if label_names is None:
-        label_names = []
+        idx = 0
+        if not zero_label:
+            idx = 1
         for i in range(num_labels):
-            label_names.append("label-{:02d}".format(i+1))
+            label_names.append("label-{:02d}".format(i + idx))
 
     # Create label.gii structure
     C = nib.gifti.GiftiMetaData.from_dict({
         'AnatomicalStructurePrimary': anatomical_struct,
         'encoding': 'XML_BASE64_GZIP'})
 
-
-    num_labels = np.arange(num_labels)
     E_all = []
-    for (label,rgba,name) in zip(num_labels,label_RGBA,label_names):
+    for (label,rgba,name) in zip(np.arange(num_labels),label_RGBA,label_names):
         E = nib.gifti.gifti.GiftiLabel()
         E.key = label 
         E.label= name
@@ -96,7 +101,7 @@ def make_label_gifti_cortex(
         d = nib.gifti.GiftiDataArray(
             data=np.float32(data[:, i]),
             intent='NIFTI_INTENT_LABEL', 
-            datatype='NIFTI_TYPE_INT32', # was NIFTI_TYPE_INT32
+            datatype='NIFTI_TYPE_FLOAT32', # was NIFTI_TYPE_INT32
             meta=nib.gifti.GiftiMetaData.from_dict({'Name': column_names[i]})
         )
         D.append(d)
@@ -411,8 +416,6 @@ def view_cerebellum(
 def view_cortex(
     gifti, 
     surf_mesh=None,
-    symmetric_cmap=False,  
-    orientation='medial', 
     title=True,
     save=False,
     cmap='jet'
@@ -422,9 +425,6 @@ def view_cortex(
     Args: 
         gifti (str): fullpath to file: *.func.gii or *.label.gii
         surf_mesh (str or None): fullpath to surface mesh file *.inflated.surf.gii. If None, takes mesh from `FS_LR` Dir
-        cmap (matplotlib colormap or None):
-        cscale (int or None):
-        orientation (str): 'medial' or 'lateral'
         title (bool): default is True
         save (bool): 'default is False',
         cmap (str or matplotlib colormap): 'default is "jet"' 
@@ -439,45 +439,45 @@ def view_cortex(
         hemisphere = 'R'
     elif '.L.' in gifti:
         hemisphere = 'L'
+    
+    # get average mesh
+    if not surf_mesh:
+        surf_mesh = os.path.join(dirs.reg_dir, 'data', 'group', f'fs_LR.32k.{hemisphere}.inflated.surf.gii')
 
-    # determine overlay and get metadata
-    # get column names
-    if '.func.' in gifti:
-        overlay_type = 'func'
-    elif '.label.' in gifti:
-        overlay_type = 'label'
-        rgba, cpal, cmap= get_gifti_colors(img, ignore_0=False)
-        labels = get_gifti_labels(img)
+    # print title
+    fname = Path(gifti).name.split('.')[0]
+    title_name = None
 
     for (data, col) in zip(img.darrays, get_gifti_columns(img)):
-        
-        if hemisphere=='L':
-            orientation = 'lateral'
 
-        # get average mesh
-        if not surf_mesh:
-            surf_mesh = os.path.join(dirs.reg_dir, 'data', 'group', f'fs_LR.32k.{hemisphere}.inflated.surf.gii')
-
-        # print title
-        fname = Path(gifti).name.split('.')[0]
-        title_name = None
         if title:
-            title_name = f'{fname}-{col}-{orientation}'
+            title_name = f'{fname}-{col}'
         
         # plot to surface
         if '.func.' in gifti:
             view = view_surf(surf_mesh, 
-                            surf_map=np.nan_to_num(data.data), 
+                            surf_map=np.nan_to_num(data.data),  # was np.nan_to_num(data.data)
                             cmap=cmap, 
-                            symmetric_cmap=symmetric_cmap,
+                            symmetric_cmap=False,
                             # view=orientation, 
                             title=title_name
                             )
-            view.open_in_browser() 
             
         elif '.label.' in gifti:
-            view = plot_surf_roi(surf_mesh, roi_map=data.data, cmap=cmap)
-            plt.show()
+            _, _, cmap= get_gifti_colors(img, ignore_0=False)
+            # labels = get_gifti_labels(img)
+            view = view_surf(surf_mesh, 
+                            surf_map=data.data, # np.nan_to_num(data.data)
+                            cmap=cmap, 
+                            # view=orientation, 
+                            symmetric_cmap=False,
+                            title=title_name,
+                            vmin=np.nanmin(data.data),
+                            vmax=1 + np.nanmax(data.data),
+                            colorbar=True
+                            )
+        
+        view.open_in_browser() 
 
         if save:
             outpath = os.path.join(dirs.figure, f'{fname}-{col}.png')

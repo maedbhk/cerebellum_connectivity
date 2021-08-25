@@ -185,7 +185,8 @@ def lasso_maps_cortex(
         cortex (str):
         cerebellum_fpath (str): full path to cerebellum atlas (*.nii)
         weights (str): 'positive' or 'absolute' (neg + pos). default is positive
-        data_type (str): 'func' or 'label'. default is 'label'
+        data_type (str): 'func' or 'label' or 'prob'. default is 'label'
+        probabilistic (bool): default is False. 
         label_names (list or None):
         label_RGBA (list or None):
         column_names (list or None):
@@ -202,10 +203,8 @@ def lasso_maps_cortex(
     cortex_all = []
     for model_fname in model_fnames:
 
-        # read model data
+        # read model data and get coeficients
         data = cio.read_hdf5(model_fname)
-         
-        # reshape coefficients
         coef = np.reshape(data.coef_, (data.coef_.shape[1], data.coef_.shape[0]))
         
         # get atlas parcels
@@ -218,23 +217,42 @@ def lasso_maps_cortex(
 
         # get average for each parcel
         data_mean_roi, region_numbers = cdata.average_by_roi(data=coef, region_number_suit=region_number_suit)
-
         reg_names = [f'Region{idx}' for idx in region_numbers[1:]]
 
+        # get data (exclude label 0)
+        data = data_mean_roi[:,1:]
+        num_vert, _ = data.shape
+
         # functional or label maps
-        if data_type=='func':
-            data = data_mean_roi[:,1:]
-            column_names = reg_names
-        elif data_type=='label':
-            data = np.argmax(np.nan_to_num(data_mean_roi[:,1:]), axis=1) + 1
+        if data_type=='label' or data_type=='prob':
+            labels = np.zeros(num_vert)
+            labels[:] = np.nan
+            # this is the best solution but it is still hacky (for loops etc.)
+            for vert in np.arange(num_vert):
+                if not np.all(np.isnan(data[vert,:])):
+                    labels[vert] = np.nanargmax(data[vert,:]) + 1
             label_names = reg_names
-            label_RGBA, cpal, cmap = nio.get_gifti_colors(fpath=cerebellum_gifti)
+            label_RGBA, _, _ = nio.get_gifti_colors(fpath=cerebellum_gifti)
+            data = labels
 
         cortex_all.append(data)
 
+    # stack subject data
+    cortex_stacked = np.stack(cortex_all)
+
     # save maps to disk for cortex
-    group_cortex = np.nanmean(np.stack(cortex_all), axis=0)
-    giis, hem_names = cdata.convert_cortex_to_gifti(data=group_cortex, 
+    if data_type=='func':
+        column_names = reg_names
+        group_cortex = np.nanmean(cortex_stacked, axis=0)
+    elif data_type=='label':
+        group_cortex = mode(cortex_stacked, axis=0).mode
+    elif data_type=='prob':
+        num_subjs = cortex_stacked.shape[0]
+        group_labels = mode(cortex_stacked, axis=0).mode
+        group_cortex = sum(cortex_stacked==group_labels) / num_subjs
+        data_type='func'
+    
+    giis, hem_names = cdata.convert_cortex_to_gifti(data=group_cortex.reshape(-1), 
                                                 atlas=cortex, 
                                                 column_names=column_names, 
                                                 label_names=label_names, 
