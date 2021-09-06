@@ -603,19 +603,29 @@ def map_atlas(
     return view
 
 def get_best_model(
-    train_exp
+    dataframe=None,
+    train_exp='sc1',
+    method=None,
     ):
     """Get idx for best model based on either R_cv (or R_train)
     Args:
-        exp (str): 'sc1' or 'sc2
+        dataframe (pd dataframe or None):
+        train_exp (str): 'sc1' or 'sc2' or None (if dataframe is given)
+        method (str or None): filter models by method
     Returns:
         model name (str)
     """
+
     # load train summary (contains R CV of all trained models)
-    df = train_summary(exps=[train_exp])
+    if dataframe is None:
+        dataframe = train_summary(exps=[train_exp])
+
+     # filter dataframe by method
+    if method is not None:
+        dataframe = dataframe[dataframe['train_model']==method]
 
     # get mean values for each model
-    tmp = df.groupby(["train_name", "train_X_data"]).mean().reset_index()
+    tmp = dataframe.groupby(["train_name", "train_X_data"]).mean().reset_index()
 
     # get best model (based on R CV or R train)
     try: 

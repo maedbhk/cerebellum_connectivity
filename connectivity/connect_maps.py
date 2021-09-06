@@ -3,6 +3,7 @@ import os
 import numpy as np
 import nibabel as nib
 import glob
+import deepdish as dd
 from scipy.stats import mode
 import SUITPy.flatmap as flatmap
 
@@ -10,6 +11,7 @@ import connectivity.constants as const
 import connectivity.io as cio
 from connectivity import data as cdata
 from connectivity import nib_utils as nio
+from connectivity.visualize import get_best_model
 
 def save_maps_cerebellum(
     data, 
@@ -72,27 +74,28 @@ def save_maps_cerebellum(
 def weight_maps(
         model_name, 
         cortex, 
-        train_exp
+        train_exp,
+        save=True
         ):
-    """Save weight maps to disk for cortex and cerebellum
+    """Get weights for trained models. 
+
+    Optionally save out weight maps for cortex and cerebellum separately
 
     Args: 
         model_name (str): model_name (folder in conn_train_dir)
         cortex (str): cortex model name (example: tesselsWB162)
         train_exp (str): 'sc1' or 'sc2'
     Returns: 
-        saves nifti/gifti to disk
+        weights (n-dim np array); saves out cortex and cerebellar maps if `save` is True
     """
     # set directory
     dirs = const.Dirs(exp_name=train_exp)
-
-    # get model path
     fpath = os.path.join(dirs.conn_train_dir, model_name)
 
     # get trained subject models
     model_fnames = glob.glob(os.path.join(fpath, '*.h5'))
 
-    cereb_weights_all = []; cortex_weights_all = []
+    cereb_weights_all = []; cortex_weights_all = []; weights_all = []
     for model_fname in model_fnames:
 
         # read model data
@@ -101,18 +104,22 @@ def weight_maps(
         # append cerebellar and cortical weights
         cereb_weights_all.append(np.nanmean(data.coef_, axis=1))
         cortex_weights_all.append(np.nanmean(data.coef_, axis=0))
+        weights_all.append(data.coef_)
+    
+    # stack the weights
+    weights_all = np.stack(weights_all, axis=0)
 
-    # save maps to disk for cerebellum and cortex
-    save_maps_cerebellum(data=np.stack(cereb_weights_all, axis=0), 
-                    fpath=os.path.join(fpath, 'group_weights_cerebellum'))
+    # save cortex and cerebellum weight maps to disk
+    if save:
+        save_maps_cerebellum(data=np.stack(cereb_weights_all, axis=0), fpath=os.path.join(fpath, 'group_weights_cerebellum'))
 
-    # save maps to disk for cortex
-    data = np.stack(cortex_weights_all, axis=0)
-    func_giis, hem_names = cdata.convert_cortex_to_gifti(data=np.nanmean(data, axis=0), atlas=cortex)
-    for (func_gii, hem) in zip(func_giis, hem_names):
-        nib.save(func_gii, os.path.join(fpath, f'group_weights_cortex.{hem}.func.gii'))
-
-    print('saving cortical and cerebellar weights to disk')
+        cortex_weights_all = np.stack(cortex_weights_all, axis=0)
+        func_giis, hem_names = cdata.convert_cortex_to_gifti(data=np.nanmean(cortex_weights_all, axis=0), atlas=cortex)
+        for (func_gii, hem) in zip(func_giis, hem_names):
+            nib.save(func_gii, os.path.join(fpath, f'group_weights_cortex.{hem}.func.gii'))
+        print('saving cortical and cerebellar weights to disk')
+    
+    return weights_all
 
 def lasso_maps_cerebellum(
     model_name, 
@@ -260,3 +267,41 @@ def lasso_maps_cortex(
                                                 data_type=data_type)
 
     return giis, hem_names
+
+def best_weights(
+    train_exp='sc1',
+    method='L2regression',
+    save=True
+    ):
+    """Get group average model weights for best trained model
+
+    Args: 
+        train_exp (str): default is 'sc1'
+        method (str): default is 'L2regression'
+        save (bool): default is True. saves in `conn_models/train/best_weights`
+    Returns: 
+        group_weights (n-dim np array)
+
+    """
+    # get best L2regression model
+    best_model, cortex = get_best_model(dataframe=None, train_exp=train_exp, method=method)
+
+    # get group weights for best model
+    weights = weight_maps(model_name=best_model, 
+                        cortex=cortex, 
+                        train_exp=train_exp, 
+                        save=False
+                        )
+    
+    # get group average weights
+    group_weights = np.nanmean(weights, axis=0)
+
+    if save:
+        # save best weights to disk
+        dirs = const.Dirs(exp_name=train_exp)
+        outdir = os.path.join(dirs.conn_train_dir, 'best_weights')
+        if not os.path.exists(outdir):
+            os.makedirs(outdir)
+        dd.io.save(os.path.join(outdir, f'{best_model}.h5'), {'weights': group_weights})
+    
+    return group_weights
