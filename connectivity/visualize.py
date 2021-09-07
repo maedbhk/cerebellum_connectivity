@@ -396,17 +396,6 @@ def plot_best_eval(
         exp_fname = '_'.join(exps)
         plt.savefig(os.path.join(dirs.figure, f'best_eval_{exp_fname}.png'))
 
-# def plot_roi(dataframe, save=True):
-#     plt.figure()
-#     sns.barplot(x='labels', y='roi_mean', data=dataframe.query('regions!=0'), palette=cpal[1:])
-#     plt.xticks(rotation=45)
-#     plt.xlabel(atlas)
-#     plt.ylabel('ROI mean')
-
-#     if save:
-#         dirs = const.Dirs()
-#         plt.savefig(os.path.join(dirs.figure, f'{atlas}_summary.png'))
-
 def map_eval(
     data="R", 
     exp="sc1", 
