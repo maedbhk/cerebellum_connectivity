@@ -179,6 +179,8 @@ def get_gifti_colors(
 
     if isinstance(fpath, str):
         img = nib.load(fpath)
+    else:
+        img = fpath
 
     labels = img.labeltable.labels
 
@@ -208,6 +210,8 @@ def get_gifti_labels(
     """
     if isinstance(fpath, str):
         img = nib.load(fpath)
+    else:
+        img = fpath
 
     labels = img.labeltable.get_labels_as_dict().values()
 
@@ -329,7 +333,7 @@ def view_cerebellum(
     gifti, 
     cscale=None, 
     colorbar=True, 
-    title=True,
+    title=None,
     new_figure=True,
     outpath=None
     ):
@@ -355,9 +359,8 @@ def view_cerebellum(
 
     view = flatmap.plot(gifti, surf=surf_mesh, overlay_type=overlay_type, cscale=cscale, colorbar=colorbar, new_figure=new_figure) # implement colorbar
 
-    if title:
-        fname = Path(gifti).name
-        view.set_title(fname.split('.')[0])
+    if title is not None:
+        view.set_title(title)
 
     if outpath:
         if '.png' in outpath:
