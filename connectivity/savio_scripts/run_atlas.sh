@@ -18,10 +18,11 @@
 module load python/3.7
 source ~/.bash_profile
 source $(pipenv --venv)/bin/activate
-PYTHONPATH=$PYTHONPATH:/global/scratch/maedbhking/bin/
+
+PYTHONPATH=$PYTHONPATH:/global/scratch/users/maedbhking/bin/
 export PYTHONPATH
 
-cd /global/scratch/maedbhking/projects/cerebellum_connectivity/connectivity/scripts
+cd /global/scratch/users/maedbhking/projects/cerebellum_connectivity/connectivity/scripts
 
 atlases=(mdtb_wb_007 mdtb_wb_025)
 glm=glm7

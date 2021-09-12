@@ -18,10 +18,11 @@
 module load python/3.7
 source ~/.bash_profile
 source $(pipenv --venv)/bin/activate
-PYTHONPATH=$PYTHONPATH:/global/scratch/maedbhking/bin/
+
+PYTHONPATH=$PYTHONPATH:/global/scratch/users/maedbhking/bin/
 export PYTHONPATH
 
-cd /global/scratch/maedbhking/projects/cerebellum_connectivity/connectivity/scripts
+cd /global/scratch/users/maedbhking/projects/cerebellum_connectivity/connectivity/scripts
 
 # atlases=(yeo7 yeo17 mdtb1002_007 mdtb1002_025 mdtb1002_050 mdtb1002_100 mdtb1002_150 mdtb1002_200)
 # atlases=(tessels0042 tessels0162 tessels0362 tessels0642 tessels1002)

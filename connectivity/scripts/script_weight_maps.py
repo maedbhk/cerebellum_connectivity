@@ -3,7 +3,7 @@ import os
 import SUITPy.flatmap as flatmap
 import nibabel as nib
 
-from connectivity import connect_maps as cmaps
+from connectivity import weight_maps as cmaps
 from connectivity import visualize as summary
 import connectivity.constants as const
 
@@ -64,18 +64,6 @@ def lasso_maps(
                 for (gii, hem) in zip(giis, hem_names):
                     nib.save(gii, os.path.join(fpath, f'{fname}.{hem}.{data_type}.gii'))
 
-def weight_maps():
-    """Calculate weight maps for each `method` and `parcellation` for best trained models
-    """
-    for exp in range(2):
-
-        # get best model (for each method and parcellation)
-        models, cortex_names = summary.get_best_models(train_exp=f"sc{2-exp}")
-
-        for (best_model, cortex) in zip(models, cortex_names):
-
-            # save voxel/vertex maps for best training weights (for group parcellations only)
-            if 'wb_indv' not in cortex:
                 cmaps.weight_maps(model_name=best_model, cortex=cortex, train_exp=f"sc{2-exp}")
 
 def run(
@@ -84,11 +72,17 @@ def run(
     data_type='label'
     ):
     
-    # generate lasso maps
-    lasso_maps(atlas,  weights, data_type)
+    # # generate lasso maps
+    # lasso_maps(atlas,  weights, data_type)
 
-    # generate weight maps for cortex and cerebellum
-    weight_maps()
+    # # generate weight maps for cortex and cerebellum
+    # for exp in range(2):
+    #     # get best model (for each method and parcellation)
+    #     models, cortex_names = summary.get_best_models(train_exp=f"sc{2-exp}")
+    #     for (best_model, cortex) in zip(models, cortex_names):
+    #         # save voxel/vertex maps for best training weights (for group parcellations only)
+    #         if 'wb_indv' not in cortex:
+    #             cmaps.weight_maps(model_name=best_model, cortex=cortex, train_exp=f"sc{2-exp}")
 
     # save out np array of best weights
     for exp in ['sc1', 'sc2']:
