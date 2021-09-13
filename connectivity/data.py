@@ -423,7 +423,7 @@ def eucl_distance(coord):
     """
     num_points = coord.shape[0]
     D = np.zeros((num_points,num_points))
-    for i in range(2):
+    for i in range(3):
         D = D + (coord[:,i].reshape(-1,1)-coord[:,i])**2
     return np.sqrt(D)
 
