@@ -25,15 +25,15 @@ from numpy.linalg import solve
 
   Typical usage example:
   data = Dataset('sc1','glm7','cerebellum_suit','s02')
-  data.load_mat() # Load from Matlab 
-  X, INFO = data.get_data(averaging="sess") # Get numpy 
+  data.load_mat() # Load from Matlab
+  X, INFO = data.get_data(averaging="sess") # Get numpy
 
-  Group averaging: 
-  data = Dataset(subj_id = const.return_subjs) # Any list of subjects will do 
+  Group averaging:
+  data = Dataset(subj_id = const.return_subjs) # Any list of subjects will do
   data.load_mat()                             # Load from Matlab
-  data.average_subj()                         # Average 
+  data.average_subj()                         # Average
 
-  Saving and loading as h5: 
+  Saving and loading as h5:
   data.save(dataname="group")     # Save under new data name (default = subj_id)
   data = Dataset('sc1','glm7','cerebellum_suit','group')
   data.load()
@@ -66,14 +66,14 @@ class Dataset:
         dirs = const.Dirs(exp_name=self.exp, glm=self.glm)
         fname = "Y_" + self.glm + "_" + self.roi + ".mat"
 
-        # For a single subject - make it a list 
+        # For a single subject - make it a list
         if type(self.subj_id) is not list:
             subj_id = [self.subj_id]
-        else: 
+        else:
             subj_id = self.subj_id
         num_subj = len(subj_id)
         # Iterate over all subjects
-        for i,s in enumerate(subj_id): 
+        for i,s in enumerate(subj_id):
             fdir = dirs.beta_reg_dir / s
             file = h5py.File(fdir / fname, "r")
 
@@ -91,9 +91,9 @@ class Dataset:
             self.task = np.array(file["task"]).reshape(-1).astype(int)
             self.sess = np.array(file["sess"]).reshape(-1).astype(int)
             self.run = np.array(file["run"]).reshape(-1).astype(int)
-        
+
         # Remove third dimension if single subject
-        if num_subj==1: 
+        if num_subj==1:
             self.data = self.data.reshape(d.shape)
         return self
 
@@ -118,7 +118,7 @@ class Dataset:
             Utility function to first try to load subjects as h5 file
             and then as a mat file
         """
-        try: 
+        try:
             self.load_h5()
         except:
             self.load_mat()
@@ -129,15 +129,15 @@ class Dataset:
 
         Args:
             dataname (str): default is subj_id - but can be set for group data
-            filename (str): by default will be set to something automatic 
+            filename (str): by default will be set to something automatic
         Returns:
             saves dict to disk
         """
         if filename is None:
-            if dataname is None: 
-                if type(self.subj_id) is list: 
+            if dataname is None:
+                if type(self.subj_id) is list:
                     raise(NameError('For group data need to set data name'))
-                else: 
+                else:
                     dataname = self.subj_id
             dirs = const.Dirs(exp_name=self.exp, glm=self.glm)
             fname = "Y_" + self.glm + "_" + self.roi + ".h5"
@@ -145,11 +145,11 @@ class Dataset:
         dd.io.save(fdir / fname, vars(self), compression=None)
 
 
-    def average_subj(self): 
+    def average_subj(self):
         """
             Averages data across subjects if data is 3-dimensional
         """
-        if self.data.ndim == 2: 
+        if self.data.ndim == 2:
             raise NameError('data is already 2-dimensional')
         self.data = np.nanmean(self.data, axis = 0)
 
@@ -390,7 +390,7 @@ def eucl_distance(coord):
     """
     num_points = coord.shape[0]
     D = np.zeros((num_points,num_points))
-    for i in range(2):
+    for i in range(3):
         D = D + (coord[:,i].reshape(-1,1)-coord[:,i])**2
     return np.sqrt(D)
 
