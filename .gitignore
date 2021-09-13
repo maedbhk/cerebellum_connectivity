@@ -95,3 +95,6 @@ target/
 .mypy_cache/
 *.m~
 connectivity/constants.py
+
+# exclude nilearn cache
+nilearn_cache/

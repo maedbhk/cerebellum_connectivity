@@ -1,6 +1,6 @@
 #!/bin/bash
 # Job name:
-#SBATCH --job-name=connect_train_evalute
+#SBATCH --job-name=connect_train
 #
 # Account:
 #SBATCH --account=fc_cerebellum
@@ -23,11 +23,11 @@ export PYTHONPATH
 
 cd /global/scratch/maedbhking/projects/cerebellum_connectivity/connectivity/scripts
 
-# run connectivity models
-python3 script_mk.py --cortex="tessels0042" --model_type="NNLS" --train_or_eval="train"
-python3 script_mk.py --cortex="tessels0162" --model_type="NNLS" --train_or_eval="train"
-python3 script_mk.py --cortex="tessels0362" --model_type="NNLS" --train_or_eval="train"
-python3 script_mk.py --cortex="tessels0642" --model_type="NNLS" --train_or_eval="train"
-python3 script_mk.py --cortex="tessels1002" --model_type="NNLS" --train_or_eval="train"
-python3 script_mk.py --cortex="yeo7" --model_type="NNLS" --train_or_eval="train"
-python3 script_mk.py --cortex="yeo17" --model_type="NNLS" --train_or_eval="train"
+# atlases=(yeo7 yeo17 mdtb1002_007 mdtb1002_025 mdtb1002_050 mdtb1002_100 mdtb1002_150 mdtb1002_200)
+atlases=(tessels0042 tessels0162 tessels0362 tessels0642 tessels1002)
+models=(NNLS)
+
+# train models
+for ((m=0; m<${#models[@]}; m++)); do \
+for ((a=0; a<${#atlases[@]}; a++)); do \
+python3 script_mk.py --cortex=${atlases[a]} --model_type=${models[m]} --train_or_eval="train"; done; done

@@ -12,8 +12,8 @@
 #SBATCH --qos=savio_normal
 #
 # Wall clock limit:
-#SBATCH --time=20:00:00
-#
+#SBATCH --time=50:00:00
+
 ## Command(s) to run:
 module load python/3.7
 source ~/.bash_profile
@@ -23,23 +23,25 @@ export PYTHONPATH
 
 cd /global/scratch/maedbhking/projects/cerebellum_connectivity/connectivity/scripts
 
-# run connectivity models
-# python3 script_mk.py --cortex="tessels0042" --model_type="ridge" --train_or_eval="train"
-# python3 script_mk.py --cortex="tessels0162" --model_type="ridge" --train_or_eval="train"
-# python3 script_mk.py --cortex="tessels0362" --model_type="ridge" --train_or_eval="train"
-# python3 script_mk.py --cortex="tessels0642" --model_type="ridge" --train_or_eval="train"
-python3 script_mk.py --cortex="tessels1002" --model_type="ridge" --train_or_eval="train"
-python3 script_mk.py --cortex="tessels1442" --model_type="ridge" --train_or_eval="train" # NEED TO RUN
-# python3 script_mk.py --cortex="yeo17" --model_type="ridge" --train_or_eval="train"
-# python3 script_mk.py --cortex="yeo7" --model_type="ridge" --train_or_eval="train"
+# atlases=(yeo7 yeo17 mdtb1002_007 mdtb1002_025 mdtb1002_050 mdtb1002_100 mdtb1002_150 mdtb1002_200)
+# atlases=(tessels0042 tessels0162 tessels0362 tessels0642 tessels1002)
+# atlases=(mdtb_wb_007 mdtb_wb_025 arslan_50 arslan_100 arslan_200 arslan_250)
+atlases=(mdtb4002_wb_indv_7 mdtb4002_wb_indv_10 mdtb4002_wb_indv_17)
+models=(WTA ridge)
 
-# python3 script_mk.py --cortex="tessels0042" --model_type="WTA" --train_or_eval="train"
-# python3 script_mk.py --cortex="tessels0162" --model_type="WTA" --train_or_eval="train"
-# python3 script_mk.py --cortex="tessels0362" --model_type="WTA" --train_or_eval="train"
-# python3 script_mk.py --cortex="tessels0642" --model_type="WTA" --train_or_eval="train"
-python3 script_mk.py --cortex="tessels1002" --model_type="WTA" --train_or_eval="train"
-python3 script_mk.py --cortex="tessels1442" --model_type="WTA" --train_or_eval="train" # NEED TO RUN
-# python3 script_mk.py --cortex="yeo17" --model_type="WTA" --train_or_eval="train"
-# python3 script_mk.py --cortex="yeo7" --model_type="WTA" --train_or_eval="train"
+# train models
+for ((m=0; m<${#models[@]}; m++)); do \
+for ((a=0; a<${#atlases[@]}; a++)); do \
+python3 script_mk.py --cortex=${atlases[a]} --model_type=${models[m]} --train_or_eval="train"; done; done
 
+# evaluate models
 python3 script_mk.py --train_or_eval="eval"
+
+# compare models
+python3 script_compare_models.py
+
+# run wta atlases
+# atlases=(mdtb_wb_007 mdtb_wb_025)
+# for ((a=0; a<${#atlases[@]}; a++)); do \
+# python3 script_atlas.py --atlas=${atlases[a]}; done
+

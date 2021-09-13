@@ -1,8 +1,11 @@
 import os
+import sys
+import glob
 import numpy as np
-import time
+import json
 import deepdish as dd
 import pandas as pd
+import copy
 from collections import defaultdict
 from sklearn.model_selection import cross_val_score
 from sklearn.metrics import mean_squared_error
@@ -10,8 +13,10 @@ from sklearn.metrics import mean_squared_error
 import connectivity.io as cio
 from connectivity import data as cdata
 import connectivity.constants as const
+# import connectivity.sparsity as csparsity
 import connectivity.model as model
 import connectivity.evaluation as ev
+import connectivity.nib_utils as nio
 
 import warnings
 
@@ -85,6 +90,7 @@ def get_default_train_config():
     }
     return config
 
+
 def get_default_eval_config():
     """Defaults for evaluating model(s).
 
@@ -135,78 +141,6 @@ def get_default_eval_config():
     }
     return config
 
-def train_models(config, save=False):
-    """Trains a specific model class on X and Y data from a specific experiment for subjects listed in config.
-
-    Args:
-        config (dict): Training configuration, returned from get_default_train_config()
-        save (bool): Optional; Save fitted models automatically to disk.
-    Returns:
-        models (list): list of trained models for subjects listed in config.
-        train_all (pd dataframe): dataframe containing
-    """
-
-    dirs = const.Dirs(exp_name=config["train_exp"], glm=config["glm"])
-    models = []
-    train_all = defaultdict(list)
-    # Store the training configuration in model directory
-    if save:
-        fpath = os.path.join(dirs.conn_train_dir, config["name"])
-        cio.make_dirs(fpath)
-        cio.save_dict_as_JSON(os.path.join(fpath, "train_config.json"), config)
-
-    # Loop over subjects and train
-    for subj in config["subjects"]:
-        print(f"Training model on {subj}")
-
-        # get data
-        Y, Y_info, X, X_info = _get_data(config=config, exp=config["train_exp"], subj=subj)
-
-        # Generate new model and put in the list
-        new_model = getattr(model, config["model"])(**config["param"])
-        models.append(new_model)
-
-        # cross the sessions
-        if config["mode"] == "crossed":
-            Y = np.r_[Y[Y_info.sess == 2, :], Y[Y_info.sess == 1, :]]
-
-        # Fit model, get train and validate metrics
-        models[-1].fit(X, Y)
-        models[-1].rmse_train, models[-1].R_train = train_metrics(models[-1], X, Y)
-
-        # collect train metrics (rmse and R)
-        data = {
-            "subj_id": subj,
-            "rmse_train": models[-1].rmse_train,
-            "R_train": models[-1].R_train,
-            "num_regions": X.shape[1]
-            }
-
-        # run cross validation and collect metrics (rmse and R)
-        if config['validate_model']:
-            models[-1].rmse_cv, models[-1].R_cv = validate_metrics(models[-1], X, Y, X_info, config["cv_fold"])
-            data.update({"rmse_cv": models[-1].rmse_cv,
-                        "R_cv": models[-1].R_cv
-                        })
-
-        # Copy over all scalars or strings from config to eval dict:
-        for key, value in config.items():
-            if not isinstance(value, (list, dict)):
-                data.update({key: value})
-
-        # Save the fitted model to disk if required
-        if save:
-            fname = _get_model_name(train_name=config["name"], exp=config["train_exp"], subj_id=subj)
-            dd.io.save(fname, models[-1], compression=None)
-
-            # add date/timestamp to dict (to keep track of models)
-            timestamp = time.ctime(os.path.getctime(fname))
-            data.update({'timestamp': timestamp})
-
-        for k, v in data.items():
-            train_all[k].append(v)
-
-    return models, pd.DataFrame.from_dict(train_all)
 
 def train_metrics(model, X, Y):
     """computes training metrics (rmse and R) on X and Y
@@ -226,6 +160,7 @@ def train_metrics(model, X, Y):
 
     return rmse_train, R_train
 
+
 def validate_metrics(model, X, Y, X_info, cv_fold):
     """computes CV training metrics (rmse and R) on X and Y
 
@@ -244,6 +179,7 @@ def validate_metrics(model, X, Y, X_info, cv_fold):
     r_cv_all = cross_val_score(model, X, Y, scoring=ev.calculate_R_cv, cv=cv_fold)
 
     return np.nanmean(rmse_cv_all), np.nanmean(r_cv_all)
+
 
 def eval_models(config):
     """Evaluates a specific model class on X and Y data from a specific experiment for subjects listed in config.
@@ -275,9 +211,7 @@ def eval_models(config):
 
         # get rmse
         rmse = mean_squared_error(Y, Y_pred, squared=False)
-        data = {"rmse_eval": rmse, 
-                "subj_id": subj,
-                "num_regions": X.shape[1]}
+        data = {"rmse_eval": rmse, "subj_id": subj}
 
         # Copy over all scalars or strings to eval_all dataframe:
         for key, value in config.items():
@@ -288,6 +222,10 @@ def eval_models(config):
         evals = _get_eval(Y=Y, Y_pred=Y_pred, Y_info=Y_info, X_info=X_info)
         data.update(evals)
 
+        # # add sparsity metric (voxels)
+        # sparsity_results = _get_sparsity(config, fitted_model)
+        # data.update(sparsity_results)
+
         # add evaluation (voxels)
         if config["save_maps"]:
             for k, v in data.items():
@@ -297,17 +235,13 @@ def eval_models(config):
         # don't save voxel data to summary
         data = {k: v for k, v in data.items() if "vox" not in k}
 
-        # add model timestamp
-        # add date/timestamp to dict (to keep track of models)
-        timestamp = time.ctime(os.path.getctime(fname))
-        data.update({'timestamp': timestamp})
-
         # append data for each subj
         for k, v in data.items():
             eval_all[k].append(v)
     
     # Return list of models
     return pd.DataFrame.from_dict(eval_all), eval_voxels
+
 
 def _get_eval(Y, Y_pred, Y_info, X_info):
     """Compute evaluation, returning summary and voxel data.
@@ -354,6 +288,7 @@ def _get_eval(Y, Y_pred, Y_info, X_info):
 
     return data
 
+
 def _get_data(config, exp, subj):
     """get X and Y data for exp and subj
 
@@ -391,6 +326,7 @@ def _get_data(config, exp, subj):
 
     return Y, Y_info, X, X_info
 
+
 def _get_model_name(train_name, exp, subj_id):
     """returns path/name for connectivity training model outputs.
 
@@ -406,3 +342,141 @@ def _get_model_name(train_name, exp, subj_id):
     fname = f"{train_name}_{subj_id}.h5"
     fpath = os.path.join(dirs.conn_train_dir, train_name, fname)
     return fpath
+
+
+# functions for running and checking winner-n-take-all models
+def select_winners(config, winner_model = None, save = True):
+
+    dirs = const.Dirs(exp_name=config["train_exp"], glm=config["glm"])
+    # Store the training configuration in model directory
+    if save:
+        fpath = os.path.join(dirs.conn_train_dir, config["name"])
+        cio.make_dirs(fpath)
+        # not saving the config
+        # cio.save_dict_as_JSON(os.path.join(fpath, "train_config.json"), config)
+
+    # Loop over subjects and train
+    for subj in config["subjects"]:
+        print(f"selecting winner features for {subj}")
+
+        # get data
+        Y, Y_info, X, X_info = _get_data(config=config, exp=config["train_exp"], subj=subj)
+
+        # Generate new model and put in the list
+        new_model = getattr(model, config["model"])(**config["param"])
+    
+        # cross the sessions
+        if config["mode"] == "crossed":
+            Y = np.r_[Y[Y_info.sess == 2, :], Y[Y_info.sess == 1, :]]
+
+        # Fit model, get train and validate metrics
+        if winner_model is None:
+            support_ = None
+        else:
+            support_ = winner_model.support_
+        new_model.set_support_(X, Y, support_ = support_)
+        # new_model = new_model.select_winners(X, Y, winner_model = winner_model)
+
+        # Save the class of selected regressors
+        if save:
+            fname = _get_model_name(train_name=config["name"], exp=config["train_exp"], subj_id=subj)
+            dd.io.save(fname, new_model, compression=None)
+
+        # return the model to be used for the next model
+        return new_model
+
+def train_wnta(config, save = True):
+    """Trains a winner-n-take-all model class on X and Y data from a specific experiment for subjects listed in config.
+
+    Args:
+        config (dict): Training configuration, returned from get_default_train_config()
+        save (bool): Optional; Save fitted models automatically to disk.
+    Returns:
+        models (list): list of trained models for subjects listed in config.
+        train_all (pd dataframe): dataframe containing
+    """
+
+    dirs = const.Dirs(exp_name=config["train_exp"], glm=config["glm"])
+    models = []
+    train_all = defaultdict(list)
+    # Store the training configuration in model directory
+    if save:
+        fpath = os.path.join(dirs.conn_train_dir, config["name"])
+        cio.make_dirs(fpath)
+        cio.save_dict_as_JSON(os.path.join(fpath, "train_config.json"), config)
+
+    # path to folder with n-winner feature models
+    n = config['param']['n_features_to_select']
+    winner_name = f"winners_{config['X_data']}_N{n:.0f}"
+
+    # Loop over subjects and train
+    for subj in config["subjects"]:
+        print(f"Training model on {subj}")
+
+        # get data
+        Y, Y_info, X, X_info = _get_data(config=config, exp=config["train_exp"], subj=subj)
+
+        # Generate new model and put in the list
+        new_model = getattr(model, config["model"])(**config["param"])
+
+        # cross the sessions
+        if config["mode"] == "crossed":
+            Y = np.r_[Y[Y_info.sess == 2, :], Y[Y_info.sess == 1, :]]
+
+        # load in the Winner-n model for the n parameter
+        winner_path = _get_model_name(train_name=winner_name, exp=config["train_exp"], subj_id=subj)
+        winner_model = dd.io.load(winner_path)
+
+        # update the winner_model attribute of the wnta model
+        new_model.winner_model = winner_model
+        models.append(new_model)
+
+        # fit the model
+        models[-1].fit(X, Y)
+        models[-1].rmse_train, models[-1].R_train = train_metrics(models[-1], X, Y)
+
+        # collect train metrics (rmse and R)
+        data = {
+            "subj_id": subj,
+            "rmse_train": models[-1].rmse_train,
+            "R_train": models[-1].R_train
+            }
+
+        # run cross validation and collect metrics (rmse and R)
+        if config['validate_model']:
+            models[-1].rmse_cv, models[-1].R_cv = validate_metrics(models[-1], X, Y, X_info, config["cv_fold"])
+            data.update({"rmse_cv": models[-1].rmse_cv,
+                        "R_cv": models[-1].R_cv
+                        })
+
+        # Copy over all scalars or strings from config to eval dict:
+        for key, value in config.items():
+            if not isinstance(value, (list, dict)):
+                data.update({key: value})
+
+        for k, v in data.items():
+            train_all[k].append(v)
+
+        # Save the fitted model to disk if required
+        if save:
+            fname = _get_model_name(train_name=config["name"], exp=config["train_exp"], subj_id=subj)
+            dd.io.save(fname, models[-1], compression=None)
+
+    return models, pd.DataFrame.from_dict(train_all)
+
+def load_model(config):
+
+    dirs = const.Dirs(exp_name=config["train_exp"], glm=config["glm"])
+    models = []
+    train_all = defaultdict(list)
+
+    # path to the models
+    # fpath = os.path.join(dirs.conn_train_dir, config["name"])
+    
+    for subj in config["subjects"]:
+        # Get the model from file
+        fname = _get_model_name(train_name=config["name"], exp=config["train_exp"], subj_id=subj)
+        fitted_model = dd.io.load(fname)
+        models.append(fitted_model)
+        
+    return models

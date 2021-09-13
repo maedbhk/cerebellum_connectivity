@@ -6,6 +6,7 @@ import pandas as pd
 import nibabel as nib
 import glob
 import deepdish as dd
+import time
 
 import copy
 
@@ -23,11 +24,12 @@ from connectivity import data as cdata
 import connectivity.model as model
 import connectivity.run as run
 import connectivity.run_mk as run_connect
+import connectivity.run_ls as run_wnta
 from connectivity import visualize as summary
 
 import connectivity.evaluation as ev
 
-from sklearn.cluster import KMeans
+# from sklearn.cluster import KMeans
 
 import seaborn as sb
 import matplotlib
@@ -504,13 +506,16 @@ def eval_ridge(cortex = 'tessels0162',
 def train_lasso(
     cortex = 'tessels0162',
     logalpha = [-2],
+    exps = [0, 1],
     sn = const.return_subjs
     ):
     config = run.get_default_train_config()
     num_models = len(logalpha)
-    for i in range(num_models):
-        name = f"lasso_{cortex}_A{logalpha[i]:.0f}"
-        for e in range(2):
+    df_all = pd.DataFrame()
+    for e in exps:
+
+        for i in range(num_models):
+            name = f"lasso_{cortex}_alpha_{logalpha[i]:.0f}"
             print(f"Doing {name} - {cortex} sc{e+1}")
             config["name"] = name
             config["model"] = "LASSO"
@@ -527,7 +532,18 @@ def train_lasso(
             config["mode"] = "crossed"
             config["hyperparameter"] = f"{logalpha[i]:.0f}"
             # Model = run.train_models(config, save=True)
-            Model = run_connect.train_models(config, save=True)
+            Model, df = run_connect.train_models(config, save=True)
+            df_all = pd.concat([df_all, df])
+
+            # save out train summary
+            dirs = const.Dirs(exp_name=config["train_exp"])
+            fpath = os.path.join(dirs.conn_train_dir, "train_summary.csv")
+
+        if os.path.isfile(fpath):
+            df_all = pd.concat([df_all, pd.read_csv(fpath)])
+        # save out train summary
+        df_all.to_csv(fpath, index=False)
+
 # eval lasso models
 def eval_lasso(cortex = 'tessels0162', 
     logalpha = [-2], 
@@ -538,7 +554,8 @@ def eval_lasso(cortex = 'tessels0162',
     num_models = len(logalpha)
     D = pd.DataFrame()
     for i in range(num_models):
-        name = f"lasso_{cortex}_A{logalpha[i]:.0f}"
+        # name = f"lasso_{cortex}_A{logalpha[i]:.0f}"
+        name = f"lasso_{cortex}_alpha_{logalpha[i]:.0f}"
         for e in range(2):
             print(f"evaluating {name} - sc{e+1}")
             config["name"] = name
@@ -550,45 +567,129 @@ def eval_lasso(cortex = 'tessels0162',
             config["eval_exp"] = f'sc{2 - e}'
             config["subjects"] = sn
             config["save_maps"] = False
-            T = run_connect.eval_models(config)
+            T, _ = run_connect.eval_models(config)
             D = pd.concat([D, T], ignore_index=True)
 
     # check if dataframe already exists
-    if os.path.exist(d.conn_eval_dir / f"Lasso_{cortex}.dat"):
+    print(os.path.join(d.conn_eval_dir, f"Lasso_{cortex}.dat"))
+    if os.path.exists(os.path.join(d.conn_eval_dir, f"Lasso_{cortex}.dat")):
         DD = pd.read_csv(d.conn_eval_dir / f"Lasso_{cortex}.dat") 
         D  = pd.concat([DD, D], ignore_index = True) 
     
     D.to_csv(d.conn_eval_dir / f"Lasso_{cortex}.dat")
     return D
 
-# train wnta models
-def train_wnta(cortex = 'tessels0162', 
-    n = [2], 
-    logalpha = [-2],
+
+# select winners for each cerebellar voxel   
+def select_winners(cortex = 'tessels0162', 
+    ns = [1, 2, 3],
+    exps = [0, 1], 
     sn=const.return_subjs):
 
     config = run.get_default_train_config()
-    num_models = len(n)
-    for i in range(num_models):
-        name = f"wnta_{cortex}_N{n[i]:.0f}_A{logalpha[i]:.0f}"
-        for e in range(2):
-            print(f"Doing {name} - {cortex} sc{e+1}")
-            config["name"] = name
-            config["model"] = "WNTA"
-            config["param"] = {"n": n[i], "alpha":np.exp(logalpha[i])}
-            config["X_data"] = cortex
-            config["weighting"] = 2
-            config["train_exp"] = f"sc{e+1}"
-            config["subjects"] = sn
-            config["weighting"] = True
-            config["averaging"] = "sess"
-            # config["validate_model"] = True
-            config["validate_model"] = False # no need to validate the model?!
-            config["cv_fold"] = 4 # other options: 'sess' or 'run' or None
-            config["mode"] = "crossed"
-            config["hyperparameter"] = f"{n[i]:.0f}"
-            # Model = run.train_models(config, save=True)
-            Model = run_connect.train_models(config, save=True)
+
+    
+    for e in exps:
+
+        for s in sn:
+            # looping over ns and selecting features recursively
+            for n in ns:
+
+                name = f"winners_{cortex}_N{n:.0f}"
+                print(f"Doing {name} - sc{e+1}")
+                config["name"] = name
+                config["model"] = "WINNERS"
+                # config["param"] = {"n": n[i], "alpha":np.exp(logalpha[i])}
+                config["param"] = {"n_features_to_select": n}
+                config["X_data"] = cortex
+                config["weighting"] = 2
+                config["train_exp"] = f"sc{e+1}"
+                config["subjects"] = [s]
+                config["weighting"] = True
+                config["averaging"] = "sess"
+                config["validate_model"] = False
+                config["cv_fold"] = 1 # other options: 'sess' or 'run' or None
+                config["mode"] = "crossed"
+                # config["hyperparameter"] = f"{n[j]:.0f}"
+                # Model = run.train_models(config, save=True)
+
+                # TO SPEED THINGS UP:
+                # searching whether any file corresponding to previous models exist (searcihng back to 1)
+                for nn in range(n-1, 0, -1):
+                    # path to previous model
+                    name_previous = f"winners_{cortex}_N{nn:.0f}"
+                    model_path = run_wnta._get_model_name(train_name=name_previous, exp=config["train_exp"], subj_id=s)
+
+                    # break the loop as soon as a model is found
+                    if os.path.isfile(model_path):
+                        print(f"found one breaking {nn}")
+                        break
+
+                if (n == 1) or not (os.path.isfile(model_path)): 
+                    # print(f"scratch")
+                    # if n = 1 or the model selection hasn't been done, start from scratch
+                    Winner = None
+                else: # otherwise, start from the previous model
+                    # load in the previous model
+                    print(f"here")
+                    # print(model_path)
+                    Winner = dd.io.load(model_path)
+                
+                # run the current model
+                start_time = time.time()
+                print(f"started at {time.ctime()}")
+                Winner = run_wnta.select_winners(config, save=True, winner_model = Winner)
+                stop_time = time.time()
+
+                total_time = (stop_time - start_time)/60
+                print(f"--- took {total_time} minuites ---")
+
+    return
+
+# train wnta models
+def train_wnta(cortex = 'tessels0162', 
+    n = [1, 2], 
+    logalpha = [-2],
+    exps = [0, 1], 
+    sn=const.return_subjs):
+
+    config = run.get_default_train_config()
+    num_logalpha = len(logalpha)
+    num_n = len(n)
+    df_all = pd.DataFrame()
+    for e in exps:
+        for i in range(num_n):
+            for j in range(num_logalpha):
+                name = f"wnta_{cortex}_N{n[i]:.0f}_alpha_{logalpha[j]:.0f}"
+                print(f"Doing {name} - sc{e+1}")
+                config["name"] = name
+                config["model"] = "WNTA"
+                # config["param"] = {"n": n[i], "alpha":np.exp(logalpha[i])}
+                config["param"] = {"n_features_to_select": n[i], "alpha": np.exp(logalpha[j])}
+                config["X_data"] = cortex
+                config["weighting"] = 2
+                config["train_exp"] = f"sc{e+1}"
+                config["subjects"] = sn
+                config["weighting"] = True
+                config["averaging"] = "sess"
+                config["validate_model"] = True
+                config["cv_fold"] = 4 # other options: 'sess' or 'run' or None
+                config["mode"] = "crossed"
+                # config["hyperparameter"] = f"{n[j]:.0f}"
+                # Model = run.train_models(config, save=True)
+                Model, df = run_wnta.train_wnta(config, save=True)
+
+                df_all = pd.concat([df_all, df])
+
+        # save out train summary
+        dirs = const.Dirs(exp_name=config["train_exp"])
+        fpath = os.path.join(dirs.conn_train_dir, "train_summary.csv")
+
+        if os.path.isfile(fpath):
+            df_all = pd.concat([df_all, pd.read_csv(fpath)])
+        # save out train summary
+        df_all.to_csv(fpath, index=False)
+
 # eval wnta models
 def eval_wnta(cortex = 'tessels0162', 
     n = [1], 
@@ -596,29 +697,32 @@ def eval_wnta(cortex = 'tessels0162',
     sn=const.return_subjs):
     d = const.Dirs()
     config = run.get_default_eval_config()
-    num_models = len(n)
+    num_logalpha = len(logalpha)
+    num_n = len(n)
     D = pd.DataFrame()
-    for i in range(num_models):
-        name = f"wnta_{cortex}_N{n[i]:.0f}_A{logalpha[i]:.0f}"
-        for e in range(2):
-            print(f"evaluating {name} - sc{e+1}")
-            config["name"] = name
-            config["model"] = "WNTA"
-            config["n"] = n[i]  # For recording in
-            config["logalpha"] = logalpha[i]  # For recording in
-            config["param"] = {"n": n[i], "alpha":np.exp(logalpha[i])}
-            config["X_data"] = cortex
-            config["weighting"] = 2
-            config["train_exp"] = f'sc{e + 1}'
-            config["eval_exp"] = f'sc{2 - e}'
-            config["subjects"] = sn
-            config["weighting"] = True
-            config["averaging"] = "sess"
-            config["save_maps"] = False
-   
-            # T = run.eval_models(config)
-            T, _ = run_connect.eval_models(config)
-            D = pd.concat([D, T], ignore_index=True)
+    for e in range(2):
+        for i in range(num_n):
+            
+            for j in range(num_logalpha):
+                name = f"wnta_{cortex}_N{n[i]:.0f}_alpha_{logalpha[j]:.0f}"
+                print(f"evaluating {name} - sc{e+1}")
+                config["name"] = name
+                config["model"] = "WNTA"
+                config["n"] = n[i]  # For recording in
+                config["logalpha"] = logalpha[j]  # For recording in
+                config["param"] = {"n": n[i], "alpha":np.exp(logalpha[j])}
+                config["X_data"] = cortex
+                config["weighting"] = 2
+                config["train_exp"] = f'sc{e + 1}'
+                config["eval_exp"] = f'sc{2 - e}'
+                config["subjects"] = sn
+                config["weighting"] = True
+                config["averaging"] = "sess"
+                config["save_maps"] = False
+    
+                # T = run.eval_models(config)
+                T, _ = run_connect.eval_models(config)
+                D = pd.concat([D, T], ignore_index=True)
 
     # check if dataframe already exists
     if os.path.exists(d.conn_eval_dir / f"Wnta_{cortex}.dat"):
@@ -1013,15 +1117,27 @@ def pipeline():
 if __name__ == "__main__":
     
     # estimating models
-    D1 = train_pls(cortex = 'tessels0162', n_components=[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 20])
-    D2 = train_pls(cortex = 'tessels0362', n_components=[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 20])
-    D3 = train_pls(cortex = 'tessels0642', n_components=[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 20])
-    D3 = train_pls(cortex = 'tessels1002', n_components=[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 20])
+    # D1 = train_pls(cortex = 'tessels0162', n_components=[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 20])
+    # D2 = train_pls(cortex = 'tessels0362', n_components=[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 20])
+    # D3 = train_pls(cortex = 'tessels0642', n_components=[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 20])
+    # D3 = train_pls(cortex = 'tessels1002', n_components=[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 20])
 
     # evaluating models
-    D3 = eval_pls(cortex = 'tessels0162', n_components=[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 20])
-    D3 = eval_pls(cortex = 'tessels0362', n_components=[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 20])
-    D3 = eval_pls(cortex = 'tessels0642', n_components=[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 20])
-    D3 = eval_pls(cortex = 'tessels1002', n_components=[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 20])
+    # D3 = eval_pls(cortex = 'tessels0162', n_components=[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 20])
+    # D3 = eval_pls(cortex = 'tessels0362', n_components=[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 20])
+    # D3 = eval_pls(cortex = 'tessels0642', n_components=[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 20])
+    # D3 = eval_pls(cortex = 'tessels1002', n_components=[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 20])
+
+    #evaluating lasso models
+    D1 = eval_lasso(cortex = 'tessels0162', logalpha = [-4, -2, 0, 2])
+    D2 = eval_lasso(cortex = 'tessels0362', logalpha = [-4, -2, 0, 2])
+    D3 = eval_lasso(cortex = 'tessels0642', logalpha = [-4, -2, 0, 2])
+    # D = eval_lasso(cortex = 'tessels1002', logalpha = [-4, -2, 0, 2])
+    D4 = eval_lasso(cortex = 'gordon', logalpha = [-4, -2, 0, 2])
+    D5 = eval_lasso(cortex = 'glasser', logalpha = [-4, -2, 0, 2])
+    D6 = eval_lasso(cortex = 'fan', logalpha = [-4, -2, 0, 2])
+    D7 = eval_lasso(cortex = 'shen', logalpha = [-4, -2, 0, 2])
+    D8 = eval_lasso(cortex = 'baldassano', logalpha = [-4, -2, 0, 2])
+    D9 = eval_lasso(cortex = 'arslan_50', logalpha = [-4, -2, 0, 2])
 
 

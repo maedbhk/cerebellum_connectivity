@@ -2,12 +2,8 @@
 import os
 import pandas as pd
 import numpy as np
-import re
 import deepdish as dd
-import copy
 import scipy
-import scipy.io as sio
-from collections import defaultdict
 import h5py
 import SUITPy as suit
 import nibabel as nib
@@ -17,7 +13,6 @@ import connectivity.constants as const
 import connectivity.io as cio
 import connectivity.matrix as matrix
 import connectivity.nib_utils as nio
-from numpy.linalg import solve
 
 """Main module for getting data to be used for running connectivity models.
 
@@ -306,6 +301,7 @@ def convert_cortex_to_gifti(data, atlas):
     Returns:
         List of gifti-img (left + right hemisphere)
         anatomical_structure (list of hemisphere names)
+        subj_id (str or None): if `subj_id` is None, group atlas is used (default)
     """
     dirs = const.Dirs()
     hemName = ['L','R']
@@ -323,8 +319,12 @@ def convert_cortex_to_gifti(data, atlas):
         c_data = np.insert(data,0,np.nan)
         mapped_data = c_data[labels]
         # Make the gifti imae   gifti img
-        gifti_img.append(nio.make_func_gifti_cortex(data=mapped_data[:,None], anatomical_struct=anatomical_struct[h]))
-    return gifti_img, anatomical_struct
+        gii = nio.make_func_gifti_cortex(
+            data=mapped_data[:,None], 
+            anatomical_struct=anatomical_struct[h]
+            )
+        gifti_img.append(gii)
+    return gifti_img, hemName
 
 def get_distance_matrix(roi):
     """
@@ -438,6 +438,12 @@ def average_by_roi(data, region_number_suit):
         data_mean_roi       - numpy array with mean within each roi (to be used as input to convert_cerebellum_to_nifti)
     """
 
+    # reshape data into NxP dims
+    try: 
+        num_cols, num_vox = data.shape
+    except: 
+        data = np.reshape(data, (1, len(data)))
+
     # find region numbers
     region_number_suit = region_number_suit.astype("int")
     region_numbers = np.unique(region_number_suit)
@@ -457,4 +463,3 @@ def average_by_roi(data, region_number_suit):
         data_mean_roi[:, r] = reg_data
 
     return data_mean_roi, region_numbers
-

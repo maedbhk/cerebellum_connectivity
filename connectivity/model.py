@@ -1,14 +1,16 @@
 from operator import index
 import os
+import time
 import numpy as np
 import pandas as pd
-import quadprog as qp
+# import quadprog as qp
 # import cvxopt
 from scipy import sparse
 from sklearn.base import BaseEstimator
 from sklearn.linear_model import LinearRegression
 from sklearn.linear_model import Ridge
 from sklearn.linear_model import Lasso
+from sklearn.linear_model import LassoCV
 from sklearn.linear_model import ElasticNet
 from sklearn.decomposition import PCA
 from sklearn.cross_decomposition import PLSRegression
@@ -114,93 +116,12 @@ class WTA(LinearRegression, ModelMixin):
         # for v in range(num_vox):
         #     self.coef_[v, self.labels[v]] = wta_coef_[v]
         self.coef_[np.arange(num_vox), self.labels] = wta_coef_
+        self.labels = self.labels + 1 # we don't want zero-indexed label
         return self.coef_, self.labels
 
     def predict(self, X):
         Xs = X / self.scale_
         Xs = np.nan_to_num(Xs) # there are 0 values after scaling
-        return Xs @ self.coef_.T  # weights need to be transposed (throws error otherwise)
-
-class WNTA(Ridge, ModelMixin):
-    """
-    from sklearn documentation: https://scikit-learn.org/stable/modules/generated/sklearn.feature_selection.SequentialFeatureSelector.html
-    This Sequential Feature Selector adds (forward selection) or removes (backward selection) features 
-    to form a feature subset in a greedy fashion. At each stage, this estimator chooses the best feature
-    to add or remove based on the cross-validation score of the estimator (here the estimator is a linear regression class).
-
-    can be used to fit winner-take-all (set n = 1 (default)) and winner-n-take-all
-    """
-
-    def __init__(self, alpha, positive = False, n = 1):
-        """
-        defines a forward sequential feature selector
-        """
-        self.n = n
-        # defining a feature selector object (with forward selection)
-        self.selector = SequentialFeatureSelector(LinearRegression(fit_intercept=False), n_features_to_select=self.n)
-        super(Ridge, self).__init__(alpha=alpha, fit_intercept=False)
-        self.positive = positive
-        
-    def fit(self, X, Y):
-        self.scale_ = np.sqrt(np.sum(X ** 2, 0) / X.shape[0])
-        Xs = X / self.scale_
-        Xs = np.nan_to_num(Xs) # there are 0 values after scaling
-        ## fit and return the selected features (cortical parcels)
-        Xs = self.selector.fit_transform(Xs, Y)
-        ## do a ridge regression with the selected cortical tessels
-        super(Ridge, self).fit(Xs, Y)
-        return self.coef_
-
-    def predict(self, X):
-        Xs = X / self.scale_
-        Xs = np.nan_to_num(Xs) # there are 0 values after scaling
-        # just get the selected features
-        Xs = self.selector.transform(Xs)
-        return Xs @ self.coef_.T  # weights need to be transposed (throws error otherwise)
-
-class WNTA2(LinearRegression, Ridge, ModelMixin):
-
-    """
-    from sklearn documentation:
-    Feature ranking with recursive feature elimination and cross-validated selection of the best number of features.
-    """
-
-    def __init__(self, alpha, positive = False, n = 1):
-        """
-        defines a forward sequential feature selector
-        """
-        self.n = n
-        # defining a feature selector object (with forward selection)
-        
-        super(Ridge, self).__init__(alpha=alpha, fit_intercept=False)
-        self.positive = positive
-        
-    def fit(self, X, Y):
-
-        self.scale_ = np.sqrt(np.sum(X ** 2, 0) / X.shape[0])
-        Xs = X / self.scale_
-        Xs = np.nan_to_num(Xs) # there are 0 values after scaling
-        ## recursive feature selection with cross validation.
-        ### returns the selected features that resulted in the highest cv score
-        self.selector = RFECV(LinearRegression(fit_intercept=False))
-        self.selector.fit(Xs, Y)
-
-        # attributes of the selector:
-        # ranking_ : returns ranking of the features
-        # support_ : returns True for selected features, False otherwise
-
-        Xs = self.selector.transform(Xs)   # getting the selected features
-        self.n_selected_feat = self.selector.n_features_ # how many features were selected
-        self.selected_feat   = range(X.shape)[self.selector.support_] # what are the selected features
-        ## do a ridge regression with the selected cortical tessels
-        super(Ridge, self).fit(Xs, Y)
-        return self.coef_
-
-    def _predict(self, X):
-        Xs = X / self.scale_
-        Xs = np.nan_to_num(Xs) # there are 0 values after scaling
-        # just get the selected features
-        Xs = self.selector.transform(Xs)
         return Xs @ self.coef_.T  # weights need to be transposed (throws error otherwise)
 
 class NNLS(BaseEstimator, ModelMixin):
@@ -286,3 +207,160 @@ class PLSRegress(PLSRegression, ModelMixin):
         Xs = X / np.sqrt(np.sum(X**2,0)/X.shape[0]) # Control scaling 
         Xs = np.nan_to_num(Xs)
         return super().predict(Xs)
+
+class WINNERS(ModelMixin):
+
+    def __init__(self, n_features_to_select = 1):
+        self.n_featrues_to_select = n_features_to_select
+        
+    def add_features(self, X, y, selected = []):
+       
+        """
+        1. start with evaluation of individual features
+        2. select the one feature that results in the best performance
+            ** what is the best? That depends on the selected evaluation criteria (in this case it can be R)
+        3. Consider all the possible combinations of the selected feature and another feature and select the best combination
+        4. Repeat 1 to 3 untill you have the desired number of features
+
+        Args: 
+        X(np.ndarray)   -    design matrix   
+        Y(np.ndarray)   -    response variables
+        n(int)          -    number of features to select
+        """
+        remaining = list(set(range(X.shape[1])) - set(selected)) #list containing features that are to be examined
+
+        # 2. loop over features
+        while (remaining) and (len(selected) < self.n_featrues_to_select): # while remaining is not empty and n features are not selected 
+            
+            scores = pd.Series(np.empty((len(remaining))), index=remaining) # the scores will be stored in this 
+            for i in remaining:
+        
+                candidates = selected +[i] # list containing the current features that will be used in regression
+                # fit the model
+                ## get the features from X
+                X_feat = X[:, list(candidates)]
+
+                ## scale X_feat
+                scale_ = np.sqrt(np.nansum(X_feat ** 2, 0) / X_feat.shape[0])
+                Xs = X_feat / scale_
+                Xs = np.nan_to_num(Xs) # there are 0 values after scaling
+
+                ## fit the model
+                ### 1. get regression coefficient
+                B = (np.linalg.inv(X_feat.T@X_feat))@X_feat.T@y
+                ### 2. get predicted values
+                y_pred = X_feat@B
+                # R = y - X_feat@B
+                # mod = LinearRegression(fit_intercept=False).fit(Xs, y)
+
+                ## get the score and put it in scores
+                ## get the score
+                score_i, _    = ev.calculate_R(y, y_pred)
+                # print(score_i)
+                scores.loc[i] = score_i
+                                
+
+            # find the feature/feature combination with the best score
+            best       = scores.idxmax()
+            selected.append(best)
+
+            # update remaining
+            ## remove the selected feature/features from remaining
+            remaining.remove(best)
+
+        return selected
+
+    def set_support_(self, X, Y, support_ = None):
+        """
+        gets the support (and updates it) for all the voxels
+        support_ can then be used to get the selected features
+        Ars:
+            X(ndarray)          : contains regressors (cortical regions)
+            Y(ndarray)          : contains responses (cerebellar voxels)
+            support_(ndarray)   : initial mask to select features. None: starts from scratch with all zeros
+        """
+
+        if support_ is None:
+            # starting from scratch
+            self.support_= np.zeros((Y.shape[1], X.shape[1]))
+        else:
+            self.support_ = support_
+
+        # loop over voxels
+        for vox in range(Y.shape[1]):
+            # print(vox, end = "", flush=True)
+
+            if np.any(Y[:, vox]):
+                # get the selected features for the current voxel
+                initial_feats = list(np.where(self.support_[vox, :] == 1)[0])
+
+                # add features to the selected set
+                feats = self.add_features(X, Y[:, vox], selected = initial_feats)
+
+                # update support 
+                self.support_[vox, feats] = int(1)
+
+        return self.support_
+        
+class WNTA(Ridge, ModelMixin):
+
+    def __init__(self, winner_model = None, alpha = 0, n_features_to_select = 1):
+        """
+        should be initialized with an instance of WINNERS class. 
+        if None is entered, it will start from scratch, create an instance of WINNERS 
+        and get the support_ for selecting features. Otherwise, It uses the support_ attribute
+        of the WINNERS class
+        """
+
+        super(Ridge, self).__init__(fit_intercept=False, alpha = alpha)
+
+        if winner_model is None:
+            # initialize a winner model class
+            self.winner_model = WINNERS(n_features_to_select = n_features_to_select)
+        else: 
+            self.winner_model = winner_model
+            
+
+        self.n_features_to_select = n_features_to_select
+          
+    def fit(self, X, Y):
+
+        # get the scaling
+        self.scale_ = np.sqrt(np.nansum(X ** 2, 0) / X.shape[0])
+
+        # first get the winners
+        if hasattr(self.winner_model, "support_"): # if it has support_ then it's already been done 
+            self.winner_model.n_featrues_to_select = self.n_features_to_select # update the number of features to be selected
+            self.feature_mask = self.winner_model.set_support_(X, Y, self.winner_model.support_)
+        else: # then it hasn't been done, so do it
+            self.feature_mask = self.winner_model.set_support_(X, Y)
+            
+        # loop over voxels and fit ridge
+        wnta_coef = np.zeros((Y.shape[1], X.shape[1]))
+        for vox in range(Y.shape[1]):
+
+            if np.any(Y[:, vox]):
+                # get the selected features for the current voxel
+                selected_vox = list(np.where(self.feature_mask[vox, :] == 1)[0])
+
+                ## use the selected featuers to do a ridge regression 
+                X_selected = X[:, selected_vox]
+
+                ### scale X_selected
+                scale_ = np.sqrt(np.nansum(X_selected ** 2, 0) / X_selected.shape[0])
+                Xs = X_selected / scale_
+                Xs = np.nan_to_num(Xs) # there are 0 values after scaling
+
+                # print(f"doing ridge regression")
+                super(Ridge, self).fit(Xs, Y[:, vox])
+
+                # fill in the elements of the coef
+                wnta_coef[vox, selected_vox] = self.coef_
+
+        # set the coef_ attribute
+        self.coef_ = wnta_coef
+
+    def predict(self, X):
+        Xs = X / self.scale_
+        Xs = np.nan_to_num(Xs) # there are 0 values after scaling
+        return Xs @ self.coef_.T  # weights need to be transposed (throws error otherwise)
