@@ -86,7 +86,7 @@ def run(
 
     # save out np array of best weights
     for exp in ['sc1', 'sc2']:
-        cmaps.best_weights(train_exp=exp, method='L2regression', save=True)
+        cmaps.best_weights(train_exp=exp, method='L2regression')
 
 if __name__ == "__main__":
     run()
