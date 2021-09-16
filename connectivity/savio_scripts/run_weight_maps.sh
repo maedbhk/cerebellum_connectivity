@@ -22,6 +22,8 @@ source $(pipenv --venv)/bin/activate
 PYTHONPATH=$PYTHONPATH:/global/scratch/users/maedbhking/bin/
 export PYTHONPATH
 
-cd /global/scratch/users/maedbhking/projects/cerebellum_connectivity/connectivity/scripts
+# cd /global/scratch/users/maedbhking/projects/cerebellum_connectivity/connectivity/scripts
+# python3 script_weight_maps.py
 
-python3 script_weight_maps.py
+cd /global/scratch/users/maedbhking/projects/cerebellum_learning_connect/learning_connect/scripts
+python3 run_transfer_weights.py
