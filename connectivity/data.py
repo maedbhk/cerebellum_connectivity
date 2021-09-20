@@ -5,7 +5,7 @@ import numpy as np
 import deepdish as dd
 import scipy
 import h5py
-import SUITPy as suit
+import SUITPy.SUITPy as suit
 import nibabel as nib
 
 # Import module as such - no need to make them a class

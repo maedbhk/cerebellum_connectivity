@@ -1,6 +1,6 @@
 import click
 import os
-import SUITPy.flatmap as flatmap
+import SUITPy.SUITPy.flatmap as flatmap
 import nibabel as nib
 
 from connectivity import weight_maps as cmaps

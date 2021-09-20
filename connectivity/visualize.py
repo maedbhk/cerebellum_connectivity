@@ -5,6 +5,7 @@ import seaborn as sns
 import glob
 from pathlib import Path
 import matplotlib.image as mpimg
+from  matplotlib.ticker import FuncFormatter
 from PIL import Image
 import matplotlib.pyplot as plt
 import re
@@ -20,10 +21,10 @@ def plotting_style():
     plt.rc('font', serif='Helvetica Neue') 
     plt.rc('text', usetex='false') 
     plt.rcParams['lines.linewidth'] = 3
-    plt.rc('xtick', labelsize=14)   
-    plt.rc('ytick', labelsize=14)
+    plt.rc('xtick', labelsize=18)   
+    plt.rc('ytick', labelsize=18)
     
-    plt.rcParams.update({'font.size': 8})
+    plt.rcParams.update({'font.size': 20})
     plt.rcParams["axes.labelweight"] = "regular"
     plt.rcParams["font.weight"] = "regular"
     plt.rcParams["savefig.format"] = 'svg'
@@ -143,11 +144,20 @@ def train_summary(
     except: 
         pass
     
-    df_concat['train_hyperparameter'] = df_concat['train_hyperparameter'].astype(float)
-
+    df_concat['train_hyperparameter'] = df_concat['train_hyperparameter'].astype(float) # was float
 
     if models_to_exclude:
         df_concat = df_concat[~df_concat['train_model'].isin(models_to_exclude)]
+
+    def _relabel_model(x):
+        if x=='L2regression':
+            return 'ridge'
+        elif x=='LASSO':
+            return 'lasso'
+        else:
+            return x
+
+    df_concat['train_model'] = df_concat['train_model'].apply(lambda x: _relabel_model(x))
 
     return df_concat
 
@@ -268,7 +278,7 @@ def plot_train_predictions(
     save=True, 
     title=False,
     best_models=True,
-    methods=['L2regression', 'WTA']
+    methods=['ridge', 'WTA', 'lasso']
     ):
     """plots training predictions (R CV) for all models in dataframe.
     Args:
@@ -289,13 +299,21 @@ def plot_train_predictions(
     else:
         df1 = dataframe
     # R
-    sns.factorplot(x=x, y="train_R_cv", hue=hue, data=df1, order=x_order, hue_order=hue_order, ci=None, legend=False, size=4, aspect=2)
-    if title:
-        plt.title("Model Training (CV Predictions)", fontsize=20)
-    plt.tick_params(axis="both", which="major", labelsize=15)
-    plt.xticks(rotation="45", ha="right", fontsize=10)
+    # ax = sns.factorplot(x=x, y="train_R_cv", hue=hue, data=df1, order=x_order, hue_order=hue_order, legend=False, size=4, aspect=2)
+    plt.figure(figsize=(8,8))
+    ax = sns.lineplot(x=x, y="train_R_cv", hue=hue, data=df1)
+    plt.xticks(rotation="45", ha="right")
+
+    # ax = sns.lineplot(x=x, y="train_R_cv", hue=hue, data=df1)
+    if hue is not None:
+        plt.legend(fontsize=15, bbox_to_anchor=(1.05, 1), loc='upper left', frameon=False)
+    plt.xticks(rotation="45", ha="right")
+    # ax.lines[-1].set_linestyle("--")
     plt.xlabel("")
     plt.ylabel("R (cv)", fontsize=20)
+    if title:
+        plt.title("Model Training (CV Predictions)", fontsize=20)
+
     if hue:
         plt.legend(fontsize=15, bbox_to_anchor=(1.05, 1), loc='upper left', frameon=False)
 
@@ -303,7 +321,11 @@ def plot_train_predictions(
         dirs = const.Dirs()
         exp_fname = '_'.join(exps)
         meth_fname = '_'.join(methods)
-        plt.savefig(os.path.join(dirs.figure, f'train_predictions_{exp_fname}_{meth_fname}_{x}.png'), pad_inches=0.1, bbox_inches='tight')
+        if hue:
+            fname = f'train_predictions_{exp_fname}_{meth_fname}_{hue}_{x}'
+        else:
+            fname = f'train_predictions_{exp_fname}_{meth_fname}_{x}'
+        plt.savefig(os.path.join(dirs.figure, f'{fname}.png'), pad_inches=0.1, bbox_inches='tight')
 
 def plot_eval_predictions(
     dataframe=None,
@@ -330,9 +352,9 @@ def plot_eval_predictions(
     if noiseceiling:
         plt.figure(figsize=(8,8))
         ax = sns.lineplot(x=x, y="R_eval", hue=hue, legend=True, data=dataframe)
-        ax = sns.lineplot(x=x, y='eval_noiseceiling_Y', data=dataframe, color='k', ax=ax)
+        ax = sns.lineplot(x=x, y='eval_noiseceiling_Y', data=dataframe, color='k', ax=ax, ci=None, linewidth=4)
         ax.legend(fontsize=15, bbox_to_anchor=(1.05, 1), loc='upper left', frameon=False)
-        plt.xticks(rotation="45", ha="right", fontsize=10)
+        plt.xticks(rotation="45", ha="right")
         ax.lines[-1].set_linestyle("--")
         ax.set_xlabel("")
         ax.set_ylabel("R")
