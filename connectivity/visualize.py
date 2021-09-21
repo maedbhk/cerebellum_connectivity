@@ -310,12 +310,9 @@ def plot_train_predictions(
     plt.xticks(rotation="45", ha="right")
     # ax.lines[-1].set_linestyle("--")
     plt.xlabel("")
-    plt.ylabel("R (cv)", fontsize=20)
+    plt.ylabel("R (cv)")
     if title:
         plt.title("Model Training (CV Predictions)", fontsize=20)
-
-    if hue:
-        plt.legend(fontsize=15, bbox_to_anchor=(1.05, 1), loc='upper left', frameon=False)
 
     if save:
         dirs = const.Dirs()
@@ -400,7 +397,7 @@ def plot_predictions_atlas(
     plt.yticks(fontsize=20)
     plt.legend(fontsize=20, frameon=False, bbox_to_anchor=(1.05, 1), loc='upper left')
     plt.ylabel('R', fontsize=20)
-    plt.xlabel('Regions', fontsize=20);
+    plt.xlabel('# of regions', fontsize=20);
     paper_rc = {'lines.linewidth': 6}                  
     sns.set_context("paper", rc=paper_rc) 
     
@@ -471,6 +468,7 @@ def map_eval(
     data="R", 
     exp="sc1", 
     model_name='best_model', 
+    method='ridge',
     colorbar=False, 
     cscale=None,  
     save=True,
@@ -478,9 +476,9 @@ def map_eval(
     ):
     """plot surface map for best model
     Args:
-        gifti (str):
-        model (None or model name):
+        data (str): 'R', 'R2', 'noiseceiling_Y_R' etc.
         exp (str): 'sc1' or 'sc2'
+        model_name ('best_model' or model name):
     """
     if exp == "sc1":
         dirs = const.Dirs(exp_name="sc2")
@@ -490,15 +488,11 @@ def map_eval(
     # get best model
     model = model_name
     if model_name=="best_model":
-        model,_ = get_best_model(train_exp=exp)
+        model,_ = get_best_model(train_exp=exp, method=method)
 
     # plot map
-    fpath = os.path.join(dirs.conn_eval_dir, model)
-    view = nio.view_cerebellum(gifti=os.path.join(fpath, f"group_{data}_vox.func.gii"), cscale=cscale, colorbar=colorbar, title=title)
-
-    if save:
-        dirs = const.Dirs()
-        plt.savefig(os.path.join(dirs.figure, f'map_{exp}_{model_name}_{data}_eval.png'))
+    fname = f"group_{data}_vox.func.gii"
+    view = nio.view_cerebellum(gifti=os.path.join(dirs.conn_eval_dir, model, fname), cscale=cscale, colorbar=colorbar, title=title, save=save)
 
     return view
 
@@ -515,21 +509,16 @@ def map_lasso(
     Args:
         model (None or model name):
         exp (str): 'sc1' or 'sc2'
+        stat (str): 'percent' or 'count'
     """
     dirs = const.Dirs(exp_name=exp)
 
     # plot map
     fpath = os.path.join(dirs.conn_train_dir, model_name)
 
-    fname = "group_lasso_cerebellum"
-    if stat=='percent':
-        fname = f"group_lasso_percent_cerebellum"
+    fname = f"group_lasso_{stat}_positive_cerebellum"
 
-    view = nio.view_cerebellum(gifti=os.path.join(fpath, f'{fname}.func.gii'), cscale=cscale, colorbar=colorbar, title=title)
-
-    if save:
-        dirs = const.Dirs()
-        plt.savefig(os.path.join(dirs.figure, f'map_{fname}_{model_name}.png'))
+    view = nio.view_cerebellum(gifti=os.path.join(fpath, f'{fname}.func.gii'), cscale=cscale, colorbar=colorbar, title=title, save=save)
 
     return view
 
@@ -551,11 +540,7 @@ def map_model_comparison(
     fpath_gii = glob.glob(f'{fpath}/*subtract*{model_name}*.gii*')
     fpath_nii = glob.glob(f'{fpath}/*subtract*{model_name}*.nii*')
 
-    view = nio.view_cerebellum(fpath_gii[0], cscale=None, colorbar=colorbar, title=title)
-
-    if save:
-        dirs = const.Dirs()
-        plt.savefig(os.path.join(dirs.figure, f'{model_name}_model_comparison_{exp}_subtract.png'))
+    view = nio.view_cerebellum(fpath_gii[0], cscale=None, colorbar=colorbar, title=title, save=save)
     
     return view
 
@@ -604,7 +589,7 @@ def map_atlas(
     structure='cerebellum', 
     colorbar=False,
     title=False,
-    outpath=None
+    save=True,
     ):
     """General purpose function for plotting (optionally saving) *.label.gii or *.func.gii parcellations (cortex or cerebellum)
     Args: 
@@ -616,9 +601,9 @@ def map_atlas(
         viewing object to visualize parcellations
     """
     if structure=='cerebellum':
-        view = nio.view_cerebellum(gifti=fpath, colorbar=colorbar, outpath=outpath, title=title) 
+        view = nio.view_cerebellum(gifti=fpath, colorbar=colorbar, title=title, save=save) 
     elif structure=='cortex':
-        view = nio.view_cortex(gifti=fpath, outpath=outpath, title=title)
+        view = nio.view_cortex(gifti=fpath, title=title, save=save)
     else:
         print('please provide a valid parcellation')
     

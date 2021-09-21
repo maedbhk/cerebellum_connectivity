@@ -1,6 +1,7 @@
 import click
 import os
 import SUITPy.SUITPy.flatmap as flatmap
+import SUITPy.SUITPy.datasets as datasets
 import nibabel as nib
 
 from connectivity import weight_maps as cmaps
@@ -25,8 +26,11 @@ def lasso_maps(
         data_type (str): 'func' or 'label'. default is 'label'
     """
 
-    cerebellum_nifti = os.path.join(flatmap._base_dir, 'example_data', f'{atlas}.nii')
-    cerebellum_gifti = os.path.join(flatmap._base_dir, 'example_data', f'{atlas}.label.gii')
+    dirs = const.Dirs()
+    datasets.fetch_king_2019(data='atl', data_dir=dirs.cerebellar_atlas_dir())
+
+    cerebellum_nifti = os.path.join(dirs.cerebellar_atlas_dir, 'king_2019', f'{atlas}.nii')
+    cerebellum_gifti = os.path.join(dirs.cerebellar_atlas_dir, 'king_2019', f'{atlas}.label.gii')
 
     # for exp in range(2):
     for exp in range(2):
@@ -72,10 +76,10 @@ def run(
     data_type='label'
     ):
     
-    # # generate lasso maps
-    # lasso_maps(atlas,  weights, data_type)
+    # generate lasso maps
+    lasso_maps(atlas,  weights, data_type)
 
-    # # generate weight maps for cortex and cerebellum
+    # generate weight maps for cortex and cerebellum
     # for exp in range(2):
     #     # get best model (for each method and parcellation)
     #     models, cortex_names = summary.get_best_models(train_exp=f"sc{2-exp}")
@@ -85,8 +89,8 @@ def run(
     #             cmaps.weight_maps(model_name=best_model, cortex=cortex, train_exp=f"sc{2-exp}")
 
     # save out np array of best weights
-    for exp in ['sc1', 'sc2']:
-        cmaps.best_weights(train_exp=exp, method='L2regression')
+    # for exp in ['sc1', 'sc2']:
+    #     cmaps.best_weights(train_exp=exp, method='L2regression')
 
 if __name__ == "__main__":
     run()
