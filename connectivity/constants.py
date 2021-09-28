@@ -52,4 +52,8 @@ class Dirs:
         self.conn_eval_dir = self.data_dir / "conn_models" / "eval"
         self.atlas = base_dir / "atlases"
         self.atlas_suit_flatmap = self.atlas / "suit_flatmap"
+        self.cerebellar_atlases = self.base_dir / "cerebellar_atlases"
         self.figure = Path(__file__).absolute().parent.parent / "reports" / "figures"
+
+        if not os.path.exists(self.cerebellar_atlases):
+            os.makedirs(self.cerebellar_atlases)
