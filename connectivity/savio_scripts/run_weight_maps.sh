@@ -22,10 +22,17 @@ source $(pipenv --venv)/bin/activate
 PYTHONPATH=$PYTHONPATH:/global/scratch/users/maedbhking/bin/
 export PYTHONPATH
 
-cd /global/scratch/users/maedbhking/projects/cerebellum_connectivity/connectivity/scripts
-python3 script_weight_maps.py
+# run weight maps
+atlases=(MDTB10)
+weights=(positive absolute)
+data_type=(label func)
 
-connect_dir=/global/scratch/users/maedbhking/projects/cerebellum_connectivity/data/sc1/conn_models/train/best_weights
-learn_dir=/global/scratch/users/maedbhking/projects/cerebellum_learning_connect/data/BIDS_dir/derivatives/conn_models/train
+for ((w=0; w<${#weights[@]}; w++)); do \ 
+    for ((a=0; a<${#atlases[@]}; a++)); do \
+        for ((b=0; b<${#data_type[@]}; b++)); do \
+            python3 script_weight_maps.py --atlas=${atlases[a]} --weights=${weights[w]} --data_type=${data_type[b]}; done; done; done
 
-python3 run_transfer_weights.py --connect_dir=${connect_dir} --learn_dir=${learn_dir}
+# connect_dir=/global/scratch/users/maedbhking/projects/cerebellum_connectivity/data/sc1/conn_models/train/best_weights
+# learn_dir=/global/scratch/users/maedbhking/projects/cerebellum_learning_connect/data/BIDS_dir/derivatives/conn_models/train
+
+# python3 run_transfer_weights.py --connect_dir=${connect_dir} --learn_dir=${learn_dir}
