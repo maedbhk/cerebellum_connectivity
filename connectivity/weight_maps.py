@@ -13,7 +13,7 @@ import connectivity.io as cio
 from connectivity import model
 from connectivity import data as cdata
 from connectivity import nib_utils as nio
-from connectivity.visualize import get_best_model
+from connectivity.visualize import get_best_model, get_best_models
 
 def save_maps_cerebellum(
     data, 
@@ -255,32 +255,32 @@ def lasso_maps_cortex(
 def best_weights(
     train_exp='sc1',
     method='L2regression',
-    save=True
     ):
     """Get group average model weights for best trained model
 
     Args: 
         train_exp (str): default is 'sc1'
         method (str): default is 'L2regression'
-        save (bool): default is True. saves in `conn_models/train/best_weights`
     Returns: 
         group_weights (n-dim np array)
 
     """
     # get best L2regression model
-    best_model, cortex = get_best_model(dataframe=None, train_exp=train_exp, method=method)
+    # best_model, cortex = get_best_model(dataframe=None, train_exp=train_exp, method=method)
+    models, cortex_names = get_best_models(train_exp='sc1', method=method)
 
-    # get group weights for best model
-    weights = weight_maps(model_name=best_model, 
-                        cortex=cortex, 
-                        train_exp=train_exp, 
-                        save=False
-                        )
-    
-    # get group average weights
-    group_weights = np.nanmean(weights, axis=0)
+    for (best_model, cortex) in zip(models, cortex_names):
 
-    if save:
+        # get group weights for best model
+        weights = weight_maps(model_name=best_model, 
+                            cortex=cortex, 
+                            train_exp=train_exp, 
+                            save=False
+                            )
+        
+        # get group average weights
+        group_weights = np.nanmean(weights, axis=0)
+
         # save best weights to disk
         dirs = const.Dirs(exp_name=train_exp)
         outdir = os.path.join(dirs.conn_train_dir, 'best_weights')
@@ -288,4 +288,3 @@ def best_weights(
             os.makedirs(outdir)
         dd.io.save(os.path.join(outdir, f'{best_model}.h5'), {'weights': group_weights})
     
-    return group_weights

@@ -1,6 +1,6 @@
 #!/bin/bash
 # Job name:
-#SBATCH --job-name=connect_train
+#SBATCH --job-name=make_atlas
 #
 # Account:
 #SBATCH --account=fc_cerebellum
@@ -12,7 +12,7 @@
 #SBATCH --qos=savio_normal
 #
 # Wall clock limit:
-#SBATCH --time=60:00:00
+#SBATCH --time=02:00:00
 #
 ## Command(s) to run:
 module load python/3.7
@@ -23,12 +23,9 @@ PYTHONPATH=$PYTHONPATH:/global/scratch/users/maedbhking/bin/
 export PYTHONPATH
 
 cd /global/scratch/users/maedbhking/projects/cerebellum_connectivity/connectivity/scripts
+python3 script_weight_maps.py
 
-# atlases=(yeo7 yeo17 mdtb1002_007 mdtb1002_025 mdtb1002_050 mdtb1002_100 mdtb1002_150 mdtb1002_200)
-atlases=(tessels0042 tessels0162 tessels0362 tessels0642 tessels1002)
-models=(NNLS)
+connect_dir=/global/scratch/users/maedbhking/projects/cerebellum_connectivity/data/sc1/conn_models/train/best_weights
+learn_dir=/global/scratch/users/maedbhking/projects/cerebellum_learning_connect/data/BIDS_dir/derivatives/conn_models/train
 
-# train models
-for ((m=0; m<${#models[@]}; m++)); do \
-for ((a=0; a<${#atlases[@]}; a++)); do \
-python3 script_mk.py --cortex=${atlases[a]} --model_type=${models[m]} --train_or_eval="train"; done; done
+python3 run_transfer_weights.py --connect_dir=${connect_dir} --learn_dir=${learn_dir}
