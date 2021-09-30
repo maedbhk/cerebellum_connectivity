@@ -203,10 +203,12 @@ def lasso_maps_cortex(
     cerebellum_gifti = os.path.join(fpath, f'atl-{atlas}_dseg.label.gii')
 
     # Load and average region data (for all subjs)
-    Ydata = cdata.Dataset(experiment=train_exp, roi="cerebellum_suit", subj_id=const.return_subj)
+    Ydata = cdata.Dataset(experiment=train_exp, roi="cerebellum_suit", subj_id=const.return_subjs)
     Ydata.load()
-    Xdata = cdata.Dataset(experiment=train_exp, roi=cortex, subj_id=const.return_subj)
+    Ydata.average_subj()
+    Xdata = cdata.Dataset(experiment=train_exp, roi=cortex, subj_id=const.return_subjs)
     Xdata.load()
+    Xdata.average_subj()
 
     # Read MDTB atlas
     index = cdata.read_suit_nii(cerebellum_nifti)
@@ -226,7 +228,7 @@ def lasso_maps_cortex(
         roi_mean[roi_mean == 0] = np.nan
 
     # get data (exclude label 0)
-    data = roi_mean[1,:]
+    data = roi_mean[1:,:]
     _, num_vert = data.shape
 
     # functional or label maps

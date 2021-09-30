@@ -22,6 +22,8 @@ source $(pipenv --venv)/bin/activate
 PYTHONPATH=$PYTHONPATH:/global/scratch/users/maedbhking/bin/
 export PYTHONPATH
 
+cd /global/scratch/users/maedbhking/projects/cerebellum_connectivity/connectivity/scripts
+
 # run weight maps
 atlases=(MDTB10)
 weights=(positive absolute)

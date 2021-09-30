@@ -302,7 +302,7 @@ def convert_cortex_to_gifti(
     ):
     """
     Args:
-        data (np-array): 1d- (cortical regions,) or 2d-array (cortical regions x columns)
+        data (np-array): 1d- (cortical regions,)
         atlas (str): cortical atlas name (e.g. tessels0162)
         data_type (str): 'func' or 'label'. default is 'func'
         column_names (list or None): default is None
@@ -327,16 +327,8 @@ def convert_cortex_to_gifti(
         data = data.astype(float)
 
         # Fastest way: prepend a NaN for ROI 0 (medial wall)
-        if data.ndim==1:
-            c_data = np.insert(data, 0, np.nan)
-            mapped_data = c_data[labels, None]
-        elif data.ndim==2:
-            c_data_all = []
-            for col in np.arange(data.shape[1]):
-                c_data_all.append(np.insert(data[:, col], 0, np.nan))
-            c_data = np.stack(c_data_all)
-            c_data = np.reshape(c_data, (c_data.shape[1], c_data.shape[0]))
-            mapped_data = c_data[labels,]
+        c_data = np.insert(data, 0, np.nan)
+        mapped_data = c_data[labels, None]
 
         if data_type=='func':
             gii = nio.make_func_gifti_cortex(

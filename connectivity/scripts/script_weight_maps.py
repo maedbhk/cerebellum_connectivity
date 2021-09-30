@@ -1,76 +1,74 @@
 import click
 import os
-import SUITPy as suit
 import nibabel as nib
 
 from connectivity import weight_maps as cmaps
 from connectivity import visualize as summary
 import connectivity.constants as const
 
-@click.command()
-@click.option("--atlas")
-@click.option("--weights")
-@click.option("--data_type")
-
 def lasso_maps(
     atlas='MDTB10', 
     weights='positive', 
-    data_type='label'
+    data_type='func',
+    exp='sc1',
     ):
     """ creates cortical connectivity maps for lasso (functional and lasso)
 
     Args: 
         atlas (str): default is 'MDTB10'
         weights (str): 'positive' or 'absolute'. default is 'positive'
-        data_type (str): 'func' or 'label'. default is 'label'
+        data_type (str): 'func' or 'label'. default is 'func'
     """
-    dirs = const.Dirs()
+    dirs = const.Dirs(exp_name=exp)
 
-    # for exp in range(2):
-    for exp in range(2):
+    # get best model (for each method and parcellation)
+    # models, cortex_names = summary.get_best_models(train_exp=exp)
 
-        dirs = const.Dirs(exp_name=f"sc{2-exp}")
-    
-        # get best model (for each method and parcellation)
-        models, cortex_names = summary.get_best_models(train_exp=f"sc{2-exp}")
+    models = ['lasso_tessels1002_alpha_-2']
+    cortex_names = ['tessels1002']
 
-        for (best_model, cortex) in zip(models, cortex_names):
+    for (best_model, cortex) in zip(models, cortex_names):
+        
+        # full path to best model
+        fpath = os.path.join(dirs.conn_train_dir, best_model)
+
+        if 'lasso' in best_model:
             
-            # full path to best model
-            fpath = os.path.join(dirs.conn_train_dir, best_model)
+            # cmaps.lasso_maps_cerebellum(model_name=best_model, 
+            #                             train_exp=exp,
+            #                             weights=weights) 
 
-            if 'lasso' in best_model:
-                
-                cmaps.lasso_maps_cerebellum(model_name=best_model, 
-                                            train_exp=f"sc{2-exp}",
-                                            weights=weights) 
+            # get alpha for each model
+            alpha = int(best_model.split('_')[-1])
+            giis, hem_names = cmaps.lasso_maps_cortex( 
+                                    train_exp=exp, 
+                                    cortex=cortex, 
+                                    alpha=alpha,
+                                    atlas=atlas,
+                                    weights=weights,
+                                    data_type=data_type
+                                    ) 
+            # fname
+            fname = f'group_lasso_{weights}_{atlas}_cortex'
 
-                # get alpha for each model
-                alpha = int(best_model.split('_')[-1])
-                giis, hem_names = cmaps.lasso_maps_cortex( 
-                                        train_exp=f"sc{2-exp}", 
-                                        cortex=cortex, 
-                                        alpha=alpha,
-                                        atlas='MDTB10',
-                                        weights=weights,
-                                        data_type=data_type
-                                        ) 
-                # fname
-                fname = f'group_lasso_{weights}_{atlas}_cortex'
+            for (gii, hem) in zip(giis, hem_names):
+                nib.save(gii, os.path.join(fpath, f'{fname}.{hem}.{data_type}.gii'))
 
-                for (gii, hem) in zip(giis, hem_names):
-                    nib.save(gii, os.path.join(fpath, f'{fname}.{hem}.{data_type}.gii'))
+            cmaps.weight_maps(model_name=best_model, cortex=cortex, train_exp=exp)
 
-                cmaps.weight_maps(model_name=best_model, cortex=cortex, train_exp=f"sc{2-exp}")
+# @click.command()
+# @click.option("--atlas")
+# @click.option("--weights")
+# @click.option("--data_type")
 
 def run(
     atlas='MDTB10', 
     weights='positive', 
-    data_type='label'
+    data_type='func'
     ):
     
     # generate lasso maps
-    lasso_maps(atlas,  weights, data_type)
+    lasso_maps(atlas,  weights, data_type, exp='sc1')
 
     # # generate weight maps for cortex and cerebellum
     # weight_maps()
@@ -79,5 +77,5 @@ def run(
     # for exp in ['sc1', 'sc2']:
     #     cmaps.best_weights(train_exp=exp, method='L2regression', save=True)
 
-if __name__ == "__main__":
-    run()
+# if __name__ == "__main__":
+#     run()
