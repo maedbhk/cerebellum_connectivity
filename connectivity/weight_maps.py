@@ -176,10 +176,7 @@ def lasso_maps_cortex(
     atlas='MDTB10',
     weights='positive',
     data_type='func',
-    alpha=-2,
-    label_names=None,
-    label_RGBA=None,
-    column_names=None
+    alpha=-2
     ):
     """save lasso maps for cortex
 
@@ -194,6 +191,9 @@ def lasso_maps_cortex(
         label_RGBA (list or None):
         column_names (list or None):
     """
+    column_names = None
+    label_names = None
+
     # set directory
     dirs = const.Dirs(exp_name=train_exp)
 
@@ -241,16 +241,17 @@ def lasso_maps_cortex(
                 labels[vert] = np.nanargmax(data[vert,:]) + 1
         label_names = reg_names
         data = labels
-    elif data_type=='func':
-        column_names = reg_names
     
-    giis, hem_names = cdata.convert_cortex_to_gifti(
-                    data=data, 
-                    atlas=cortex, 
-                    column_names=column_names, 
-                    label_names=label_names, 
-                    label_RGBA=nio.get_gifti_colors(fpath=cerebellum_gifti),
-                    data_type=data_type)
+    giis = []
+    for dd in data:
+        gii, hem_names = cdata.convert_cortex_to_gifti(
+                        data=dd, 
+                        atlas=cortex, 
+                        column_names=column_names, 
+                        label_names=label_names, 
+                        label_RGBA=nio.get_gifti_colors(fpath=cerebellum_gifti),
+                        data_type=data_type)
+        giis.append(gii)
 
     return giis, hem_names
 
