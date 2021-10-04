@@ -45,7 +45,6 @@ class ModelMixin:
         data = {"coef_": self.coef_}
         return data
 
-
 class L2regression(Ridge, ModelMixin):
     """
     L2 regularized connectivity model

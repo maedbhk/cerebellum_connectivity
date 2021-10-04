@@ -649,13 +649,15 @@ def get_best_model(
 def get_best_models(
     dataframe=None,
     train_exp='sc1',
-    method=None
+    method=None,
+    roi=None
     ):
     """Get model_names, cortex_names for best models (NNLS, ridge, WTA) based on R_cv
     Args:
         dataframe (pd dataframe or None):
         train_exp (str): 'sc1' or 'sc2' or None (if dataframe is given)
         method (str or None): filter models by method
+        roi (str or None): filter models by roi
     Returns:
         model_names (list of str), cortex_names (list of str)
     """
@@ -666,6 +668,10 @@ def get_best_models(
      # filter dataframe by method
     if method is not None:
         dataframe = dataframe[dataframe['train_model']==method]
+    
+    # filter dataframe by roi
+    if roi is not None:
+        dataframe = dataframe[dataframe['train_X_data']==roi]
 
     df_mean = dataframe.groupby(['train_X_data', 'train_model', 'train_name'], sort=True).apply(lambda x: x['train_R_cv'].mean()).reset_index(name='train_R_cv_mean')
     df_best = df_mean.groupby(['train_X_data', 'train_model']).apply(lambda x: x[['train_name', 'train_R_cv_mean']].max()).reset_index()
