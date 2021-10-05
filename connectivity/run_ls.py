@@ -13,7 +13,6 @@ from sklearn.metrics import mean_squared_error
 import connectivity.io as cio
 from connectivity import data as cdata
 import connectivity.constants as const
-# import connectivity.sparsity as csparsity
 import connectivity.model as model
 import connectivity.evaluation as ev
 import connectivity.nib_utils as nio

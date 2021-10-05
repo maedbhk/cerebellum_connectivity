@@ -94,12 +94,13 @@ def get_distance_weights(weight_indices, distances):
 
     return {'sum_var_distances_vox':  dist_sum_var_all}
 
-def calc_distances(coef, roi, metric='gmean'):
+def calc_distances(coef, roi, metric='gmean', stat='positive'):
     """Compute mean of cortical distances
     Args: 
         coef (np array): (shape; n_voxels x num_reg)
         roi (str): cortex name e.g., 'tessels1002'
         metric (str): 'gmean', 'nanmean', 'median'
+        stat (str): 'absolute' or 'positive'
     Returns: 
         data (dict): dict with keys: left hemi, right hemi, avg hemi
         values are each an np array of shape (voxels x 1)
@@ -108,38 +109,43 @@ def calc_distances(coef, roi, metric='gmean'):
     # get distances between cortical regions; shape (num_reg x num_reg)
     distances = cdata.get_distance_matrix(roi)[0]
 
+    data = {}
     for hem in ['L', 'R']:
+
         labels = get_labels_hemisphere(roi, hemisphere=hem)
 
-    # # loop over hemispheres
-    # data = {}
-    # for key,value in labels.items():
+        # index by `hem`
+        coef_hem = coef[:, labels]
+        dist_hem = distances[labels,:][:,labels]
 
-    #     vox, ntakeall = value.shape
+        # get shape of coefficients
+        voxels, _ = coef_hem.shape
 
-    #     # loop over voxels
-    #     mean_vox = np.zeros(vox)
-    #     for v in np.arange(vox):
+        # loop over voxels
+        nonzero_dist = np.zeros((voxels, ))
+        for v in np.arange(voxels):
 
-    #         labels_vox = value[v,:]
+            if stat=='absolute':
+                labels_arr = np.nonzero(coef_hem[v,:])[0]
+            elif stat=='positive':
+                # FIGURE THIS OUT
+                labels_arr = []
 
-    #         # loop over ntakeall and compute distances
-    #         dist_all = []
-    #         for n in np.arange(ntakeall-1):
-    #             dist_all.append(distances[labels_vox[n], labels_vox[n+1]])
-            
-    #         # get mean of distances (gmean, nanmean, nanmedian)
-    #         if metric=='gmean':
-    #             mean_vox[v] = gmean(dist_all)
-    #         elif metric=='nanmean':
-    #             mean_vox[v] = np.nanmean(dist_all)
-    #         elif metric=='nanmedian':
-    #             mean_vox[v] = np.nanmedian(dist_all)
+            # pairwise distances for nonzero `labels`
+            dist_mat = dist_hem[labels_arr,:][:,labels_arr]
+            dist_labels = dist_mat[np.triu_indices_from(dist_mat, k=1)]
 
-    #     # add to dict
-    #     data.update({key: mean_vox})
-    
-    # # get average across hemispheres
-    # data['L_R'] = np.nanmean([data['L'], data['R']], axis=0)
+            if metric=='gmean':
+                nonzero_dist[v] = gmean(dist_labels)
+            elif metric=='nanmean':
+                nonzero_dist[v] = np.nanmean(dist_labels)
+            elif metric=='nanmedian':
+                nonzero_dist[v] = np.nanmedian(dist_labels)
+
+        # add to dict
+        data.update({hem: nonzero_dist})
+
+    # get average across hemispheres
+    data['L_R'] = np.nanmean([data['L'], data['R']], axis=0)
 
     return data

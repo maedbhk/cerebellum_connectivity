@@ -9,7 +9,7 @@ from scipy.stats import mode
 from random import seed, sample
 import neptune
 from pathlib import Path
-import SUITPy.SUITPy.flatmap as flatmap
+from SUITPy import flatmap
 
 import connectivity.constants as const
 import connectivity.io as cio

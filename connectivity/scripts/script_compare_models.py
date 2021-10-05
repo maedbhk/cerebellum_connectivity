@@ -3,7 +3,7 @@ import pandas as pd
 import os
 from matplotlib import cm
 import nibabel as nib
-import SUITPy.SUITPy.flatmap as flatmap
+from SUITPy import flatmap
 
 import connectivity.constants as const
 import connectivity.nib_utils as nio

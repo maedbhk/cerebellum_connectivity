@@ -4,7 +4,7 @@ import glob
 import nibabel as nib
 from scipy.stats import mode
 from nilearn.surface import load_surf_data
-import SUITPy.SUITPy.flatmap as flatmap
+from SUITPy import flatmap
 
 import connectivity.constants as const
 import connectivity.io as cio

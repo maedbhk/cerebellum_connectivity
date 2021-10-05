@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 import seaborn as sns
 from matplotlib.colors import LinearSegmentedColormap
-import SUITPy.SUITPy.flatmap as flatmap
+from SUITPy import flatmap
 from nilearn.plotting import view_surf
 from nilearn.surface import load_surf_data
 

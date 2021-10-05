@@ -4,7 +4,7 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 import nibabel as nib
-import SUITPy.SUITPy.flatmap as flatmap
+from SUITPy import flatmap
 
 import connectivity.nib_utils as nio
 from connectivity import data as cdata

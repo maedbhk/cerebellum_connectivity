@@ -5,7 +5,7 @@ from collections import defaultdict
 import numpy as np
 from scipy.stats import mode
 import nibabel as nib
-import SUITPy.flatmap as flatmap
+from SUITPy import flatmap
 
 import connectivity.constants as const
 import connectivity.io as cio
@@ -53,7 +53,7 @@ def sparsity_maps(
     # save maps to disk for cerebellum
     for k,v in dist_all.items():
         save_maps_cerebellum(data=np.stack(v, axis=0), 
-                            fpath=os.path.join(fpath, f'group_ntakeall_cerebellum_{k}'),
+                            fpath=os.path.join(fpath, f'group_{metric}_cerebellum_{k}'),
                             group='nanmean',
                             nifti=False)
 
@@ -115,9 +115,11 @@ def save_maps_cerebellum(
     
     return gii_img
 
-@click.command()
-@click.option("--train_exp")
-@click.option("--metric")
+# @click.command()
+# @click.option("--exp")
+# @click.option("--metric")
+# @click.option("--method")
+# @click.option("--roi")
 
 def run(exp='sc1',
         metric='nanmean',
@@ -138,5 +140,5 @@ def run(exp='sc1',
     for (model, cortex) in zip(models, rois):
         sparsity_maps(model_name=model, cortex=cortex, train_exp=exp, metric=metric)
 
-if __name__ == "__main__":
-    run()
+# if __name__ == "__main__":
+#     run()

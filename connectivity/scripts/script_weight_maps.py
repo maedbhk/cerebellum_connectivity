@@ -1,7 +1,6 @@
 import click
 import os
-import SUITPy.SUITPy.flatmap as flatmap
-import SUITPy.SUITPy.datasets as datasets
+from SUITPy import atlas, flatmap
 import nibabel as nib
 
 from connectivity import weight_maps as cmaps
@@ -27,7 +26,7 @@ def lasso_maps(
     """
 
     dirs = const.Dirs()
-    datasets.fetch_king_2019(data='atl', data_dir=dirs.cerebellar_atlas_dir())
+    atlas.fetch_king_2019(data='atl', data_dir=dirs.cerebellar_atlas_dir())
 
     cerebellum_nifti = os.path.join(dirs.cerebellar_atlas_dir, 'king_2019', f'{atlas}.nii')
     cerebellum_gifti = os.path.join(dirs.cerebellar_atlas_dir, 'king_2019', f'{atlas}.label.gii')

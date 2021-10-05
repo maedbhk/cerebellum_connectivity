@@ -5,7 +5,7 @@ import numpy as np
 import deepdish as dd
 import scipy
 import h5py
-import SUITPy.SUITPy as suit
+from SUITPy import flatmap
 import nibabel as nib
 
 # Import module as such - no need to make them a class
@@ -257,7 +257,7 @@ def convert_to_vol(
     mat = voldef.affine
 
     # xyz to ijk
-    ijk = suit.flatmap.coords_to_voxelidxs(xyz, voldef)
+    ijk = flatmap.coords_to_voxelidxs(xyz, voldef)
     ijk = ijk.astype(int)
 
     vol_data = np.zeros(dim)
@@ -449,7 +449,7 @@ def read_suit_nii(nii_file):
     vol_def = nib.load(nii_file)
 
     # convert to voxel space
-    ijk = suit.flatmap.coords_to_voxelidxs(coords,vol_def).astype(int)
+    ijk = flatmap.coords_to_voxelidxs(coords,vol_def).astype(int)
 
     indices = ijk.T
 
