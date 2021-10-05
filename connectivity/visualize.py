@@ -6,7 +6,7 @@ import glob
 from pathlib import Path
 import matplotlib.image as mpimg
 from  matplotlib.ticker import FuncFormatter
-from PIL import Image
+# from PIL import Image
 import matplotlib.pyplot as plt
 import re
 from random import seed, sample

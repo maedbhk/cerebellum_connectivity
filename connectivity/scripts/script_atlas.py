@@ -22,14 +22,12 @@ def run(atlas, glm='glm7'):
 
     # save maps to disk for cerebellum and cortex
     dirs = const.Dirs()
-    fpath = os.path.join(dirs.base_dir, 'cerebellar_atlases')
-    cio.make_dirs(fpath)
 
     # get label colors
-    rgba, cpal, cmap = nio.get_gifti_colors(fpath=os.path.join(dirs.reg_dir, 'data', 'group', f'{atlas}.R.label.gii'))
+    rgba, _, _ = nio.get_gifti_colors(fpath=os.path.join(dirs.reg_dir, 'data', 'group', f'{atlas}.R.label.gii'))
 
     catlas.save_maps_cerebellum(data=labels_concat, 
-                        fpath=os.path.join(fpath, f'{atlas}_wta_suit'),
+                        fpath=os.path.join(dirs.cerebellar_atlases, f'{atlas}_wta_suit'),
                         group='mode',
                         nifti=True,
                         label_RGBA=rgba)

@@ -54,7 +54,6 @@ class Dataset:
         self.subj_id = subj_id
         self.data = None
 
-
     def load_mat(self):
         """Reads a data set from the Y_info file and corresponding GLM file from matlab."""
         dirs = const.Dirs(exp_name=self.exp, glm=self.glm)
@@ -106,7 +105,6 @@ class Dataset:
             setattr(self,key,value)
         return self
 
-
     def load(self):
         """
             Utility function to first try to load subjects as h5 file
@@ -138,7 +136,6 @@ class Dataset:
             fdir = dirs.beta_reg_dir / dataname
         dd.io.save(fdir / fname, vars(self), compression=None)
 
-
     def average_subj(self): 
         """
             Averages data across subjects if data is 3-dimensional
@@ -146,7 +143,6 @@ class Dataset:
         if self.data.ndim == 2: 
             raise NameError('data is already 2-dimensional')
         self.data = np.nanmean(self.data, axis = 0)
-
 
     def get_info(self):
         """Return info for data set in a dataframe."""
@@ -161,12 +157,10 @@ class Dataset:
         }
         return pd.DataFrame(d)
 
-
     def get_info_run(self):
         """Returns info for a typical run only."""
         info = self.get_info()
         return info[info.run == 1]
-
 
     def get_data(self, averaging="sess", weighting=True, subset=None):
         """Get the data using a specific aggregation.
@@ -308,7 +302,7 @@ def convert_cortex_to_gifti(
     ):
     """
     Args:
-        data (np-array): 1d- (cortical regions,) or 2d-array (cortical regions x columns)
+        data (np-array): 1d- (cortical regions,)
         atlas (str): cortical atlas name (e.g. tessels0162)
         data_type (str): 'func' or 'label'. default is 'func'
         column_names (list or None): default is None
@@ -333,16 +327,8 @@ def convert_cortex_to_gifti(
         data = data.astype(float)
 
         # Fastest way: prepend a NaN for ROI 0 (medial wall)
-        if data.ndim==1:
-            c_data = np.insert(data, 0, np.nan)
-            mapped_data = c_data[labels, None]
-        elif data.ndim==2:
-            c_data_all = []
-            for col in np.arange(data.shape[1]):
-                c_data_all.append(np.insert(data[:, col], 0, np.nan))
-            c_data = np.stack(c_data_all)
-            c_data = np.reshape(c_data, (c_data.shape[1], c_data.shape[0]))
-            mapped_data = c_data[labels,]
+        c_data = np.insert(data, 0, np.nan)
+        mapped_data = c_data[labels, None]
 
         if data_type=='func':
             gii = nio.make_func_gifti_cortex(

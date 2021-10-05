@@ -9,6 +9,7 @@ from SUITPy import flatmap
 
 import connectivity.constants as const
 import connectivity.io as cio
+from connectivity import model
 from connectivity import data as cdata
 from connectivity import nib_utils as nio
 from connectivity.visualize import get_best_model, get_best_models
@@ -169,28 +170,19 @@ def lasso_maps_cerebellum(
                         fpath=os.path.join(fpath, f'group_lasso_{stat}_{weights}_cerebellum'))
 
 def lasso_maps_cortex(
-    model_name, 
     train_exp,
-    cortex,
-    cerebellum_nifti,
-    cerebellum_gifti,
+    cortex='tessels1002',
+    atlas='MDTB10',
     weights='positive',
     data_type='func',
-    label_names=None,
-    label_RGBA=None,
-    column_names=None
+    alpha=-2
     ):
-    """save lasso maps for cerebellum (count number of non-zero cortical coef)
-
-    There are two different types of maps (given by `map_type`).
-    Functional maps are multiple giftis (cortical weights for each cerebellar subregion)
-    Label map is one winner-take-all map (each cortical region is tagged with "winning" cerebellar region)
+    """save lasso maps for cortex
 
     Args:
-        model_name (str): full name of trained model
         train_exp (str): 'sc1' or 'sc2'
-        cortex (str):
-        cerebellum_fpath (str): full path to cerebellum atlas (*.nii)
+        cortex (str): default is 'tessels1002'
+        atlas (str): default is 'MDTB10'
         weights (str): 'positive' or 'absolute' (neg + pos). default is positive
         data_type (str): 'func' or 'label' or 'prob'. default is 'label'
         probabilistic (bool): default is False. 
@@ -198,73 +190,67 @@ def lasso_maps_cortex(
         label_RGBA (list or None):
         column_names (list or None):
     """
+    column_names = None
+    label_names = None
+
     # set directory
     dirs = const.Dirs(exp_name=train_exp)
 
-    # get model path
-    fpath = os.path.join(dirs.conn_train_dir, model_name)
+    # fetch `atlas`
+    fpath = dataset.fetch_king_2019(data='atl', data_dir=dirs.cerebellar_atlases)['data_dir']
+    cerebellum_nifti = os.path.join(fpath, f'atl-{atlas}_space-SUIT_dseg.nii')
+    cerebellum_gifti = os.path.join(fpath, f'atl-{atlas}_dseg.label.gii')
 
-    # get trained subject models
-    model_fnames = glob.glob(os.path.join(fpath, '*.h5'))
+    # Load and average region data (for all subjs)
+    Ydata = cdata.Dataset(experiment=train_exp, roi="cerebellum_suit", subj_id=const.return_subjs)
+    Ydata.load()
+    Ydata.average_subj()
+    Xdata = cdata.Dataset(experiment=train_exp, roi=cortex, subj_id=const.return_subjs)
+    Xdata.load()
+    Xdata.average_subj()
 
-    cortex_all = []
-    for model_fname in model_fnames:
+    # Read MDTB atlas
+    index = cdata.read_suit_nii(cerebellum_nifti)
+    Y, _ = Ydata.get_data('sess', True)
+    X, _ = Xdata.get_data('sess', True)
+    Ym, reg = cdata.average_by_roi(Y,index)
+    reg_names = [f'Region{idx}' for idx in reg[1:]]
 
-        # read model data and get coeficients
-        data = cio.read_hdf5(model_fname)
-        coef = np.reshape(data.coef_, (data.coef_.shape[1], data.coef_.shape[0]))
-        
-        # get atlas parcels
-        region_number_suit = cdata.read_suit_nii(cerebellum_nifti)
+    # Fit Lasso Model to region-averaged data 
+    fit_roi= model.LASSO(alpha=np.exp(alpha))
+    fit_roi.fit(X,Ym)
+    roi_mean = fit_roi.coef_
 
-        if weights=='positive':
-            coef[coef <= 0] = np.nan
-        elif weights=='absolute':
-            coef[coef == 0] = np.nan
+    if weights=='positive':
+        roi_mean[roi_mean <= 0] = np.nan
+    elif weights=='absolute':
+        roi_mean[roi_mean == 0] = np.nan
 
-        # get average for each parcel
-        data_mean_roi, region_numbers = cdata.average_by_roi(data=coef, region_number_suit=region_number_suit)
-        reg_names = [f'Region{idx}' for idx in region_numbers[1:]]
+    # get data (exclude label 0)
+    data = roi_mean[1:,:]
+    _, num_vert = data.shape
 
-        # get data (exclude label 0)
-        data = data_mean_roi[:,1:]
-        num_vert, _ = data.shape
-
-        # functional or label maps
-        if data_type=='label' or data_type=='prob':
-            labels = np.zeros(num_vert)
-            labels[:] = np.nan
-            # this is the best solution but it is still hacky (for loops etc.)
-            for vert in np.arange(num_vert):
-                if not np.all(np.isnan(data[vert,:])):
-                    labels[vert] = np.nanargmax(data[vert,:]) + 1
-            label_names = reg_names
-            label_RGBA, _, _ = nio.get_gifti_colors(fpath=cerebellum_gifti)
-            data = labels
-
-        cortex_all.append(data)
-
-    # stack subject data
-    cortex_stacked = np.stack(cortex_all)
-
-    # save maps to disk for cortex
-    if data_type=='func':
-        column_names = reg_names
-        group_cortex = np.nanmean(cortex_stacked, axis=0)
-    elif data_type=='label':
-        group_cortex = mode(cortex_stacked, axis=0).mode
-    elif data_type=='prob':
-        num_subjs = cortex_stacked.shape[0]
-        group_labels = mode(cortex_stacked, axis=0).mode
-        group_cortex = sum(cortex_stacked==group_labels) / num_subjs
-        data_type='func'
+    # functional or label maps
+    if data_type=='label':
+        labels = np.zeros(num_vert)
+        labels[:] = np.nan
+        # this is the best solution but it is still hacky (for loops etc.)
+        for vert in np.arange(num_vert):
+            if not np.all(np.isnan(data[vert,:])):
+                labels[vert] = np.nanargmax(data[vert,:]) + 1
+        label_names = reg_names
+        data = labels
     
-    giis, hem_names = cdata.convert_cortex_to_gifti(data=group_cortex.reshape(-1), 
-                                                atlas=cortex, 
-                                                column_names=column_names, 
-                                                label_names=label_names, 
-                                                label_RGBA=label_RGBA,
-                                                data_type=data_type)
+    giis = []
+    for dd in data:
+        gii, hem_names = cdata.convert_cortex_to_gifti(
+                        data=dd, 
+                        atlas=cortex, 
+                        column_names=column_names, 
+                        label_names=label_names, 
+                        label_RGBA=nio.get_gifti_colors(fpath=cerebellum_gifti),
+                        data_type=data_type)
+        giis.append(gii)
 
     return giis, hem_names
 
