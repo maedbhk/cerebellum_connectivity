@@ -6,7 +6,7 @@ import pandas as pd
 import nibabel as nib
 from scipy.stats import mode
 from random import seed, sample
-import neptune
+# import neptune
 from pathlib import Path
 from SUITPy import flatmap
 
@@ -14,7 +14,7 @@ import connectivity.constants as const
 import connectivity.io as cio
 from connectivity import data as cdata
 import connectivity.run_mk as run_connect
-from connectivity import connect_maps as cmaps
+from connectivity import weight_maps as cmaps
 from connectivity import visualize as summary
 
 def split_subjects(
