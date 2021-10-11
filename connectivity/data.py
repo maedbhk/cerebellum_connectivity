@@ -143,7 +143,7 @@ class Dataset:
         if self.data.ndim == 2: 
             raise NameError('data is already 2-dimensional')
         self.data = np.nanmean(self.data, axis = 0)
-
+    
     def get_info(self):
         """Return info for data set in a dataframe."""
         d = {
@@ -155,7 +155,17 @@ class Dataset:
             "task": self.task,
             "cond": self.cond,
         }
-        return pd.DataFrame(d)
+        df = pd.DataFrame(d)
+
+        # get common tasks
+        df['TN'] = df['TN'].str.replace('2', '')
+        common_tasks = ['verbGeneration', 'spatialNavigation', 'motorSequence', 'nBackPic', 'visualSearch', 'ToM', 'actionObservation', 'rest']
+
+        # split tasks into 'common' and 'unique'
+        df.loc[df['TN'].isin(common_tasks), 'split'] = 'common'
+        df.loc[~df['TN'].isin(common_tasks), 'split'] = 'unique'
+
+        return df
 
     def get_info_run(self):
         """Returns info for a typical run only."""
@@ -298,7 +308,8 @@ def convert_cortex_to_gifti(
     data_type='func',
     column_names=None,
     label_names=None,
-    label_RGBA=None
+    label_RGBA=None,
+    hem_names=['L', 'R']
     ):
     """
     Args:
@@ -308,16 +319,16 @@ def convert_cortex_to_gifti(
         column_names (list or None): default is None
         label_names (list or None): default is None
         label_RGBA (list or None): default is None
+        hem_names (list of str): default is ['L', 'R']
     Returns:
         List of gifti-img (left + right hemisphere)
         anatomical_structure (list of hemisphere names)
     """
     dirs = const.Dirs()
-    hemName = ['L','R']
     anatomical_struct = ['CortexLeft','CortexRight']
     # get texture
     gifti_img = []
-    for h,hem in enumerate(hemName):
+    for h,hem in enumerate(hem_names):
         # Load the labels (roi-numbers) from the label.gii files
         gii_path = os.path.join(dirs.reg_dir, 'data', 'group', f'{atlas}.{hem}.label.gii')
         gii_data = nib.load(gii_path)
@@ -343,7 +354,7 @@ def convert_cortex_to_gifti(
                 label_RGBA=label_RGBA)
         gifti_img.append(gii)
         
-    return gifti_img, hemName
+    return gifti_img, hem_names
 
 def get_distance_matrix(roi):
     """

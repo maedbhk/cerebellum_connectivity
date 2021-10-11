@@ -2,17 +2,49 @@
 import os
 import numpy as np
 import nibabel as nib
+import pandas as pd
+from nilearn.image import concat_imgs
 import glob
+from random import seed, sample
 import deepdish as dd
 from scipy.stats import mode
-from SUITPy import flatmap
+from SUITPy import flatmap, atlas
 
 import connectivity.constants as const
 import connectivity.io as cio
 from connectivity import model
 from connectivity import data as cdata
 from connectivity import nib_utils as nio
-from connectivity.visualize import get_best_model, get_best_models
+from connectivity import sparsity as csparse
+from connectivity.visualize import get_best_models
+
+def split_subjects(
+    subj_ids, 
+    test_size=0.3
+    ):
+    """Randomly divide subject list into train and test subsets.
+
+    Train subjects are used to train, validate, and test models(s).
+    Test subjects are kept until the end of the project to evaluate
+    the best (and final) model.
+
+    Args:
+        subj_ids (list): list of subject ids (e.g., ['s01', 's02'])
+        test_size (int): size of test set
+    Returns:
+        train_subjs (list of subject ids), test_subjs (list of subject ids)
+    """
+    # set random seed
+    seed(1)
+
+    # get number of subjects in test (round down)
+    num_in_test = int(np.floor(test_size * len(subj_ids)))
+
+    # select test set
+    test_subjs = list(sample(subj_ids, num_in_test))
+    train_subjs = list([x for x in subj_ids if x not in test_subjs])
+
+    return train_subjs, test_subjs
 
 def save_maps_cerebellum(
     data, 
@@ -169,90 +201,182 @@ def lasso_maps_cerebellum(
         save_maps_cerebellum(data=np.stack(cereb_lasso_all, axis=0), 
                         fpath=os.path.join(fpath, f'group_lasso_{stat}_{weights}_cerebellum'))
 
-def lasso_maps_cortex(
-    train_exp,
+def threshold_weights(data, threshold):
+    """threshold data (2d np array) taking top `threshold` % of strongest weights
+
+    Args: 
+        data (np array): weight matrix; shape n_cerebellar_regs x n_cortical_regs
+        threshold (int): if threshold=5, takes top 5% of strongest weights
+
+    Returns:
+        data (np array); same shape as input. NaN replaces all weights below threshold
+    """
+    num_vert = data.shape[1]
+
+    thresh_regs = round(num_vert*(threshold*.01))
+    sorted_roi = np.argsort(-data, axis=1)
+    sorted_idx = sorted_roi[:,thresh_regs:]
+    np.put_along_axis(data, sorted_idx, np.nan, axis=1)
+
+    return data
+
+def average_region_data(
+    subjs,
+    exp='sc1',
     cortex='tessels1002',
     atlas='MDTB10',
-    weights='positive',
-    data_type='func',
-    alpha=-2
+    method='ridge',
+    alpha=8,
+    weights='absolute',
+    average_subjs=True
     ):
-    """save lasso maps for cortex
+    """average betas across `atlas`
 
-    Args:
-        train_exp (str): 'sc1' or 'sc2'
-        cortex (str): default is 'tessels1002'
-        atlas (str): default is 'MDTB10'
-        weights (str): 'positive' or 'absolute' (neg + pos). default is positive
-        data_type (str): 'func' or 'label' or 'prob'. default is 'label'
-        probabilistic (bool): default is False. 
-        label_names (list or None):
-        label_RGBA (list or None):
-        column_names (list or None):
+    Args: 
+        subjs (list of subjs): 
+        exp (str): default is 'sc1'. other option: 'sc2'
+        cortex (str): cortical atlas. default is 'tessels1002'
+        atlas (str): cerebellar atlas. default is 'MDTB10'
+        average_subjs (bool): average betas across subjs? default is True
+    Returns:    
+       roi_mean, reg_names, colors
     """
-    column_names = None
-    label_names = None
-
     # set directory
-    dirs = const.Dirs(exp_name=train_exp)
+    dirs = const.Dirs(exp_name=exp)
 
     # fetch `atlas`
-    fpath = dataset.fetch_king_2019(data='atl', data_dir=dirs.cerebellar_atlases)['data_dir']
-    cerebellum_nifti = os.path.join(fpath, f'atl-{atlas}_space-SUIT_dseg.nii')
-    cerebellum_gifti = os.path.join(fpath, f'atl-{atlas}_dseg.label.gii')
+    cerebellum_nifti = os.path.join(dirs.cerebellar_atlases, 'king_2019', f'atl-{atlas}_space-SUIT_dseg.nii')
+    cerebellum_gifti = os.path.join(dirs.cerebellar_atlases, 'king_2019', f'atl-{atlas}_dseg.label.gii')
 
-    # Load and average region data (for all subjs)
-    Ydata = cdata.Dataset(experiment=train_exp, roi="cerebellum_suit", subj_id=const.return_subjs)
+    if not os.path.exists(cerebellum_nifti):
+        atlas.fetch_king_2019(data='atl', data_dir=dirs.cerebellar_atlases)
+
+    # Load and average region data (average all subjs)
+    Ydata = cdata.Dataset(experiment=exp, roi="cerebellum_suit", subj_id=subjs) 
     Ydata.load()
-    Ydata.average_subj()
-    Xdata = cdata.Dataset(experiment=train_exp, roi=cortex, subj_id=const.return_subjs)
+    Xdata = cdata.Dataset(experiment=exp, roi=cortex, subj_id=subjs) # const.return_subjs)
     Xdata.load()
-    Xdata.average_subj()
+    
+    if average_subjs:
+        Ydata.average_subj()
+        Xdata.average_subj()
 
     # Read MDTB atlas
     index = cdata.read_suit_nii(cerebellum_nifti)
     Y, _ = Ydata.get_data('sess', True)
     X, _ = Xdata.get_data('sess', True)
     Ym, reg = cdata.average_by_roi(Y,index)
-    reg_names = [f'Region{idx}' for idx in reg[1:]]
 
-    # Fit Lasso Model to region-averaged data 
-    fit_roi= model.LASSO(alpha=np.exp(alpha))
+    reg_names =nio.get_gifti_labels(cerebellum_gifti)[1:]
+    colors,_,_ = nio.get_gifti_colors(cerebellum_gifti, ignore_0=True)
+
+    # Fit Model to region-averaged data 
+    if method=='lasso':
+        model_name = 'Lasso'
+    elif method=='ridge':
+        model_name = 'L2regression'
+
+    fit_roi = getattr(model, model_name)(**{'alpha': alpha})
     fit_roi.fit(X,Ym)
-    roi_mean = fit_roi.coef_
+    roi_mean = fit_roi.coef_[1:]
 
     if weights=='positive':
         roi_mean[roi_mean <= 0] = np.nan
     elif weights=='absolute':
         roi_mean[roi_mean == 0] = np.nan
-
-    # get data (exclude label 0)
-    data = roi_mean[1:,:]
-    _, num_vert = data.shape
-
-    # functional or label maps
-    if data_type=='label':
-        labels = np.zeros(num_vert)
-        labels[:] = np.nan
-        # this is the best solution but it is still hacky (for loops etc.)
-        for vert in np.arange(num_vert):
-            if not np.all(np.isnan(data[vert,:])):
-                labels[vert] = np.nanargmax(data[vert,:]) + 1
-        label_names = reg_names
-        data = labels
     
-    giis = []
-    for dd in data:
-        gii, hem_names = cdata.convert_cortex_to_gifti(
-                        data=dd, 
-                        atlas=cortex, 
-                        column_names=column_names, 
-                        label_names=label_names, 
-                        label_RGBA=nio.get_gifti_colors(fpath=cerebellum_gifti),
-                        data_type=data_type)
-        giis.append(gii)
+    return roi_mean, reg_names, colors
 
-    return giis, hem_names
+def regions_cortex(
+    roi_betas,
+    reg_names,
+    cortex, 
+    threshold=5,
+    ):
+    """save lasso maps for cortex
+
+    Args:
+        roi_betas (np array):
+        reg_names (list of str):
+        cortex (str):
+        threshold (int or None): default is 5 (top 5%)
+    
+    Returns: 
+        giis (list of giftis; 'L', and 'R' hem)
+    """
+    # optionally threshold weights based on `threshold`
+    roi_all = []
+    for hem in ['L', 'R']:
+
+        labels = csparse.get_labels_hemisphere(roi=cortex, hemisphere=hem)
+        roi_mean_hem = roi_betas[:,labels]
+
+        # optionally threshold data
+        if threshold is not None:
+            # optionally threshold weights based on `threshold` (separately for each hem)
+            roi_mean_hem = threshold_weights(data=roi_mean_hem, threshold=threshold)
+        roi_all.append(roi_mean_hem)
+
+    data_all = []
+    for dd in np.hstack(roi_all):
+        gii, _ = cdata.convert_cortex_to_gifti(data=dd, atlas=cortex, column_names=reg_names, data_type='func', hem_names=['L', 'R'])
+        data_all.append(gii[0].darrays[0].data)
+
+    # save to file
+    giis = []
+    for hem in ['L', 'R']:
+        giis.append(nio.make_func_gifti_cortex(np.stack(data_all).T, column_names=reg_names, anatomical_struct=hem))
+    
+    return giis
+
+def distances_cortex(
+    roi_betas,
+    reg_names,
+    colors,
+    cortex, 
+    threshold=5,
+    metric='gmean'
+    ):
+    """save lasso maps for cortex
+
+    Args:
+        roi_betas (np array):
+        reg_names (list of str):
+        colors (np array):
+        cortex (str):
+        threshold (int or None): default is 5 (top 5%)
+        metric (str): default is 'gmean'
+    
+    Returns: 
+        dataframe (pd dataframe)
+    """
+    # get data
+    num_cols, num_vert = roi_betas.shape
+
+    # optionally threshold weights based on `threshold`
+    data = {}
+    roi_dist_all = []
+    for hem in ['L', 'R']:
+
+        labels = csparse.get_labels_hemisphere(roi=cortex, hemisphere=hem)
+        roi_mean_hem = roi_betas[:,labels]
+
+        # optionally threshold data
+        if threshold is not None:
+            # optionally threshold weights based on `threshold` (separately for each hem)
+            roi_mean_hem = threshold_weights(data=roi_mean_hem, threshold=threshold)
+        
+        # distances
+        roi_dist_all.append(csparse.calc_distances(coef=roi_mean_hem, roi=cortex, metric=metric, hem_names=[hem])[hem])
+    
+    data.update({f'distance_{metric}': np.hstack(roi_dist_all), 'hem': np.hstack([np.repeat('L', num_cols), np.repeat('R', num_cols)])})
+        
+    # save to disk  
+    df = pd.DataFrame(np.vstack([colors, colors]), columns=['R','G', 'B', 'A'])
+    data.update({'labels': np.tile(reg_names, 2), 'threshold': np.repeat(threshold*.01, len(df))})
+    dataframe = pd.concat([df, pd.DataFrame.from_dict(data)], axis=1)
+    
+    return dataframe
 
 def best_weights(
     train_exp='sc1',

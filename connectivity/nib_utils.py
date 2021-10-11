@@ -30,7 +30,7 @@ def make_label_gifti_cortex(
         data (np.array):
              numVert x numCol data
         anatomical_struct (string):
-            Anatomical Structure for the Meta-data default= 'CortexLeft'
+            Anatomical Structure for the Meta-data default= 'CortexLeft' or 'L'; 'CortexRight' or 'R'
         label_names (list): 
             List of strings for label names
         column_names (list):
@@ -41,6 +41,12 @@ def make_label_gifti_cortex(
         gifti (label GiftiImage)
 
     """
+
+    if anatomical_struct=='L':
+        anatomical_struct = 'CortexLeft'
+    elif anatomical_struct=='R':
+        anatomical_struct = 'CortexRight'
+
     try:
         num_verts, num_cols = data.shape
     except: 
@@ -127,6 +133,12 @@ def make_func_gifti_cortex(
     Returns:
         gifti (functional GiftiImage)
     """
+
+    if anatomical_struct=='L':
+        anatomical_struct = 'CortexLeft'
+    elif anatomical_struct=='R':
+        anatomical_struct = 'CortexRight'
+
     try:
         num_verts, num_cols = data.shape
     except: 
@@ -415,10 +427,11 @@ def view_cerebellum(
 
 def view_cortex(
     gifti, 
-    surf_mesh=None,
+    surf='inflated',
     title=True,
     save=False,
-    cmap='jet'
+    cmap='jet',
+    column=None
     ):
     """Visualize (optionally saves) data on inflated cortex, plots either *.func.gii or *.label.gii data
 
@@ -427,7 +440,8 @@ def view_cortex(
         surf_mesh (str or None): fullpath to surface mesh file *.inflated.surf.gii. If None, takes mesh from `FS_LR` Dir
         title (bool): default is True
         save (bool): 'default is False',
-        cmap (str or matplotlib colormap): 'default is "jet"' 
+        cmap (str or matplotlib colormap): 'default is "jet"'
+        column (int or None): if gifti has multiple columns, you can choose which column to plot (default plots all)
     """
     # initialise directories
     dirs = const.Dirs()
@@ -441,14 +455,20 @@ def view_cortex(
         hemisphere = 'L'
     
     # get average mesh
-    if not surf_mesh:
-        surf_mesh = os.path.join(dirs.reg_dir, 'data', 'group', f'fs_LR.32k.{hemisphere}.inflated.surf.gii')
+    surf_mesh = os.path.join(dirs.reg_dir, 'data', 'group', f'fs_LR.32k.{hemisphere}.{surf}.surf.gii')
 
     # print title
     fname = Path(gifti).name.split('.')[0]
     title_name = None
 
-    for (data, col) in zip(img.darrays, get_gifti_columns(img)):
+    data_all = img.darrays
+    cols = get_gifti_columns(img)
+
+    if column is not None:
+        data_all = [data_all[column]]
+        cols = [cols[column]]
+
+    for (data, col) in zip(data_all, cols):
 
         if title:
             title_name = f'{fname}-{col}'

@@ -2,6 +2,7 @@ import os
 import numpy as np
 import time
 import deepdish as dd
+import re
 import pandas as pd
 from collections import defaultdict
 from sklearn.model_selection import cross_val_score
@@ -129,7 +130,7 @@ def get_default_eval_config():
             "s31",
         ],
         "mode": "crossed",
-        "splitby": None,
+        "splitby": None, # other options: 'unique', 'common'
         "save_maps": False,
         "threshold": 0.1
     }
@@ -364,30 +365,40 @@ def _get_data(config, exp, subj):
     Returns:
         Y (nd array), Y_info (pd dataframe), X (nd array), X_info (pd dataframe)
     """
-    # Get the data
+    
+    # Get cerebellar data and load mat
     Ydata = cdata.Dataset(
         experiment=exp,
         glm=config["glm"],
         subj_id=subj,
         roi=config["Y_data"],
     )
-
-    # load mat
     Ydata.load_mat()
 
-    Y, Y_info = Ydata.get_data(averaging=config["averaging"], weighting=config["weighting"])
+    # get dataframe
+    df = Ydata.get_info()
 
+    exp_num = int(re.findall('(\d+)', exp)[0])
+    df = df[df['sess']==exp_num]
+
+    # figure out splitby
+    subset = None
+    if config['splitby']=='unique':
+        subset = df[df['split']=="unique"]['cond'].unique()    
+    elif config['splitby']=='common':
+        subset = df[df['split']=="common"]['cond'].unique()    
+
+    Y, Y_info = Ydata.get_data(averaging=config["averaging"], weighting=config["weighting"], subset=subset)
+
+    # Get cortical data and load mat
     Xdata = cdata.Dataset(
         experiment=exp,
         glm=config["glm"],
         subj_id=subj,
         roi=config["X_data"],
     )
-
-    # load mat
     Xdata.load_mat()
-
-    X, X_info = Xdata.get_data(averaging=config["averaging"], weighting=config["weighting"])
+    X, X_info = Xdata.get_data(averaging=config["averaging"], weighting=config["weighting"], subset=subset)
 
     return Y, Y_info, X, X_info
 

@@ -26,18 +26,3 @@ cd /global/scratch/users/maedbhking/projects/cerebellum_connectivity/connectivit
 
 # run connectivity models (eval)
 python3 script_mk.py --train_or_eval="eval"
-
-# run difference scripts
-# python3 script_compare_models.py
-
-# run atlas
-# python3 script_atlas.py
-
-# # run connectivity maps
-# atlases=(MDTB_10Regions MDTB_10subregions Buckner_17Networks)
-# weights=positive
-# data_type=(label func)
-
-# for ((a=0; a<${#atlases[@]}; a++)); do \
-#     for ((b=0; b<${#data_type[@]}; b++)); do \
-#         python3 script_weight_maps.py --atlas=${atlases[a]} --weights=${weights} --data_type=${data_type[b]}; done; done

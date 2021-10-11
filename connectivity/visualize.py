@@ -464,6 +464,39 @@ def plot_best_eval(
         exp_fname = '_'.join(exps)
         plt.savefig(os.path.join(dirs.figure, f'best_eval_{exp_fname}.png'))
 
+def plot_distances(
+    exp='sc1',
+    model_name='best_model',
+    method='ridge',
+    plot=False):
+
+    dirs = const.Dirs(exp_name=exp)
+
+    # get best model
+    model = model_name
+    if model_name=="best_model":
+        model,_ = get_best_model(train_exp=exp, method=method)
+    
+    files = glob.glob(f'{dirs.conn_train_dir}/{model}/*distances_summary*')
+    
+    df_concat = pd.DataFrame()
+    for f in files:
+        df = pd.read_csv(f)
+        df_concat = pd.concat([df_concat, df], axis=0)
+    
+    df_concat['threshold'] = df_concat['threshold']*100
+
+    if plot:
+        sns.factorplot(x='labels', y='distance_gmean', data=df_concat)
+        plt.xticks(rotation=45, ha='right')
+        plt.show()
+
+        sns.factorplot(x='labels', y='distance_gmean', hue='threshold', data=df_concat)
+        plt.xticks(rotation=45, ha='right')
+        plt.show()
+    
+    return df_concat
+
 def map_eval(
     data="R", 
     exp="sc1", 
