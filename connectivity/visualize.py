@@ -7,6 +7,7 @@ from pathlib import Path
 import matplotlib.image as mpimg
 from  matplotlib.ticker import FuncFormatter
 # from PIL import Image
+from surfAnalysisPy.plot import plotmap
 import matplotlib.pyplot as plt
 import re
 from random import seed, sample
@@ -485,6 +486,8 @@ def plot_distances(
         df_concat = pd.concat([df_concat, df], axis=0)
     
     df_concat['threshold'] = df_concat['threshold']*100
+    df_concat['labels'] = df_concat['labels'].str.replace(re.compile('Region|-'), '', regex=True)
+    df_concat['subregion'] = df_concat['labels'].str.replace(re.compile('[^a-zA-Z]'), '', regex=True)
 
     if plot:
         sns.factorplot(x='labels', y='distance_gmean', data=df_concat)
@@ -496,6 +499,50 @@ def plot_distances(
         plt.show()
     
     return df_concat
+
+def map_distances(
+    atlas='MDTB10',
+    threshold=1,
+    column=0,
+    borders=None, 
+    model_name='best_model', 
+    method='ridge',
+    surf='flat',
+    hemisphere='L',
+    colorbar=True,  
+    save=False,
+    title=True):
+
+    """plot cortical map for distances
+    Args:
+        atlas (str): default is 'MDTB10'
+        threshold (int): default is 1
+        column (int): default is 0
+        exp (str): 'sc1' or 'sc2'
+        borders (str or None): fullpath to border file (*.txt)
+        model_name (str): default is 'best_model'
+        method (str): 'ridge' or 'lasso'
+        hemisphere (str): 'L' or 'R'
+        colorbar (bool): default is True
+        save (bool): default is False
+        title (bool): default is True
+    """
+    dirs = const.Dirs(exp_name='sc1')
+
+    # get best model
+    if model_name=="best_model":
+        model_name, cortex = get_best_model(train_exp='sc1', method=method)
+    else:
+        cortex = model_name.split('_')[1] # assumes model_name follows format: `<method>_<cortex>_alpha_<num>`
+    
+    fname = f'group_{method}_{cortex}_{atlas}_threshold_{threshold}.{hemisphere}.func.gii'
+    gifti = os.path.join(dirs.conn_train_dir, model_name, fname)
+    surf_mesh = os.path.join(dirs.reg_dir, 'data', 'group', f'fs_LR.32k.{hemisphere}.{surf}.surf.gii')
+    if not borders:
+        nio.view_cortex(gifti, surf=surf_mesh, title=title, 
+                        save=save, column=column, colorbar=colorbar)
+    else:
+      plotmap(gifti, surf=surf_mesh, borders=borders)
 
 def map_eval(
     data="R", 

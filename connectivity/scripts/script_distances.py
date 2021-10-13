@@ -16,7 +16,8 @@ def distances_summary(
     atlas='MDTB10', 
     weights='absolute', 
     method='ridge', # L2regression
-    thresholds=[1,2,3,4,5]
+    thresholds=[1,3,5],
+    metric='gmean'
     ):
 
     exp = 'sc1'
@@ -48,15 +49,15 @@ def distances_summary(
 
                 # save out cortical distances
                 dataframe = cmaps.distances_cortex(roi_betas, reg_names, colors, 
-                            cortex=cortex, threshold=threshold, metric='gmean')
+                            cortex=cortex, threshold=threshold, metric=metric)
                 dataframe['subj'] = subj
                 dataframe['atlas'] = atlas
+                dataframe['metric'] = metric
                 dataframe_all = pd.concat([dataframe_all, dataframe])
-            dataframe_all.to_csv(os.path.join(fpath, f'distances_summary_{cortex}_{atlas}_threshold_{threshold}.csv'))
+            dataframe_all.to_csv(os.path.join(fpath, f'distances_summary_{cortex}_{atlas}_threshold_{threshold}_{metric}.csv'))
 
 def distances_map(
     atlas='MDTB10', 
-    weights='absolute', 
     method='ridge', # L2regression
     thresholds=[1,2,3,4,5]
     ):
@@ -80,15 +81,15 @@ def distances_map(
 
         # get alpha for each model
         alpha = int(best_model.split('_')[-1])
-        roi_betas, reg_names, colors = cmaps.average_region_data(subjs,
+        roi_betas, reg_names, _ = cmaps.average_region_data(subjs,
                                 exp=exp, cortex=cortex, 
                                 atlas=atlas, method=method, alpha=alpha, 
-                                weights=weights, average_subjs=True)
+                                weights='nonzero', average_subjs=True)
 
         # save out cortical maps
         for threshold in thresholds:
             giis = cmaps.regions_cortex(roi_betas, reg_names, cortex=cortex, threshold=threshold)
-            fname = f'group_{method}_{weights}_{cortex}_{atlas}_threshold_{threshold}'
+            fname = f'group_{method}_{cortex}_{atlas}_threshold_{threshold}'
             [nib.save(gii, os.path.join(fpath, f'{fname}.{hem}.func.gii')) for (gii, hem) in zip(giis, ['L', 'R'])]
 
 def run():

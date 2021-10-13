@@ -431,13 +431,14 @@ def view_cortex(
     title=True,
     save=False,
     cmap='jet',
-    column=None
+    column=None,
+    colorbar=True
     ):
     """Visualize (optionally saves) data on inflated cortex, plots either *.func.gii or *.label.gii data
 
     Args: 
         gifti (str): fullpath to file: *.func.gii or *.label.gii
-        surf_mesh (str or None): fullpath to surface mesh file *.inflated.surf.gii. If None, takes mesh from `FS_LR` Dir
+        surf (str): 'inflated', 'flat', 'pial', 'white'
         title (bool): default is True
         save (bool): 'default is False',
         cmap (str or matplotlib colormap): 'default is "jet"'
@@ -494,7 +495,7 @@ def view_cortex(
                             title=title_name,
                             vmin=np.nanmin(data.data),
                             vmax=1 + np.nanmax(data.data),
-                            colorbar=True
+                            colorbar=colorbar
                             )
         
         view.open_in_browser() 

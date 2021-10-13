@@ -32,14 +32,14 @@ This will automatically create a new virtual environment for you and install all
 
 There are two repos on Github that you will need to clone for this project:
 
-In your top-level `data` directory: 
-    $ git clone https://github.com/DiedrichsenLab/fs_LR_32.git
+Add the following repo to your PATH: 
+    $ git clone git@github.com:DiedrichsenLab/surfAnalysisPy.git
 
 Add the following repo to your PATH:
-    $ git clone https://github.com/DiedrichsenLab/SUITPy.git
+    $ git clone git@github.com:DiedrichsenLab/SUITPy.git
 
 > Note: You can do the latter by adding the following to the `.env` file in the top-level directory of `cerebellum_connectivity`
-    $ PYTHONPATH=$PYTHONPATH:DIRECTORY_NAME
+    $ PYTHONPATH="DIRECTORY_NAME:DIRECTORY_NAME:$PYTHONPATH"
     $ export PYTHONPATH
 
 ## Activating the virtual environment in terminal:

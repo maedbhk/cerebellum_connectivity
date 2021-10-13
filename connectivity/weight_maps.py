@@ -227,7 +227,7 @@ def average_region_data(
     atlas='MDTB10',
     method='ridge',
     alpha=8,
-    weights='absolute',
+    weights='nonzero',
     average_subjs=True
     ):
     """average betas across `atlas`
@@ -237,6 +237,9 @@ def average_region_data(
         exp (str): default is 'sc1'. other option: 'sc2'
         cortex (str): cortical atlas. default is 'tessels1002'
         atlas (str): cerebellar atlas. default is 'MDTB10'
+        method (str): default is 'ridge'
+        alpha (int): default is 8
+        weights (str): default is 'nonzero'. other option is 'positive'
         average_subjs (bool): average betas across subjs? default is True
     Returns:    
        roi_mean, reg_names, colors
@@ -282,7 +285,7 @@ def average_region_data(
 
     if weights=='positive':
         roi_mean[roi_mean <= 0] = np.nan
-    elif weights=='absolute':
+    elif weights=='nonzero':
         roi_mean[roi_mean == 0] = np.nan
     
     return roi_mean, reg_names, colors
@@ -369,7 +372,7 @@ def distances_cortex(
         # distances
         roi_dist_all.append(csparse.calc_distances(coef=roi_mean_hem, roi=cortex, metric=metric, hem_names=[hem])[hem])
     
-    data.update({f'distance_{metric}': np.hstack(roi_dist_all), 'hem': np.hstack([np.repeat('L', num_cols), np.repeat('R', num_cols)])})
+    data.update({f'distance': np.hstack(roi_dist_all), 'hem': np.hstack([np.repeat('L', num_cols), np.repeat('R', num_cols)])})
         
     # save to disk  
     df = pd.DataFrame(np.vstack([colors, colors]), columns=['R','G', 'B', 'A'])
