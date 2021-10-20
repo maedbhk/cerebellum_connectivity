@@ -76,6 +76,9 @@ def surfaces_rois(
         df = pd.concat([df_exist, df])
     df.to_csv(fpath)
 
-if __name__ == "__main__":
-    surfaces_voxels()
+def run():
+    # surfaces_voxels()
     surfaces_rois()
+
+if __name__ == "__main__":
+    run()
