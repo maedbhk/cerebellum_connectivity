@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from nilearn.surface import load_surf_data
 import re
 from random import seed, sample
-from surfplot import Plot
+# from surfplot import Plot
 
 import connectivity.data as cdata
 import connectivity.constants as const
