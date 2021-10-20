@@ -1,5 +1,6 @@
 import click
 import pandas as pd
+import os
 
 from connectivity import weights as cweights
 from connectivity import visualize as summary
