@@ -11,7 +11,7 @@ from matplotlib.colors import LinearSegmentedColormap
 from SUITPy import flatmap
 from SUITPy import atlas as catlas
 from nilearn.plotting import view_surf
-from surfplot import Plot
+# from surfplot import Plot
 
 import connectivity.constants as const
 from connectivity import data as cdata
@@ -623,6 +623,43 @@ def view_cortex_inflated(
         
         if outpath is not None:
             fig.savefig(outpath, dpi=300, bbox_inches='tight')
+    
+    return fig
+
+def view_atlas_cortex(
+    atlas='yeo7',
+    surf_mesh='inflated',  
+    colorbar=True, 
+    borders=False,
+    ):
+    """save cortical atlas to disk (and plot if plot=True)
+
+    Args: 
+        surf_mesh (str): default is 'inflated'. other options: 'flat', 'pial'
+        atlas (str): default is 'yeo7'. 
+        colorbar (bool): default is True
+        borders (bool): default is False
+        plot (bool): default is True
+    """
+    dirs = const.Dirs()
+
+    # get surface mesh
+    lh = nio.get_cortical_surfaces(surf=surf_mesh, hem='L')
+    rh = nio.get_cortical_surfaces(surf=surf_mesh, hem='R')
+
+    # get parcellation
+    lh_data = nio.get_cortical_atlases(atlas_keys=[atlas], hem='L')[0]
+    rh_data = nio.get_cortical_atlases(atlas_keys=[atlas], hem='R')[0]
+
+    _, _, cmap = nio.get_gifti_colors(fpath=lh_data)
+    
+    p = Plot(lh, rh)
+    
+    p.add_layer({'left': lh_data, 'right': rh_data}, cmap=cmap, cbar_label='Cortical Networks', as_outline=borders, cbar=colorbar) # 
+    fig = p.build()
+    plt.show()
+    
+    fig.savefig(os.path.join(dirs.figure, f'{atlas}-cortex.png'), dpi=300, bbox_inches='tight')
     
     return fig
 

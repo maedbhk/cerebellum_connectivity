@@ -62,7 +62,7 @@ def fig1(format='png'):
     dirs = const.Dirs()
     A = os.path.join(dirs.figure, f'yeo7-cortex.png')
     if not os.path.isfile(A):
-        fig = vis.save_cortex(atlas='yeo7')
+        fig = vis.view_atlas_cortex(atlas='yeo7')
 
     A2 = os.path.join(dirs.figure, f'Buckner7-yeo7_wta-cerebellum.png')
     if not os.path.isfile(A2):
@@ -176,4 +176,4 @@ def fig3(format='png'):
     y_pos = 1.1
     labelsize = 30
 
-    
+
