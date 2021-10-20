@@ -34,7 +34,7 @@ def run(
         #                             weights=weights)
 
     # save to disk
-    df_all.to_csv(dirs.conn_train_dir, f'cortical_surface_stats.csv')
+    df_all.to_csv(os.path.join(dirs.conn_train_dir, f'cortical_surface_stats.csv'))
 
 if __name__ == "__main__":
     run()
