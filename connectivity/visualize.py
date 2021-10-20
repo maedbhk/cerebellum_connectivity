@@ -3,35 +3,35 @@ import pandas as pd
 import numpy as np
 import seaborn as sns
 import glob
-from pathlib import Path
 import matplotlib.image as mpimg
-from  matplotlib.ticker import FuncFormatter
-# from PIL import Image
-from surfAnalysisPy.plot import plotmap
+from PIL import Image
 import matplotlib.pyplot as plt
+from nilearn.surface import load_surf_data
 import re
 from random import seed, sample
+from surfplot import Plot
 
 import connectivity.data as cdata
 import connectivity.constants as const
 import connectivity.nib_utils as nio
 
 def plotting_style():
-    plt.style.use('seaborn-poster') # ggplot
-    plt.rc('font', family='sans-serif') 
-    plt.rc('font', serif='Helvetica Neue') 
-    plt.rc('text', usetex='false') 
-    plt.rcParams['lines.linewidth'] = 3
-    plt.rc('xtick', labelsize=18)   
-    plt.rc('ytick', labelsize=18)
-    
-    plt.rcParams.update({'font.size': 20})
-    plt.rcParams["axes.labelweight"] = "regular"
-    plt.rcParams["font.weight"] = "regular"
-    plt.rcParams["savefig.format"] = 'svg'
-    plt.rcParams["savefig.dpi"] = 300
-    plt.rc("axes.spines", top=False, right=False) # removes certain axes
-    plt.rcParams["axes.grid"] = False
+    plt.style.use('seaborn-poster') # ggplot 
+    params = {'axes.labelsize': 25,
+            'axes.titlesize': 25,
+            'legend.fontsize': 20,
+            'xtick.labelsize': 20,
+            'ytick.labelsize': 20,
+            # 'figure.figsize': (10,5),
+            'font.weight': 'regular',
+            # 'font.size': 'regular',
+            'font.family': 'sans-serif',
+            'font.serif': 'Helvetica Neue',
+            'lines.linewidth': 3, 
+            'axes.grid': False,
+            'axes.spines.top': False,
+            'axes.spines.right': False}
+    plt.rcParams.update(params)    
 
 def _concat_summary(summary_name='train_summary'):
     """concat dataframes from different experimenters
@@ -254,7 +254,7 @@ def roi_summary(
                     'labels': list(labels)
                     })
     if plot:
-        plt.figure(figsize=(8,8))
+        #plt.figure(figsize=(8,8))
         df = df.query('regions!=0')
         sns.barplot(x='labels', y='mean', data=df, palette=cpal)
         plt.xticks(rotation='45')
@@ -274,10 +274,10 @@ def plot_train_predictions(
     exps=['sc1'], 
     x='train_num_regions', 
     hue=None, 
-    x_order=None, 
-    hue_order=None, 
-    save=True, 
+    atlases=None,
+    save=False, 
     title=False,
+    ax=None,
     best_models=True,
     methods=['ridge', 'WTA', 'lasso']
     ):
@@ -290,6 +290,10 @@ def plot_train_predictions(
         # get train summary
         dataframe = train_summary(exps=exps)
 
+    # filer out atlases
+    if atlases is not None:
+        dataframe = dataframe[dataframe['train_atlas'].isin(atlases)]
+
     # filter data
     dataframe = dataframe[dataframe['train_model'].isin(methods)]
 
@@ -299,15 +303,17 @@ def plot_train_predictions(
         df1 = dataframe[dataframe['train_name'].isin(model_names)]
     else:
         df1 = dataframe
-    # R
-    # ax = sns.factorplot(x=x, y="train_R_cv", hue=hue, data=df1, order=x_order, hue_order=hue_order, legend=False, size=4, aspect=2)
-    plt.figure(figsize=(8,8))
-    ax = sns.lineplot(x=x, y="train_R_cv", hue=hue, data=df1)
-    plt.xticks(rotation="45", ha="right")
 
-    # ax = sns.lineplot(x=x, y="train_R_cv", hue=hue, data=df1)
+    df1['train_num_regions'] = df1['train_num_regions'].astype(int)
+    # R
+    ax = sns.lineplot(x=x, y="train_R_cv", hue=hue, data=df1, legend=True)
+    ax.legend(loc='best', frameon=False) # bbox_to_anchor=(1, 1)
+    plt.xticks(rotation="45", ha="right")
+    ax.set_xlabel("")
+    ax.set_ylabel("R (CV)")
+
     if hue is not None:
-        plt.legend(fontsize=15, bbox_to_anchor=(1.05, 1), loc='upper left', frameon=False)
+        plt.legend(loc='best', frameon=False)
     plt.xticks(rotation="45", ha="right")
     # ax.lines[-1].set_linestyle("--")
     plt.xlabel("")
@@ -330,7 +336,8 @@ def plot_eval_predictions(
     exps=['sc2'], 
     x='eval_num_regions', 
     hue=None, 
-    save=True,
+    save=False,
+    atlases=['tessels'],
     methods=['ridge', 'WTA'],
     noiseceiling=True,
     ax=None,
@@ -344,26 +351,30 @@ def plot_eval_predictions(
     if dataframe is None:
         dataframe = eval_summary(exps=exps)
 
+    # filer out atlases
+    if atlases is not None:
+        dataframe = dataframe[dataframe['eval_atlas'].isin(atlases)]
+
     # filter out methods
     dataframe = dataframe[dataframe['eval_model'].isin(methods)]
 
     if noiseceiling:
-        plt.figure(figsize=(8,8))
+        # #plt.figure(figsize=(8,8))
         ax = sns.lineplot(x=x, y="R_eval", hue=hue, legend=True, data=dataframe)
         ax = sns.lineplot(x=x, y='eval_noiseceiling_Y', data=dataframe, color='k', ax=ax, ci=None, linewidth=4)
-        ax.legend(fontsize=15, bbox_to_anchor=(1.05, 1), loc='upper left', frameon=False)
+        ax.legend(loc='best', frameon=False) # bbox_to_anchor=(1, 1)
         plt.xticks(rotation="45", ha="right")
         ax.lines[-1].set_linestyle("--")
         ax.set_xlabel("")
         ax.set_ylabel("R")
     else:
-        plt.figure(figsize=(8,8))
+        # #plt.figure(figsize=(8,8))
         sns.factorplot(x=x, y="R_eval", hue=hue, data=dataframe, legend=False, size=4, aspect=2) # size=4, aspect=2, order=x_order, hue_order=hue_order,,
         plt.xticks(rotation="45", ha="right")
         plt.xlabel("")
         plt.ylabel("R")
         if hue:
-            plt.legend(fontsize=15, bbox_to_anchor=(1.05, 1), loc='upper left', frameon=False)
+            plt.legend(loc='best', frameon=False) # bbox_to_anchor=(1, 1)
 
     if title:
         plt.title("Model Evaluation", fontsize=20)
@@ -373,38 +384,6 @@ def plot_eval_predictions(
         exp_fname = '_'.join(exps)
         meth_fname = '_'.join(methods)
         plt.savefig(os.path.join(dirs.figure, f'eval_predictions_{exp_fname}_{meth_fname}_{x}.png'), pad_inches=0, bbox_inches='tight')
-
-def plot_predictions_atlas(
-    data='eval', 
-    method='WTA',
-    save=True,
-    format='png'
-    ):
-    """plot eval predictions
-    """
-    if data=='eval':
-        df = eval_summary()
-        df = df[df['eval_model'].isin([method])]
-        x='eval_num_regions'; y="R_eval"; hue='eval_atlas'
-    elif data=='train':
-        df = train_summary()
-        df = df[df['train_model'].isin([method])]
-        x='train_num_regions'; y='train_R_cv'; hue='train_atlas'
-                                                
-    paper_rc = {'lines.linewidth': 3}                  
-    sns.set_context("paper", rc=paper_rc) 
-    sns.factorplot(x=x, y=y, hue=hue, legend=False, data=df, ax=None, size=4, aspect=2)
-    plt.xticks(rotation='45', fontsize=18);
-    plt.yticks(fontsize=20)
-    plt.legend(fontsize=20, frameon=False, bbox_to_anchor=(1.05, 1), loc='upper left')
-    plt.ylabel('R', fontsize=20)
-    plt.xlabel('# of regions', fontsize=20);
-    paper_rc = {'lines.linewidth': 6}                  
-    sns.set_context("paper", rc=paper_rc) 
-    
-    if save:
-        dirs = const.Dirs()
-        plt.savefig(os.path.join(dirs.figure, f'{method}_predictions_{data}_atlas.{format}'), format=format, dpi=300, bbox_inches="tight")
 
 def plot_best_eval(
     dataframe=None,
@@ -440,7 +419,7 @@ def plot_best_eval(
         {"variable": "data_type", "value": "data"}, axis=1
     )
 
-    plt.figure(figsize=(8, 8))
+    # #plt.figure(figsize=(8, 8))
     splot = sns.barplot(x="data_type", y="data", data=df)
     plt.title(f"Model Evaluation: best model={best_model})", fontsize=20)
     plt.tick_params(axis="both", which="major", labelsize=15)
@@ -500,18 +479,17 @@ def plot_distances(
     
     return df_concat
 
-def map_distances(
+def map_distances_cortex(
     atlas='MDTB10',
     threshold=1,
     column=0,
-    borders=None, 
+    borders=False, 
     model_name='best_model', 
     method='ridge',
     surf='flat',
-    hemisphere='L',
     colorbar=True,  
-    save=False,
-    title=True):
+    outpath=None,
+    title=None):
 
     """plot cortical map for distances
     Args:
@@ -519,12 +497,12 @@ def map_distances(
         threshold (int): default is 1
         column (int): default is 0
         exp (str): 'sc1' or 'sc2'
-        borders (str or None): fullpath to border file (*.txt)
+        borders (bool): default is False
         model_name (str): default is 'best_model'
         method (str): 'ridge' or 'lasso'
         hemisphere (str): 'L' or 'R'
         colorbar (bool): default is True
-        save (bool): default is False
+        outpath (str or None): default is None
         title (bool): default is True
     """
     dirs = const.Dirs(exp_name='sc1')
@@ -535,24 +513,64 @@ def map_distances(
     else:
         cortex = model_name.split('_')[1] # assumes model_name follows format: `<method>_<cortex>_alpha_<num>`
     
-    fname = f'group_{method}_{cortex}_{atlas}_threshold_{threshold}.{hemisphere}.func.gii'
-    gifti = os.path.join(dirs.conn_train_dir, model_name, fname)
-    surf_mesh = os.path.join(dirs.reg_dir, 'data', 'group', f'fs_LR.32k.{hemisphere}.{surf}.surf.gii')
-    if not borders:
-        nio.view_cortex(gifti, surf=surf_mesh, title=title, 
-                        save=save, column=column, colorbar=colorbar)
-    else:
-      plotmap(gifti, surf=surf_mesh, borders=borders)
+    if surf=='flat':
+        # for hemisphere in ['R']:
+        hemisphere = 'L'
+        fname = f'group_{method}_{cortex}_{atlas}_threshold_{threshold}.{hemisphere}.func.gii'
+        gifti = os.path.join(dirs.conn_train_dir, model_name, fname)
+        nio.view_cortex(gifti, surf=surf, hemisphere=hemisphere, title=title, column=column, colorbar=colorbar, outpath=outpath)
 
-def map_eval(
+    elif surf=='inflated':
+        giftis = []
+        for hemisphere in ['L', 'R']:
+            fname = f'group_{method}_{cortex}_{atlas}_threshold_{threshold}.{hemisphere}.func.gii'
+            fpath = os.path.join(dirs.conn_train_dir, model_name, fname)
+            giftis.append(fpath)
+        
+        nio.view_cortex_inflated(giftis, column=column, borders=borders, outpath=outpath)
+
+def subtract_AP_distances(
+    model_name='ridge_tessels1002_alpha_8',
+    threshold=100,
+    method='ridge',
+    atlas='MDTB10-subregions'
+    ):
+    
+    dirs = const.Dirs(exp_name='sc1')
+    
+    if model_name=="best_model":
+        model_name, cortex = get_best_model(train_exp='sc1', method=method)
+    else:
+        cortex = model_name.split('_')[1] # assumes model_name follows format: `<method>_<cortex>_alpha_<num>`
+    
+    # get model fpath
+    fpath = os.path.join(dirs.conn_train_dir, model_name)
+    
+    # which regions are we subtracting?
+    regions_to_subtract = {'L': [1, 11], 'R': [0,10]}
+    
+    giftis_all = []
+    for k,v in regions_to_subtract.items():
+        fname = f'group_{method}_{cortex}_{atlas}_threshold_{threshold}.{k}.func.gii'
+        fpath = os.path.join(dirs.conn_train_dir, model_name, fname)
+        data = load_surf_data(fpath)
+        AP_subtract = data[:,v[0]] - data[:,v[1]]
+        gifti = nio.make_func_gifti_cortex(data=AP_subtract, anatomical_struct=k)
+        giftis_all.append(gifti)
+
+    nio.view_cortex_inflated(giftis_all, column=None, borders=None, outpath=None)
+
+def map_eval_cerebellum(
     data="R", 
     exp="sc1", 
     model_name='best_model', 
     method='ridge',
-    colorbar=False, 
+    atlas='tessels',
+    colorbar=True, 
     cscale=None,  
-    save=True,
-    title=True
+    save=False,
+    title=None,
+    new_figure=True
     ):
     """plot surface map for best model
     Args:
@@ -568,15 +586,20 @@ def map_eval(
     # get best model
     model = model_name
     if model_name=="best_model":
-        model,_ = get_best_model(train_exp=exp, method=method)
-
+        model,_ = get_best_model(train_exp=exp, method=method, atlas=atlas)
+    
     # plot map
-    fname = f"group_{data}_vox.func.gii"
-    view = nio.view_cerebellum(gifti=os.path.join(dirs.conn_eval_dir, model, fname), cscale=cscale, colorbar=colorbar, title=title, save=save)
+    outpath = None
+    if save:
+        outpath = os.path.join(dirs.figure, f'map_{data}_{method}_{model_name}.png')
+
+    fpath = os.path.join(dirs.conn_eval_dir, model, f'group_{data}_vox.func.gii')
+    view = nio.view_cerebellum(gifti=fpath, cscale=cscale, colorbar=colorbar, 
+                    new_figure=new_figure, title=title, outpath=outpath);
 
     return view
 
-def map_lasso(
+def map_lasso_cerebellum(
     model_name,
     exp="sc1", 
     stat='percent',
@@ -598,30 +621,12 @@ def map_lasso(
 
     fname = f"group_lasso_{stat}_positive_cerebellum"
 
-    view = nio.view_cerebellum(gifti=os.path.join(fpath, f'{fname}.func.gii'), cscale=cscale, colorbar=colorbar, title=title, save=save)
+    outpath = None
+    if save:
+        outpath = os.path.join(dirs.figure, f'{fname}.png')
 
-    return view
+    view = nio.view_cerebellum(gifti=os.path.join(fpath, f'{fname}.func.gii'), cscale=cscale, colorbar=colorbar, title=title, outpath=outpath)
 
-def map_model_comparison(
-    model_name, 
-    exp, 
-    colorbar=True, 
-    save=True,
-    title=True
-    ):
-    """plot surface map for best model
-    Args:
-    """
-
-    # initialize directories
-    dirs = const.Dirs(exp_name=exp)
-
-    fpath = os.path.join(dirs.conn_eval_dir, 'model_comparison')
-    fpath_gii = glob.glob(f'{fpath}/*subtract*{model_name}*.gii*')
-    fpath_nii = glob.glob(f'{fpath}/*subtract*{model_name}*.nii*')
-
-    view = nio.view_cerebellum(fpath_gii[0], cscale=None, colorbar=colorbar, title=title, save=save)
-    
     return view
 
 def map_weights(
@@ -648,57 +653,95 @@ def map_weights(
     # get path to model
     fpath = os.path.join(dirs.conn_train_dir, model)
 
+    outpath = None
+    if save:
+        dirs = const.Dirs()
+        outpath = os.path.join(dirs.figure, f'{model}_{structure}_{hemisphere}_weights_{exp}.png')
+
     # plot either cerebellum or cortex
     if structure=='cerebellum':
         surf_fname = fpath + f'/group_weights_{structure}.func.gii'
-        view = nio.view_cerebellum(gifti=surf_fname, cscale=cscale, colorbar=colorbar)
+        view = nio.view_cerebellum(gifti=surf_fname, cscale=cscale, colorbar=colorbar, outpath=outpath)
     elif structure=='cortex':
         surf_fname =  fpath + f"/group_weights_{structure}.{hemisphere}.func.gii"
-        view = nio.view_cortex(gifti=surf_fname, cscale=cscale)
+        view = nio.view_cortex(gifti=surf_fname, cscale=cscale, outpath=outpath)
     else:
         print("gifti must contain either cerebellum or cortex in name")
-    
-    if save:
-        dirs = const.Dirs()
-        plt.savefig(os.path.join(dirs.figure, f'{model}_{structure}_{hemisphere}_weights_{exp}.png'))
 
     return view
 
-def map_atlas(
-    fpath, 
-    structure='cerebellum', 
+def map_atlas_cerebellum(
+    atlas='MDTB10_dseg', 
     colorbar=False,
-    title=False,
-    save=True,
+    title=None,
+    outpath=None,
     ):
-    """General purpose function for plotting (optionally saving) *.label.gii or *.func.gii parcellations (cortex or cerebellum)
+    """General purpose function for plotting (optionally saving) cerebellar atlas
     Args: 
-        fpath (str): full path to atlas
+        atlas (str): default is 'MDTB10_dseg'. other options: 'MDTB10-subregions', 'Buckner7', 'Buckner17', 
         structure (str): default is 'cerebellum'. other options: 'cortex'
         colorbar (bool): default is False. If False, saves colorbar separately to disk.
-        save (bool): default is True.
+        outpath (str or None): outpath to file. if None, not saved to disk.
     Returns:
         viewing object to visualize parcellations
     """
-    if structure=='cerebellum':
-        view = nio.view_cerebellum(gifti=fpath, colorbar=colorbar, title=title, save=save) 
-    elif structure=='cortex':
-        view = nio.view_cortex(gifti=fpath, title=title, save=save)
-    else:
-        print('please provide a valid parcellation')
+    gifti = nio.get_cerebellar_atlases(atlas_keys=[atlas])[0]
+    view = nio.view_cerebellum(gifti=gifti, colorbar=colorbar, title=title, outpath=outpath) 
     
     return view
+
+def map_atlas_cortex(
+    atlas='yeo7',
+    surf_mesh='inflated',  
+    colorbar=True, 
+    borders=False,
+    plot=True
+    ):
+    """save cortical atlas to disk (and plot if plot=True)
+
+    Args: 
+        surf_mesh (str): default is 'inflated'. other options: 'flat', 'pial'
+        atlas (str): default is 'yeo7'. 
+        colorbar (bool): default is True
+        borders (bool): default is False
+        plot (bool): default is True
+    """
+    dirs = const.Dirs()
+
+    # get surface mesh
+    lh = nio.get_cortical_surfaces(surf=surf_mesh, hem='L')
+    rh = nio.get_cortical_surfaces(surf=surf_mesh, hem='R')
+
+    # get parcellation
+    lh_data = nio.get_cortical_atlases(atlas_keys=[atlas], hem='L')[0]
+    rh_data = nio.get_cortical_atlases(atlas_keys=[atlas], hem='R')[0]
+
+    _, _, cmap = nio.get_gifti_colors(fpath=lh_data)
+    
+    p = Plot(lh, rh)
+    
+    p.add_layer({'left': lh_data, 'right': rh_data}, cmap=cmap, cbar_label='Cortical Networks', as_outline=borders, cbar=colorbar) # 
+    fig = p.build()
+
+    if plot:
+        plt.show()
+    
+    fig.savefig(os.path.join(dirs.figure, f'{atlas}-cortex.png'), dpi=300, bbox_inches='tight')
+    
+    return fig
 
 def get_best_model(
     dataframe=None,
     train_exp='sc1',
     method=None,
+    atlas=None
     ):
     """Get idx for best model based on either R_cv (or R_train)
     Args:
         dataframe (pd dataframe or None):
         train_exp (str): 'sc1' or 'sc2' or None (if dataframe is given)
         method (str or None): filter models by method
+        atlas (str or None):
     Returns:
         model name (str)
     """
@@ -710,6 +753,10 @@ def get_best_model(
      # filter dataframe by method
     if method is not None:
         dataframe = dataframe[dataframe['train_model']==method]
+
+    # filter dataframe by atlas
+    if atlas is not None:
+        dataframe = dataframe[dataframe['train_atlas']==atlas]
 
     # get mean values for each model
     tmp = dataframe.groupby(["train_name", "train_X_data"]).mean().reset_index()
@@ -779,8 +826,8 @@ def get_eval_models(
 
     return df['eval_name'].to_list(), np.unique(df['eval_X_data'].to_list())
 
-def show_distance_matrix(
-    roi='tessels0042'
+def plot_distance_matrix(
+    roi='tessels0042',
     ):
     """Plot matrix of distances for cortical `roi`
     Args: 
@@ -793,9 +840,12 @@ def show_distance_matrix(
     distances = cdata.get_distance_matrix(roi=roi)[0]
 
     # visualize matrix of distances
+    ##plt.figure(figsize=(8,8))
     plt.imshow(distances)
     plt.colorbar()
     plt.show()
+
+    return distances
 
 def plot_png(
     fpath, 

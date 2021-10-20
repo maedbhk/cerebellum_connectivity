@@ -27,6 +27,7 @@ click = "*"
 neptune-client = "*"
 cplex = "*"
 cvxopt = "*"
+surfplot = "*"
 
 [requires]
 python_version = "3.7"

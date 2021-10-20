@@ -1,7 +1,6 @@
 import click
 
-from connectivity import weight_maps as cmaps
-from connectivity import visualize as summary
+from connectivity import weights as cmaps
 
 @click.command()
 @click.option("--roi")

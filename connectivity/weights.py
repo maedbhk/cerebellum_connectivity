@@ -2,13 +2,15 @@
 import os
 import numpy as np
 import nibabel as nib
+from numpy.core.fromnumeric import repeat
 import pandas as pd
-from nilearn.image import concat_imgs
+from pathlib import Path
+from collections import defaultdict
 import glob
 from random import seed, sample
 import deepdish as dd
 from scipy.stats import mode
-from SUITPy import flatmap, atlas
+from SUITPy import flatmap
 
 import connectivity.constants as const
 import connectivity.io as cio
@@ -115,7 +117,7 @@ def weight_maps(
     Optionally save out weight maps for cortex and cerebellum separately
 
     Args: 
-        model_name (str): model_name (folder in conn_train_dir)
+        model_name (str): model_name (folder in conn_train_dir). Has to follow naming convention <method>_<cortex>_alpha_<num>
         cortex (str): cortex model name (example: tesselsWB162)
         train_exp (str): 'sc1' or 'sc2'
     Returns: 
@@ -154,15 +156,16 @@ def weight_maps(
     
     return weights_all
 
-def lasso_maps_cerebellum(
+def cortical_surface_voxels(
     model_name, 
-    train_exp,
-    weights='positive'
+    train_exp='sc1',
+    weights='nonzero',
+    save_maps=True
     ):
     """save lasso maps for cerebellum (count number of non-zero cortical coef)
 
     Args:
-        model_name (str): full name of trained model
+        model_name (str): full name of trained model. Has to follow naming convention <method>_<cortex>_alpha_<num>
         train_exp (str): 'sc1' or 'sc2'
         weights (str): 'positive' or 'absolute' (neg. & pos.). default is 'positive'
     """
@@ -175,31 +178,101 @@ def lasso_maps_cerebellum(
     # get trained subject models
     model_fnames = glob.glob(os.path.join(fpath, '*.h5'))
 
-    for stat in ['count', 'percent']:
-        cereb_lasso_all = []
-        for model_fname in model_fnames:
+    n_models = len(model_fnames)
 
-            # read model data
-            data = cio.read_hdf5(model_fname)
+    cereb_all_count = []; cereb_all_percent = []
+    subjs_all = defaultdict(list)
+    for model_fname in model_fnames:
 
-            if weights=='positive':
-                data.coef_[data.coef_ <= 0] = np.nan
-            elif weights=='absolute':
-                data.coef_[data.coef_ == 0] = np.nan
-            
-            # count number of non-zero weights
-            data_nonzero = np.count_nonzero(~np.isnan(data.coef_,), axis=1)
+        # read model data
+        data = cio.read_hdf5(model_fname)
 
-            if stat=='count':
-                pass # do nothing
-            elif stat=='percent':
-                num_regs = data.coef_.shape[1]
-                data_nonzero = np.divide(data_nonzero,  num_regs)*100
-            cereb_lasso_all.append(data_nonzero)
+        if weights=='positive':
+            data.coef_[data.coef_ <= 0] = np.nan
+        elif weights=='nonzero':
+            data.coef_[data.coef_ == 0] = np.nan
+        
+        # count number of non-zero weights
+        data_nonzero = np.count_nonzero(~np.isnan(data.coef_,), axis=1)
+        n_cereb, n_cortex  = data.coef_.shape
 
+        data_nonzero_percent = np.divide(data_nonzero,  n_cortex)*100
+        cereb_all_count.append(data_nonzero)
+        cereb_all_percent.append(data_nonzero_percent)
+
+        model_name = Path(model_fname).stem
+        method, cortex, _, alpha, subj = model_name.split('_')
+        data = {'method': method, 
+                'cortex': method,
+                'subj': subj, 
+                'alpha': int(alpha),
+                'train_exp': train_exp,
+                'weights': weights,
+                }
+        for k,v in data.items():
+            subjs_all[k].append(v)
+    
+    roi_avrg = np.nanmean(np.stack(cereb_all_count, axis=0), axis=1)
+    subjs_all.update({'count': roi_avrg,
+                'percent': np.divide(roi_avrg, n_cortex)*100
+                })
+    
+    if save_maps:
         # save maps to disk for cerebellum
-        save_maps_cerebellum(data=np.stack(cereb_lasso_all, axis=0), 
-                        fpath=os.path.join(fpath, f'group_lasso_{stat}_{weights}_cerebellum'))
+        save_maps_cerebellum(data=np.stack(cereb_all_count, axis=0), fpath=os.path.join(fpath, f'group_lasso_count_{weights}_cerebellum'))
+        save_maps_cerebellum(data=np.stack(cereb_all_percent, axis=0), fpath=os.path.join(fpath, f'group_lasso_percent_{weights}_cerebellum'))
+
+    return pd.DataFrame.from_dict(subjs_all)
+
+def cortical_surface_rois(
+    model_name, 
+    train_exp='sc1',
+    atlas='MDTB10',
+    weights='nonzero'):
+    """save weight summary for cerebellar rois (count number of non-zero cortical coef)
+
+
+    FINISH THIS!!!
+
+    Args:
+        model_name (str): full name of trained model. Has to follow naming convention <method>_<cortex>_alpha_<num>
+        train_exp (str): 'sc1' or 'sc2'
+        weights (str): 'positive' or 'absolute' (neg. & pos.). default is 'positive'
+    """
+    dirs = const.Dirs(exp_name=train_exp)
+
+    subjs, _ = split_subjects(const.return_subjs, test_size=0.3)
+
+    # full path to best model
+    fpath = os.path.join(dirs.conn_train_dir, model_name)
+    if not os.path.exists(fpath):
+        os.makedirs(fpath)
+
+    # get alpha for each model
+    method, cortex, _, alpha = model_name.split('_') # model_name
+
+    data_all = defaultdict(list)
+    for subj in subjs:
+        roi_betas, reg_names, colors = average_region_data(subj,
+                                exp=train_exp, cortex=cortex, 
+                                atlas=atlas, method=method, alpha=int(alpha), 
+                                weights=weights, average_subjs=False)
+        # count number of non-zero weights
+        data_nonzero = np.count_nonzero(~np.isnan(roi_betas,), axis=1)
+        n_cereb, n_cortex = roi_betas.shape
+
+        data = {'count': data_nonzero,
+                'percent': np.divide(data_nonzero,  n_cortex)*100,
+                'subj': np.repeat(subj, n_cereb),
+                'method': np.repeat(method, n_cereb),
+                'cortex': np.repeat(cortex, n_cereb),
+                'reg_names': reg_names
+                }
+        colors_dict = pd.DataFrame.to_dict(pd.DataFrame(colors, columns=['R','G','B','A']), orient='list')
+        data.update(colors_dict)
+        
+        for k, v in data.items():
+            data_all[k].append(v)
 
 def threshold_weights(data, threshold):
     """threshold data (2d np array) taking top `threshold` % of strongest weights
@@ -218,7 +291,7 @@ def threshold_weights(data, threshold):
     sorted_idx = sorted_roi[:,thresh_regs:]
     np.put_along_axis(data, sorted_idx, np.nan, axis=1)
 
-    return data
+    return data, sorted_idx
 
 def average_region_data(
     subjs,
@@ -252,7 +325,7 @@ def average_region_data(
     cerebellum_gifti = os.path.join(dirs.cerebellar_atlases, 'king_2019', f'atl-{atlas}_dseg.label.gii')
 
     if not os.path.exists(cerebellum_nifti):
-        atlas.fetch_king_2019(data='atl', data_dir=dirs.cerebellar_atlases)
+        print(Exception('please download atlases using SUITPy.atlas fetchers'))
 
     # Load and average region data (average all subjs)
     Ydata = cdata.Dataset(experiment=exp, roi="cerebellum_suit", subj_id=subjs) 
@@ -279,7 +352,7 @@ def average_region_data(
     elif method=='ridge':
         model_name = 'L2regression'
 
-    fit_roi = getattr(model, model_name)(**{'alpha': alpha})
+    fit_roi = getattr(model, model_name)(**{'alpha':  np.exp(alpha)})
     fit_roi.fit(X,Ym)
     roi_mean = fit_roi.coef_[1:]
 
@@ -296,7 +369,7 @@ def regions_cortex(
     cortex, 
     threshold=5,
     ):
-    """save lasso maps for cortex
+    """save region maps for cortex
 
     Args:
         roi_betas (np array):
@@ -307,9 +380,11 @@ def regions_cortex(
     Returns: 
         giis (list of giftis; 'L', and 'R' hem)
     """
+    hem_names = ['L', 'R']
+
     # optionally threshold weights based on `threshold`
-    roi_all = []
-    for hem in ['L', 'R']:
+    giis_hem = []
+    for hem in hem_names:
 
         labels = csparse.get_labels_hemisphere(roi=cortex, hemisphere=hem)
         roi_mean_hem = roi_betas[:,labels]
@@ -317,20 +392,19 @@ def regions_cortex(
         # optionally threshold data
         if threshold is not None:
             # optionally threshold weights based on `threshold` (separately for each hem)
-            roi_mean_hem = threshold_weights(data=roi_mean_hem, threshold=threshold)
-        roi_all.append(roi_mean_hem)
+            roi_mean_hem, _ = threshold_weights(data=roi_mean_hem, threshold=threshold)
 
-    data_all = []
-    for dd in np.hstack(roi_all):
-        gii, _ = cdata.convert_cortex_to_gifti(data=dd, atlas=cortex, column_names=reg_names, data_type='func', hem_names=['L', 'R'])
-        data_all.append(gii[0].darrays[0].data)
+        # loop over columns
+        giis = []
+        for dd in roi_mean_hem:
+            gii, _ = cdata.convert_cortex_to_gifti(data=dd, atlas=cortex, column_names=reg_names, data_type='func', hem_names=[hem])
+            giis.append(gii[0].darrays[0].data)
 
-    # save to file
-    giis = []
-    for hem in ['L', 'R']:
-        giis.append(nio.make_func_gifti_cortex(np.stack(data_all).T, column_names=reg_names, anatomical_struct=hem))
+        # make gifti
+        gii_hem = nio.make_func_gifti_cortex(np.vstack(giis).T, column_names=reg_names, anatomical_struct=hem)
+        giis_hem.append(gii_hem)
     
-    return giis
+    return giis_hem
 
 def distances_cortex(
     roi_betas,
@@ -367,7 +441,7 @@ def distances_cortex(
         # optionally threshold data
         if threshold is not None:
             # optionally threshold weights based on `threshold` (separately for each hem)
-            roi_mean_hem = threshold_weights(data=roi_mean_hem, threshold=threshold)
+            roi_mean_hem, _ = threshold_weights(data=roi_mean_hem, threshold=threshold)
         
         # distances
         roi_dist_all.append(csparse.calc_distances(coef=roi_mean_hem, roi=cortex, metric=metric, hem_names=[hem])[hem])

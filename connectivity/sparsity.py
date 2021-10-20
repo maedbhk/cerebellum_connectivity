@@ -1,6 +1,5 @@
 import os
 import numpy as np
-from collections import defaultdict
 from nilearn.surface import load_surf_data
 from scipy.stats.mstats import gmean
 
@@ -106,7 +105,7 @@ def calc_distances(
         roi (str): cortex name e.g., 'tessels1002'
         metric (str): 'gmean', 'nanmean', 'median'
     Returns: 
-        data (dict): dict with keys: left hemi, right hemi, avg hemi
+        data (dict): dict with keys: left hemi, right hemi,
         values are each an np array of shape (voxels x 1)
     """
 

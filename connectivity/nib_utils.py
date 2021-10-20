@@ -9,11 +9,13 @@ import matplotlib as mpl
 import seaborn as sns
 from matplotlib.colors import LinearSegmentedColormap
 from SUITPy import flatmap
+from SUITPy import atlas as catlas
 from nilearn.plotting import view_surf
-from nilearn.surface import load_surf_data
+from surfplot import Plot
 
 import connectivity.constants as const
 from connectivity import data as cdata
+from connectivity import nib_utils as nio
 
 def make_label_gifti_cortex(
     data, 
@@ -255,6 +257,55 @@ def get_gifti_columns(fpath):
 
     return column_names
 
+def get_gifti_anatomical_struct(
+    fpath
+    ):
+    """
+    Returns the primary anatomical structure for a gifti object (*.label.gii or *.func.gii)
+
+    Args:
+        gifti (gifti image):
+            Nibabel Gifti image 
+
+    Returns:
+        anatStruct (string):
+            AnatomicalStructurePrimary attribute from gifti object
+    """
+    if isinstance(fpath, str):
+        img = nib.load(fpath)
+    else:
+        img = fpath
+
+    N = len(img._meta.data)
+    anatStruct = []
+    for i in range(N):
+        if 'AnatomicalStructurePrimary' in img._meta.data[i].name:
+            anatStruct.append(img._meta.data[i].value)
+    return anatStruct
+
+def get_random_rgba(gifti):
+
+    img = nib.load(gifti)
+    data = img.darrays[0].data
+    label_RGBA=None
+    
+    num_labels = len(np.unique(data))
+    zero_label = 0 in data
+    
+    hsv = plt.cm.get_cmap('hsv',num_labels)
+    color = hsv(np.linspace(0,1,num_labels))
+    # Shuffle the order so that colors are more visible
+    color = color[np.random.permutation(num_labels)]
+    label_RGBA = np.zeros([num_labels,4])
+    for i in range(num_labels):
+        label_RGBA[i] = color[i]
+    if zero_label:
+        label_RGBA = np.vstack([[0,0,0,1], label_RGBA[1:,]])
+    
+    cmap = LinearSegmentedColormap.from_list('mylist', label_RGBA, N=len(label_RGBA))
+    
+    return cmap
+
 def binarize_vol(
     imgs, 
     metric='max'
@@ -311,7 +362,7 @@ def subtract_vol(
 
     return nib_obj[0]
 
-def get_cortical_atlases(atlas_keys=None):
+def get_cortical_atlases(atlas_keys=None, hem='L'):
     """returns: fpaths (list of str): list to all cortical atlases (*.label.gii) 
     Args:
         atlas_keys (None or list of str): default is None. 
@@ -323,22 +374,31 @@ def get_cortical_atlases(atlas_keys=None):
     dirs = const.Dirs()
 
     fpaths = []
-    atlases = []
     fpath = os.path.join(dirs.reg_dir, 'data', 'group')
-    for path in list(Path(fpath).rglob('*.label.gii')):
+    for path in list(Path(fpath).rglob(f'*.{hem}.label.gii')):
         path = str(path)
         atlas = path.split('/')[-1].split('.')[0]
         if atlas_keys:
             if any(atlas_key in str(path) for atlas_key in atlas_keys):
                 fpaths.append(path)
-                atlases.append(atlas)
         else:
             fpaths.append(path)
-            atlases.append(atlas)
 
-    return fpaths, atlases
+    return fpaths
 
-def get_cerebellar_atlases(atlas_keys=None):
+def get_cortical_surfaces(surf='flat', hem='L'):
+    """Get cortical surfaces ('flat', 'inflated', 'pial' etc.)
+
+    Args:
+        surf (str): default is 'flat'
+        hem (str): default is 'L'
+    """
+
+    dirs = const.Dirs()
+
+    return os.path.join(dirs.reg_dir, 'data', 'group', f'fs_LR.32k.{hem}.{surf}.surf.gii')
+
+def get_cerebellar_atlases(atlas_keys=None, download_suit_atlases=False):
     """returns: fpaths (list of str): list of full paths to cerebellar atlases
 
     Args:
@@ -350,8 +410,14 @@ def get_cerebellar_atlases(atlas_keys=None):
     """
     dirs = const.Dirs()
 
+    if download_suit_atlases:
+        catlas.fetch_king_2019(data_dir=dirs.cerebellar_atlases, data='atl')
+        catlas.fetch_diedrichsen_2009(data_dir=dirs.cerebellar_atlases)
+        catlas.fetch_buckner_2011(data_dir=dirs.cerebellar_atlases)
+        catlas.fetch_xue_2021(data_dir=dirs.cerebellar_atlases)
+        catlas.fetch_ji_2019(data_dir=dirs.cerebellar_atlases);
+        
     fpaths = []
-    atlases = []
     # get atlases in cerebellar atlases
     fpath = os.path.join(dirs.base_dir, 'cerebellar_atlases')
     for path in list(Path(fpath).rglob('*.label.gii')):
@@ -360,12 +426,10 @@ def get_cerebellar_atlases(atlas_keys=None):
         if atlas_keys:
             if any(atlas_key in str(path) for atlas_key in atlas_keys):
                 fpaths.append(path)
-                atlases.append(atlas)
         else:
             fpaths.append(path)
-            atlases.append(atlas)
     
-    return fpaths, atlases
+    return fpaths
 
 def view_cerebellum(
     gifti, 
@@ -373,7 +437,7 @@ def view_cerebellum(
     colorbar=True, 
     title=True,
     new_figure=True,
-    save=False,
+    outpath=None,
     cmap='jet',
     labels=None
     ):
@@ -418,9 +482,7 @@ def view_cerebellum(
             view.set_title(f'{fname}-{col}')
 
         # save to disk
-        if save:
-            dirs = const.Dirs()
-            outpath = os.path.join(dirs.figure, f'{fname}-{col}.png')
+        if outpath is not None:
             plt.savefig(outpath, dpi=300, format='png', bbox_inches='tight', pad_inches=0)
 
         plt.show()
@@ -428,39 +490,48 @@ def view_cerebellum(
 def view_cortex(
     gifti, 
     surf='inflated',
-    title=True,
-    save=False,
-    cmap='jet',
+    hemisphere='L',
+    data_type='func',
+    title=None,
+    outpath=None,
+    # cmap='jet',
     column=None,
     colorbar=True
     ):
     """Visualize (optionally saves) data on inflated cortex, plots either *.func.gii or *.label.gii data
 
     Args: 
-        gifti (str): fullpath to file: *.func.gii or *.label.gii
+        gifti (str or nib gifti obj): fullpath to file: *.func.gii or *.label.gii
         surf (str): 'inflated', 'flat', 'pial', 'white'
-        title (bool): default is True
-        save (bool): 'default is False',
+        hemisphere (str): 'L' or 'R'. default is 'L'.
+        data_type (str): 'func' or 'label'. default is 'func'. 
+        title (str or None): default is None
+        outpath (str or None): 'default is None, not saved to file
         cmap (str or matplotlib colormap): 'default is "jet"'
         column (int or None): if gifti has multiple columns, you can choose which column to plot (default plots all)
     """
+    plt.clf()
     # initialise directories
     dirs = const.Dirs()
 
     # figure out if 3D or 4D
-    img = nib.load(gifti)
+    if isinstance(gifti, str):
+        img = nib.load(gifti)
+    else:
+        img = gifti
 
-    if '.R.' in gifti:
-        hemisphere = 'R'
-    elif '.L.' in gifti:
-        hemisphere = 'L'
+    if isinstance(gifti, str):
+        if '.R.' in gifti:
+            hemisphere = 'R'
+        elif '.L.' in gifti:
+            hemisphere = 'L'
+        if '.func.' in gifti:
+            data_type = 'func'
+        elif '.label.' in gifti:
+            data_type = 'label'
     
     # get average mesh
     surf_mesh = os.path.join(dirs.reg_dir, 'data', 'group', f'fs_LR.32k.{hemisphere}.{surf}.surf.gii')
-
-    # print title
-    fname = Path(gifti).name.split('.')[0]
-    title_name = None
 
     data_all = img.darrays
     cols = get_gifti_columns(img)
@@ -470,29 +541,24 @@ def view_cortex(
         cols = [cols[column]]
 
     for (data, col) in zip(data_all, cols):
-
-        if title:
-            title_name = f'{fname}-{col}'
         
         # plot to surface
-        if '.func.' in gifti:
+        if data_type=='func':
             view = view_surf(surf_mesh, 
                             surf_map=np.nan_to_num(data.data),  # was np.nan_to_num(data.data)
-                            cmap=cmap, 
+                            # cmap=cmap, 
                             symmetric_cmap=False,
-                            # view=orientation, 
-                            title=title_name
+                            title=title
                             )
             
-        elif '.label.' in gifti:
+        elif data_type=='label':
             _, _, cmap= get_gifti_colors(img, ignore_0=False)
             # labels = get_gifti_labels(img)
             view = view_surf(surf_mesh, 
                             surf_map=data.data, # np.nan_to_num(data.data)
                             cmap=cmap, 
-                            # view=orientation, 
                             symmetric_cmap=False,
-                            title=title_name,
+                            title=title,
                             vmin=np.nanmin(data.data),
                             vmax=1 + np.nanmax(data.data),
                             colorbar=colorbar
@@ -500,9 +566,65 @@ def view_cortex(
         
         view.open_in_browser() 
 
-        if save:
-            outpath = os.path.join(dirs.figure, f'{fname}-{col}.png')
+        # save to disk
+        if outpath is not None:
             plt.savefig(outpath, dpi=300, format='png', bbox_inches='tight', pad_inches=0)
+
+def view_cortex_inflated(
+    giftis,
+    colorbar=True, 
+    borders=False,
+    outpath=None,
+    column=1
+    ):
+    """save cortical atlas to disk (and plot if plot=True)
+
+    Args: 
+        giftis (list of str or list of nib gifti obj): list has to be [left hemisphere, right hemisphere]. 
+        surf_mesh (str): default is 'inflated'. other options: 'flat', 'pial'
+        colorbar (bool): default is True
+        borders (bool): default is False
+        plot (bool): default is True
+    """
+    dirs = const.Dirs()
+
+    # get surface mesh
+    lh = nio.get_cortical_surfaces(surf='inflated', hem='L')
+    rh = nio.get_cortical_surfaces(surf='inflated', hem='R')
+
+    gifti_dict = {}
+    for hem, gifti in zip(['L', 'R'], giftis):
+        if isinstance(gifti, str):
+            gifti_dict.update({hem: nib.load(gifti)})
+        else:
+            gifti_dict.update({hem: gifti})
+
+    data_lh_all = gifti_dict['L'].darrays
+    data_rh_all = gifti_dict['R'].darrays
+    cols = nio.get_gifti_columns(giftis[0])
+
+    if column is not None:
+        data_lh_all = [data_lh_all[column]]
+        data_rh_all = [data_rh_all[column]]
+        cols = [cols[column]]
+
+    for (data_lh, data_rh, col) in zip(data_lh_all, data_rh_all, cols):
+
+        p = Plot(lh, rh, size=(1000, 800)) # views='lateral', zoom=1.2, 
+
+        p.add_layer({'left': np.nan_to_num(data_lh.data), 'right': np.nan_to_num(data_rh.data)}, cmap='YlOrBr_r', cbar_label=col, as_outline=borders, cbar=colorbar) # 
+
+        kws = {'location': 'right', 'label_direction': 45, 'decimals': 3,
+       'fontsize': 12, 'n_ticks': 2, 'shrink': .15, 'aspect': 8,
+       'draw_border': False}
+        fig = p.build(cbar_kws=kws)
+
+        plt.show()
+        
+        if outpath is not None:
+            fig.savefig(outpath, dpi=300, bbox_inches='tight')
+    
+    return fig
 
 def view_colorbar(
     fpath, 

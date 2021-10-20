@@ -14,7 +14,7 @@ import connectivity.constants as const
 import connectivity.io as cio
 from connectivity import data as cdata
 import connectivity.run_mk as run_connect
-from connectivity import weight_maps as cmaps
+from connectivity import weights as cmaps
 from connectivity import visualize as summary
 
 def split_subjects(

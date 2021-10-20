@@ -313,7 +313,7 @@ def convert_cortex_to_gifti(
     ):
     """
     Args:
-        data (np-array): 1d- (cortical regions,)
+        data (np-array): 1d- (cortical regions,). must correspond to `hem_names`
         atlas (str): cortical atlas name (e.g. tessels0162)
         data_type (str): 'func' or 'label'. default is 'func'
         column_names (list or None): default is None
@@ -328,7 +328,7 @@ def convert_cortex_to_gifti(
     anatomical_struct = ['CortexLeft','CortexRight']
     # get texture
     gifti_img = []
-    for h,hem in enumerate(hem_names):
+    for h,(hem,struct) in enumerate(zip(hem_names, anatomical_struct)):
         # Load the labels (roi-numbers) from the label.gii files
         gii_path = os.path.join(dirs.reg_dir, 'data', 'group', f'{atlas}.{hem}.label.gii')
         gii_data = nib.load(gii_path)
@@ -337,19 +337,25 @@ def convert_cortex_to_gifti(
         # ensure that data is float
         data = data.astype(float)
 
-        # Fastest way: prepend a NaN for ROI 0 (medial wall)
+        n_row = data.shape
         c_data = np.insert(data, 0, np.nan)
-        mapped_data = c_data[labels, None]
+        # Fastest way: prepend a NaN for ROI 0 (medial wall)
+        try:
+            mapped_data = c_data[labels, None]
+        except:
+            idx = labels-n_row
+            np.put_along_axis(idx, np.where(idx<0)[0], 0, axis=0)
+            mapped_data = c_data[idx, None]
 
         if data_type=='func':
             gii = nio.make_func_gifti_cortex(
                 data=mapped_data,
-                anatomical_struct=anatomical_struct[h],
+                anatomical_struct=struct,
                 column_names=column_names)
         elif data_type=='label':
             gii = nio.make_label_gifti_cortex(
                 data=mapped_data,
-                anatomical_struct=anatomical_struct[h],
+                anatomical_struct=struct,
                 label_names=label_names,
                 label_RGBA=label_RGBA)
         gifti_img.append(gii)
