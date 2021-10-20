@@ -21,7 +21,7 @@ def surfaces_voxels(
     dirs = const.Dirs(exp_name=exp)
     models, cortex_names = summary.get_best_models(method=method) 
 
-    cortex = 'tessels1002'; models = [f'{method}_{cortex}_alpha_-2']; cortex_names = ['tessels1002']
+    # cortex = 'tessels1002'; models = [f'{method}_{cortex}_alpha_-2']; cortex_names = ['tessels1002']
 
     data_voxels_all = defaultdict(list)
     for (best_model, cortex) in zip(models, cortex_names):
@@ -52,7 +52,7 @@ def surfaces_rois(
     dirs = const.Dirs(exp_name=exp)
     models, cortex_names = summary.get_best_models(method=method) 
 
-    cortex = 'tessels1002'; models = [f'{method}_{cortex}_alpha_-2']; cortex_names = ['tessels1002']
+    # cortex = 'tessels1002'; models = [f'{method}_{cortex}_alpha_-2']; cortex_names = ['tessels1002']
 
     data_rois_all = defaultdict(list)
     for (best_model, cortex) in zip(models, cortex_names):
