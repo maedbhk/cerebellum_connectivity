@@ -37,7 +37,7 @@ def surfaces_voxels(
 
     # save dataframe to disk
     fpath = os.path.join(dirs.conn_train_dir, 'cortical_surface_voxels_stats.csv')
-    df = pd.DataFrame.from_dict(data_voxels_all, orient=list)  
+    df = pd.DataFrame.from_dict(data_voxels_all)  
     if os.path.isfile(fpath):
         df_exist = pd.read_csv(fpath) 
         df = pd.concat([df_exist, df])
