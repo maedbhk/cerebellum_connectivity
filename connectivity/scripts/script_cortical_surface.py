@@ -17,15 +17,16 @@ def run(
     ):
 
     dirs = const.Dirs(exp_name=exp)
-    models, _ = summary.get_best_models(method=method) 
+    models, cortex_names = summary.get_best_models(method=method) 
 
     df_all = pd.DataFrame()
-    for best_model in models:
+    for (best_model, cortex) in zip(models, cortex_names):
 
         df = cweights.cortical_surface_voxels(model_name=best_model, 
                                     train_exp=exp,
                                     weights=weights,
                                     save_maps=False)
+        df['cortex'] = cortex
         df_all = pd.concat([df_all, df])
         
         # cweights.cortical_surface_rois(model_name=best_model, 

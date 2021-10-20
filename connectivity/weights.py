@@ -201,11 +201,10 @@ def cortical_surface_voxels(
         cereb_all_percent.append(data_nonzero_percent)
 
         model_name = Path(model_fname).stem
-        method, cortex, _, alpha, subj = model_name.split('_')
+        method = model_name.split('_')[0]
+        subj = model_name.split('_')[-1]
         data = {'method': method, 
-                'cortex': method,
                 'subj': subj, 
-                'alpha': int(alpha),
                 'train_exp': train_exp,
                 'weights': weights,
                 }
