@@ -294,7 +294,8 @@ def plot_train_predictions(
         dataframe = dataframe[dataframe['train_atlas'].isin(atlases)]
 
     # filter data
-    dataframe = dataframe[dataframe['train_model'].isin(methods)]
+    if methods is not None:
+        dataframe = dataframe[dataframe['train_model'].isin(methods)]
 
     if (best_models):
         # get best model for each method
@@ -355,7 +356,8 @@ def plot_eval_predictions(
         dataframe = dataframe[dataframe['eval_atlas'].isin(atlases)]
 
     # filter out methods
-    dataframe = dataframe[dataframe['eval_model'].isin(methods)]
+    if methods is not None:
+        dataframe = dataframe[dataframe['eval_model'].isin(methods)]
 
     if noiseceiling:
         # #plt.figure(figsize=(8,8))
@@ -450,33 +452,45 @@ def plot_distances(
     plot=False):
 
     dirs = const.Dirs(exp_name=exp)
-
-    # get best model
-    model = model_name
-    if model_name=="best_model":
-        model,_ = get_best_model(train_exp=exp, method=method)
     
-    files = glob.glob(f'{dirs.conn_train_dir}/{model}/*distances_summary*')
+    # load in distances
+    df = pd.read_csv(os.path.join(dirs.conn_train_dir, 'cortical_distances_stats.csv'))
     
-    df_concat = pd.DataFrame()
-    for f in files:
-        df = pd.read_csv(f)
-        df_concat = pd.concat([df_concat, df], axis=0)
-    
-    df_concat['threshold'] = df_concat['threshold']*100
-    df_concat['labels'] = df_concat['labels'].str.replace(re.compile('Region|-'), '', regex=True)
-    df_concat['subregion'] = df_concat['labels'].str.replace(re.compile('[^a-zA-Z]'), '', regex=True)
+    df['threshold'] = df['threshold']*100
+    df['labels'] = df['labels'].str.replace(re.compile('Region|-'), '', regex=True)
+    df['subregion'] = df['labels'].str.replace(re.compile('[^a-zA-Z]'), '', regex=True)
 
     if plot:
-        sns.factorplot(x='labels', y='distance_gmean', data=df_concat)
+        sns.factorplot(x='labels', y='distance_gmean', data=df)
         plt.xticks(rotation=45, ha='right')
         plt.show()
 
-        sns.factorplot(x='labels', y='distance_gmean', hue='threshold', data=df_concat)
+        sns.factorplot(x='labels', y='distance_gmean', hue='threshold', data=df)
         plt.xticks(rotation=45, ha='right')
         plt.show()
     
-    return df_concat
+    return df
+
+def plot_surfaces(
+    exp='sc1',
+    atlases=None,
+    methods=['lasso']
+    ):
+
+    dirs = const.Dirs(exp_name=exp)
+    
+    # load in distances
+    dataframe = pd.read_csv(os.path.join(dirs.conn_train_dir, 'cortical_surface_stats.csv')) 
+
+    dataframe['atlas'] = dataframe['cortex'].apply(lambda x: _add_atlas(x))
+
+    # filer out atlases
+    if atlases is not None:
+        dataframe = dataframe[dataframe['atlas'].isin(atlases)]
+
+    # filter data
+    if methods is not None:
+        dataframe = dataframe[dataframe['method'].isin(methods)]
 
 def map_distances_cortex(
     atlas='MDTB10',
@@ -667,26 +681,6 @@ def map_weights(
     else:
         print("gifti must contain either cerebellum or cortex in name")
 
-    return view
-
-def map_atlas_cerebellum(
-    atlas='MDTB10_dseg', 
-    colorbar=False,
-    title=None,
-    outpath=None,
-    ):
-    """General purpose function for plotting (optionally saving) cerebellar atlas
-    Args: 
-        atlas (str): default is 'MDTB10_dseg'. other options: 'MDTB10-subregions', 'Buckner7', 'Buckner17', 
-        structure (str): default is 'cerebellum'. other options: 'cortex'
-        colorbar (bool): default is False. If False, saves colorbar separately to disk.
-        outpath (str or None): outpath to file. if None, not saved to disk.
-    Returns:
-        viewing object to visualize parcellations
-    """
-    gifti = nio.get_cerebellar_atlases(atlas_keys=[atlas])[0]
-    view = nio.view_cerebellum(gifti=gifti, colorbar=colorbar, title=title, outpath=outpath) 
-    
     return view
 
 def get_best_model(

@@ -158,6 +158,7 @@ def weight_maps(
 
 def cortical_surface_voxels(
     model_name, 
+    cortex,
     train_exp='sc1',
     weights='nonzero',
     save_maps=True
@@ -176,7 +177,10 @@ def cortical_surface_voxels(
     fpath = os.path.join(dirs.conn_train_dir, model_name)
 
     # get trained subject models
-    model_fnames = glob.glob(os.path.join(fpath, '*.h5'))
+    subjs, _ = split_subjects(const.return_subjs, test_size=0.3)
+    model_fnames = []
+    for subj in subjs:
+        model_fnames.append(os.path.join(fpath, f'{model_name}_{subj}.h5'))
 
     n_models = len(model_fnames)
 
@@ -207,6 +211,7 @@ def cortical_surface_voxels(
                 'subj': subj, 
                 'train_exp': train_exp,
                 'weights': weights,
+                'cortex': cortex
                 }
         for k,v in data.items():
             subjs_all[k].append(v)
@@ -221,17 +226,16 @@ def cortical_surface_voxels(
         save_maps_cerebellum(data=np.stack(cereb_all_count, axis=0), fpath=os.path.join(fpath, f'group_lasso_count_{weights}_cerebellum'))
         save_maps_cerebellum(data=np.stack(cereb_all_percent, axis=0), fpath=os.path.join(fpath, f'group_lasso_percent_{weights}_cerebellum'))
 
-    return pd.DataFrame.from_dict(subjs_all)
+    return subjs_all
 
 def cortical_surface_rois(
     model_name, 
+    cortex,
+    alpha,
     train_exp='sc1',
     atlas='MDTB10',
     weights='nonzero'):
     """save weight summary for cerebellar rois (count number of non-zero cortical coef)
-
-
-    FINISH THIS!!!
 
     Args:
         model_name (str): full name of trained model. Has to follow naming convention <method>_<cortex>_alpha_<num>
@@ -248,7 +252,7 @@ def cortical_surface_rois(
         os.makedirs(fpath)
 
     # get alpha for each model
-    method, cortex, _, alpha = model_name.split('_') # model_name
+    method = model_name.split('_')[0] # model_name
 
     data_all = defaultdict(list)
     for subj in subjs:
@@ -265,13 +269,16 @@ def cortical_surface_rois(
                 'subj': np.repeat(subj, n_cereb),
                 'method': np.repeat(method, n_cereb),
                 'cortex': np.repeat(cortex, n_cereb),
-                'reg_names': reg_names
+                'reg_names': reg_names,
+                'atlas': np.repeat(atlas, n_cereb),
                 }
         colors_dict = pd.DataFrame.to_dict(pd.DataFrame(colors, columns=['R','G','B','A']), orient='list')
         data.update(colors_dict)
         
         for k, v in data.items():
-            data_all[k].append(v)
+            data_all[k].extend(v)
+        
+    return data_all
 
 def threshold_weights(data, threshold):
     """threshold data (2d np array) taking top `threshold` % of strongest weights
@@ -429,10 +436,11 @@ def distances_cortex(
     # get data
     num_cols, num_vert = roi_betas.shape
 
+    hem_names = ['L', 'R']
+
     # optionally threshold weights based on `threshold`
-    data = {}
-    roi_dist_all = []
-    for hem in ['L', 'R']:
+    data = {}; roi_dist_all = []
+    for hem in hem_names:
 
         labels = csparse.get_labels_hemisphere(roi=cortex, hemisphere=hem)
         roi_mean_hem = roi_betas[:,labels]
@@ -444,15 +452,20 @@ def distances_cortex(
         
         # distances
         roi_dist_all.append(csparse.calc_distances(coef=roi_mean_hem, roi=cortex, metric=metric, hem_names=[hem])[hem])
-    
-    data.update({f'distance': np.hstack(roi_dist_all), 'hem': np.hstack([np.repeat('L', num_cols), np.repeat('R', num_cols)])})
         
     # save to disk  
-    df = pd.DataFrame(np.vstack([colors, colors]), columns=['R','G', 'B', 'A'])
-    data.update({'labels': np.tile(reg_names, 2), 'threshold': np.repeat(threshold*.01, len(df))})
-    dataframe = pd.concat([df, pd.DataFrame.from_dict(data)], axis=1)
-    
-    return dataframe
+    data.update({'distance': np.hstack(roi_dist_all),
+                'hem': np.hstack([np.repeat('L', num_cols), np.repeat('R', num_cols)]),
+                'labels': np.tile(reg_names, 2), 
+                'threshold': np.repeat(threshold*.01, num_cols*len(hem_names)),
+                'metric': np.repeat(metric, num_cols*len(hem_names)),
+                'cortex': np.repeat(cortex, num_cols*len(hem_names)),
+                })
+
+    df_color = pd.DataFrame(np.vstack([colors, colors]), columns=['R','G', 'B', 'A'])
+    data.update(pd.DataFrame.to_dict(df_color, orient='list'))
+
+    return data
 
 def best_weights(
     train_exp='sc1',

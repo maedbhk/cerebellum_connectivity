@@ -1,3 +1,4 @@
+from collections import defaultdict
 import click
 import os
 import pandas as pd
@@ -18,31 +19,23 @@ def distances_summary(
     atlas='MDTB10', 
     weights='nonzero', 
     method='ridge', # L2regression
-    thresholds=[1,3,5],
-    metric='gmean'
+    thresholds=[1,5],
+    metric='gmean',
+    exp='sc1',
     ):
 
-    exp = 'sc1'
     dirs = const.Dirs(exp_name=exp)
-
     subjs, _ = cweights.split_subjects(const.return_subjs, test_size=0.3)
 
     # models, cortex_names = summary.get_best_models(method=method) 
-    cortex = 'tessels1002'
-    models = [f'{method}_{cortex}_alpha_8']
-    cortex_names = ['tessels1002']
+    cortex = 'tessels1002'; models = [f'{method}_{cortex}_alpha_8']; cortex_names = ['tessels1002']
 
+    data_dict_all = defaultdict(list)
     for (best_model, cortex) in zip(models, cortex_names):
-        
-        # full path to best model
-        fpath = os.path.join(dirs.conn_train_dir, best_model)
-        if not os.path.exists(fpath):
-            os.makedirs(fpath)
 
         # get alpha for each model
         alpha = int(best_model.split('_')[-1])
         for threshold in thresholds:
-            dataframe_all = pd.DataFrame()
             for subj in subjs:
                 roi_betas, reg_names, colors = cweights.average_region_data(subj,
                                         exp=exp, cortex=cortex, 
@@ -50,13 +43,20 @@ def distances_summary(
                                         weights=weights, average_subjs=False)
 
                 # save out cortical distances
-                dataframe = cweights.distances_cortex(roi_betas, reg_names, colors, 
+                data_dict = cweights.distances_cortex(roi_betas, reg_names, colors, 
                             cortex=cortex, threshold=threshold, metric=metric)
-                dataframe['subj'] = subj
-                dataframe['atlas'] = atlas
-                dataframe['metric'] = metric
-                dataframe_all = pd.concat([dataframe_all, dataframe])
-            dataframe_all.to_csv(os.path.join(fpath, f'distances_summary_{cortex}_{atlas}_threshold_{threshold}_{metric}.csv'))
+                data_dict.update({'subj': np.repeat(subj, len(reg_names)*2)})
+
+                for k, v in data_dict.items():
+                    data_dict_all[k].extend(v)
+
+    # save dataframe to disk
+    df = pd.DataFrame.from_dict(data_dict_all) 
+    fpath = os.path.join(dirs.conn_train_dir, 'cortical_distances_stats.csv')  
+    if os.path.isfile(fpath):
+        df_exist = pd.read_csv(fpath) 
+        df = pd.concat([df_exist, df])
+    df.to_csv(fpath)
         
 def distances_map(
     atlas='MDTB10', 

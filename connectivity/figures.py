@@ -170,7 +170,7 @@ def fig3(format='png'):
     dirs = const.Dirs()
 
     fig = plt.figure()
-    gs = GridSpec(2, 3, figure=fig)
+    gs = GridSpec(3, 3, figure=fig)
 
     x_pos = -0.1
     y_pos = 1.1

@@ -24,7 +24,7 @@ export PYTHONPATH
 
 cd /global/scratch/users/maedbhking/projects/cerebellum_connectivity/connectivity/scripts
 
-# run weight maps
+# run cortical surface
 python3 script_cortical_surface.py --exp="sc1" --weights="nonzero" --method="lasso"
 
 # connect_dir=/global/scratch/users/maedbhking/projects/cerebellum_connectivity/data/sc1/conn_models/train/best_weights

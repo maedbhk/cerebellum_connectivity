@@ -663,6 +663,26 @@ def view_atlas_cortex(
     
     return fig
 
+def view_atlas_cerebellum(
+    atlas='MDTB10_dseg', 
+    colorbar=False,
+    title=None,
+    outpath=None,
+    ):
+    """General purpose function for plotting (optionally saving) cerebellar atlas
+    Args: 
+        atlas (str): default is 'MDTB10_dseg'. other options: 'MDTB10-subregions', 'Buckner7', 'Buckner17', 
+        structure (str): default is 'cerebellum'. other options: 'cortex'
+        colorbar (bool): default is False. If False, saves colorbar separately to disk.
+        outpath (str or None): outpath to file. if None, not saved to disk.
+    Returns:
+        viewing object to visualize parcellations
+    """
+    gifti = get_cerebellar_atlases(atlas_keys=[atlas])[0]
+    view = view_cerebellum(gifti=gifti, colorbar=colorbar, title=title, outpath=outpath) 
+    
+    return view
+
 def view_colorbar(
     fpath, 
     outpath=None
