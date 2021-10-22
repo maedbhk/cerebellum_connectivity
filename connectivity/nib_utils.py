@@ -11,7 +11,7 @@ from matplotlib.colors import LinearSegmentedColormap
 from SUITPy import flatmap
 from SUITPy import atlas as catlas
 from nilearn.plotting import view_surf
-# from surfplot import Plot
+from surfplot import Plot
 
 import connectivity.constants as const
 from connectivity import data as cdata
@@ -612,10 +612,10 @@ def view_cortex_inflated(
 
         p = Plot(lh, rh, size=(1000, 800)) # views='lateral', zoom=1.2, 
 
-        p.add_layer({'left': np.nan_to_num(data_lh.data), 'right': np.nan_to_num(data_rh.data)}, cmap='YlOrBr_r', cbar_label=col, as_outline=borders, cbar=colorbar) # 
+        p.add_layer({'left': np.nan_to_num(data_lh.data), 'right': np.nan_to_num(data_rh.data)},  cbar_label=col, as_outline=borders, cbar=colorbar) # cmap='YlOrBr_r',
 
         kws = {'location': 'right', 'label_direction': 45, 'decimals': 3,
-       'fontsize': 12, 'n_ticks': 2, 'shrink': .15, 'aspect': 8,
+       'fontsize': 16, 'n_ticks': 2, 'shrink': .15, 'aspect': 8,
        'draw_border': False}
         fig = p.build(cbar_kws=kws)
 

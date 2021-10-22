@@ -96,7 +96,7 @@ def fig1(format='png'):
     ax4 = fig.add_subplot(gs[1,1])
     fpath = os.path.join(dirs.figure, f'map_R_WTA_best_model.png')
     if not os.path.isfile(fpath):
-        vis.map_eval_cerebellum(data="R", exp="sc1", model_name='best_model', method='WTA', save=True) # ax=ax4
+        vis.map_eval_cerebellum(data="R", exp="sc1", model_name='best_model', method='WTA', outpath=fpath) # ax=ax4
     vis.plot_png(fpath, ax=ax4)
     ax4.axis('off')
     ax4.text(x_pos, y_pos+.05, 'C', transform=ax4.transAxes, fontsize=labelsize, verticalalignment='top')
@@ -138,7 +138,7 @@ def fig2(format='png'):
     ax4 = fig.add_subplot(gs[1,0])
     fpath = os.path.join(dirs.figure, f'map_R_ridge_best_model.png')
     if not os.path.isfile(fpath):
-        vis.map_eval_cerebellum(data="R", exp="sc1", model_name='best_model', method='ridge', save=True);
+        vis.map_eval_cerebellum(data="R", exp="sc1", model_name='best_model', method='ridge', outpath=fpath);
     vis.plot_png(fpath, ax=ax4)
     ax4.axis('off')
     ax4.text(x_pos, y_pos, 'D', transform=ax4.transAxes, fontsize=labelsize, verticalalignment='top')
@@ -146,7 +146,7 @@ def fig2(format='png'):
     ax5 = fig.add_subplot(gs[1,1])
     fpath = os.path.join(dirs.figure, f'map_R_lasso_best_model.png')
     if not os.path.isfile(fpath):
-        vis.map_eval_cerebellum(data="R", exp="sc1", model_name='best_model', method='lasso', save=True, cscale=[0, 0.5]); # ax=ax4
+        vis.map_eval_cerebellum(data="R", exp="sc1", model_name='best_model', method='lasso', outpath=fpath, cscale=[0, 0.5]); # ax=ax4
     vis.plot_png(fpath, ax=ax5)
     ax5.axis('off')
     ax5.text(x_pos, y_pos, 'E', transform=ax5.transAxes, fontsize=labelsize, verticalalignment='top')
@@ -154,7 +154,7 @@ def fig2(format='png'):
     ax6 = fig.add_subplot(gs[1,2])
     fpath = os.path.join(dirs.figure, f'map_noiseceiling_Y_R_ridge_best_model.png')
     if not os.path.isfile(fpath):
-        vis.map_eval_cerebellum(data="noiseceiling_Y_R", exp="sc1", model_name='best_model', method='ridge', save=True); # ax=ax4
+        vis.map_eval_cerebellum(data="noiseceiling_Y_R", exp="sc1", model_name='best_model', method='ridge', outpath=fpath); # ax=ax4
     vis.plot_png(fpath, ax=ax6)
     ax6.axis('off')
     ax6.text(x_pos, y_pos, 'F', transform=ax6.transAxes, fontsize=labelsize, verticalalignment='top')
@@ -170,10 +170,52 @@ def fig3(format='png'):
     dirs = const.Dirs()
 
     fig = plt.figure()
-    gs = GridSpec(3, 3, figure=fig)
+    gs = GridSpec(2, 3, figure=fig)
 
     x_pos = -0.1
     y_pos = 1.1
     labelsize = 30
 
+    ax1 = fig.add_subplot(gs[0,0])
+    fpath = os.path.join(dirs.figure, f'group_lasso_percent_nonzero_cerebellum.png')
+    if not os.path.isfile(fpath):
+        vis.map_lasso_cerebellum(model_name='lasso_tessels1002_alpha_-2', exp="sc1", stat='percent', weights='nonzero', outpath=fpath);
+    vis.plot_png(fpath, ax=ax1)
+    ax1.axis('off')
+    ax1.text(x_pos, y_pos, 'A', transform=ax1.transAxes, fontsize=labelsize, verticalalignment='top')
+
+    ax2 = fig.add_subplot(gs[0,1])
+    ax2.text(x_pos, y_pos, 'B', transform=ax1.transAxes, fontsize=labelsize, verticalalignment='top')
+
+    ax3 = fig.add_subplot(gs[0,2])
+    fpath = os.path.join(dirs.figure, f'group_distances_best_model_MDTB10-reg1.png')
+    if not os.path.isfile(fpath):
+        vis.map_distances_cortex(model_name='best_model', atlas='MDTB10', surf='inflated', threshold=100, column=0, outpath=fpath)
+    vis.plot_png(fpath, ax=ax3)
+    ax3.axis('off')
+    ax3.text(x_pos, y_pos, 'C', transform=ax3.transAxes, fontsize=labelsize, verticalalignment='top')
+
+    ax4 = fig.add_subplot(gs[1,0])
+    fpath = os.path.join(dirs.figure, f'group_distances_best_model_MDTB10-reg2.png')
+    if not os.path.isfile(fpath):
+        vis.map_distances_cortex(model_name='best_model', atlas='MDTB10', surf='inflated', threshold=100, column=1, outpath=fpath)
+    vis.plot_png(fpath, ax=ax4)
+    ax4.axis('off')
+    ax4.text(x_pos, y_pos, 'D', transform=ax4.transAxes, fontsize=labelsize, verticalalignment='top')
+
+    ax5 = fig.add_subplot(gs[1,1])
+    fpath = os.path.join(dirs.figure, f'group_distances_best_model_MDTB10-reg5.png')
+    if not os.path.isfile(fpath):
+        vis.map_distances_cortex(model_name='best_model', atlas='MDTB10', surf='inflated', threshold=100, column=4, outpath=fpath)
+    vis.plot_png(fpath, ax=ax5)
+    ax5.axis('off')
+    ax5.text(x_pos, y_pos, 'E', transform=ax5.transAxes, fontsize=labelsize, verticalalignment='top')
+
+    ax5 = fig.add_subplot(gs[1,2])
+    vis.plot_distances(exp='sc1', cortex='tessels1002', threshold=5, regions=[1,2,5], hue='hem', ax=ax5);
+    ax5.text(x_pos, y_pos, 'F', transform=ax5.transAxes, fontsize=labelsize, verticalalignment='top')
+
+    plt.subplots_adjust(left=0.125, bottom=0.001, right=2.0, top=2.0, wspace=.2, hspace=.3)
+    save_path = os.path.join(dirs.figure, f'fig3.{format}')
+    plt.savefig(save_path, bbox_inches="tight", dpi=300)
 

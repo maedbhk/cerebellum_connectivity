@@ -96,7 +96,7 @@ def distances_map(
         roi_betas_group = np.nanmean(np.stack(roi_betas_all), axis=0)
         giis = cweights.regions_cortex(roi_betas_group, reg_names, cortex=cortex, threshold=threshold)
             
-        fname = f'group_{method}_{cortex}_{atlas}_threshold_{threshold}'
+        fname = f'group_{atlas}_threshold_{threshold}'
         [nib.save(gii, os.path.join(fpath, f'{fname}.{hem}.func.gii')) for (gii, hem) in zip(giis, ['L', 'R'])]
 
 def run():

@@ -211,15 +211,17 @@ def cortical_surface_voxels(
                 'subj': subj, 
                 'train_exp': train_exp,
                 'weights': weights,
-                'cortex': cortex
+                'cortex': cortex, 
+                'reg_names': 'all-regs',
+                'atlas': 'all-voxels'
                 }
         for k,v in data.items():
             subjs_all[k].append(v)
     
     roi_avrg = np.nanmean(np.stack(cereb_all_count, axis=0), axis=1)
     subjs_all.update({'count': roi_avrg,
-                'percent': np.divide(roi_avrg, n_cortex)*100
-                })
+                    'percent': np.divide(roi_avrg, n_cortex)*100
+                    })
     
     if save_maps:
         # save maps to disk for cerebellum
@@ -270,6 +272,8 @@ def cortical_surface_rois(
                 'method': np.repeat(method, n_cereb),
                 'cortex': np.repeat(cortex, n_cereb),
                 'reg_names': reg_names,
+                'weights': weights,
+                'train_exp': train_exp,
                 'atlas': np.repeat(atlas, n_cereb),
                 }
         colors_dict = pd.DataFrame.to_dict(pd.DataFrame(colors, columns=['R','G','B','A']), orient='list')

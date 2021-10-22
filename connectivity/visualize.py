@@ -447,9 +447,14 @@ def plot_best_eval(
 
 def plot_distances(
     exp='sc1',
-    model_name='best_model',
-    method='ridge',
-    plot=False):
+    cortex='tessels1002',
+    threshold=5,
+    regions=[1,2,5],
+    hue='hem',
+    metric='gmean',
+    title=False,
+    save=False,
+    ax=None):
 
     dirs = const.Dirs(exp_name=exp)
     
@@ -459,38 +464,95 @@ def plot_distances(
     df['threshold'] = df['threshold']*100
     df['labels'] = df['labels'].str.replace(re.compile('Region|-'), '', regex=True)
     df['subregion'] = df['labels'].str.replace(re.compile('[^a-zA-Z]'), '', regex=True)
+    df['num_regions'] = df['cortex'].str.split('_').str.get(-1).str.extract('(\d+)')
 
-    if plot:
-        sns.factorplot(x='labels', y='distance_gmean', data=df)
-        plt.xticks(rotation=45, ha='right')
-        plt.show()
+    # filter out methods
+    if regions is not None:
+        df = df[df['labels'].astype(int).isin(regions)]
 
-        sns.factorplot(x='labels', y='distance_gmean', hue='threshold', data=df)
-        plt.xticks(rotation=45, ha='right')
-        plt.show()
+    # filter out methods
+    if cortex is not None:
+        df = df[df['cortex'].isin([cortex])]
+    
+    # filter out methods
+    if metric is not None:
+        df = df[df['metric'].isin([metric])]
+
+    # filter out methods
+    if threshold is not None:
+        df = df[df['threshold'].isin([threshold])]
+
+    ax = sns.lineplot(x='labels', 
+                y='distance', 
+                hue=hue, 
+                data=df,
+                )
+    ax.set_xlabel('Cerebellar Regions')
+    ax.set_ylabel('Average Cortical Distance')
+    plt.xticks(rotation="45", ha="right")
+    if hue:
+        plt.legend(loc='best', frameon=False) # bbox_to_anchor=(1, 1)
+
+    if title:
+        plt.title("Cortical Distances", fontsize=20)
+    
+    if save:
+        dirs = const.Dirs()
+        plt.savefig(os.path.join(dirs.figure, f'cortical_distances_{exp}_{cortex}_{threshold}.png'), pad_inches=0, bbox_inches='tight')
     
     return df
 
 def plot_surfaces(
-    exp='sc1',
-    atlases=None,
-    methods=['lasso']
-    ):
+            exp='sc1',
+            y='percent',    
+            cortex='tessels',
+            weights='nonzero', 
+            method='lasso',
+            hue=None,
+            regions=None,
+            save=False 
+            ):
 
     dirs = const.Dirs(exp_name=exp)
     
     # load in distances
-    dataframe = pd.read_csv(os.path.join(dirs.conn_train_dir, 'cortical_surface_stats.csv')) 
+    dataframe = pd.read_csv(os.path.join(dirs.conn_train_dir, 'cortical_surface_voxels_stats.csv')) 
 
+    dataframe['num_regions'] = dataframe['cortex'].str.split('_').str.get(-1).str.extract('(\d+)').astype(float)
     dataframe['atlas'] = dataframe['cortex'].apply(lambda x: _add_atlas(x))
 
-    # filer out atlases
-    if atlases is not None:
-        dataframe = dataframe[dataframe['atlas'].isin(atlases)]
+        # filter out methods
+    if regions is not None:
+        dataframe = dataframe[dataframe['labels'].astype(int).isin(regions)]
 
-    # filter data
-    if methods is not None:
-        dataframe = dataframe[dataframe['method'].isin(methods)]
+    # filter out methods
+    if cortex is not None:
+        dataframe = dataframe[dataframe['atlas'].isin([cortex])]
+
+    # filter out methods
+    if weights is not None:
+        dataframe = dataframe[dataframe['weights'].isin([weights])]
+
+    # filter out methods
+    if method is not None:
+        dataframe = dataframe[dataframe['method'].isin([method])]
+
+    ax = sns.lineplot(x='num_regions', 
+                y=y, 
+                hue=hue, 
+                data=dataframe,
+                )
+    ax.set_xlabel('')
+    ax.set_ylabel('Percentage of cortical surface')
+    plt.xticks(rotation="45", ha="right")
+    if hue:
+        plt.legend(loc='best', frameon=False) # bbox_to_anchor=(1, 1)
+    
+    if save:
+        dirs = const.Dirs()
+        plt.savefig(os.path.join(dirs.figure, f'cortical_surfaces_{exp}_{y}.png'), pad_inches=0, bbox_inches='tight')
+
+    return dataframe
 
 def map_distances_cortex(
     atlas='MDTB10',
@@ -523,23 +585,18 @@ def map_distances_cortex(
     # get best model
     if model_name=="best_model":
         model_name, cortex = get_best_model(train_exp='sc1', method=method)
-    else:
-        cortex = model_name.split('_')[1] # assumes model_name follows format: `<method>_<cortex>_alpha_<num>`
     
-    if surf=='flat':
-        # for hemisphere in ['R']:
-        hemisphere = 'L'
-        fname = f'group_{method}_{cortex}_{atlas}_threshold_{threshold}.{hemisphere}.func.gii'
-        gifti = os.path.join(dirs.conn_train_dir, model_name, fname)
-        nio.view_cortex(gifti, surf=surf, hemisphere=hemisphere, title=title, column=column, colorbar=colorbar, outpath=outpath)
+    giftis = []
+    for hemisphere in ['L', 'R']:
+        fname = f'group_{atlas}_threshold_{threshold}.{hemisphere}.func.gii'
+        fpath = os.path.join(dirs.conn_train_dir, model_name, fname)
+        giftis.append(fpath)
 
-    elif surf=='inflated':
-        giftis = []
-        for hemisphere in ['L', 'R']:
-            fname = f'group_{method}_{cortex}_{atlas}_threshold_{threshold}.{hemisphere}.func.gii'
-            fpath = os.path.join(dirs.conn_train_dir, model_name, fname)
-            giftis.append(fpath)
-        
+    for i, hem in enumerate(['L', 'R']):
+        if surf=='flat':
+            nio.view_cortex(giftis[i], surf=surf, hemisphere=hem, title=title, column=column, colorbar=colorbar, outpath=outpath)
+    
+    if surf=='inflated':
         nio.view_cortex_inflated(giftis, column=column, borders=borders, outpath=outpath)
 
 def subtract_AP_distances(
@@ -581,7 +638,7 @@ def map_eval_cerebellum(
     atlas='tessels',
     colorbar=True, 
     cscale=None,  
-    save=False,
+    outpath=None,
     title=None,
     new_figure=True
     ):
@@ -600,11 +657,6 @@ def map_eval_cerebellum(
     model = model_name
     if model_name=="best_model":
         model,_ = get_best_model(train_exp=exp, method=method, atlas=atlas)
-    
-    # plot map
-    outpath = None
-    if save:
-        outpath = os.path.join(dirs.figure, f'map_{data}_{method}_{model_name}.png')
 
     fpath = os.path.join(dirs.conn_eval_dir, model, f'group_{data}_vox.func.gii')
     view = nio.view_cerebellum(gifti=fpath, cscale=cscale, colorbar=colorbar, 
@@ -616,10 +668,13 @@ def map_lasso_cerebellum(
     model_name,
     exp="sc1", 
     stat='percent',
+    weights='nonzero',
+    atlas='tessels',
     colorbar=False, 
     cscale=None,  
-    save=True,
-    title=None
+    outpath=None,
+    title=None,
+    new_figure=True
     ):
     """plot surface map for best model
     Args:
@@ -629,17 +684,23 @@ def map_lasso_cerebellum(
     """
     dirs = const.Dirs(exp_name=exp)
 
+    # get best model
+    model = model_name
+    if model_name=="best_model":
+        model,_ = get_best_model(train_exp=exp, method='lasso', atlas=atlas)
+
     # plot map
-    fpath = os.path.join(dirs.conn_train_dir, model_name)
+    fpath = os.path.join(dirs.conn_train_dir, model)
 
-    fname = f"group_lasso_{stat}_positive_cerebellum"
-
-    outpath = None
-    if save:
-        outpath = os.path.join(dirs.figure, f'{fname}.png')
-
-    view = nio.view_cerebellum(gifti=os.path.join(fpath, f'{fname}.func.gii'), cscale=cscale, colorbar=colorbar, title=title, outpath=outpath)
-
+    fname = f"group_lasso_{stat}_{weights}_cerebellum"
+    gifti = os.path.join(fpath, f'{fname}.func.gii')
+    view = nio.view_cerebellum(gifti=gifti, 
+                            cscale=cscale, 
+                            colorbar=colorbar, 
+                            title=title, 
+                            outpath=outpath,
+                            new_figure=new_figure
+                            )
     return view
 
 def map_weights(
