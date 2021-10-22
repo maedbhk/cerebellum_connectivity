@@ -10,7 +10,8 @@ import glob
 from random import seed, sample
 import deepdish as dd
 from scipy.stats import mode
-from SUITPy import flatmap, atlas
+from SUITPy import flatmap
+from SUITPy import atlas as catlas
 
 import connectivity.constants as const
 import connectivity.io as cio
@@ -337,7 +338,7 @@ def average_region_data(
 
     if not os.path.exists(cerebellum_nifti):
         # print(Exception('please download atlases using SUITPy.atlas fetchers'))
-        atlas.fetch_king_2019(data='atl', data_dir=dirs.cerebellar_atlases)
+        catlas.fetch_king_2019(data='atl', data_dir=dirs.cerebellar_atlases)
 
     # Load and average region data (average all subjs)
     Ydata = cdata.Dataset(experiment=exp, roi="cerebellum_suit", subj_id=subjs) 
