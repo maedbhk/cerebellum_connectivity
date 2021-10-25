@@ -28,8 +28,6 @@ def dispersion_summary(
     subjs, _ = cweights.split_subjects(const.return_subjs, test_size=0.3)
 
     # models, cortex_names = summary.get_best_models(method=method) 
-    # models = ['ridge_tessels0042_alpha_4','ridge_tessels0162_alpha_6','ridge_tessels0362_alpha_6']; 
-    # cortex_names = ['tessels0042','tessels0162','tessels0362']; 
 
     models = ['ridge_tessels1002_alpha_8']
     cortex_names = ['tessels1002']
