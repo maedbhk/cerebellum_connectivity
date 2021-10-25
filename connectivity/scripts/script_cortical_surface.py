@@ -7,10 +7,10 @@ from connectivity import weights as cweights
 from connectivity import visualize as summary
 import connectivity.constants as const
 
-# @click.command()
-# @click.option("--exp")
-# @click.option("--weights")
-# @click.option("--method")
+@click.command()
+@click.option("--exp")
+@click.option("--weights")
+@click.option("--method")
 
 def surfaces_voxels(
     exp='sc1',
@@ -98,5 +98,5 @@ def run():
     # surfaces_voxels()
     surfaces_rois()
 
-# if __name__ == "__main__":
-#     run()
+if __name__ == "__main__":
+    run()
