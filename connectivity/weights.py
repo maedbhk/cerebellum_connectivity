@@ -549,6 +549,77 @@ def sparsity_cortex(
 
     return data
 
+def dispersion_cortex(
+    roi_betas,
+    reg_names,
+    colors,
+    cortex
+    ):
+    """Caluclate spherical dispersion for the connectivity weights 
+
+    Args:
+        roi_betas (np array):
+        reg_names (list of str):
+        colors (np array):
+        cortex (str):
+    
+    Returns: 
+        dataframe (pd dataframe)
+    """
+    # get data
+    num_roi, num_parcel = roi_betas.shape
+
+    hem_names = ['L', 'R']
+
+    # optionally threshold weights based on `threshold`
+    data = {}; roi_dist_all = []
+    dist,coord = cdata.get_distance_matrix(cortex)
+
+    df = pd.DataFrame()
+
+    for h,hem in enumerate(hem_names):
+
+        labels = get_labels_hemisphere(roi=cortex, hemisphere=hem)
+        # weights 
+        
+        # Calculate spherical STD as measure 
+        # Get coordinates and move back to 0,0,0 center
+        coord_hem = coord[labels,:]
+        coord_hem[:,0]=coord_hem[:,0]-(h*2-1)*500        
+
+        # Now compute a weoghted spherical mean, variance, and STD 
+        # For each tessel, the weigth w_i is the connectivity weights with negative weights set to zero
+        # also set the sum of weights to 1 
+        w = roi_betas[:,labels]
+        w[w<0]=0
+        w = w / w.sum(axis=1).reshape(-1,1)
+    
+        # We then define a unit vector for each tessel, v_i: 
+        v = coord_hem.copy().T 
+        v=v / np.sqrt(np.sum(v**2,axis=0))
+
+        # Weighted average vector =sum(w_i*v_i)
+        # R is the length of this average vector 
+
+        R = np.zeros((num_roi,))
+        for i in range(num_roi):
+
+            mean_v = np.sum(w[i,:] * v,axis=1)
+            R[i] = np.sqrt(np.sum(mean_v**2))
+
+            #Check with plot
+            # fig = plt.figure()
+            # ax = fig.add_subplot(projection='3d')
+            # ax.scatter(w[i,:]*v[0,:],w[i,:]*v[1,:],w[i,:]*v[2,:])
+            # ax.scatter(mean_v[0],mean_v[1],mean_v[2])
+            # pass
+
+        V = 1-R # This is the Spherical variance
+        Std = np.sqrt(-2*np.log(R)) # This is the spherical standard deviation
+        df1 = pd.DataFrame({'Variance':V,'Std':Std,'hem':h*np.ones((num_roi,)),'roi':np.arange(num_roi)})
+        df = pd.concat([df,df1])
+    return df
+
 def get_labels_hemisphere(
     roi, 
     hemisphere
