@@ -238,7 +238,8 @@ def cortical_surface_rois(
     alpha,
     train_exp='sc1',
     atlas='MDTB10',
-    weights='nonzero'):
+    weights='nonzero'
+    ):
     """save weight summary for cerebellar rois (count number of non-zero cortical coef)
 
     Args:
@@ -276,8 +277,8 @@ def cortical_surface_rois(
                 'method': np.repeat(method, n_cereb),
                 'cortex': np.repeat(cortex, n_cereb),
                 'reg_names': reg_names,
-                'weights': weights,
-                'train_exp': train_exp,
+                'weights': np.repeat(weights, n_cereb),
+                'train_exp': np.repeat(train_exp, n_cereb),
                 'atlas': np.repeat(atlas, n_cereb),
                 }
         colors_dict = pd.DataFrame.to_dict(pd.DataFrame(colors, columns=['R','G','B','A']), orient='list')

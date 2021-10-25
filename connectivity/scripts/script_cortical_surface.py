@@ -7,10 +7,10 @@ from connectivity import weights as cweights
 from connectivity import visualize as summary
 import connectivity.constants as const
 
-@click.command()
-@click.option("--exp")
-@click.option("--weights")
-@click.option("--method")
+# @click.command()
+# @click.option("--exp")
+# @click.option("--weights")
+# @click.option("--method")
 
 def surfaces_voxels(
     exp='sc1',
@@ -68,9 +68,9 @@ def surfaces_rois(
     """
 
     dirs = const.Dirs(exp_name=exp)
-    models, cortex_names = summary.get_best_models(method=method) 
+    # models, cortex_names = summary.get_best_models(method=method) 
 
-    # cortex = 'tessels1002'; models = [f'{method}_{cortex}_alpha_-2']; cortex_names = ['tessels1002']
+    models = [f'{method}_tessels1002_alpha_-2']; cortex_names = ['tessels1002']
 
     data_rois_all = defaultdict(list)
     for (best_model, cortex) in zip(models, cortex_names):
@@ -95,8 +95,8 @@ def surfaces_rois(
     df.to_csv(fpath)
 
 def run():
-    surfaces_voxels()
+    # surfaces_voxels()
     surfaces_rois()
 
-if __name__ == "__main__":
-    run()
+# if __name__ == "__main__":
+#     run()
