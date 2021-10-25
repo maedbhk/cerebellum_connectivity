@@ -53,10 +53,7 @@ def dispersion_summary(
                 df = pd.concat([df,df_res])
         pass
     # save dataframe to disk
-    fpath = os.path.join(dirs.conn_train_dir, 'cortical_distances_stats.csv')  
-    if os.path.isfile(fpath):
-        df_exist = pd.read_csv(fpath) 
-        df = pd.concat([df_exist, df])
+    fpath = os.path.join(dirs.conn_train_dir, 'cortical_dispersion_stats.csv')  
     df.to_csv(fpath)
 
 def dispersion_cortex(roi_betas,
