@@ -510,7 +510,8 @@ def plot_surfaces(
             method='lasso',
             hue=None,
             regions=None,
-            save=False 
+            save=False,
+            ax=None
             ):
 
     dirs = const.Dirs(exp_name=exp)
@@ -518,12 +519,14 @@ def plot_surfaces(
     # load in distances
     dataframe = pd.read_csv(os.path.join(dirs.conn_train_dir, 'cortical_surface_voxels_stats.csv')) 
 
-    dataframe['num_regions'] = dataframe['cortex'].str.split('_').str.get(-1).str.extract('(\d+)').astype(float)
+    # dataframe['labels'] = dataframe['reg_names'].str.replace(re.compile('Region|-'), '', regex=True)
+    # dataframe['subregion'] = dataframe['reg_names'].str.replace(re.compile('[^a-zA-Z]'), '', regex=True)
+    dataframe['num_regions'] = dataframe['cortex'].str.split('_').str.get(-1).str.extract('(\d+)').astype(float)*2
     dataframe['atlas'] = dataframe['cortex'].apply(lambda x: _add_atlas(x))
 
         # filter out methods
-    if regions is not None:
-        dataframe = dataframe[dataframe['labels'].astype(int).isin(regions)]
+    # if regions is not None:
+    #     dataframe = dataframe[dataframe['labels'].astype(int).isin(regions)]
 
     # filter out methods
     if cortex is not None:

@@ -11,7 +11,7 @@ from matplotlib.colors import LinearSegmentedColormap
 from SUITPy import flatmap
 from SUITPy import atlas as catlas
 from nilearn.plotting import view_surf
-# from surfplot import Plot
+from surfplot import Plot
 
 import connectivity.constants as const
 from connectivity import data as cdata
@@ -362,7 +362,10 @@ def subtract_vol(
 
     return nib_obj[0]
 
-def get_cortical_atlases(atlas_keys=None, hem='L'):
+def get_cortical_atlases(
+    atlas_keys=None, 
+    hem='L'
+    ):
     """returns: fpaths (list of str): list to all cortical atlases (*.label.gii) 
     Args:
         atlas_keys (None or list of str): default is None. 
@@ -386,7 +389,10 @@ def get_cortical_atlases(atlas_keys=None, hem='L'):
 
     return fpaths
 
-def get_cortical_surfaces(surf='flat', hem='L'):
+def get_cortical_surfaces(
+    surf='flat', 
+    hem='L'
+    ):
     """Get cortical surfaces ('flat', 'inflated', 'pial' etc.)
 
     Args:

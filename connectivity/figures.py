@@ -185,7 +185,9 @@ def fig3(format='png'):
     ax1.text(x_pos, y_pos, 'A', transform=ax1.transAxes, fontsize=labelsize, verticalalignment='top')
 
     ax2 = fig.add_subplot(gs[0,1])
-    ax2.text(x_pos, y_pos, 'B', transform=ax1.transAxes, fontsize=labelsize, verticalalignment='top')
+    vis.plot_surfaces(y='percent', cortex='tessels', weights='nonzero', method='lasso', ax=ax2);
+    ax2.set_xticks([80, 304, 670, 1190, 1848])
+    ax2.text(x_pos, y_pos, 'B', transform=ax2.transAxes, fontsize=labelsize, verticalalignment='top')
 
     ax3 = fig.add_subplot(gs[0,2])
     fpath = os.path.join(dirs.figure, f'group_distances_best_model_MDTB10-reg1.png')
