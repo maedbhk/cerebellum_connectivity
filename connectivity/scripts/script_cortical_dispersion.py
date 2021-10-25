@@ -24,6 +24,7 @@ def dispersion_summary(
     exp='sc1',
     ):
 
+    df = pd.DataFrame()         # Empty data frame to start with
     dirs = const.Dirs(exp_name=exp)
     subjs = const.return_subjs
 
@@ -31,7 +32,7 @@ def dispersion_summary(
     # cortex = 'tessels1002'; 
     models = ['ridge_tessels0042_alpha_4','ridge_tessels0162_alpha_6','ridge_tessels0362_alpha_6']; 
     cortex_names = ['tessels0042','tessels0162_alpha_6','tessels0362_alpha_6']; 
-
+    
     data_dict_all = defaultdict(list)
     for (best_model, cortex) in zip(models, cortex_names):
 
@@ -44,14 +45,14 @@ def dispersion_summary(
                                         weights='nonzero', average_subjs=False)
 
                 # save out cortical distances
-                V,R = dispersion_cortex(roi_betas, reg_names, colors,cortex=cortex)
-                data_dict.update({'subj': np.repeat(subj, len(reg_names)*2)})
-
-                for k, v in data_dict.items():
-                    data_dict_all[k].extend(v)
-
+                df_res = dispersion_cortex(roi_betas, reg_names, colors,cortex=cortex)
+                N=df_res.shape[0]
+                df_res['sn']=[subj]*N
+                df_res['cortex']=[cortex]*N
+                df_res['method']=[method]*N
+                df = pd.concat([df,df_res])
+        pass
     # save dataframe to disk
-    df = pd.DataFrame.from_dict(data_dict_all) 
     fpath = os.path.join(dirs.conn_train_dir, 'cortical_distances_stats.csv')  
     if os.path.isfile(fpath):
         df_exist = pd.read_csv(fpath) 
@@ -81,6 +82,8 @@ def dispersion_cortex(roi_betas,
     # optionally threshold weights based on `threshold`
     data = {}; roi_dist_all = []
     dist,coord = cdata.get_distance_matrix(cortex)
+
+    df = pd.DataFrame()
 
     for h,hem in enumerate(hem_names):
 
@@ -120,8 +123,10 @@ def dispersion_cortex(roi_betas,
             # pass
 
         V = 1-R # This is the Spherical variance
-        STD = np.sqrt(-2*np.log(R)) # This is the spherical standard deviation
-    return V,STD
+        Std = np.sqrt(-2*np.log(R)) # This is the spherical standard deviation
+        df1 = pd.DataFrame({'Variance':V,'Std':Std,'hem':h*np.ones((num_roi,)),'roi':np.arange(num_roi)})
+        df = pd.concat([df,df1])
+    return df
 
 
 def distances_map(
