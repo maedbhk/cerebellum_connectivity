@@ -12,13 +12,14 @@ import deepdish as dd
 from scipy.stats import mode
 from SUITPy import flatmap
 from SUITPy import atlas as catlas
+from nilearn.surface import load_surf_data
+from scipy.stats.mstats import gmean
 
 import connectivity.constants as const
 import connectivity.io as cio
 from connectivity import model
 from connectivity import data as cdata
 from connectivity import nib_utils as nio
-from connectivity import sparsity as csparse
 from connectivity.visualize import get_best_models
 
 def split_subjects(
@@ -108,11 +109,11 @@ def save_maps_cerebellum(
     return gii_img
 
 def weight_maps(
-        model_name, 
-        cortex, 
-        train_exp,
-        save=True
-        ):
+    model_name, 
+    cortex, 
+    train_exp,
+    save=True
+    ):
     """Get weights for trained models. 
 
     Optionally save out weight maps for cortex and cerebellum separately
@@ -164,12 +165,12 @@ def cortical_surface_voxels(
     weights='nonzero',
     save_maps=True
     ):
-    """save lasso maps for cerebellum (count number of non-zero cortical coef)
+    """save surface maps for cerebellum (count number of non-zero cortical coef)
 
     Args:
         model_name (str): full name of trained model. Has to follow naming convention <method>_<cortex>_alpha_<num>
         train_exp (str): 'sc1' or 'sc2'
-        weights (str): 'positive' or 'absolute' (neg. & pos.). default is 'positive'
+        weights (str): 'positive' or 'nonzero' (neg. & pos.). default is 'nonzero'
     """
     # set directory
     dirs = const.Dirs(exp_name=train_exp)
@@ -244,6 +245,8 @@ def cortical_surface_rois(
         model_name (str): full name of trained model. Has to follow naming convention <method>_<cortex>_alpha_<num>
         train_exp (str): 'sc1' or 'sc2'
         weights (str): 'positive' or 'absolute' (neg. & pos.). default is 'positive'
+    Returns: 
+        data_all (dict): contains keys `count`, `percent`
     """
     dirs = const.Dirs(exp_name=train_exp)
 
@@ -285,15 +288,18 @@ def cortical_surface_rois(
         
     return data_all
 
-def threshold_weights(data, threshold):
-    """threshold data (2d np array) taking top `threshold` % of strongest weights
+def threshold_data(
+    data, 
+    threshold=5
+    ):
+    """threshold data (2d np array) taking top `threshold` % of strongest data
 
     Args: 
         data (np array): weight matrix; shape n_cerebellar_regs x n_cortical_regs
-        threshold (int): if threshold=5, takes top 5% of strongest weights
+        threshold (int): default is 5 (takes top 5% of strongest data)
 
     Returns:
-        data (np array); same shape as input. NaN replaces all weights below threshold
+        data (np array); same shape as `data`. NaN replaces all data below threshold
     """
     num_vert = data.shape[1]
 
@@ -314,7 +320,9 @@ def average_region_data(
     weights='nonzero',
     average_subjs=True
     ):
-    """average betas across `atlas`
+    """fit model using `method` and `alpha` for cerebellar `atlas` and `cortex`.
+    
+    Return betas thresholded using `weights`.
 
     Args: 
         subjs (list of subjs): 
@@ -326,7 +334,9 @@ def average_region_data(
         weights (str): default is 'nonzero'. other option is 'positive'
         average_subjs (bool): average betas across subjs? default is True
     Returns:    
-       roi_mean, reg_names, colors
+       roi_mean (shape; n_cerebellar_regs x n_cortical_regs)
+       reg_names (shape; n_cerebellar_regs,) 
+       colors (shape; n_cerebellar_regs,)
     """
     # set directory
     dirs = const.Dirs(exp_name=exp)
@@ -382,12 +392,14 @@ def regions_cortex(
     cortex, 
     threshold=5,
     ):
-    """save region maps for cortex
+    """save weights maps for `cortex` for cerebellar `reg_names`
+
+    Weights are optionally thresholded. threshold=100 is equivalent to no threshold.
 
     Args:
-        roi_betas (np array):
-        reg_names (list of str):
-        cortex (str):
+        roi_betas (np array): (shape; n_cerebellar_regs x n_cortical_regs)
+        reg_names (list of str): shape (n_cerebellar_regs,)
+        cortex (str): e.g. 'tessels1002'
         threshold (int or None): default is 5 (top 5%)
     
     Returns: 
@@ -399,13 +411,13 @@ def regions_cortex(
     giis_hem = []
     for hem in hem_names:
 
-        labels = csparse.get_labels_hemisphere(roi=cortex, hemisphere=hem)
+        labels = get_labels_hemisphere(roi=cortex, hemisphere=hem)
         roi_mean_hem = roi_betas[:,labels]
 
         # optionally threshold data
         if threshold is not None:
             # optionally threshold weights based on `threshold` (separately for each hem)
-            roi_mean_hem, _ = threshold_weights(data=roi_mean_hem, threshold=threshold)
+            roi_mean_hem, _ = threshold_data(data=roi_mean_hem, threshold=threshold)
 
         # loop over columns
         giis = []
@@ -427,18 +439,18 @@ def distances_cortex(
     threshold=5,
     metric='gmean'
     ):
-    """save lasso maps for cortex
+    """computes stats for distances (using `metric`) for `cortex` for `reg_names`
 
     Args:
-        roi_betas (np array):
-        reg_names (list of str):
-        colors (np array):
-        cortex (str):
+        roi_betas (np array): (shape; n_cerebellar_regs x n_cortical_regs)
+        reg_names (list of str): (shape; n_cerebellar_regs,)
+        colors (np array): (shape; n_cerebellar_regs,)
+        cortex (str): eg. 'tessels1002'
         threshold (int or None): default is 5 (top 5%)
         metric (str): default is 'gmean'
     
     Returns: 
-        dataframe (pd dataframe)
+        data (dict)
     """
     # get data
     num_cols, num_vert = roi_betas.shape
@@ -449,16 +461,17 @@ def distances_cortex(
     data = {}; roi_dist_all = []
     for hem in hem_names:
 
-        labels = csparse.get_labels_hemisphere(roi=cortex, hemisphere=hem)
+        labels = get_labels_hemisphere(roi=cortex, hemisphere=hem)
         roi_mean_hem = roi_betas[:,labels]
 
         # optionally threshold data
         if threshold is not None:
             # optionally threshold weights based on `threshold` (separately for each hem)
-            roi_mean_hem, _ = threshold_weights(data=roi_mean_hem, threshold=threshold)
+            roi_mean_hem, _ = threshold_data(data=roi_mean_hem, threshold=threshold)
         
         # distances
-        roi_dist_all.append(csparse.calc_distances(coef=roi_mean_hem, roi=cortex, metric=metric, hem_names=[hem])[hem])
+        distances_sparse = sparsity_cortex(coef=roi_mean_hem, roi=cortex, metric=metric, hem_names=[hem])[hem]
+        roi_dist_all.append(distances_sparse)
         
     # save to disk  
     data.update({'distance': np.hstack(roi_dist_all),
@@ -473,6 +486,93 @@ def distances_cortex(
     data.update(pd.DataFrame.to_dict(df_color, orient='list'))
 
     return data
+
+def sparsity_cortex(
+    coef, 
+    roi, 
+    metric='gmean', 
+    hem_names=['L', 'R']
+    ):
+    """Compute mean of non-zero cortical distances (measure of cortical sparsity)
+    Args: 
+        coef (np array): (shape; n_cerebellar_regs (or voxels) x n_cortical_regs)
+        roi (str): cortex name e.g., 'tessels1002'
+        metric (str): 'gmean', 'nanmean', 'median'
+    Returns: 
+        data (dict): dict with keys: `L`, `R`
+        values are each an np array of shape (voxels x 1)
+    """
+
+    # get distances between cortical regions; shape (num_reg x num_reg)
+    distances = cdata.get_distance_matrix(roi)[0]
+
+    data = {}
+    for hem in hem_names:
+
+        labels = get_labels_hemisphere(roi, hemisphere=hem)
+
+        # index by `hem`
+        coef_hem = coef
+        if coef.shape[1]==distances.shape[0]:
+            coef_hem = coef[:, labels]
+        
+        dist_hem = distances[labels,:][:,labels]
+
+        # get shape of coefficients
+        regs, _ = coef_hem.shape
+
+        # loop over voxels
+        nonzero_dist = np.zeros((regs, ))
+        for reg in np.arange(regs):
+
+            coef_hem = np.nan_to_num(coef_hem)
+            labels_arr = np.nonzero(coef_hem[reg,:])[0]
+
+            # pairwise distances for nonzero `labels`
+            dist_mat = dist_hem[labels_arr,:][:,labels_arr]
+            dist_labels = dist_mat[np.triu_indices_from(dist_mat, k=1)]
+
+            if metric=='gmean':
+                nonzero_dist[reg] = gmean(dist_labels)
+            elif metric=='nanmean':
+                nonzero_dist[reg] = np.nanmean(dist_labels)
+            elif metric=='nanmedian':
+                nonzero_dist[reg] = np.nanmedian(dist_labels)
+
+        # add to dict
+        data.update({hem: nonzero_dist})
+
+    if len(hem_names)>1:
+        # get average across hemispheres
+        data.update({'L_R': np.nanmean([data['L'], data['R']], axis=0)})
+
+    return data
+
+def get_labels_hemisphere(
+    roi, 
+    hemisphere
+    ):
+    """Get labels for `roi` for `hemisphere`
+    
+    Args: 
+        roi (str): example is 'tessels1002'
+        hemisphere (str): 'L' or 'R'
+    Returns: 
+        1D np array of labels
+    """
+    dirs = const.Dirs(exp_name='sc1')
+    
+    gii_path = os.path.join(dirs.reg_dir, 'data', 'group', f'{roi}.{hemisphere}.label.gii')
+    labels = load_surf_data(gii_path)
+
+    # get min, max labels for each hem
+    min_label = np.nanmin(labels[labels!=0])
+    max_label = np.nanmax(labels[labels!=0])
+
+    # get labels per hemisphere
+    labels_hem = np.arange(min_label-1, max_label)
+    
+    return labels_hem
 
 def best_weights(
     train_exp='sc1',

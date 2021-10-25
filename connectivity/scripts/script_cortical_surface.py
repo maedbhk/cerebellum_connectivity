@@ -17,6 +17,15 @@ def surfaces_voxels(
     weights='nonzero', 
     method='lasso', # L2regression
     ):
+    """compute surface maps for cerebellum (count # of non-zero coefs for each cerebellar voxel)
+
+    Args: 
+        exp (str): default is 'sc1'
+        weights (str): default is 'nonzero'. other option: 'positive'
+        method (str): default is 'lasso', other option is 'L2regression'
+    Returns: 
+        saves cerebellar gifti to disk and summary csv
+    """
 
     dirs = const.Dirs(exp_name=exp)
     models, cortex_names = summary.get_best_models(method=method) 
@@ -48,6 +57,15 @@ def surfaces_rois(
     weights='nonzero', 
     method='lasso', # L2regression
     ):
+    """compute summary data for cerebellar regions (count # of non-zero coefs for each cerebellar region)
+
+    Args: 
+        exp (str): default is 'sc1'
+        weights (str): default is 'nonzero'. other option: 'positive'
+        method (str): default is 'lasso', other option is 'L2regression'
+    Returns: 
+        saves summary csv to disk
+    """
 
     dirs = const.Dirs(exp_name=exp)
     models, cortex_names = summary.get_best_models(method=method) 
@@ -77,7 +95,7 @@ def surfaces_rois(
     df.to_csv(fpath)
 
 def run():
-    # surfaces_voxels()
+    surfaces_voxels()
     surfaces_rois()
 
 if __name__ == "__main__":

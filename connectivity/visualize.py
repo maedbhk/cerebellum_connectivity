@@ -32,7 +32,9 @@ def plotting_style():
             'axes.spines.right': False}
     plt.rcParams.update(params)    
 
-def _concat_summary(summary_name='train_summary'):
+def _concat_summary(
+    summary_name='train_summary'
+    ):
     """concat dataframes from different experimenters
 
     Args: 

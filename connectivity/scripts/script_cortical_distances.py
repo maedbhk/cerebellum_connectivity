@@ -23,6 +23,21 @@ def distances_summary(
     metric='gmean',
     exp='sc1',
     ):
+    """Fit models using `method` for cerebellar regions defined by `atlas`
+
+    Calculate thresholded distances using `thresholds` for each cerebellar region
+
+    Args: 
+        atlas (str): default is 'MDTB10'
+        weights (str): default is 'nonzero'. other option: 'positive'
+        method (str): default is 'ridge'. other option: 'lasso'
+        thresholds (list of int): default is [1,5]
+        metric (str): default is 'gmean'
+        exp (str): default is 'sc1'
+    Returns: 
+        dataframe of distances summary saved to disk
+    """
+
 
     dirs = const.Dirs(exp_name=exp)
     subjs, _ = cweights.split_subjects(const.return_subjs, test_size=0.3)
@@ -64,6 +79,18 @@ def distances_map(
     weights='nonzero',
     threshold=100
     ):
+    """Create cortical maps of average weights for regions defined by `atlas`
+
+    Fit models using `method` for cerebellar regions defined by `atlas` and save corresponding cortical maps
+    
+    Args: 
+        atlas (str): default is 'MDTB10'
+        weights (str): default is 'nonzero'. other option: 'positive'
+        method (str): default is 'ridge'. other option: 'lasso'
+        threshold (int): default is 100 (i.e., no threshold)
+    Returns: 
+        saves cortical weight maps (*.func.gii) to disk for left and right hemispheres
+    """
 
     exp = 'sc1'
     dirs = const.Dirs(exp_name=exp)
