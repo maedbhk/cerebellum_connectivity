@@ -10,11 +10,6 @@ from connectivity import weights as cweights
 from connectivity import visualize as summary
 import connectivity.constants as const
 
-# @click.command()
-# @click.option("--roi")
-# @click.option("--weights")
-# @click.option("--data_type")
-
 def distances_summary(
     atlas='MDTB10', 
     weights='nonzero', 
@@ -23,9 +18,10 @@ def distances_summary(
     metric='gmean',
     exp='sc1',
     ):
-    """Fit models using `method` for cerebellar regions defined by `atlas`
-
-    Calculate thresholded distances using `thresholds` for each cerebellar region
+    """Computes summary of cortical distances for `atlas`-based models
+    
+    Fit models using `method` for cerebellar regions defined by `atlas`. 
+    Thresholds distances using `thresholds` for each cerebellar region
 
     Args: 
         atlas (str): default is 'MDTB10'
@@ -35,7 +31,7 @@ def distances_summary(
         metric (str): default is 'gmean'
         exp (str): default is 'sc1'
     Returns: 
-        dataframe of distances summary saved to disk
+        dataframe of distances (shape; n_cerebellar_regs,)
     """
 
 
@@ -43,7 +39,7 @@ def distances_summary(
     subjs, _ = cweights.split_subjects(const.return_subjs, test_size=0.3)
 
     # models, cortex_names = summary.get_best_models(method=method) 
-    cortex = 'tessels1002'; models = [f'{method}_{cortex}_alpha_8']; cortex_names = ['tessels1002']
+    models = [f'{method}_tessels1002_alpha_8']; cortex_names = ['tessels1002']
 
     data_dict_all = defaultdict(list)
     for (best_model, cortex) in zip(models, cortex_names):
@@ -73,62 +69,8 @@ def distances_summary(
         df = pd.concat([df_exist, df])
     df.to_csv(fpath)
         
-def distances_map(
-    atlas='MDTB10', 
-    method='ridge', 
-    weights='nonzero',
-    threshold=100
-    ):
-    """Create cortical maps of average weights for regions defined by `atlas`
-
-    Fit models using `method` for cerebellar regions defined by `atlas` and save corresponding cortical maps
-    
-    Args: 
-        atlas (str): default is 'MDTB10'
-        weights (str): default is 'nonzero'. other option: 'positive'
-        method (str): default is 'ridge'. other option: 'lasso'
-        threshold (int): default is 100 (i.e., no threshold)
-    Returns: 
-        saves cortical weight maps (*.func.gii) to disk for left and right hemispheres
-    """
-
-    exp = 'sc1'
-    dirs = const.Dirs(exp_name=exp)
-
-    subjs, _ = cweights.split_subjects(const.return_subjs, test_size=0.3)
-
-    # models, cortex_names = summary.get_best_models(method=method) 
-    cortex = 'tessels1002'
-    models = [f'{method}_{cortex}_alpha_8']
-    cortex_names = ['tessels1002']
-
-    for (best_model, cortex) in zip(models, cortex_names):
-        
-        # full path to best model
-        fpath = os.path.join(dirs.conn_train_dir, best_model)
-        if not os.path.exists(fpath):
-            os.makedirs(fpath)
-
-        # get alpha for each model
-        alpha = int(best_model.split('_')[-1])
-        roi_betas_all = []
-        for subj in subjs:
-            roi_betas, reg_names, colors = cweights.average_region_data(subj,
-                                    exp=exp, cortex=cortex, 
-                                    atlas=atlas, method=method, alpha=alpha, 
-                                    weights=weights, average_subjs=False)
-                                    
-            roi_betas_all.append(roi_betas)
-
-        roi_betas_group = np.nanmean(np.stack(roi_betas_all), axis=0)
-        giis = cweights.regions_cortex(roi_betas_group, reg_names, cortex=cortex, threshold=threshold)
-            
-        fname = f'group_{atlas}_threshold_{threshold}'
-        [nib.save(gii, os.path.join(fpath, f'{fname}.{hem}.func.gii')) for (gii, hem) in zip(giis, ['L', 'R'])]
-
 def run():
     distances_summary()
-    distances_map()
 
-# if __name__ == "__main__":
-#     run()
+if __name__ == "__main__":
+    run()
