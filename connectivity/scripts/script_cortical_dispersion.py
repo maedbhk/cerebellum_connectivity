@@ -6,6 +6,7 @@ import nibabel as nib
 import numpy as np
 import deepdish as dd
 import matplotlib.pyplot as plt
+import seaborn as sns 
 
 from connectivity import weights as cweights
 from connectivity import visualize as summary
@@ -17,6 +18,27 @@ import connectivity.constants as const
 # @click.option("--roi")
 # @click.option("--weights")
 # @click.option("--data_type")
+
+def plot_dispersion(method='ridge',cortex='tessels0042'):
+    dirs = const.Dirs(exp_name='sc1')
+    fpath = os.path.join(dirs.conn_train_dir, 'cortical_dispersion_stats.csv')
+    df = pd.read_csv(fpath)
+    df['w_var']=df.Variance*df.sum_w
+    df = df[df.cortex==cortex]
+    T=df.groupby(['sn','roi'])
+    T = T.apply(np.mean)
+    T['var_w'] = T.w_var/T.sum_w
+    fig, axes = plt.subplots(2, 2,figsize=(12,10))
+    sns.lineplot(data=df,x='roi',y='Variance',hue='hem',ax=axes[0,0])
+    axes[0,0].set_title('Spherical Var by Hemisphere')
+    sns.lineplot(data=df,x='roi',y='sum_w',hue='hem',ax=axes[0,1])
+    axes[0,1].set_title('Sum of weights for hemisphere')
+    sns.lineplot(data=T,x='roi',y='Variance',ax=axes[1,0])
+    axes[1,0].set_title('Raw averaged Spherical Var')
+    sns.lineplot(data=T,x='roi',y='var_w',ax=axes[1,1])
+    axes[1,1].set_title('weighted spherical Var')
+    pass
+
 
 def dispersion_summary(
     atlas='MDTB10',
@@ -30,8 +52,8 @@ def dispersion_summary(
 
     # models, cortex_names = summary.get_best_models(method=method)
     # cortex = 'tessels1002';
-    models = ['ridge_tessels0042_alpha_4','ridge_tessels0162_alpha_6','ridge_tessels0362_alpha_6'];
-    cortex_names = ['tessels0042','tessels0162_alpha_6','tessels0362_alpha_6'];
+    models = ['ridge_tessels0042_alpha_4','ridge_tessels0162_alpha_6','ridge_tessels0362_alpha_6','ridge_tessels0642_alpha_8','ridge_tessels1002_alpha_8']
+    cortex_names = ['tessels0042','tessels0162','tessels0362','tessels0642','tessels1002']
 
     data_dict_all = defaultdict(list)
     for (best_model, cortex) in zip(models, cortex_names):
@@ -170,6 +192,8 @@ def distances_map(
 
 def run():
     dispersion_summary()
+    plot_dispersion(cortex='tessels1002')
+    pass
 
 if __name__ == "__main__":
      run()
