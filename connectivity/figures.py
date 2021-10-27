@@ -83,7 +83,7 @@ def fig1(format='png'):
     ax1.text(x_pos, y_pos, 'A', transform=ax1.transAxes, fontsize=labelsize, verticalalignment='top')
     ax1.axis('off')
 
-    ax2 = fig.add_subplot(gs[1, 0])
+    ax1 = fig.add_subplot(gs[1, 0])
     vis.plot_png(A2, ax=ax2)
     ax2.axis('off')
 
@@ -170,7 +170,7 @@ def fig3(format='png'):
     dirs = const.Dirs()
 
     fig = plt.figure()
-    gs = GridSpec(2, 3, figure=fig)
+    gs = GridSpec(2, 4, figure=fig)
 
     x_pos = -0.1
     y_pos = 1.1
@@ -185,39 +185,131 @@ def fig3(format='png'):
     ax1.text(x_pos, y_pos, 'A', transform=ax1.transAxes, fontsize=labelsize, verticalalignment='top')
 
     ax2 = fig.add_subplot(gs[0,1])
-    vis.plot_surfaces(y='percent', cortex='tessels', weights='nonzero', method='lasso', ax=ax2);
-    ax2.set_xticks([80, 304, 670, 1190, 1848])
+    fpath = os.path.join(dirs.figure, f'MDTB_motor_cognitive_regions.png')
+    if not os.path.isfile(fpath):
+        nio.view_atlas_cerebellum(outpath=fpath, labels=[1,2,5])
+    vis.plot_png(fpath, ax=ax2)
     ax2.text(x_pos, y_pos, 'B', transform=ax2.transAxes, fontsize=labelsize, verticalalignment='top')
+    ax2.axis('off')
 
     ax3 = fig.add_subplot(gs[0,2])
+    vis.plot_surfaces(y='percent', cortex='tessels', weights='nonzero', method='lasso', ax=ax3);
+    ax3.set_xticks([80, 304, 670, 1190, 1848])
+    ax3.text(x_pos, y_pos, 'C', transform=ax3.transAxes, fontsize=labelsize, verticalalignment='top')
+
+    ax4 = fig.add_subplot(gs[0,3])
     fpath = os.path.join(dirs.figure, f'group_distances_best_model_MDTB10-reg1.png')
     if not os.path.isfile(fpath):
         vis.map_distances_cortex(model_name='best_model', atlas='MDTB10', surf='inflated', threshold=100, column=0, outpath=fpath)
-    vis.plot_png(fpath, ax=ax3)
-    ax3.axis('off')
-    ax3.text(x_pos, y_pos, 'C', transform=ax3.transAxes, fontsize=labelsize, verticalalignment='top')
-
-    ax4 = fig.add_subplot(gs[1,0])
-    fpath = os.path.join(dirs.figure, f'group_distances_best_model_MDTB10-reg2.png')
-    if not os.path.isfile(fpath):
-        vis.map_distances_cortex(model_name='best_model', atlas='MDTB10', surf='inflated', threshold=100, column=1, outpath=fpath)
     vis.plot_png(fpath, ax=ax4)
     ax4.axis('off')
     ax4.text(x_pos, y_pos, 'D', transform=ax4.transAxes, fontsize=labelsize, verticalalignment='top')
 
-    ax5 = fig.add_subplot(gs[1,1])
-    fpath = os.path.join(dirs.figure, f'group_distances_best_model_MDTB10-reg5.png')
+    ax5 = fig.add_subplot(gs[1,0])
+    fpath = os.path.join(dirs.figure, f'group_distances_best_model_MDTB10-reg2.png')
     if not os.path.isfile(fpath):
-        vis.map_distances_cortex(model_name='best_model', atlas='MDTB10', surf='inflated', threshold=100, column=4, outpath=fpath)
+        vis.map_distances_cortex(model_name='best_model', atlas='MDTB10', surf='inflated', threshold=100, column=1, outpath=fpath)
     vis.plot_png(fpath, ax=ax5)
     ax5.axis('off')
     ax5.text(x_pos, y_pos, 'E', transform=ax5.transAxes, fontsize=labelsize, verticalalignment='top')
 
-    ax5 = fig.add_subplot(gs[1,2])
-    vis.plot_distances(exp='sc1', cortex='tessels1002', threshold=5, regions=[1,2,5], hue='hem', ax=ax5);
-    ax5.text(x_pos, y_pos, 'F', transform=ax5.transAxes, fontsize=labelsize, verticalalignment='top')
+    ax6 = fig.add_subplot(gs[1,1])
+    fpath = os.path.join(dirs.figure, f'group_distances_best_model_MDTB10-reg5.png')
+    if not os.path.isfile(fpath):
+        vis.map_distances_cortex(model_name='best_model', atlas='MDTB10', surf='inflated', threshold=100, column=4, outpath=fpath)
+    vis.plot_png(fpath, ax=ax6)
+    ax6.axis('off')
+    ax6.text(x_pos, y_pos, 'F', transform=ax6.transAxes, fontsize=labelsize, verticalalignment='top')
+
+    ax7 = fig.add_subplot(gs[1,2])
+    vis.plot_distances(exp='sc1', cortex='tessels1002', threshold=5, regions=['1', '2', '5'], hue='hem', ax=ax7);
+    ax7.text(x_pos, y_pos, 'G', transform=ax7.transAxes, fontsize=labelsize, verticalalignment='top')
+
+    ax8 = fig.add_subplot(gs[1,3])
+    ax8.text(x_pos, y_pos, 'H', transform=ax8.transAxes, fontsize=labelsize, verticalalignment='top')
 
     plt.subplots_adjust(left=0.125, bottom=0.001, right=2.0, top=2.0, wspace=.2, hspace=.3)
     save_path = os.path.join(dirs.figure, f'fig3.{format}')
+    plt.savefig(save_path, bbox_inches="tight", dpi=300)
+
+def fig4(format='png'):
+    plt.clf()
+    vis.plotting_style()
+
+    dirs = const.Dirs()
+
+    fig = plt.figure()
+    gs = GridSpec(1, 2, figure=fig)
+
+    x_pos = -0.1
+    y_pos = 1.1
+    labelsize = 30
+
+    ax1 = fig.add_subplot(gs[0,0])
+    vis.plot_test_predictions(ax=ax1, hue='test_routine')
+    ax1.set_xticks([80, 304, 670, 1190, 1848])
+    ax1.text(x_pos, y_pos, 'A', transform=ax1.transAxes, fontsize=labelsize, verticalalignment='top')
+
+    ax2 = fig.add_subplot(gs[0,1])
+
+    plt.subplots_adjust(left=0.125, bottom=0.001, right=2.0, top=2.0, wspace=.2, hspace=.3)
+    plt.savefig(os.path.join(dirs.figure, f'fig4.{format}'), bbox_inches="tight", dpi=300)
+
+def fig5(format='png'):
+    plt.clf()
+    vis.plotting_style()
+
+    dirs = const.Dirs()
+
+    fig = plt.figure()
+    gs = GridSpec(2, 3, figure=fig)
+
+    x_pos = -0.1
+    y_pos = 1.1
+    labelsize = 30
+
+    ax1 = fig.add_subplot(gs[0,0])
+    fpath = os.path.join(dirs.figure, f'MDTB10-subregions-motor.png')
+    if not os.path.isfile(fpath):
+        nio.view_atlas_cerebellum(outpath=fpath, atlas='MDTB10-subregions_dseg', labels=[1,2,10,11])
+    vis.plot_png(fpath, ax=ax1)
+    ax1.text(x_pos, y_pos, 'B', transform=ax1.transAxes, fontsize=labelsize, verticalalignment='top')
+    ax1.axis('off')
+
+    ax2 = fig.add_subplot(gs[0,1])
+    vis.plot_surfaces(y='percent', cortex='tessels', weights='nonzero', method='lasso', ax=ax2);
+    ax2.set_xticks([80, 304, 670, 1190, 1848])
+    ax2.text(x_pos, y_pos, 'C', transform=ax2.transAxes, fontsize=labelsize, verticalalignment='top')
+
+    ax3 = fig.add_subplot(gs[0,2])
+    fpath = os.path.join(dirs.figure, f'group_distances_best_model_MDTB10-subregions-reg1.png')
+    if not os.path.isfile(fpath):
+        vis.map_distances_cortex(model_name='best_model', atlas='MDTB10-subregions', surf='inflated', threshold=100, column=0, outpath=fpath)
+    vis.plot_png(fpath, ax=ax3)
+    ax3.axis('off')
+    ax3.text(x_pos, y_pos, 'D', transform=ax3.transAxes, fontsize=labelsize, verticalalignment='top')
+
+    ax4 = fig.add_subplot(gs[1,0])
+    fpath = os.path.join(dirs.figure, f'group_distances_best_model_MDTB10-subregions-reg2.png')
+    if not os.path.isfile(fpath):
+        vis.map_distances_cortex(model_name='best_model', atlas='MDTB10-subregions', surf='inflated', threshold=100, column=1, outpath=fpath)
+    vis.plot_png(fpath, ax=ax4)
+    ax4.axis('off')
+    ax4.text(x_pos, y_pos, 'E', transform=ax4.transAxes, fontsize=labelsize, verticalalignment='top')
+
+    ax5 = fig.add_subplot(gs[1,1])
+    fpath = os.path.join(dirs.figure, f'group_distances_best_model_MDTB10-subregions-reg10.png')
+    if not os.path.isfile(fpath):
+        vis.map_distances_cortex(model_name='best_model', atlas='MDTB10-subregions', surf='inflated', threshold=100, column=4, outpath=fpath)
+    vis.plot_png(fpath, ax=ax5)
+    ax5.axis('off')
+    ax5.text(x_pos, y_pos, 'F', transform=ax5.transAxes, fontsize=labelsize, verticalalignment='top')
+
+    ax6 = fig.add_subplot(gs[1,2])
+    vis.plot_distances(exp='sc1', cortex='tessels1002', threshold=5, regions=['01A', '02A', '01P', '02P'], hue='hem', ax=ax6);
+    ax6.text(x_pos, y_pos, 'G', transform=ax6.transAxes, fontsize=labelsize, verticalalignment='top')
+
+    plt.subplots_adjust(left=0.125, bottom=0.001, right=2.0, top=2.0, wspace=.2, hspace=.3)
+    save_path = os.path.join(dirs.figure, f'fig5.{format}')
     plt.savefig(save_path, bbox_inches="tight", dpi=300)
 

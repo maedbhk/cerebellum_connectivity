@@ -468,7 +468,7 @@ def view_cerebellum(
         overlay_type = 'func'
     elif '.label.' in gifti:
         overlay_type = 'label'
-        _, _, cmap = get_gifti_colors(img)
+        _, _, cmap = get_gifti_colors(img, ignore_0=False)
         labels = get_gifti_labels(img)
 
     for (data, col) in zip(img.darrays, get_gifti_columns(img)):
@@ -672,8 +672,9 @@ def view_atlas_cortex(
 def view_atlas_cerebellum(
     atlas='MDTB10_dseg', 
     colorbar=False,
-    title=None,
     outpath=None,
+    new_figure=True,
+    labels=None
     ):
     """General purpose function for plotting (optionally saving) cerebellar atlas
     Args: 
@@ -681,11 +682,37 @@ def view_atlas_cerebellum(
         structure (str): default is 'cerebellum'. other options: 'cortex'
         colorbar (bool): default is False. If False, saves colorbar separately to disk.
         outpath (str or None): outpath to file. if None, not saved to disk.
+        new_figure (bool): default is True
+        lbaels (list of int or None): default is None. 
     Returns:
         viewing object to visualize parcellations
     """
     gifti = get_cerebellar_atlases(atlas_keys=[atlas])[0]
-    view = view_cerebellum(gifti=gifti, colorbar=colorbar, title=title, outpath=outpath) 
+    # view = view_cerebellum(gifti=gifti, colorbar=colorbar, title=title, outpath=outpath) \\    # figure out if 3D or 4D
+    img = nib.load(gifti)
+
+    _, _, cmap = get_gifti_colors(img, ignore_0=False)
+    label_names = get_gifti_labels(img)
+    data = img.darrays[0].data
+
+    if labels is not None:
+        for idx, num in enumerate(data):
+            if num not in labels: 
+                data[idx] = 0
+
+    view = flatmap.plot(data, 
+        overlay_type='label', 
+        cmap=cmap, 
+        label_names=label_names, 
+        colorbar=colorbar, 
+        new_figure=new_figure
+        )
+
+    # save to disk
+    if outpath is not None:
+        plt.savefig(outpath, dpi=300, format='png', bbox_inches='tight', pad_inches=0)
+
+    plt.show()
     
     return view
 

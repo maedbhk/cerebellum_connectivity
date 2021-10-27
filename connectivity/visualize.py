@@ -225,6 +225,44 @@ def eval_summary(
 
     return df_concat
 
+def test_summary(
+    summary_name="test_summary_learning", 
+    train_exp='sc1',
+    models_to_exclude=['NNLS', 'PLSRegress']
+    ):
+    """load test summary containing all metrics about test models (mdtb models tested on external data).
+    Prefix 'gen' is appended to cols.
+    Args:
+        summary_name (str): name of summary file
+        train_exp (str): default is 'sc1'
+    Returns:
+        pandas dataframe containing test summary
+    """
+    dirs = const.Dirs(exp_name=train_exp)
+    fpath = os.path.join(dirs.data_dir, "conn_models", f"{summary_name}.csv")
+    df = pd.read_csv(fpath)
+    
+    df['atlas'] = df['X_data'].apply(lambda x: _add_atlas(x))
+
+    cols = []
+    for col in df.columns:
+        if any(s in col for s in ("eval", "train")):
+            cols.append(col)
+        else:
+            cols.append("test_" + col)
+
+    df.columns = cols
+    df['test_model'] = df['test_name'].str.split('_').str[0]
+
+    # get noise ceilings
+    df["test_noiseceiling_Y"] = np.sqrt(df.test_noise_Y_R)
+    # df["test_noiseceiling_XY"] = np.sqrt(df.test_noise_Y_R) * np.sqrt(df.test_noise_X_R)
+
+    if models_to_exclude:
+        df = df[~df['test_model'].isin(models_to_exclude)]
+
+    return df
+
 def roi_summary(
     data_fpath, 
     atlas_nifti,
@@ -388,6 +426,65 @@ def plot_eval_predictions(
         meth_fname = '_'.join(methods)
         plt.savefig(os.path.join(dirs.figure, f'eval_predictions_{exp_fname}_{meth_fname}_{x}.png'), pad_inches=0, bbox_inches='tight')
 
+def plot_test_predictions(
+    dataframe=None,
+    x='test_num_regions', 
+    routines=['late'],
+    hue=None, 
+    save=False,
+    atlases=['icosahedron'],
+    methods=['RIDGE'],
+    noiseceiling=True,
+    ax=None,
+    title=False,
+    ):
+    """plots eval predictions (R CV) for all models in dataframe.
+    Args:
+        exps (list of str): default is ['sc2']
+        hue (str or None): can be 'train_exp', 'Y_data' etc.
+    """
+
+    if dataframe is None:
+        dataframe = test_summary()
+
+    # filer out atlases
+    if atlases is not None:
+        dataframe = dataframe[dataframe['test_atlas'].isin(atlases)]
+
+    # filter out methods
+    if methods is not None:
+        dataframe = dataframe[dataframe['test_model'].isin(methods)]
+
+    if routines is not None:
+        dataframe = dataframe[dataframe['test_routine'].isin(routines)]
+
+    if noiseceiling:
+        # #plt.figure(figsize=(8,8))
+        ax = sns.lineplot(x=x, y="R_eval", hue=hue, ci=70, color='g', legend=True, data=dataframe, ax=ax)
+        ax = sns.lineplot(x=x, y='test_noiseceiling_Y', data=dataframe, color='k', ax=ax, ci=None, linewidth=4)
+        ax.legend(loc='best', frameon=False) # bbox_to_anchor=(1, 1)
+        plt.xticks(rotation="45", ha="right")
+        ax.lines[-1].set_linestyle("--")
+        # ax.lines[0].set_color('g')
+        ax.set_xlabel("")
+        ax.set_ylabel("R")
+    else:
+        # #plt.figure(figsize=(8,8))
+        sns.factorplot(x=x, y="R_eval", hue=hue, data=dataframe, legend=False, size=4, aspect=2) # size=4, aspect=2, order=x_order, hue_order=hue_order,,
+        plt.xticks(rotation="45", ha="right")
+        plt.xlabel("")
+        plt.ylabel("R")
+
+    if hue:
+        plt.legend({'learning'}, loc='best', frameon=False) # bbox_to_anchor=(1, 1)
+
+    if title:
+        plt.title("Model Generalization", fontsize=20)
+    
+    if save:
+        dirs = const.Dirs()
+        plt.savefig(os.path.join(dirs.figure, f'test_predictions_learning.png'), pad_inches=0, bbox_inches='tight')
+
 def plot_best_eval(
     dataframe=None,
     exps=['sc2'],
@@ -451,7 +548,7 @@ def plot_distances(
     exp='sc1',
     cortex='tessels1002',
     threshold=5,
-    regions=[1,2,5],
+    regions=['1', '2', '5'], # '01A', '02A'
     hue='hem',
     metric='gmean',
     title=False,
@@ -470,7 +567,7 @@ def plot_distances(
 
     # filter out methods
     if regions is not None:
-        df = df[df['labels'].astype(int).isin(regions)]
+        df = df[df['labels'].isin(regions)]
 
     # filter out methods
     if cortex is not None:
