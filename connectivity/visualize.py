@@ -581,7 +581,7 @@ def plot_distances(
     if threshold is not None:
         df = df[df['threshold'].isin([threshold])]
 
-    ax = sns.lineplot(x='labels', 
+    ax = sns.boxplot(x='labels', 
                 y='distance', 
                 hue=hue, 
                 data=df,
@@ -616,7 +616,8 @@ def plot_surfaces(
     dirs = const.Dirs(exp_name=exp)
     
     # load in distances
-    dataframe = pd.read_csv(os.path.join(dirs.conn_train_dir, 'cortical_surface_voxels_stats.csv')) 
+    dataframe_vox = pd.read_csv(os.path.join(dirs.conn_train_dir, 'cortical_surface_voxels_stats.csv')) 
+    dataframe_roi = pd.read_csv(os.path.join(dirs.conn_train_dir, 'cortical_surface_rois_stats.csv')) 
 
     # dataframe['labels'] = dataframe['reg_names'].str.replace(re.compile('Region|-'), '', regex=True)
     # dataframe['subregion'] = dataframe['reg_names'].str.replace(re.compile('[^a-zA-Z]'), '', regex=True)
@@ -653,6 +654,56 @@ def plot_surfaces(
     if save:
         dirs = const.Dirs()
         plt.savefig(os.path.join(dirs.figure, f'cortical_surfaces_{exp}_{y}.png'), pad_inches=0, bbox_inches='tight')
+
+    return dataframe
+
+def plot_dispersion(
+        exp='sc1',
+        y='Std',    
+        cortex='tessels1002', 
+        method='ridge',
+        hue=None,
+        regions=None, # [1,2,5]
+        save=False,
+        ax=None
+        ):
+
+    dirs = const.Dirs(exp_name=exp)
+    
+    # load in distances
+    dataframe = pd.read_csv(os.path.join(dirs.conn_train_dir, 'cortical_dispersion_stats.csv'))
+
+    dataframe['hem'] = dataframe['hem'].map({0: 'L', 1: 'R'})
+    dataframe['roi'] = dataframe['roi']+1
+    dataframe['num_regions'] = dataframe['cortex'].str.split('_').str.get(-1).str.extract('(\d+)').astype(float)*2
+    dataframe['atlas'] = dataframe['cortex'].apply(lambda x: _add_atlas(x))
+
+    # filter out methods
+    if cortex is not None:
+        dataframe = dataframe[dataframe['cortex'].isin([cortex])]
+
+    # filter out methods
+    if method is not None:
+        dataframe = dataframe[dataframe['method'].isin([method])]
+
+    # filter out methods
+    if regions is not None:
+        dataframe = dataframe[dataframe['roi'].isin(regions)]
+
+    ax = sns.boxplot(x='roi', 
+                y=y, 
+                hue=hue, 
+                data=dataframe,
+                )
+    ax.set_xlabel('')
+    ax.set_ylabel('Cortical Dispersion')
+    plt.xticks(rotation="45", ha="right")
+    if hue:
+        plt.legend(loc='best', frameon=False) # bbox_to_anchor=(1, 1)
+    
+    if save:
+        dirs = const.Dirs()
+        plt.savefig(os.path.join(dirs.figure, f'cortical_dispersion_{exp}_{y}.png'), pad_inches=0, bbox_inches='tight')
 
     return dataframe
 

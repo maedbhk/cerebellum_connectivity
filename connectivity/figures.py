@@ -226,6 +226,7 @@ def fig3(format='png'):
     ax7.text(x_pos, y_pos, 'G', transform=ax7.transAxes, fontsize=labelsize, verticalalignment='top')
 
     ax8 = fig.add_subplot(gs[1,3])
+    vis.plot_dispersion(hue='hem', cortex='tessels1002', regions=[1,2,5], ax=ax8)
     ax8.text(x_pos, y_pos, 'H', transform=ax8.transAxes, fontsize=labelsize, verticalalignment='top')
 
     plt.subplots_adjust(left=0.125, bottom=0.001, right=2.0, top=2.0, wspace=.2, hspace=.3)

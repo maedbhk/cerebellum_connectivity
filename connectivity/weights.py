@@ -281,8 +281,8 @@ def cortical_surface_rois(
                 'train_exp': np.repeat(train_exp, n_cereb),
                 'atlas': np.repeat(atlas, n_cereb),
                 }
-        colors_dict = pd.DataFrame.to_dict(pd.DataFrame(colors, columns=['R','G','B','A']), orient='list')
-        data.update(colors_dict)
+        # colors_dict = pd.DataFrame.to_dict(pd.DataFrame(colors, columns=['R','G','B','A']), orient='list')
+        # data.update(colors_dict)
         
         for k, v in data.items():
             data_all[k].extend(v)
