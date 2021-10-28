@@ -533,7 +533,7 @@ def run(cortex="tessels0362",
             _log_models(exp=f"sc{exp+1}")
 
     elif train_or_eval=="eval":
-        for exp in range(2):
+        for exp in [1]:
             
             # get best model (for each method and parcellation)
             models, cortex_names = summary.get_best_models(train_exp=f"sc{2-exp}")

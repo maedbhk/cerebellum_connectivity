@@ -11,7 +11,7 @@ from matplotlib.colors import LinearSegmentedColormap
 from SUITPy import flatmap
 from SUITPy import atlas as catlas
 from nilearn.plotting import view_surf
-# from surfplot import Plot
+from surfplot import Plot
 
 import connectivity.constants as const
 from connectivity import data as cdata
@@ -671,7 +671,7 @@ def view_atlas_cortex(
 
 def view_atlas_cerebellum(
     atlas='MDTB10_dseg', 
-    colorbar=False,
+    colorbar=True,
     outpath=None,
     new_figure=True,
     labels=None

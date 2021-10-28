@@ -92,14 +92,14 @@ def split_subjects(
 def train_summary(
     summary_name="train_summary",
     exps=['sc1'], 
-    models_to_exclude=['NNLS', 'PLSRegress']
+    models_to_include=['lasso', 'ridge', 'WTA']
     ):
     """load train summary containing all metrics about training models.
     Summary across exps is concatenated and prefix 'train' is appended to cols.
     Args:
         summary_name (str): name of summary file
         exps (list of str): default is ['sc1', 'sc2']
-        models_to_exclude (list of str or None):
+        models_to_include (list of str or None):
     Returns:
         pandas dataframe containing concatenated exp summary
     """
@@ -148,8 +148,8 @@ def train_summary(
     
     df_concat['train_hyperparameter'] = df_concat['train_hyperparameter'].astype(float) # was float
 
-    if models_to_exclude:
-        df_concat = df_concat[~df_concat['train_model'].isin(models_to_exclude)]
+    if models_to_include:
+        df_concat = df_concat[df_concat['train_model'].isin(models_to_include)]
 
     def _relabel_model(x):
         if x=='L2regression':
@@ -166,13 +166,14 @@ def train_summary(
 def eval_summary(
     summary_name="eval_summary",
     exps=['sc2'], 
-    models_to_exclude=['NNLS', 'PLSRegress']
+    models_to_include=['WTA', 'lasso', 'ridge']
     ):
     """load eval summary containing all metrics about eval models.
     Summary across exps is concatenated and prefix 'eval' is appended to cols.
     Args:
         summary_name (str): name of summary file
-        exps (list of str): default is ['sc1', 'sc2']
+        exps (list of str): default is ['sc2']
+        models_to_include (list of str):
     Returns:
         pandas dataframe containing concatenated exp summary
     """
@@ -220,21 +221,22 @@ def eval_summary(
     df_concat["eval_noiseceiling_Y"] = np.sqrt(df_concat.eval_noise_Y_R)
     df_concat["eval_noiseceiling_XY"] = np.sqrt(df_concat.eval_noise_Y_R) * np.sqrt(df_concat.eval_noise_X_R)
 
-    if models_to_exclude:
-        df_concat = df_concat[~df_concat['eval_model'].isin(models_to_exclude)]
+    if models_to_include:
+        df_concat = df_concat[df_concat['eval_model'].isin(models_to_include)]
 
     return df_concat
 
 def test_summary(
     summary_name="test_summary_learning", 
     train_exp='sc1',
-    models_to_exclude=['NNLS', 'PLSRegress']
+    models_to_include=['WTA', 'lasso', 'ridge']
     ):
     """load test summary containing all metrics about test models (mdtb models tested on external data).
     Prefix 'gen' is appended to cols.
     Args:
         summary_name (str): name of summary file
         train_exp (str): default is 'sc1'
+        models_to_include (list of str):
     Returns:
         pandas dataframe containing test summary
     """
@@ -258,8 +260,8 @@ def test_summary(
     df["test_noiseceiling_Y"] = np.sqrt(df.test_noise_Y_R)
     # df["test_noiseceiling_XY"] = np.sqrt(df.test_noise_Y_R) * np.sqrt(df.test_noise_X_R)
 
-    if models_to_exclude:
-        df = df[~df['test_model'].isin(models_to_exclude)]
+    if models_to_include:
+        df = df[df['test_model'].isin(models_to_include)]
 
     return df
 
@@ -379,7 +381,6 @@ def plot_eval_predictions(
     save=False,
     atlases=['tessels'],
     methods=['ridge', 'WTA'],
-    noiseceiling=True,
     ax=None,
     title=False,
     ):
@@ -399,23 +400,14 @@ def plot_eval_predictions(
     if methods is not None:
         dataframe = dataframe[dataframe['eval_model'].isin(methods)]
 
-    if noiseceiling:
-        # #plt.figure(figsize=(8,8))
-        ax = sns.lineplot(x=x, y="R_eval", hue=hue, legend=True, data=dataframe)
-        ax = sns.lineplot(x=x, y='eval_noiseceiling_Y', data=dataframe, color='k', ax=ax, ci=None, linewidth=4)
-        ax.legend(loc='best', frameon=False) # bbox_to_anchor=(1, 1)
-        plt.xticks(rotation="45", ha="right")
-        ax.lines[-1].set_linestyle("--")
-        ax.set_xlabel("")
-        ax.set_ylabel("R")
-    else:
-        # #plt.figure(figsize=(8,8))
-        sns.factorplot(x=x, y="R_eval", hue=hue, data=dataframe, legend=False, size=4, aspect=2) # size=4, aspect=2, order=x_order, hue_order=hue_order,,
-        plt.xticks(rotation="45", ha="right")
-        plt.xlabel("")
-        plt.ylabel("R")
-        if hue:
-            plt.legend(loc='best', frameon=False) # bbox_to_anchor=(1, 1)
+    # #plt.figure(figsize=(8,8))
+    ax = sns.lineplot(x=x, y="R_eval", hue=hue, data=dataframe) # legend=True,
+    ax = sns.lineplot(x=x, y='eval_noiseceiling_Y', data=dataframe, color='k', ax=ax, ci=None, linewidth=4)
+    ax.legend(loc='best', frameon=False) # bbox_to_anchor=(1, 1)
+    plt.xticks(rotation="45", ha="right")
+    ax.lines[-1].set_linestyle("--")
+    ax.set_xlabel("")
+    ax.set_ylabel("R")
 
     if title:
         plt.title("Model Evaluation", fontsize=20)
@@ -602,48 +594,48 @@ def plot_distances(
     return df
 
 def plot_surfaces(
-            exp='sc1',
-            y='percent',    
-            cortex='tessels',
-            weights='nonzero', 
-            method='lasso',
-            hue=None,
-            regions=None,
-            save=False,
-            ax=None
-            ):
+        exp='sc1',
+        y='percent',    
+        cortex='tessels',
+        weights='nonzero', 
+        method='lasso',
+        hue=None,
+        regions=None,
+        save=False,
+        ax=None
+        ):
 
     dirs = const.Dirs(exp_name=exp)
     
     # load in distances
     dataframe_vox = pd.read_csv(os.path.join(dirs.conn_train_dir, 'cortical_surface_voxels_stats.csv')) 
     dataframe_roi = pd.read_csv(os.path.join(dirs.conn_train_dir, 'cortical_surface_rois_stats.csv')) 
+    dataframe_concat = pd.concat([dataframe_vox, dataframe_roi]) 
 
-    # dataframe['labels'] = dataframe['reg_names'].str.replace(re.compile('Region|-'), '', regex=True)
     # dataframe['subregion'] = dataframe['reg_names'].str.replace(re.compile('[^a-zA-Z]'), '', regex=True)
-    dataframe['num_regions'] = dataframe['cortex'].str.split('_').str.get(-1).str.extract('(\d+)').astype(float)*2
-    dataframe['atlas'] = dataframe['cortex'].apply(lambda x: _add_atlas(x))
+    dataframe_concat['num_regions'] = dataframe_concat['cortex'].str.split('_').str.get(-1).str.extract('(\d+)').astype(float)*2
+    dataframe_concat['atlas'] = dataframe_concat['cortex'].apply(lambda x: _add_atlas(x))
 
-        # filter out methods
-    # if regions is not None:
-    #     dataframe = dataframe[dataframe['labels'].astype(int).isin(regions)]
+    # filter out methods
+    if regions is not None:
+        dataframe_concat = dataframe_concat[dataframe_concat['reg_names'].isin(regions)]
 
     # filter out methods
     if cortex is not None:
-        dataframe = dataframe[dataframe['atlas'].isin([cortex])]
+        dataframe_concat = dataframe_concat[dataframe_concat['atlas'].isin([cortex])]
 
     # filter out methods
     if weights is not None:
-        dataframe = dataframe[dataframe['weights'].isin([weights])]
+        dataframe_concat = dataframe_concat[dataframe_concat['weights'].isin([weights])]
 
     # filter out methods
     if method is not None:
-        dataframe = dataframe[dataframe['method'].isin([method])]
+        dataframe_concat = dataframe_concat[dataframe_concat['method'].isin([method])]
 
     ax = sns.lineplot(x='num_regions', 
                 y=y, 
                 hue=hue, 
-                data=dataframe,
+                data=dataframe_concat,
                 )
     ax.set_xlabel('')
     ax.set_ylabel('Percentage of cortical surface')
@@ -655,7 +647,7 @@ def plot_surfaces(
         dirs = const.Dirs()
         plt.savefig(os.path.join(dirs.figure, f'cortical_surfaces_{exp}_{y}.png'), pad_inches=0, bbox_inches='tight')
 
-    return dataframe
+    return dataframe_concat
 
 def plot_dispersion(
         exp='sc1',

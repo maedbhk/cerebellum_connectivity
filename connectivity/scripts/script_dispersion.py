@@ -58,5 +58,5 @@ def dispersion_summary(
 def run():
     dispersion_summary()
 
-# if __name__ == "__main__":
-#      run()
+if __name__ == "__main__":
+     run()
