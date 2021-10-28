@@ -15,7 +15,6 @@ from nilearn.plotting import view_surf
 
 import connectivity.constants as const
 from connectivity import data as cdata
-from connectivity import nib_utils as nio
 
 def make_label_gifti_cortex(
     data, 
@@ -595,8 +594,8 @@ def view_cortex_inflated(
     dirs = const.Dirs()
 
     # get surface mesh
-    lh = nio.get_cortical_surfaces(surf='inflated', hem='L')
-    rh = nio.get_cortical_surfaces(surf='inflated', hem='R')
+    lh = get_cortical_surfaces(surf='inflated', hem='L')
+    rh = get_cortical_surfaces(surf='inflated', hem='R')
 
     gifti_dict = {}
     for hem, gifti in zip(['L', 'R'], giftis):
@@ -607,7 +606,7 @@ def view_cortex_inflated(
 
     data_lh_all = gifti_dict['L'].darrays
     data_rh_all = gifti_dict['R'].darrays
-    cols = nio.get_gifti_columns(giftis[0])
+    cols = get_gifti_columns(giftis[0])
 
     if column is not None:
         data_lh_all = [data_lh_all[column]]
@@ -650,14 +649,14 @@ def view_atlas_cortex(
     dirs = const.Dirs()
 
     # get surface mesh
-    lh = nio.get_cortical_surfaces(surf=surf_mesh, hem='L')
-    rh = nio.get_cortical_surfaces(surf=surf_mesh, hem='R')
+    lh = get_cortical_surfaces(surf=surf_mesh, hem='L')
+    rh = get_cortical_surfaces(surf=surf_mesh, hem='R')
 
     # get parcellation
-    lh_data = nio.get_cortical_atlases(atlas_keys=[atlas], hem='L')[0]
-    rh_data = nio.get_cortical_atlases(atlas_keys=[atlas], hem='R')[0]
+    lh_data = get_cortical_atlases(atlas_keys=[atlas], hem='L')[0]
+    rh_data = get_cortical_atlases(atlas_keys=[atlas], hem='R')[0]
 
-    _, _, cmap = nio.get_gifti_colors(fpath=lh_data)
+    _, _, cmap = get_gifti_colors(fpath=lh_data)
     
     p = Plot(lh, rh)
     
