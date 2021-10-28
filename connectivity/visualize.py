@@ -33,7 +33,8 @@ def plotting_style():
     plt.rcParams.update(params)    
 
 def _concat_summary(
-    summary_name='train_summary'
+    summary_name='train_summary',
+    exps=['sc1']
     ):
     """concat dataframes from different experimenters
 
@@ -43,7 +44,7 @@ def _concat_summary(
     Returns: 
         saves concatenated dataframe <summary_name>.csv to disk
     """
-    for exp in ['sc1', 'sc2']:
+    for exp in exps:
 
         dirs = const.Dirs(exp_name=exp)
         
@@ -104,7 +105,7 @@ def train_summary(
         pandas dataframe containing concatenated exp summary
     """
     # concat summary
-    _concat_summary(summary_name)
+    _concat_summary(summary_name, exps=exps)
 
     train_subjs, _ = split_subjects(const.return_subjs)
 
@@ -148,9 +149,6 @@ def train_summary(
     
     df_concat['train_hyperparameter'] = df_concat['train_hyperparameter'].astype(float) # was float
 
-    if models_to_include:
-        df_concat = df_concat[df_concat['train_model'].isin(models_to_include)]
-
     def _relabel_model(x):
         if x=='L2regression':
             return 'ridge'
@@ -160,6 +158,9 @@ def train_summary(
             return x
 
     df_concat['train_model'] = df_concat['train_model'].apply(lambda x: _relabel_model(x))
+
+    if models_to_include:
+        df_concat = df_concat[df_concat['train_model'].isin(models_to_include)]
 
     return df_concat
 
@@ -178,7 +179,7 @@ def eval_summary(
         pandas dataframe containing concatenated exp summary
     """
     # concat summary
-    _concat_summary(summary_name)
+    _concat_summary(summary_name, exps=exps)
 
     train_subjs, _ = split_subjects(const.return_subjs)
 
