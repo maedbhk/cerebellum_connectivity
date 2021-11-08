@@ -716,8 +716,10 @@ def view_atlas_cerebellum(
     return view
 
 def view_colorbar(
-    fpath, 
-    outpath=None
+    atlas='yeo7', 
+    outpath=None,
+    labels=None,
+    orientation='vertical'
     ):
     """Makes colorbar for *.label.gii file
         
@@ -725,12 +727,20 @@ def view_colorbar(
         fpath (str): full path to *.label.gii
         outpath (str or None): default is None. file not saved to disk.
     """
+
+    fpath = get_cortical_atlases(atlas_keys=[atlas], hem='L')[0]
+
+    rotation = 90
+    if orientation is 'horizontal':
+        rotation = 45
+
     plt.figure()
     fig, ax = plt.subplots(figsize=(1,10)) # figsize=(1, 10)
-    # fig, ax = plt.figure()
 
     rgba, cpal, cmap = get_gifti_colors(fpath)
-    labels = get_gifti_labels(fpath)
+
+    if labels is None:
+        labels = get_gifti_labels(fpath)
 
     bounds = np.arange(cmap.N + 1)
 
@@ -744,7 +754,7 @@ def view_colorbar(
     cb3.set_ticklabels(labels[::-1])  
     cb3.ax.tick_params(size=0)
     cb3.set_ticks(bounds+.5)
-    cb3.ax.tick_params(axis='y', which='major', labelsize=30)
+    cb3.ax.tick_params(axis='y', which='major', labelsize=30, labelrotation=rotation)
 
     if outpath:
         plt.savefig(outpath, bbox_inches='tight', dpi=150)

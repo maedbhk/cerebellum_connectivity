@@ -167,6 +167,7 @@ def train_summary(
 def eval_summary(
     summary_name="eval_summary",
     exps=['sc2'], 
+    splitby=['unique', 'all'],
     models_to_include=['WTA', 'lasso', 'ridge']
     ):
     """load eval summary containing all metrics about eval models.
@@ -174,6 +175,7 @@ def eval_summary(
     Args:
         summary_name (str): name of summary file
         exps (list of str): default is ['sc2']
+        splitby (list of str): default is ['unique']
         models_to_include (list of str):
     Returns:
         pandas dataframe containing concatenated exp summary
@@ -194,7 +196,14 @@ def eval_summary(
     # select trained subjects 
     df_concat = df_concat[df_concat['subj_id'].isin(train_subjs)]
     
+    # add atlas
     df_concat['atlas'] = df_concat['X_data'].apply(lambda x: _add_atlas(x))
+
+    # remap splitby and filter
+    df_concat['splitby'] = df_concat['splitby'].map({np.nan: 'all', 'unique': 'unique'})
+
+    if splitby is not None:
+        df_concat = df_concat[df_concat['splitby'].isin(splitby)]
 
     cols = []
     for col in df_concat.columns:
@@ -372,7 +381,7 @@ def plot_train_predictions(
             fname = f'train_predictions_{exp_fname}_{meth_fname}_{hue}_{x}'
         else:
             fname = f'train_predictions_{exp_fname}_{meth_fname}_{x}'
-        plt.savefig(os.path.join(dirs.figure, f'{fname}.png'), pad_inches=0.1, bbox_inches='tight')
+        plt.savefig(os.path.join(dirs.figure, f'{fname}.svg'), pad_inches=0.1, bbox_inches='tight')
 
 def plot_eval_predictions(
     dataframe=None,
@@ -381,6 +390,7 @@ def plot_eval_predictions(
     hue=None, 
     save=False,
     atlases=['tessels'],
+    splitby=['unique'],
     methods=['ridge', 'WTA'],
     ax=None,
     title=False,
@@ -401,6 +411,10 @@ def plot_eval_predictions(
     if methods is not None:
         dataframe = dataframe[dataframe['eval_model'].isin(methods)]
 
+    # filter out splitby
+    if splitby is not None:
+        dataframe = dataframe[dataframe['eval_splitby'].isin(splitby)]
+
     # #plt.figure(figsize=(8,8))
     ax = sns.lineplot(x=x, y="R_eval", hue=hue, data=dataframe) # legend=True,
     ax = sns.lineplot(x=x, y='eval_noiseceiling_Y', data=dataframe, color='k', ax=ax, ci=None, linewidth=4)
@@ -417,7 +431,7 @@ def plot_eval_predictions(
         dirs = const.Dirs()
         exp_fname = '_'.join(exps)
         meth_fname = '_'.join(methods)
-        plt.savefig(os.path.join(dirs.figure, f'eval_predictions_{exp_fname}_{meth_fname}_{x}.png'), pad_inches=0, bbox_inches='tight')
+        plt.savefig(os.path.join(dirs.figure, f'eval_predictions_{exp_fname}_{meth_fname}_{x}.svg'), pad_inches=0, bbox_inches='tight')
 
 def plot_test_predictions(
     dataframe=None,
@@ -590,7 +604,7 @@ def plot_distances(
     
     if save:
         dirs = const.Dirs()
-        plt.savefig(os.path.join(dirs.figure, f'cortical_distances_{exp}_{cortex}_{threshold}.png'), pad_inches=0, bbox_inches='tight')
+        plt.savefig(os.path.join(dirs.figure, f'cortical_distances_{exp}_{cortex}_{threshold}.svg'), pad_inches=0, bbox_inches='tight')
     
     return df
 
@@ -646,7 +660,7 @@ def plot_surfaces(
     
     if save:
         dirs = const.Dirs()
-        plt.savefig(os.path.join(dirs.figure, f'cortical_surfaces_{exp}_{y}.png'), pad_inches=0, bbox_inches='tight')
+        plt.savefig(os.path.join(dirs.figure, f'cortical_surfaces_{exp}_{y}.svg'), pad_inches=0, bbox_inches='tight')
 
     return dataframe_concat
 
@@ -696,7 +710,7 @@ def plot_dispersion(
     
     if save:
         dirs = const.Dirs()
-        plt.savefig(os.path.join(dirs.figure, f'cortical_dispersion_{exp}_{y}.png'), pad_inches=0, bbox_inches='tight')
+        plt.savefig(os.path.join(dirs.figure, f'cortical_dispersion_{exp}_{y}.svg'), pad_inches=0, bbox_inches='tight')
 
     return dataframe
 
@@ -901,7 +915,7 @@ def get_best_model(
         dataframe (pd dataframe or None):
         train_exp (str): 'sc1' or 'sc2' or None (if dataframe is given)
         method (str or None): filter models by method
-        atlas (str or None):
+        atlas (str or None): 'mdtb', 'yeo', 'tessels'
     Returns:
         model name (str)
     """
@@ -937,14 +951,14 @@ def get_best_models(
     dataframe=None,
     train_exp='sc1',
     method=None,
-    roi=None
+    atlas=None
     ):
     """Get model_names, cortex_names for best models (NNLS, ridge, WTA) based on R_cv
     Args:
         dataframe (pd dataframe or None):
         train_exp (str): 'sc1' or 'sc2' or None (if dataframe is given)
         method (str or None): filter models by method
-        roi (str or None): filter models by roi
+        atlas (str or None): filter models by atlas
     Returns:
         model_names (list of str), cortex_names (list of str)
     """
@@ -956,9 +970,9 @@ def get_best_models(
     if method is not None:
         dataframe = dataframe[dataframe['train_model']==method]
     
-    # filter dataframe by roi
-    if roi is not None:
-        dataframe = dataframe[dataframe['train_X_data']==roi]
+    # filter dataframe by atlas
+    if atlas is not None:
+        dataframe = dataframe[dataframe['train_atlas']==atlas]
 
     df_mean = dataframe.groupby(['train_X_data', 'train_model', 'train_name'], sort=True).apply(lambda x: x['train_R_cv'].mean()).reset_index(name='train_R_cv_mean')
     df_best = df_mean.groupby(['train_X_data', 'train_model']).apply(lambda x: x[['train_name', 'train_R_cv_mean']].max()).reset_index()

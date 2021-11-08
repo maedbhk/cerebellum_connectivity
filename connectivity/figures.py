@@ -104,7 +104,7 @@ def fig1(format='png'):
     plt.subplots_adjust(left=0.125, bottom=0.001, right=2.0, top=2.0, wspace=.2, hspace=.3)
     plt.savefig(os.path.join(dirs.figure, f'fig1.{format}'), bbox_inches="tight", dpi=300)
 
-def fig2(format='png'):
+def fig2(format='svg'):
     plt.clf()
     vis.plotting_style()
 
@@ -119,26 +119,26 @@ def fig2(format='png'):
 
     dataframe = vis.train_summary(exps=['sc1'])
     ax1 = fig.add_subplot(gs[0,0])
-    vis.plot_train_predictions(dataframe=dataframe, x='train_hyperparameter', hue='train_num_regions', best_models=False, atlases=['tessels'], methods=['ridge'], ax=ax1)
+    vis.plot_train_predictions(dataframe=dataframe, x='train_hyperparameter', hue='train_num_regions', best_models=False, atlases=['tessels'], methods=['ridge'], ax=ax1, save=True)
     ax1.set_xlabel('Hyperparameter')
     ax1.text(x_pos, y_pos, 'A', transform=ax1.transAxes, fontsize=labelsize, verticalalignment='top')
     ax1.set_ylim([.05, .4])
 
     ax2 = fig.add_subplot(gs[0,1])
-    vis.plot_train_predictions(dataframe=dataframe.query('train_hyperparameter>-5'), x='train_hyperparameter', hue='train_num_regions', best_models=False, atlases=['tessels'], methods=['lasso'], ax=ax2)
+    vis.plot_train_predictions(dataframe=dataframe.query('train_hyperparameter>-5'), x='train_hyperparameter', hue='train_num_regions', best_models=False, atlases=['tessels'], methods=['lasso'], ax=ax2, save=True)
     ax2.text(x_pos, y_pos, 'B', transform=ax2.transAxes, fontsize=labelsize, verticalalignment='top')
     ax2.set_ylim([.05, .4])
     
     ax3 = fig.add_subplot(gs[0,2])
     dataframe = vis.eval_summary(exps=['sc2'])
-    vis.plot_eval_predictions(dataframe=dataframe, exps=['sc2'], methods=['WTA', 'ridge', 'lasso'], hue='eval_model', ax=ax3)
+    vis.plot_eval_predictions(dataframe=dataframe, exps=['sc2'], methods=['WTA', 'ridge', 'lasso'], hue='eval_model', ax=ax3, save=True)
     ax3.text(x_pos, y_pos, 'C', transform=ax3.transAxes, fontsize=labelsize, verticalalignment='top')
     ax3.set_xticks([80, 304, 670, 1190, 1848])
     
     ax4 = fig.add_subplot(gs[1,0])
     fpath = os.path.join(dirs.figure, f'map_R_ridge_best_model.png')
     if not os.path.isfile(fpath):
-        vis.map_eval_cerebellum(data="R", exp="sc1", model_name='best_model', method='ridge', outpath=fpath,  cscale=[0, 0.5]);
+        vis.map_eval_cerebellum(data="R", exp="sc1", model_name='best_model', method='ridge', cscale=[0, 0.4], outpath=fpath); # cscale=[0, 0.5]
     vis.plot_png(fpath, ax=ax4)
     ax4.axis('off')
     ax4.text(x_pos, y_pos, 'D', transform=ax4.transAxes, fontsize=labelsize, verticalalignment='top')
@@ -146,7 +146,7 @@ def fig2(format='png'):
     ax5 = fig.add_subplot(gs[1,1])
     fpath = os.path.join(dirs.figure, f'map_R_lasso_best_model.png')
     if not os.path.isfile(fpath):
-        vis.map_eval_cerebellum(data="R", exp="sc1", model_name='best_model', method='lasso', outpath=fpath, cscale=[0, 0.5]); # ax=ax4
+        vis.map_eval_cerebellum(data="R", exp="sc1", model_name='best_model', method='lasso', cscale=[0, 0.4], outpath=fpath); # ax=ax4
     vis.plot_png(fpath, ax=ax5)
     ax5.axis('off')
     ax5.text(x_pos, y_pos, 'E', transform=ax5.transAxes, fontsize=labelsize, verticalalignment='top')
@@ -163,7 +163,7 @@ def fig2(format='png'):
     save_path = os.path.join(dirs.figure, f'fig2.{format}')
     plt.savefig(save_path, bbox_inches="tight", dpi=300)
 
-def fig3(format='png'):
+def fig3(format='svg'):
     plt.clf()
     vis.plotting_style()
 
@@ -193,7 +193,7 @@ def fig3(format='png'):
     ax2.axis('off')
 
     ax3 = fig.add_subplot(gs[0,2])
-    vis.plot_surfaces(y='percent', cortex='tessels', weights='nonzero', regions=['Region1', 'Region2', 'Region4', 'Region5'], hue='reg_names', method='lasso', ax=ax3);
+    vis.plot_surfaces(y='percent', cortex='tessels', weights='nonzero', regions=['Region1', 'Region2', 'Region4', 'Region5'], hue='reg_names', method='lasso', ax=ax3, save=True);
     ax3.set_xticks([80, 304, 670, 1190, 1848])
     ax3.text(x_pos, y_pos, 'C', transform=ax3.transAxes, fontsize=labelsize, verticalalignment='top')
 
@@ -234,7 +234,7 @@ def fig3(format='png'):
     # ax7.text(x_pos, y_pos, 'G', transform=ax7.transAxes, fontsize=labelsize, verticalalignment='top')
 
     ax8 = fig.add_subplot(gs[1,3])
-    vis.plot_dispersion(hue='hem', y='Variance', cortex='tessels1002', regions=[1,2,4,5], ax=ax8)
+    vis.plot_dispersion(hue='hem', y='Variance', cortex='tessels1002', regions=[1,2,4,5], ax=ax8, save=True)
     ax8.text(x_pos, y_pos, 'H', transform=ax8.transAxes, fontsize=labelsize, verticalalignment='top')
     # ax8.set_xticks([80, 304, 670, 1190, 1848])
 
@@ -280,41 +280,41 @@ def figS1(format='png'):
 
     dataframe = vis.train_summary(exps=['sc1'])
     ax1 = fig.add_subplot(gs[0,0])
-    vis.plot_train_predictions(dataframe=dataframe, x='train_hyperparameter', hue='train_num_regions', best_models=False, atlases=['mdtb'], methods=['ridge'], ax=ax1)
+    vis.plot_train_predictions(dataframe=dataframe, x='train_hyperparameter', hue='train_num_regions', best_models=False, atlases=['schaefer'], methods=['ridge'], ax=ax1)
     ax1.set_xlabel('Hyperparameter')
     ax1.text(x_pos, y_pos, 'A', transform=ax1.transAxes, fontsize=labelsize, verticalalignment='top')
     ax1.set_ylim([.05, .4])
 
     ax2 = fig.add_subplot(gs[0,1])
-    # vis.plot_train_predictions(dataframe=dataframe.query('train_hyperparameter>-5'), x='train_hyperparameter', hue='train_num_regions', best_models=False, atlases=['mdtb'], methods=['lasso'], ax=ax2)
-    # ax2.text(x_pos, y_pos, 'B', transform=ax2.transAxes, fontsize=labelsize, verticalalignment='top')
-    # ax2.set_ylim([.05, .4])
+    vis.plot_train_predictions(dataframe=dataframe.query('train_hyperparameter>-5'), x='train_hyperparameter', hue='train_num_regions', best_models=False, atlases=['schaefer'], methods=['lasso'], ax=ax2)
+    ax2.text(x_pos, y_pos, 'B', transform=ax2.transAxes, fontsize=labelsize, verticalalignment='top')
+    ax2.set_ylim([.05, .4])
     
     ax3 = fig.add_subplot(gs[0,2])
     dataframe = vis.eval_summary(exps=['sc2'])
-    vis.plot_eval_predictions(dataframe=dataframe, exps=['sc2'], methods=['WTA', 'ridge'], atlases=['mdtb'], hue='eval_model',  ax=ax3) # 'lasso'
+    vis.plot_eval_predictions(dataframe=dataframe, exps=['sc2'], methods=['WTA', 'ridge'], atlases=['schaefer'], hue='eval_model',  ax=ax3) # 'lasso'
     ax3.text(x_pos, y_pos, 'C', transform=ax3.transAxes, fontsize=labelsize, verticalalignment='top')
     
     ax4 = fig.add_subplot(gs[1,0])
-    fpath = os.path.join(dirs.figure, f'map_R_mdtb_ridge_best_model.png')
+    fpath = os.path.join(dirs.figure, f'map_R_ridge_schaefer_best_model.png')
     if not os.path.isfile(fpath):
-        vis.map_eval_cerebellum(data="R", exp="sc1", atlas='mdtb', model_name='best_model', method='ridge',  cscale=[0, 0.5], outpath=fpath);
+        vis.map_eval_cerebellum(data="R", exp="sc1", atlas='schaefer', model_name='best_model', method='ridge',  cscale=[0, 0.4], outpath=fpath);
     vis.plot_png(fpath, ax=ax4)
     ax4.axis('off')
     ax4.text(x_pos, y_pos, 'D', transform=ax4.transAxes, fontsize=labelsize, verticalalignment='top')
 
     ax5 = fig.add_subplot(gs[1,1])
-    # fpath = os.path.join(dirs.figure, f'map_R_mdtb_lasso_best_model.png')
-    # if not os.path.isfile(fpath):
-    #     vis.map_eval_cerebellum(data="R", exp="sc1", atlas='mdtb', model_name='best_model', method='lasso',  cscale=[0, 0.5], outpath=fpath); # ax=ax4
-    # vis.plot_png(fpath, ax=ax5)
-    # ax5.axis('off')
-    # ax5.text(x_pos, y_pos, 'E', transform=ax5.transAxes, fontsize=labelsize, verticalalignment='top')
+    fpath = os.path.join(dirs.figure, f'map_R_lasso_schaefer_best_model.png')
+    if not os.path.isfile(fpath):
+        vis.map_eval_cerebellum(data="R", exp="sc1", atlas='schaefer', model_name='best_model', method='lasso',  cscale=[0, 0.4], outpath=fpath); # ax=ax4
+    vis.plot_png(fpath, ax=ax5)
+    ax5.axis('off')
+    ax5.text(x_pos, y_pos, 'E', transform=ax5.transAxes, fontsize=labelsize, verticalalignment='top')
 
     ax6 = fig.add_subplot(gs[1,2])
-    fpath = os.path.join(dirs.figure, f'map_R_WTA_mdtb_best_model.png')
+    fpath = os.path.join(dirs.figure, f'map_R_WTA_schaefer_best_model.png')
     if not os.path.isfile(fpath):
-        vis.map_eval_cerebellum(data="R", exp="sc1", atlas='mdtb', model_name='best_model', method='WTA',  cscale=[0, 0.5], outpath=fpath) # ax=ax4
+        vis.map_eval_cerebellum(data="R", exp="sc1", atlas='schaefer', model_name='best_model', method='WTA',  cscale=[0, 0.4], outpath=fpath) # ax=ax4
     vis.plot_png(fpath, ax=ax6)
     ax6.axis('off')
     ax6.text(x_pos, y_pos+.05, 'C', transform=ax6.transAxes, fontsize=labelsize, verticalalignment='top')
@@ -396,5 +396,3 @@ def figS2(format='png'):
     plt.subplots_adjust(left=0.125, bottom=0.001, right=2.0, top=2.0, wspace=.2, hspace=.3)
     save_path = os.path.join(dirs.figure, f'figS3.{format}')
     plt.savefig(save_path, bbox_inches="tight", dpi=300)
-
-
