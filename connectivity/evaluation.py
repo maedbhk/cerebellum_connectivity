@@ -26,7 +26,6 @@ def calculate_R(Y, Y_pred):
 
     return R, R_vox
 
-
 def calculate_R_cv(model, X, Y):
     """Calculates correlation between Y and Y_pred without subtracting the mean.
 
@@ -45,7 +44,6 @@ def calculate_R_cv(model, X, Y):
 
     R = np.nansum(SYP) / np.sqrt(np.nansum(SST) * np.nansum(SPP))
     return R
-
 
 def calculate_R2(Y, Y_pred):
     """Calculates squared correlation between Y and Y_pred without subtracting the mean.
@@ -69,7 +67,6 @@ def calculate_R2(Y, Y_pred):
 
     return R2, R2_vox
 
-
 def calculate_reliability(Y, dataframe):
     """Calculates reliability of Y data across sessions.
 
@@ -84,6 +81,7 @@ def calculate_reliability(Y, dataframe):
         R2_vox (1d-array): Squared correlation per voxel
     """
     Y_flip = np.r_[Y[dataframe["sess"] == 2, :], Y[dataframe["sess"] == 1, :]]
+
     R, R_vox = calculate_R(Y, Y_flip)
     R2, R2_vox = calculate_R2(Y, Y_flip)
     return R, R_vox, R2, R2_vox
