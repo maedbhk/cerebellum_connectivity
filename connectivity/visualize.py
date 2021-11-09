@@ -617,7 +617,8 @@ def plot_surfaces(
         hue=None,
         regions=None,
         save=False,
-        ax=None
+        ax=None,
+        palette=None
         ):
 
     dirs = const.Dirs(exp_name=exp)
@@ -646,11 +647,18 @@ def plot_surfaces(
     # filter out methods
     if method is not None:
         dataframe_concat = dataframe_concat[dataframe_concat['method'].isin([method])]
+    
+    # color plot according to MDTB10 atlas
+    if hue=='reg_names':
+        fpath = nio.get_cerebellar_atlases(atlas_keys=['atl-MDTB10'])[0]
+        _, cpal, _ = nio.get_gifti_colors(fpath)
+        palette = cpal
 
     ax = sns.lineplot(x='num_regions', 
                 y=y, 
                 hue=hue, 
                 data=dataframe_concat,
+                palette=palette,
                 )
     ax.set_xlabel('')
     ax.set_ylabel('Percentage of cortical surface')
@@ -724,7 +732,8 @@ def map_distances_cortex(
     surf='flat',
     colorbar=True,  
     outpath=None,
-    title=None):
+    title=None
+    ):
 
     """plot cortical map for distances
     Args:

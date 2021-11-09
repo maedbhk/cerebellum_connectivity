@@ -11,7 +11,7 @@ from matplotlib.colors import LinearSegmentedColormap
 from SUITPy import flatmap
 from SUITPy import atlas as catlas
 from nilearn.plotting import view_surf
-# from surfplot import Plot
+from surfplot import Plot
 
 import connectivity.constants as const
 from connectivity import data as cdata
@@ -403,7 +403,10 @@ def get_cortical_surfaces(
 
     return os.path.join(dirs.reg_dir, 'data', 'group', f'fs_LR.32k.{hem}.{surf}.surf.gii')
 
-def get_cerebellar_atlases(atlas_keys=None, download_suit_atlases=False):
+def get_cerebellar_atlases(
+    atlas_keys=None, 
+    download_suit_atlases=False
+    ):
     """returns: fpaths (list of str): list of full paths to cerebellar atlases
 
     Args:
@@ -615,7 +618,7 @@ def view_cortex_inflated(
 
     for (data_lh, data_rh, col) in zip(data_lh_all, data_rh_all, cols):
 
-        p = Plot(lh, rh, size=(1000, 800)) # views='lateral', zoom=1.2, 
+        p = Plot(lh, rh, size=(400, 200), zoom=1.2, views='lateral') # views='lateral', zoom=1.2, 
 
         p.add_layer({'left': np.nan_to_num(data_lh.data), 'right': np.nan_to_num(data_rh.data)},  cbar_label=col, as_outline=borders, cbar=colorbar) # cmap='YlOrBr_r',
 
@@ -717,6 +720,7 @@ def view_atlas_cerebellum(
 
 def view_colorbar(
     atlas='yeo7', 
+    structure='cortex',
     outpath=None,
     labels=None,
     orientation='vertical'
@@ -728,7 +732,10 @@ def view_colorbar(
         outpath (str or None): default is None. file not saved to disk.
     """
 
-    fpath = get_cortical_atlases(atlas_keys=[atlas], hem='L')[0]
+    if structure=='cerebellum':
+        fpath = get_cerebellar_atlases(atlas_keys=[atlas])[0]
+    elif structure=='cortex':
+        fpath = get_cortical_atlases(atlas_keys=[atlas], hem='L')[0]
 
     rotation = 90
     if orientation is 'horizontal':
