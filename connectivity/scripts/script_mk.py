@@ -415,13 +415,14 @@ def eval_model(
     config["name"] = model_name
     config["X_data"] = cortex
     config["Y_data"] = cerebellum
-    config["weighting"] = True
+    config["weighting"] = False
     config["averaging"] = "sess"
     config["train_exp"] = train_exp
     config["eval_exp"] = eval_exp
     config["subjects"] = train_subjs
     config["save_maps"] = True
     config["splitby"] = "unique"
+    config["exclude_instruct"] = True
 
     # eval model(s)
     df, voxels = run_connect.eval_models(config)

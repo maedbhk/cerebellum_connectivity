@@ -132,7 +132,8 @@ def get_default_eval_config():
         "mode": "crossed",
         "splitby": None, # other options: 'unique', 'common'
         "save_maps": False,
-        "threshold": 0.1
+        "threshold": 0.1,
+        "exclude_instruct": True
     }
     return config
 
@@ -379,14 +380,9 @@ def _get_data(config, exp, subj):
     df = Ydata.get_info()
 
     exp_num = int(re.findall('(\d+)', exp)[0])
-    df = df[df['sess']==exp_num]
 
     # figure out splitby
-    subset = None
-    if config['splitby']=='unique':
-        subset = df[df['split']=="unique"]['cond'].unique()    
-    elif config['splitby']=='common':
-        subset = df[df['split']=="common"]['cond'].unique()    
+    subset = (df['split']==config['splitby']) & (df['inst']!=config['exclude_instruct'])
 
     Y, Y_info = Ydata.get_data(averaging=config["averaging"], weighting=config["weighting"], subset=subset)
 
