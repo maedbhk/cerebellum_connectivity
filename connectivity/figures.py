@@ -86,16 +86,18 @@ def fig2(format='svg'):
     
     ax4 = fig.add_subplot(gs[1,0])
     fpath = os.path.join(dirs.figure, f'map_R_ridge_best_model.png')
+    best_model = 'ridge_tessels1002_alpha_8'
     if not os.path.isfile(fpath):
-        vis.map_eval_cerebellum(data="R", exp="sc1", model_name='best_model', method='ridge', cscale=[0, 0.4], outpath=fpath); # cscale=[0, 0.5]
+        vis.map_eval_cerebellum(data="R", exp="sc1", model_name=best_model, method='ridge', cscale=[0, 0.4], outpath=fpath); # cscale=[0, 0.5]
     vis.plot_png(fpath, ax=ax4)
     ax4.axis('off')
     ax4.text(x_pos, y_pos, 'D', transform=ax4.transAxes, fontsize=labelsize, verticalalignment='top')
 
     ax5 = fig.add_subplot(gs[1,1])
     fpath = os.path.join(dirs.figure, f'map_R_lasso_best_model.png')
+    best_model = 'lasso_tessels1002_alpha_-2'
     if not os.path.isfile(fpath):
-        vis.map_eval_cerebellum(data="R", exp="sc1", model_name='best_model', method='lasso', cscale=[0, 0.4], outpath=fpath); # ax=ax4
+        vis.map_eval_cerebellum(data="R", exp="sc1", model_name=best_model, method='lasso', cscale=[0, 0.4], outpath=fpath); # ax=ax4
     vis.plot_png(fpath, ax=ax5)
     ax5.axis('off')
     ax5.text(x_pos, y_pos, 'E', transform=ax5.transAxes, fontsize=labelsize, verticalalignment='top')
