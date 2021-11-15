@@ -1,11 +1,15 @@
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt 
 
 import connectivity.constants as const
 from connectivity.data import Dataset
 import connectivity.model as model
 import connectivity.data as data
 import connectivity.run as run
+import connectivity.visualize as vis
+
+
 
 def train_ridge(corticalParc, logalpha, sn=const.return_subjs):
     config = run.get_default_train_config()
@@ -95,11 +99,18 @@ def make_group_data(exp = "sc1", roi="cerebellum_suit"):
     Xdata.average_subj()
     Xdata.save(dataname="all")
 
+def sum_model_eval(): 
+    ax3 = plt.subplot(1,1,1)
+    df = vis.eval_summary(exps=['sc2'])
+    vis.plot_eval_predictions(dataframe=df, exps=['sc2'], methods=['WTA', 'ridge', 'lasso'], hue='eval_model', ax=ax3)
+    ax3.set_xticks([80, 304, 670, 1190, 1848])
+
+
 if __name__ == "__main__":
     # D = train_NNLS('tessels0162', [-2,0,2],sn=['all'])
     # D = train_ridge('tessels0162',[-2,0,2,4,6,8],sn=['all'])
     # D = fit_group_model()
-    d = const.Dirs()
-    T = eval_models(['ridge','ridge','ridge','ridge','ridge','ridge','NN','NN','NN'],'tessels0162',[-2,0,2,4,6,8,-2,0,2],sn=['all'])
-    T.to_csv(d.conn_eval_dir / "group_model.dat")
-    
+    # d = const.Dirs()
+    # T = eval_models(['ridge','ridge','ridge','ridge','ridge','ridge','NN','NN','NN'],'tessels0162',[-2,0,2,4,6,8,-2,0,2],sn=['all'])
+    # T.to_csv(d.conn_eval_dir / "group_model.dat")
+    sum_model_eval()
