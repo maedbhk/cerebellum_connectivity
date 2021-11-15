@@ -7,6 +7,7 @@ import numpy as np
 import deepdish as dd
 import matplotlib.pyplot as plt
 import seaborn as sns 
+import scipy.stats as ss 
 
 from connectivity import weights as cweights
 from connectivity import visualize as summary
@@ -124,7 +125,7 @@ def vmatch_baseline_fK():
     vm = np.empty((kmax,))
     kk = np.arange(1,kmax+1)
     for k in kk:
-        vm[k-1] = vmatch_baseline([k,3],60)
+        vm[k-1] = vmatch_baseline([10,k],60)
     plt.plot(kk,vm)
     pass
 
@@ -175,16 +176,108 @@ def get_decomponsition(roi="cerebellum_suit", sn="s02", K=17,num = 5):
 def do_all_decomposition(roi="cerebellum_suit", K=10,num = 5):
     num_subj = len(const.return_subjs)
     d = []
-    for i,sn in enumerate(const.return_subjs[20:]):
+    for i,sn in enumerate(const.return_subjs[21:]):
         filename=const.base_dir / "sc1" / "conn_models" / "dict_learn" / f"decomp_{roi}_{sn}_{K}.h5"
-        d.append(get_decomponsition(roi="cerebellum_suit", sn=sn, K=K,num = num))
+        d.append(get_decomponsition(roi=roi, sn=sn, K=K,num = num))
         dd.io.save(filename,d[-1])
     return d
 
-def check_alignment(roi=["cerebelllum_suit","tessels1002"],K=[10,10]): 
+def load_decomposition(roi=["cerebellum_suit"],K=[10],subjs=const.return_subjs):
+    """Loads the decomposition from disk
+    """
+    num_subj = len(subjs)
+    Vhat = np.empty((len(roi),),object)
+    D = pd.DataFrame()
+    d = pd.DataFrame()
+    for r in range(len(roi)):
+        Vhat[r]=np.empty((num_subj,K[r],61))
+        for i,sn in enumerate(subjs):
+            filename=const.base_dir / "sc1" / "conn_models" / "dict_learn" / f"decomp_{roi[r]}_{sn}_{K[r]}.h5"
+            di= dd.io.load(filename)
+            Vhat[r][i,:,:]=di['Vhat'][0,:,:]
+            d['subjn'] = [sn]
+            d['sn'] = [i]
+            d['rname'] = [roi[r]]
+            d['rn'] = [r]
+            d['K'] = [K[r]]
+            d['match_self'] = [np.nanmean(di['M'])]
+            D= pd.concat([D,d],ignore_index=True)
+    return Vhat,D
+
+def check_alignment(roi=["cerebellum_suit","tessels1002"],K=[10,10]):
+    # Load all the the desired decompositions 
+    Vhat,D = load_decomposition(roi,K)
+    # Now compare the different values
+    _,M00 = vmatch(Vhat[0],Vhat[0])
+    _,M11 = vmatch(Vhat[1],Vhat[1])
+    _,M01 = vmatch(Vhat[0],Vhat[1])
+    _,M10 = vmatch(Vhat[1],Vhat[0])
+    D['same_roi']= np.concatenate([np.nanmean(M00,axis=1),np.nanmean(M11,axis=1)])
+    D['diff_roi']= np.concatenate([np.nanmean(M01,axis=1),np.nanmean(M10,axis=1)])
+    E=pd.melt(D,id_vars=['subjn','sn','rn','rname','K'],value_vars=['same_roi','diff_roi'],var_name='match',value_name='corr')
+    sns.barplot(data=E,x='rn',y='corr',hue='match')
+    for i in range(2):
+        t,p = ss.ttest_rel(D[D.rn==i].same_roi,D[D.rn==i].diff_roi)
+        print(f"region: {roi[i]} t:{t:.3} p:{p:.3}")
+    pass
+
+def get_average_data_by_region(): 
+    roi = 'cerebellum_suit'
+    data = cdata.Dataset(experiment="sc1",glm="glm7",roi=roi,subj_id='all')
+    data.load_h5()
+    T = data.get_info()
+    D1,T1 = data.get_data(averaging="exp", weighting=False, subset=T.inst==0)
+    data = cdata.Dataset(experiment="sc2",glm="glm7",roi=roi,subj_id='all')
+    data.load_h5()
+    T = data.get_info()
+    D2,T2 = data.get_data(averaging="exp", weighting=False, subset=T.inst==0)
     
+    # Align the two data sets 
+    D1 = demean_data(D1,T1)
+    D2 = demean_data(D2,T2)
+    D = np.concatenate([D1,D2],axis=0)
+    Y = D - np.mean(D,axis=0)
+    T = pd.concat([T1,T2])
+
+    # get regions of interest definition 
+    atlas = const.base_dir / "cerebellar_atlases" / "king_2019" / "atl-MDTB10_space-SUIT_dseg.nii"
+    R = cdata.read_suit_nii(atlas)
+    
+    Ym,regNum = cdata.average_by_roi(Y,R)
+    return Ym, regNum
+
+def calc_alignment_by_region(): 
+    """Determines alignment of functional vectors by region
+    """
+    # Get cerebellar data per region     
+    Ym,regNum = get_average_data_by_region()
+    Ym = Ym[:,1:]
+    Ym = Ym / np.sqrt(np.sum(Ym**2,axis=0))
+    
+    # Get comparision vectos 
+    Vhat,D = load_decomposition(['cerebellum_suit','tessels1002','tessels1002'],[10,10,17])
+    N = D.shape[0]
+    K = Ym.shape[1]
+    match = np.zeros((N,K))
+    for i,d in D.iterrows():
+        A = Ym.T @ Vhat[d.rn][d.sn,:,:].T
+        match[i,:]=A.max(axis=1)
+    # V = Ym.T @ Ym 
+    R = pd.DataFrame()
+    for i in range(K):
+        D['match']=match[:,i]
+        D['MDTBRegion']=np.ones((N,1))*(i+1)
+        R= pd.concat([R,D],ignore_index=True)
+    sns.lineplot(data=R,x="MDTBRegion",y="match",hue='rn',palette=plt.get_cmap('tab10'))
+    plt.legend(labels=["Cerebellum 10","Cortex 10","Cortex 17"])
+    pass
+
+
 if __name__ == '__main__':
     # M = vmatch_baseline([17,17],N=62)
     # correspondence_sim()
-    d = do_all_decomposition(roi="tessels1002")
+    # d = do_all_decomposition(roi="tessels1002",K=17,num=5)
+    # check_alignment(roi=["cerebellum_suit","tessels1002"],K=[10,10])
+    # vmatch_baseline_fK()
+    calc_alignment_by_region()
     pass
