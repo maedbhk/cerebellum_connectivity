@@ -10,7 +10,6 @@ import seaborn as sns
 
 from connectivity import weights as cweights
 from connectivity import visualize as summary
-from connectivity import sparsity as csparse
 from connectivity import data as cdata
 import connectivity.constants as const
 
@@ -37,8 +36,7 @@ def plot_dispersion(method='ridge',cortex='tessels0042'):
     axes[1,0].set_title('Raw averaged Spherical Var')
     sns.lineplot(data=T,x='roi',y='var_w',ax=axes[1,1])
     axes[1,1].set_title('weighted spherical Var')
-    pass
-
+    return T
 
 def dispersion_summary(
     atlas='MDTB10',
@@ -191,7 +189,7 @@ def distances_map(
         [nib.save(gii, os.path.join(fpath, f'{fname}.{hem}.func.gii')) for (gii, hem) in zip(giis, ['L', 'R'])]
 
 def run():
-    dispersion_summary()
+    # dispersion_summary()
     plot_dispersion(cortex='tessels1002')
     pass
 
