@@ -239,7 +239,7 @@ def eval_summary(
 def test_summary(
     summary_name="test_summary_learning", 
     train_exp='sc1',
-    models_to_include=['WTA', 'lasso', 'ridge']
+    models_to_include=['RIDGE']
     ):
     """load test summary containing all metrics about test models (mdtb models tested on external data).
     Prefix 'gen' is appended to cols.
@@ -436,7 +436,7 @@ def plot_eval_predictions(
 def plot_test_predictions(
     dataframe=None,
     x='test_num_regions', 
-    routines=['late'],
+    routines=['session_3'],
     hue=None, 
     save=False,
     atlases=['icosahedron'],
@@ -481,9 +481,6 @@ def plot_test_predictions(
         plt.xticks(rotation="45", ha="right")
         plt.xlabel("")
         plt.ylabel("R")
-
-    if hue:
-        plt.legend({'learning'}, loc='best', frameon=False) # bbox_to_anchor=(1, 1)
 
     if title:
         plt.title("Model Generalization", fontsize=20)
