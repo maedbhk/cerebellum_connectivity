@@ -7,10 +7,11 @@ import numpy as np
 import deepdish as dd
 import matplotlib.pyplot as plt
 import seaborn as sns 
+import scipy.stats as ss
+from statsmodels.stats.anova import AnovaRM
 
 from connectivity import weights as cweights
 from connectivity import visualize as summary
-from connectivity import sparsity as csparse
 from connectivity import data as cdata
 import connectivity.constants as const
 
@@ -25,8 +26,8 @@ def plot_dispersion(method='ridge',cortex='tessels0042'):
     df = pd.read_csv(fpath)
     df['w_var']=df.Variance*df.sum_w
     df = df[df.cortex==cortex]
-    T=df.groupby(['sn','roi'])
-    T = T.apply(np.mean)
+    T = pd.pivot_table(df,values=['sum_w','w_var','Variance'],index=['sn','roi'],aggfunc='mean')
+    T = T.reset_index()
     T['var_w'] = T.w_var/T.sum_w
     fig, axes = plt.subplots(2, 2,figsize=(12,10))
     sns.lineplot(data=df,x='roi',y='Variance',hue='hem',ax=axes[0,0])
@@ -37,8 +38,7 @@ def plot_dispersion(method='ridge',cortex='tessels0042'):
     axes[1,0].set_title('Raw averaged Spherical Var')
     sns.lineplot(data=T,x='roi',y='var_w',ax=axes[1,1])
     axes[1,1].set_title('weighted spherical Var')
-    pass
-
+    return T,df
 
 def dispersion_summary(
     atlas='MDTB10',
@@ -191,8 +191,10 @@ def distances_map(
         [nib.save(gii, os.path.join(fpath, f'{fname}.{hem}.func.gii')) for (gii, hem) in zip(giis, ['L', 'R'])]
 
 def run():
-    dispersion_summary()
-    plot_dispersion(cortex='tessels1002')
+    # dispersion_summary()
+    T,df=plot_dispersion(cortex='tessels1002')
+    res = AnovaRM(data=T, depvar='var_w', subject='sn', within=['roi']).fit()
+    print(res)
     pass
 
 if __name__ == "__main__":

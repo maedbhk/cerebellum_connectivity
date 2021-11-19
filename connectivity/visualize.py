@@ -436,7 +436,7 @@ def plot_eval_predictions(
 def plot_test_predictions(
     dataframe=None,
     x='test_num_regions', 
-    routines=['session_3'],
+    routines=['session_1'],
     hue=None, 
     save=False,
     atlases=['icosahedron'],
