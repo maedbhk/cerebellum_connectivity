@@ -74,7 +74,8 @@ def check_consistency(P=100,K=5,N=40):
 
 def dict_learn_rep(Y,K=5,num=1):
     num_subj,P,N = Y.shape
-    Vsubj = np.empty((num_subj,K,N))
+    Vbest = np.empty((num_subj,K,N))
+    vm = np.empty((num_subj,))
     Vhat = np.empty((num,K,N))
     iter = np.empty((num,))
     loss = np.empty((num,))
@@ -91,9 +92,11 @@ def dict_learn_rep(Y,K=5,num=1):
             return_n_iter=True,max_iter=200)
             loss[i] = errors[-1]
         # Sort the solutions by the loss
+        _,M = vmatch(Vhat,Vhat)
         i=loss.argmin()
-        Vsubj[s,:,:] = Vhat[i,:,:]
-    return Vsubj
+        vm[s]=np.nanmean(M)
+        Vbest[s,:,:] = Vhat[i,:,:]
+    return Vbest,vm
 
 def vmatch(V1,V2):
     """Gets the mean minimal distances of every vector in V1
@@ -128,6 +131,32 @@ def vmatch_baseline_fK():
         vm[k-1] = vmatch_baseline([10,k],60)
     plt.plot(kk,vm)
     pass
+
+def vmatch_baseline_cov(COV,K,P=20):
+    """ Simulate matching between A and B if Gaussian 
+    with different covariance structure
+    """
+    num_subj = 10
+    N = COV[0].shape[0]
+    V=np.empty((2,),object)
+    vm=np.empty((2,),object)
+    D=pd.DataFrame()
+    for i in range(2):
+        Y = np.zeros((num_subj,P,N)) 
+        for s in range(num_subj):
+            Y[s,:,:]=np.random.multivariate_normal(np.zeros((N,)),COV[i],(P))
+        V[i],vm[i] = dict_learn_rep(Y,K=K[i],num=5)
+    m00,M00 = vmatch(V[0],V[0])
+    m11,M11 = vmatch(V[1],V[1])
+    m01,M01 = vmatch(V[0],V[1])
+    m10,M10 = vmatch(V[1],V[0])
+    labels = ['A-A','A-B','B-A','B-B']
+    D['match']= np.concatenate([m00,m01,m10,m11])
+    D['fromto']= np.kron(np.arange(4),np.ones((num_subj,)))
+    ax=sns.barplot(data=D,x='fromto',y='match')
+    ax.set_xticklabels(labels)
+    pass
+
 
 def demean_data(D,T): 
     m = D[T.split=="common",:].mean(axis=0)
@@ -208,17 +237,23 @@ def check_alignment(roi=["cerebellum_suit","tessels1002"],K=[10,10]):
     # Load all the the desired decompositions 
     Vhat,D = load_decomposition(roi,K)
     # Now compare the different values
+    labels = ['A-A','A-B','B-A','B-B']
     _,M00 = vmatch(Vhat[0],Vhat[0])
     _,M11 = vmatch(Vhat[1],Vhat[1])
     _,M01 = vmatch(Vhat[0],Vhat[1])
     _,M10 = vmatch(Vhat[1],Vhat[0])
-    D['same_roi']= np.concatenate([np.nanmean(M00,axis=1),np.nanmean(M11,axis=1)])
-    D['diff_roi']= np.concatenate([np.nanmean(M01,axis=1),np.nanmean(M10,axis=1)])
-    E=pd.melt(D,id_vars=['subjn','sn','rn','rname','K'],value_vars=['same_roi','diff_roi'],var_name='match',value_name='corr')
-    sns.barplot(data=E,x='rn',y='corr',hue='match')
-    for i in range(2):
-        t,p = ss.ttest_rel(D[D.rn==i].same_roi,D[D.rn==i].diff_roi)
-        print(f"region: {roi[i]} t:{t:.3} p:{p:.3}")
+    E = pd.concat([D,D])
+    E['match']= np.concatenate([np.nanmean(M00,axis=1),
+                               np.nanmean(M01,axis=1),
+                               np.nanmean(M10,axis=1),
+                               np.nanmean(M11,axis=1)])
+    E['fromto']= np.kron(np.arange(4),np.ones((np.int(D.shape[0]/2),)))
+    ax=sns.barplot(data=E,x='fromto',y='match')
+    ax.set_xticklabels(labels)
+    test = [[0,1],[0,2],[3,2],[3,1]]
+    for i in range(len(test)):
+        t,p = ss.ttest_rel(E[E.fromto==test[i][0]].match,E[E.fromto==test[i][1]].match)
+        print(f"{labels[test[i][0]]} vs {labels[test[i][1]]}  t:{t:.3} p:{p:.3}")
     pass
 
 def get_average_data_by_region(): 
@@ -277,7 +312,9 @@ if __name__ == '__main__':
     # M = vmatch_baseline([17,17],N=62)
     # correspondence_sim()
     # d = do_all_decomposition(roi="tessels1002",K=17,num=5)
-    # check_alignment(roi=["cerebellum_suit","tessels1002"],K=[10,10])
+    # check_alignment(roi=["tessels1002","tessels1002"],K=[10,17])
     # vmatch_baseline_fK()
-    calc_alignment_by_region()
+    # calc_alignment_by_region()
+    COV = [np.diag([3,1,0.1,0.1,0.1]),np.diag([1,1,1,1,1])]
+    vmatch_baseline_cov(COV,[2,2],P=20)
     pass
