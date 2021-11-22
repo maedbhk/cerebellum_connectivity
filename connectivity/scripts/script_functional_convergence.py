@@ -163,7 +163,10 @@ def demean_data(D,T):
     D = D-m
     return D
 
-def get_decomponsition(roi="cerebellum_suit", sn="s02", K=17,num = 5):
+def get_decomponsition(roi="cerebellum_suit", sn="s02", K=10,
+                        num = 5,sim_baseline=False):
+    """Gets decomposition on activity data - if sim_baseline is set to True, it replaces the actual data with a moment-matched Gaussian distribution """
+
     data = cdata.Dataset(experiment="sc1",glm="glm7",roi=roi,subj_id=sn)
     data.load_mat()
     T = data.get_info()
@@ -178,11 +181,15 @@ def get_decomponsition(roi="cerebellum_suit", sn="s02", K=17,num = 5):
     D2 = demean_data(D2,T2)
     D = np.concatenate([D1,D2],axis=0)
     Y = D - np.mean(D,axis=0)
+    N,P = Y.shape
     T = pd.concat([T1,T2])
-    Y=Y.T
-    pass
+    if sim_baseline:
+        COV = np.cov(Y)
+        Y = np.random.multivariate_normal(np.zeros((N,)),COV,(P,))
+    else: 
+        Y=Y.T
 
-    P,N = Y.shape
+    
     Vhat = np.empty((num,K,N))
     iter = np.empty((num,))
     loss = np.empty((num,))
@@ -202,12 +209,17 @@ def get_decomponsition(roi="cerebellum_suit", sn="s02", K=17,num = 5):
     d = {'loss':loss,'iter':iter,'Vhat':Vhat,'M':M}
     return d
 
-def do_all_decomposition(roi="cerebellum_suit", K=10,num = 5):
+def do_all_decomposition(roi="cerebellum_suit", K=10,
+                        num = 5,sim_baseline=False):
     num_subj = len(const.return_subjs)
     d = []
-    for i,sn in enumerate(const.return_subjs[21:]):
-        filename=const.base_dir / "sc1" / "conn_models" / "dict_learn" / f"decomp_{roi}_{sn}_{K}.h5"
-        d.append(get_decomponsition(roi=roi, sn=sn, K=K,num = num))
+    for i,sn in enumerate(const.return_subjs):
+        if sim_baseline:
+            fname = f"baseline_{roi}_{sn}_{K}.h5"
+        else: 
+            fname = f"decomp_{roi}_{sn}_{K}.h5"
+        filename=const.base_dir / "sc1" / "conn_models" / "dict_learn" / fname
+        d.append(get_decomponsition(roi, sn, K, num, sim_baseline))
         dd.io.save(filename,d[-1])
     return d
 
@@ -311,10 +323,10 @@ def calc_alignment_by_region():
 if __name__ == '__main__':
     # M = vmatch_baseline([17,17],N=62)
     # correspondence_sim()
-    # d = do_all_decomposition(roi="tessels1002",K=17,num=5)
+    d = do_all_decomposition(roi="cerebellum_suit",K=10,num=5,sim_baseline=True)
     # check_alignment(roi=["tessels1002","tessels1002"],K=[10,17])
     # vmatch_baseline_fK()
     # calc_alignment_by_region()
-    COV = [np.diag([3,1,0.1,0.1,0.1]),np.diag([1,1,1,1,1])]
-    vmatch_baseline_cov(COV,[2,2],P=20)
+    # COV = [np.diag([3,1,0.1,0.1,0.1]),np.diag([1,1,1,1,1])]
+    # vmatch_baseline_cov(COV,[2,2],P=20)
     pass
