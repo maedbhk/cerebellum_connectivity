@@ -20,11 +20,9 @@ return_subjs = ["s02","s03","s04","s06","s08",
 
 # Set the local path here...
 # When committing, leave other people's path in here.
-base_dir = Path("/Volumes/diedrichsen_data$/data/super_cerebellum")
+# base_dir = Path("/Volumes/diedrichsen_data$/data/super_cerebellum")
 # base_dir = Path('/Users/jdiedrichsen/Dropbox (Diedrichsenlab)/projects/SuperCerebellum')
-# base_dir = Path("global/scratch/maedbhking/projects/cerebellum_connectivity/data")
-# base_dir = Path("/Users/maedbhking/Documents/cerebellum_connectivity/data")
-# base_dir = Path(__file__).absolute().parent.parent / 'data'
+base_dir = Path(__file__).absolute().parent.parent / 'data'
 
 
 class Dirs:
