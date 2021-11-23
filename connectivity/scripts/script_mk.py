@@ -111,7 +111,7 @@ def train_ridge(
         Appends summary data for each model and subject into `train_summary.csv`
         Returns pandas dataframe of train_summary
     """
-    train_subjs, _ = split_subjects(const.return_subjs, test_size=0.3)
+    train_subjs, test_subjs = split_subjects(const.return_subjs, test_size=0.3)
 
     # get default train parameters
     config = run_connect.get_default_train_config()
@@ -131,7 +131,7 @@ def train_ridge(
         config["weighting"] = True
         config["averaging"] = "sess"
         config["train_exp"] = train_exp
-        config["subjects"] = train_subjs
+        config["subjects"] = test_subjs
         config["validate_model"] = True
         config["cv_fold"] = 4 # other options: 'sess' or 'run' or None
         config["mode"] = "crossed"
@@ -190,7 +190,7 @@ def train_WTA(
         Appends summary data for each model and subject into `train_summary.csv`
         Returns pandas dataframe of train_summary
     """
-    train_subjs, _ = split_subjects(const.return_subjs, test_size=0.3)
+    train_subjs, test_subjs = split_subjects(const.return_subjs, test_size=0.3)
 
     # get default train parameters
     config = run_connect.get_default_train_config()
@@ -208,7 +208,7 @@ def train_WTA(
     config["weighting"] = True
     config["averaging"] = "sess"
     config["train_exp"] = train_exp
-    config["subjects"] = train_subjs
+    config["subjects"] = test_subjs
     config["validate_model"] = True
     config["cv_fold"] = 4
     config["mode"] = "crossed"
@@ -269,7 +269,7 @@ def train_NNLS(
         Returns pandas dataframe of train_summary
     """
 
-    train_subjs, _ = split_subjects(const.return_subjs, test_size=0.3)
+    train_subjs, test_subjs = split_subjects(const.return_subjs, test_size=0.3)
 
     # get default train parameters
     config = run_connect.get_default_train_config()
@@ -289,7 +289,7 @@ def train_NNLS(
         config["weighting"] = True
         config["averaging"] = "sess"
         config["train_exp"] = train_exp
-        config["subjects"] = train_subjs
+        config["subjects"] = test_subjs
         config["validate_model"] = False
         config["cv_fold"] = 4
         config["mode"] = "crossed"
@@ -406,7 +406,7 @@ def eval_model(
     """
     dirs = const.Dirs(exp_name=eval_exp)
 
-    train_subjs, _ = split_subjects(const.return_subjs, test_size=0.3)
+    train_subjs, test_subjs = split_subjects(const.return_subjs, test_size=0.3)
 
     # get default eval parameters
     config = run_connect.get_default_eval_config()
@@ -419,7 +419,7 @@ def eval_model(
     config["averaging"] = "sess"
     config["train_exp"] = train_exp
     config["eval_exp"] = eval_exp
-    config["subjects"] = train_subjs
+    config["subjects"] = test_subjs
     config["save_maps"] = True
     config["splitby"] = "unique"
     config["exclude_instruct"] = True
@@ -484,12 +484,12 @@ def _check_eval(model_name, train_exp, eval_exp):
         eval (bool)
     """
     
-    train_subjs, _ = split_subjects(const.return_subjs, test_size=0.3)
+    train_subjs, test_subjs = split_subjects(const.return_subjs, test_size=0.3)
 
     eval = True
     # check if trained model is complete (all `train_subjs`)
     dirs = const.Dirs(exp_name=train_exp)
-    for subj in train_subjs:
+    for subj in test_subjs:
         fname = f'{model_name}_{subj}.h5'
         if not os.path.exists(os.path.join(dirs.conn_train_dir, model_name, fname)):
             return False
@@ -519,7 +519,7 @@ def run(cortex="tessels0362",
     """
     print(f'doing model {train_or_eval}')
     if train_or_eval=="train":
-        for exp in range(2):
+        for exp in [0]: # range(2)
             if model_type=="ridge":
                 # train ridge
                 train_ridge(hyperparameter=[-2,0,2,4,6,8,10], train_exp=f"sc{exp+1}", cortex=cortex)
