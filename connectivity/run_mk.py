@@ -382,6 +382,7 @@ def _get_data(config, exp, subj):
     exp_num = int(re.findall('(\d+)', exp)[0])
 
     # figure out splitby
+    subset = None
     if 'splitby' in config:
         subset = (df['split']==config['splitby']) & (df['inst']!=config['exclude_instruct'])
 
