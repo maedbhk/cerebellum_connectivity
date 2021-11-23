@@ -223,7 +223,9 @@ def do_all_decomposition(roi="cerebellum_suit", K=10,
         dd.io.save(filename,d[-1])
     return d
 
-def load_decomposition(roi=["cerebellum_suit"],K=[10],subjs=const.return_subjs):
+def load_decomposition(roi=["cerebellum_suit"],
+                    K=[10],subjs=const.return_subjs,
+                    typeV="decomp"):
     """Loads the decomposition from disk
     """
     num_subj = len(subjs)
@@ -233,7 +235,7 @@ def load_decomposition(roi=["cerebellum_suit"],K=[10],subjs=const.return_subjs):
     for r in range(len(roi)):
         Vhat[r]=np.empty((num_subj,K[r],61))
         for i,sn in enumerate(subjs):
-            filename=const.base_dir / "sc1" / "conn_models" / "dict_learn" / f"decomp_{roi[r]}_{sn}_{K[r]}.h5"
+            filename=const.base_dir / "sc1" / "conn_models" / "dict_learn" / f"{typeV}_{roi[r]}_{sn}_{K[r]}.h5"
             di= dd.io.load(filename)
             Vhat[r][i,:,:]=di['Vhat'][0,:,:]
             d['subjn'] = [sn]
@@ -242,12 +244,14 @@ def load_decomposition(roi=["cerebellum_suit"],K=[10],subjs=const.return_subjs):
             d['rn'] = [r]
             d['K'] = [K[r]]
             d['match_self'] = [np.nanmean(di['M'])]
+            d['typeV'] = [typeV]
             D= pd.concat([D,d],ignore_index=True)
     return Vhat,D
 
-def check_alignment(roi=["cerebellum_suit","tessels1002"],K=[10,10]):
+def check_alignment(roi=["cerebellum_suit","tessels1002"],
+                    K=[10,10],typeV='decomp'):
     # Load all the the desired decompositions 
-    Vhat,D = load_decomposition(roi,K)
+    Vhat,D = load_decomposition(roi,K,typeV=typeV)
     # Now compare the different values
     labels = ['A-A','A-B','B-A','B-B']
     _,M00 = vmatch(Vhat[0],Vhat[0])
@@ -323,8 +327,12 @@ def calc_alignment_by_region():
 if __name__ == '__main__':
     # M = vmatch_baseline([17,17],N=62)
     # correspondence_sim()
-    d = do_all_decomposition(roi="cerebellum_suit",K=10,num=5,sim_baseline=True)
+    d = do_all_decomposition(roi="tessels1002",K=17,num=5,sim_baseline=True)
+    d = do_all_decomposition(roi="tessels1002",K=10,num=5,sim_baseline=True)
     # check_alignment(roi=["tessels1002","tessels1002"],K=[10,17])
+    # Vhat1,D1 = load_decomposition(['cerebellum_suit'],[10],typeV='decomp')
+    # Vhat2,D2 = load_decomposition(['cerebellum_suit'],[10],typeV='baseline')
+    
     # vmatch_baseline_fK()
     # calc_alignment_by_region()
     # COV = [np.diag([3,1,0.1,0.1,0.1]),np.diag([1,1,1,1,1])]
