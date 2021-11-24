@@ -17,34 +17,6 @@ import connectivity.run_mk as run_connect
 from connectivity import weights as cmaps
 from connectivity import visualize as summary
 
-def split_subjects(
-    subj_ids, 
-    test_size=0.3
-    ):
-    """Randomly divide subject list into train and test subsets.
-
-    Train subjects are used to train, validate, and test models(s).
-    Test subjects are kept until the end of the project to evaluate
-    the best (and final) model.
-
-    Args:
-        subj_ids (list): list of subject ids (e.g., ['s01', 's02'])
-        test_size (int): size of test set
-    Returns:
-        train_subjs (list of subject ids), test_subjs (list of subject ids)
-    """
-    # set random seed
-    seed(1)
-
-    # get number of subjects in test (round down)
-    num_in_test = int(np.floor(test_size * len(subj_ids)))
-
-    # select test set
-    test_subjs = list(sample(subj_ids, num_in_test))
-    train_subjs = list([x for x in subj_ids if x not in test_subjs])
-
-    return train_subjs, test_subjs
-
 def log_to_neptune(
     dataframe, 
     config, 
@@ -84,6 +56,32 @@ def log_to_neptune(
             neptune.set_property(k, v)
     neptune.stop()
 
+def split_subjects(
+    subj_ids, 
+    test_size=0.3
+    ):
+    """Randomly divide subject list into train and test subsets.
+    Train subjects are used to train, validate, and test models(s).
+    Test subjects are kept until the end of the project to evaluate
+    the best (and final) model.
+    Args:
+        subj_ids (list): list of subject ids (e.g., ['s01', 's02'])
+        test_size (int): size of test set
+    Returns:
+        train_subjs (list of subject ids), test_subjs (list of subject ids)
+    """
+    # set random seed
+    seed(1)
+
+    # get number of subjects in test (round down)
+    num_in_test = int(np.floor(test_size * len(subj_ids)))
+
+    # select test set
+    test_subjs = list(sample(subj_ids, num_in_test))
+    train_subjs = list([x for x in subj_ids if x not in test_subjs])
+
+    return train_subjs, test_subjs
+
 def train_ridge(
     hyperparameter,
     train_exp="sc1",
@@ -111,7 +109,6 @@ def train_ridge(
         Appends summary data for each model and subject into `train_summary.csv`
         Returns pandas dataframe of train_summary
     """
-    train_subjs, _ = split_subjects(const.return_subjs, test_size=0.3)
 
     # get default train parameters
     config = run_connect.get_default_train_config()
@@ -131,7 +128,7 @@ def train_ridge(
         config["weighting"] = True
         config["averaging"] = "sess"
         config["train_exp"] = train_exp
-        config["subjects"] = train_subjs
+        config["subjects"] = const.return_subjs
         config["validate_model"] = True
         config["cv_fold"] = 4 # other options: 'sess' or 'run' or None
         config["mode"] = "crossed"
@@ -190,7 +187,6 @@ def train_WTA(
         Appends summary data for each model and subject into `train_summary.csv`
         Returns pandas dataframe of train_summary
     """
-    train_subjs, _ = split_subjects(const.return_subjs, test_size=0.3)
 
     # get default train parameters
     config = run_connect.get_default_train_config()
@@ -208,7 +204,7 @@ def train_WTA(
     config["weighting"] = True
     config["averaging"] = "sess"
     config["train_exp"] = train_exp
-    config["subjects"] = train_subjs
+    config["subjects"] = const.return_subjs 
     config["validate_model"] = True
     config["cv_fold"] = 4
     config["mode"] = "crossed"
@@ -269,8 +265,6 @@ def train_NNLS(
         Returns pandas dataframe of train_summary
     """
 
-    train_subjs, _ = split_subjects(const.return_subjs, test_size=0.3)
-
     # get default train parameters
     config = run_connect.get_default_train_config()
 
@@ -289,7 +283,7 @@ def train_NNLS(
         config["weighting"] = True
         config["averaging"] = "sess"
         config["train_exp"] = train_exp
-        config["subjects"] = train_subjs
+        config["subjects"] = const.return_subjs
         config["validate_model"] = False
         config["cv_fold"] = 4
         config["mode"] = "crossed"
@@ -406,8 +400,6 @@ def eval_model(
     """
     dirs = const.Dirs(exp_name=eval_exp)
 
-    train_subjs, _ = split_subjects(const.return_subjs, test_size=0.3)
-
     # get default eval parameters
     config = run_connect.get_default_eval_config()
 
@@ -419,7 +411,7 @@ def eval_model(
     config["averaging"] = "sess"
     config["train_exp"] = train_exp
     config["eval_exp"] = eval_exp
-    config["subjects"] = train_subjs
+    config["subjects"] = const.return_subjs
     config["save_maps"] = True
     config["splitby"] = "unique"
     config["exclude_instruct"] = True
@@ -483,13 +475,11 @@ def _check_eval(model_name, train_exp, eval_exp):
     Returns: 
         eval (bool)
     """
-    
-    train_subjs, _ = split_subjects(const.return_subjs, test_size=0.3)
 
     eval = True
     # check if trained model is complete (all `train_subjs`)
     dirs = const.Dirs(exp_name=train_exp)
-    for subj in train_subjs:
+    for subj in const.return_subjs:
         fname = f'{model_name}_{subj}.h5'
         if not os.path.exists(os.path.join(dirs.conn_train_dir, model_name, fname)):
             return False
@@ -519,7 +509,7 @@ def run(cortex="tessels0362",
     """
     print(f'doing model {train_or_eval}')
     if train_or_eval=="train":
-        for exp in range(2):
+        for exp in [0]: # range(2)
             if model_type=="ridge":
                 # train ridge
                 train_ridge(hyperparameter=[-2,0,2,4,6,8,10], train_exp=f"sc{exp+1}", cortex=cortex)
@@ -548,7 +538,6 @@ def run(cortex="tessels0362",
                 if delete_train:
                     _delete_models(exp=f"sc{2-exp}", best_model=best_model)
 
-                eval = True
                 if eval:
                     # test best train model
                     eval_model(model_name=best_model, cortex=cortex, train_exp=f"sc{2-exp}", eval_exp=f"sc{exp+1}")

@@ -22,34 +22,6 @@ from connectivity import data as cdata
 from connectivity import nib_utils as nio
 from connectivity.visualize import get_best_models
 
-def split_subjects(
-    subj_ids, 
-    test_size=0.3
-    ):
-    """Randomly divide subject list into train and test subsets.
-
-    Train subjects are used to train, validate, and test models(s).
-    Test subjects are kept until the end of the project to evaluate
-    the best (and final) model.
-
-    Args:
-        subj_ids (list): list of subject ids (e.g., ['s01', 's02'])
-        test_size (int): size of test set
-    Returns:
-        train_subjs (list of subject ids), test_subjs (list of subject ids)
-    """
-    # set random seed
-    seed(1)
-
-    # get number of subjects in test (round down)
-    num_in_test = int(np.floor(test_size * len(subj_ids)))
-
-    # select test set
-    test_subjs = list(sample(subj_ids, num_in_test))
-    train_subjs = list([x for x in subj_ids if x not in test_subjs])
-
-    return train_subjs, test_subjs
-
 def save_maps_cerebellum(
     data, 
     fpath='/',
@@ -179,9 +151,8 @@ def cortical_surface_voxels(
     fpath = os.path.join(dirs.conn_train_dir, model_name)
 
     # get trained subject models
-    subjs, _ = split_subjects(const.return_subjs, test_size=0.3)
     model_fnames = []
-    for subj in subjs:
+    for subj in const.return_subjs:
         model_fnames.append(os.path.join(fpath, f'{model_name}_{subj}.h5'))
 
     n_models = len(model_fnames)
@@ -251,8 +222,6 @@ def cortical_surface_rois(
     """
     dirs = const.Dirs(exp_name=train_exp)
 
-    subjs, _ = split_subjects(const.return_subjs, test_size=0.3)
-
     # full path to best model
     fpath = os.path.join(dirs.conn_train_dir, model_name)
     if not os.path.exists(fpath):
@@ -262,7 +231,7 @@ def cortical_surface_rois(
     method = model_name.split('_')[0] # model_name
 
     data_all = defaultdict(list)
-    for subj in subjs:
+    for subj in const.return_subjs:
         roi_betas, reg_names, colors = average_region_data(subj,
                                 exp=train_exp, cortex=cortex, 
                                 atlas=atlas, method=method, alpha=int(alpha), 
@@ -350,6 +319,8 @@ def average_region_data(
     if not os.path.exists(cerebellum_nifti):
         # print(Exception('please download atlases using SUITPy.atlas fetchers'))
         catlas.fetch_king_2019(data='atl', data_dir=dirs.cerebellar_atlases)
+        catlas.fetch_buckner_2011(data_dir=dirs.cerebellar_atlases)
+        catlas.fetch_diedrichsen_2009(data_dir=dirs.cerebellar_atlases)
 
     # Load and average region data (average all subjs)
     Ydata = cdata.Dataset(experiment=exp, roi="cerebellum_suit", subj_id=subjs) 

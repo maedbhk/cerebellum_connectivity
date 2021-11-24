@@ -12,10 +12,10 @@ from connectivity import visualize as summary
 from connectivity import data as cdata
 import connectivity.constants as const
 
-# @click.command()
-# @click.option("--atlas")
-# @click.option("--method")
-# @click.option("--exp")
+@click.command()
+@click.option("--atlas")
+@click.option("--method")
+@click.option("--exp")
 
 def dispersion_summary(
     atlas='MDTB10', 
@@ -25,19 +25,15 @@ def dispersion_summary(
 
     df = pd.DataFrame()         # Empty data frame to start with
     dirs = const.Dirs(exp_name=exp)
-    subjs, _ = cweights.split_subjects(const.return_subjs, test_size=0.3)
 
-    # models, cortex_names = summary.get_best_models(method=method) 
-
-    models = ['ridge_tessels1002_alpha_8']
-    cortex_names = ['tessels1002']
+    models, cortex_names = summary.get_best_models(method=method) 
 
     data_dict_all = defaultdict(list)
     for (best_model, cortex) in zip(models, cortex_names):
 
         # get alpha for each model
         alpha = int(best_model.split('_')[-1])
-        for subj in subjs:
+        for subj in const.return_subjs:
                 roi_betas, reg_names, colors = cweights.average_region_data(subj,
                                         exp=exp, cortex=cortex, 
                                         atlas=atlas, method=method, alpha=alpha, 
@@ -55,8 +51,11 @@ def dispersion_summary(
     fpath = os.path.join(dirs.conn_train_dir, 'cortical_dispersion_stats.csv')  
     df.to_csv(fpath)
 
-def run():
-    dispersion_summary()
+def run(atlas='MDTB10', 
+        method='ridge', 
+        exp='sc1'
+        ):
+    dispersion_summary(atlas, method, exp)
 
 if __name__ == "__main__":
      run()

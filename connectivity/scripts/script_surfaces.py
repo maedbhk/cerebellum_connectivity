@@ -11,11 +11,13 @@ import connectivity.constants as const
 @click.option("--exp")
 @click.option("--weights")
 @click.option("--method")
+@click.option("--regions")
 
 def surfaces_voxels(
     exp='sc1',
     weights='nonzero', 
-    method='lasso', # L2regression
+    method='lasso',
+    save_maps=True, 
     ):
     """compute surface maps for cerebellum (count # of non-zero coefs for each cerebellar voxel)
 
@@ -39,7 +41,7 @@ def surfaces_voxels(
                                     cortex=cortex, 
                                     train_exp=exp,
                                     weights=weights,
-                                    save_maps=False)
+                                    save_maps=save_maps)
 
         for k,v in data_voxels.items():
             data_voxels_all[k].extend(v)
@@ -47,9 +49,9 @@ def surfaces_voxels(
     # save dataframe to disk
     fpath = os.path.join(dirs.conn_train_dir, 'cortical_surface_voxels_stats.csv')
     df = pd.DataFrame.from_dict(data_voxels_all)  
-    if os.path.isfile(fpath):
-        df_exist = pd.read_csv(fpath) 
-        df = pd.concat([df_exist, df])
+    # if os.path.isfile(fpath):
+    #     df_exist = pd.read_csv(fpath) 
+    #     df = pd.concat([df_exist, df])
     df.to_csv(fpath)
 
 def surfaces_rois(
@@ -89,14 +91,28 @@ def surfaces_rois(
     # save dataframe to disk
     df = pd.DataFrame.from_dict(data_rois_all)
     fpath = os.path.join(dirs.conn_train_dir, 'cortical_surface_rois_stats.csv')  
-    if os.path.isfile(fpath):
-        df_exist = pd.read_csv(fpath) 
-        df = pd.concat([df_exist, df])
+    # if os.path.isfile(fpath):
+    #     df_exist = pd.read_csv(fpath) 
+    #     df = pd.concat([df_exist, df])
     df.to_csv(fpath)
 
-def run():
-    # surfaces_voxels()
-    surfaces_rois()
+def run(exp='sc1', 
+    weights='nonzero', 
+    method='lasso', 
+    regions='voxels'
+    ):
+    """run surfaces
+
+    Args: 
+        exp (str): default is 'sc1'
+        weights (str): default is 'nonzero'
+        method (str): default is 'lasso'
+        regions (str): 'voxels' or 'rois'
+    """
+    if regions=='voxels':
+        surfaces_voxels(exp=exp, weights=weights, method=method)
+    elif regions=='rois':
+        surfaces_rois(exp=exp, weights=weights, method=method)
 
 if __name__ == "__main__":
     run()

@@ -38,8 +38,8 @@ def distances_summary(
     dirs = const.Dirs(exp_name=exp)
     subjs, _ = cweights.split_subjects(const.return_subjs, test_size=0.3)
 
-    # models, cortex_names = summary.get_best_models(method=method) 
-    models = [f'{method}_tessels1002_alpha_8']; cortex_names = ['tessels1002']
+    models, cortex_names = summary.get_best_models(method=method) 
+    # models = [f'{method}_tessels1002_alpha_8']; cortex_names = ['tessels1002']
 
     data_dict_all = defaultdict(list)
     for (best_model, cortex) in zip(models, cortex_names):

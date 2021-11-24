@@ -106,7 +106,7 @@ def dispersion_cortex(roi_betas,
 
     for h,hem in enumerate(hem_names):
 
-        labels = csparse.get_labels_hemisphere(roi=cortex, hemisphere=hem)
+        labels = cweights.get_labels_hemisphere(roi=cortex, hemisphere=hem)
         # weights
 
         # Calculate spherical STD as measure
