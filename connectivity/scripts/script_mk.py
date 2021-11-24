@@ -538,7 +538,6 @@ def run(cortex="tessels0362",
                 if delete_train:
                     _delete_models(exp=f"sc{2-exp}", best_model=best_model)
 
-                # eval = True
                 if eval:
                     # test best train model
                     eval_model(model_name=best_model, cortex=cortex, train_exp=f"sc{2-exp}", eval_exp=f"sc{exp+1}")

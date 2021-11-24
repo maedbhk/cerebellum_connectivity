@@ -11,6 +11,7 @@ import connectivity.constants as const
 @click.option("--exp")
 @click.option("--weights")
 @click.option("--method")
+@click.option("--regions")
 
 def surfaces_voxels(
     exp='sc1',
@@ -94,7 +95,15 @@ def surfaces_rois(
     #     df = pd.concat([df_exist, df])
     df.to_csv(fpath)
 
-def run(exp, weights, method, regions='voxels'):
+def run(exp, weights, method, regions):
+    """run surfaces
+
+    Args: 
+        exp (str): default is 'sc1'
+        weights (str): default is 'nonzero'
+        method (str): default is 'lasso'
+        regions (str): 'voxels' or 'rois'
+    """
     if regions=='voxels':
         surfaces_voxels(exp, weights, method)
     elif regions=='rois':
