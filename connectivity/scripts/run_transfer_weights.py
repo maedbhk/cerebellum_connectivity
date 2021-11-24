@@ -45,15 +45,11 @@ def run(connect_dir, learn_dir):
     # learn_dir = '/global/scratch/users/maedbhking/projects/cerebellum_learning_connect/data/BIDS_dir/derivatives/conn_models/train'
 
     mdtb_dir = os.path.join(learn_dir, 'mdtb')
-    mdtb_smooth_dir = os.path.join(learn_dir, 'mdtb_smooth')
 
     print('working')
 
     if not os.path.exists(mdtb_dir):
         os.makedirs(mdtb_dir)
-    
-    if not os.path.exists(mdtb_smooth_dir):
-        os.makedirs(mdtb_smooth_dir)
 
     # navigate to connectivity weight dir and grab files
     os.chdir(connect_dir)
@@ -77,12 +73,6 @@ def run(connect_dir, learn_dir):
                 data = dd.io.load(dest)
                 data['weights'] = data['weights'].T
                 dd.io.save(dest, data)
-
-                # smooth the cerebellar voxels and save to learning dir
-                data['weights'] = np.nanmean(data['weights'], axis=1)
-                data['weights'] = np.reshape(data['weights'], (len(data['weights']),1))
-                dest_smooth = os.path.join(mdtb_smooth_dir, Path(fname).stem + '_mdtb_smooth.h5')
-                dd.io.save(dest_smooth, data)
 
                 print('worked')
 

@@ -1,4 +1,4 @@
-
+import click
 import os
 import pandas as pd
 import nibabel as nib
@@ -9,10 +9,16 @@ from connectivity import weights as cweights
 from connectivity import visualize as summary
 import connectivity.constants as const
 
+@click.command()
+@click.option("--atlas")
+@click.option("--method")
+@click.option("--exp")
+
 def cortical_weight_maps(
     atlas='MDTB10', 
     method='ridge', 
     weights='nonzero',
+    exp='sc1',
     threshold=100
     ):
     """Create cortical maps of average weights from `atlas`-based model
@@ -21,22 +27,17 @@ def cortical_weight_maps(
     
     Args: 
         atlas (str): default is 'MDTB10'
-        weights (str): default is 'nonzero'. other option: 'positive'
         method (str): default is 'ridge'. other option: 'lasso'
+        weights (str): default is 'nonzero'. other option: 'positive'
+        exp (str): default is 'sc1'
         threshold (int): default is 100 (i.e., no threshold)
     Returns: 
         saves cortical weight maps (*.func.gii) to disk for left and right hemispheres
     """
 
-    exp = 'sc1'
     dirs = const.Dirs(exp_name=exp)
 
-    subjs, _ = cweights.split_subjects(const.return_subjs, test_size=0.3)
-
-    # models, cortex_names = summary.get_best_models(method=method) 
-    cortex = 'tessels1002'
-    models = [f'{method}_{cortex}_alpha_8']
-    cortex_names = ['tessels1002']
+    models, cortex_names = summary.get_best_models(method=method) 
 
     for (best_model, cortex) in zip(models, cortex_names):
         
@@ -48,7 +49,7 @@ def cortical_weight_maps(
         # get alpha for each model
         alpha = int(best_model.split('_')[-1])
         roi_betas_all = []
-        for subj in subjs:
+        for subj in const.return_subjs:
             roi_betas, reg_names, colors = cweights.average_region_data(subj,
                                     exp=exp, cortex=cortex, 
                                     atlas=atlas, method=method, alpha=alpha, 
@@ -62,8 +63,8 @@ def cortical_weight_maps(
         fname = f'group_{atlas}_threshold_{threshold}'
         [nib.save(gii, os.path.join(fpath, f'{fname}.{hem}.func.gii')) for (gii, hem) in zip(giis, ['L', 'R'])]
 
-def run():
-    cortical_weight_maps()
+def run(atlas, method, exp):
+    cortical_weight_maps(atlas, method, exp)
 
 if __name__ == "__main__":
     run()
