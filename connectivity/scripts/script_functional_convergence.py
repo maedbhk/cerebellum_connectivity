@@ -168,11 +168,11 @@ def get_decomponsition(roi="cerebellum_suit", sn="s02", K=10,
     """Gets decomposition on activity data - if sim_baseline is set to True, it replaces the actual data with a moment-matched Gaussian distribution """
 
     data = cdata.Dataset(experiment="sc1",glm="glm7",roi=roi,subj_id=sn)
-    data.load_mat()
+    data.load()
     T = data.get_info()
     D1,T1 = data.get_data(averaging="exp", weighting=False, subset=T.inst==0)
     data = cdata.Dataset(experiment="sc2",glm="glm7",roi=roi,subj_id=sn)
-    data.load_mat()
+    data.load()
     T = data.get_info()
     D2,T2 = data.get_data(averaging="exp", weighting=False, subset=T.inst==0)
     
@@ -210,10 +210,12 @@ def get_decomponsition(roi="cerebellum_suit", sn="s02", K=10,
     return d
 
 def do_all_decomposition(roi="cerebellum_suit", K=10,
-                        num = 5,sim_baseline=False):
-    num_subj = len(const.return_subjs)
+                        num = 5,sim_baseline=False,subjs=None):
+    if subjs is None:
+        subjs = const.return_subjs
+    num_subj = len(subjs)
     d = []
-    for i,sn in enumerate(const.return_subjs):
+    for i,sn in enumerate(subjs):
         if sim_baseline:
             fname = f"baseline_{roi}_{sn}_{K}.h5"
         else: 
@@ -223,9 +225,17 @@ def do_all_decomposition(roi="cerebellum_suit", K=10,
         dd.io.save(filename,d[-1])
     return d
 
+def do_all_decomp_all():
+    d = do_all_decomposition(roi="cerebellum_suit",K=10,num=5,sim_baseline=False,subjs=['all'])
+    d = do_all_decomposition(roi="tessels1002",K=10,num=5,sim_baseline=False,subjs=['all'])
+    d = do_all_decomposition(roi="tessels1002",K=17,num=5,sim_baseline=False,subjs=['all'])
+    d = do_all_decomposition(roi="cerebellum_suit",K=10,num=5,sim_baseline=True,subjs=['all'])
+    d = do_all_decomposition(roi="tessels1002",K=10,num=5,sim_baseline=True,subjs=['all'])
+    d = do_all_decomposition(roi="tessels1002",K=17,num=5,sim_baseline=True,subjs=['all'])
+
 def load_decomposition(roi=["cerebellum_suit"],
                     K=[10],subjs=const.return_subjs,
-                    typeV="decomp"):
+                    typeV=["decomp"]):
     """Loads the decomposition from disk
     """
     num_subj = len(subjs)
@@ -235,7 +245,7 @@ def load_decomposition(roi=["cerebellum_suit"],
     for r in range(len(roi)):
         Vhat[r]=np.empty((num_subj,K[r],61))
         for i,sn in enumerate(subjs):
-            filename=const.base_dir / "sc1" / "conn_models" / "dict_learn" / f"{typeV}_{roi[r]}_{sn}_{K[r]}.h5"
+            filename=const.base_dir / "sc1" / "conn_models" / "dict_learn" / f"{typeV[r]}_{roi[r]}_{sn}_{K[r]}.h5"
             di= dd.io.load(filename)
             Vhat[r][i,:,:]=di['Vhat'][0,:,:]
             d['subjn'] = [sn]
@@ -244,33 +254,73 @@ def load_decomposition(roi=["cerebellum_suit"],
             d['rn'] = [r]
             d['K'] = [K[r]]
             d['match_self'] = [np.nanmean(di['M'])]
-            d['typeV'] = [typeV]
+            d['typeV'] = [typeV[r]]
             D= pd.concat([D,d],ignore_index=True)
     return Vhat,D
 
+def plot_match_self(roi=['cerebellum_suit','tessels1002','tessels1002'],
+                    K=[10,10,17]):
+    typeV=['decomp']*len(roi) + ['baseline']*len(roi)
+    Vhat,D = load_decomposition(roi*2,K*2,typeV=typeV)
+    D['roi'] = D.rn % 3 
+    ax=sns.barplot(data=D,x='roi',y='match_self',hue='typeV')
+    return D
+
 def check_alignment(roi=["cerebellum_suit","tessels1002"],
-                    K=[10,10],typeV='decomp'):
-    # Load all the the desired decompositions 
-    Vhat,D = load_decomposition(roi,K,typeV=typeV)
-    # Now compare the different values
+                    K=[10,10]):
+    # Load all the the desired decompositions and compare to the 
+    # Gaussian covariance baseline 
+    F=pd.DataFrame()
+    for t in ['decomp','baseline']:
+        Vhat,D = load_decomposition(roi,K,typeV=[t]*len(roi))
+
+        # Now compare the different values
+        _,M00 = vmatch(Vhat[0],Vhat[0])
+        _,M11 = vmatch(Vhat[1],Vhat[1])
+        _,M01 = vmatch(Vhat[0],Vhat[1])
+        _,M10 = vmatch(Vhat[1],Vhat[0])
+        E = pd.concat([D,D])
+        E['match']= np.concatenate([np.nanmean(M00,axis=1),
+                               np.nanmean(M01,axis=1),
+                               np.nanmean(M10,axis=1),
+                               np.nanmean(M11,axis=1)])
+        E['fromto']= np.kron(np.arange(4),np.ones((np.int(D.shape[0]/2),)))
+        E['typeV'] = [t]*E.shape[0]
+        F=pd.concat([F,E])
+
     labels = ['A-A','A-B','B-A','B-B']
+    ax=sns.barplot(data=F,x='fromto',y='match',hue='typeV')
+    ax.set_xticklabels(labels)
+    test = [[0,0],[1,1],[2,2],[3,3]]
+    for i in range(len(test)):
+        G = F[F.fromto==i]
+        t,p = ss.ttest_rel(G[G.typeV=='decomp'].match,
+                           G[G.typeV=='baseline'].match)
+        print(f"{i}  t:{t:.3} p:{p:.3}")
+    return F 
+
+def check_alignment_to_baseline(roi="cerebellum_suit",K=10):
+    # Load all the the desired decompositions and compare to the 
+    # Gaussian covariance baseline 
+    Vhat,D = load_decomposition([roi]*2,[K]*2,typeV=['decomp','baseline'])
+
+    # Now compare the different values
     _,M00 = vmatch(Vhat[0],Vhat[0])
     _,M11 = vmatch(Vhat[1],Vhat[1])
     _,M01 = vmatch(Vhat[0],Vhat[1])
     _,M10 = vmatch(Vhat[1],Vhat[0])
     E = pd.concat([D,D])
     E['match']= np.concatenate([np.nanmean(M00,axis=1),
-                               np.nanmean(M01,axis=1),
-                               np.nanmean(M10,axis=1),
-                               np.nanmean(M11,axis=1)])
+                            np.nanmean(M01,axis=1),
+                            np.nanmean(M10,axis=1),
+                            np.nanmean(M11,axis=1)])
     E['fromto']= np.kron(np.arange(4),np.ones((np.int(D.shape[0]/2),)))
+
+    labels = ['A-A','A-B','B-A','B-B']
     ax=sns.barplot(data=E,x='fromto',y='match')
     ax.set_xticklabels(labels)
-    test = [[0,1],[0,2],[3,2],[3,1]]
-    for i in range(len(test)):
-        t,p = ss.ttest_rel(E[E.fromto==test[i][0]].match,E[E.fromto==test[i][1]].match)
-        print(f"{labels[test[i][0]]} vs {labels[test[i][1]]}  t:{t:.3} p:{p:.3}")
-    pass
+    return E
+
 
 def get_average_data_by_region(): 
     roi = 'cerebellum_suit'
@@ -300,13 +350,19 @@ def get_average_data_by_region():
 def calc_alignment_by_region(): 
     """Determines alignment of functional vectors by region
     """
+    reg_Name = ['cerebellum 10','cortex 10','cortex 17']
     # Get cerebellar data per region     
     Ym,regNum = get_average_data_by_region()
+    # Drop the 0 region 
     Ym = Ym[:,1:]
+    # Standardize
     Ym = Ym / np.sqrt(np.sum(Ym**2,axis=0))
     
     # Get comparision vectos 
-    Vhat,D = load_decomposition(['cerebellum_suit','tessels1002','tessels1002'],[10,10,17])
+    reg=['cerebellum_suit','cerebellum_suit','tessels1002','tessels1002','tessels1002','tessels1002']
+    K =[10,10,10,10,17,17]
+    typeV =['decomp','baseline','decomp','baseline','decomp','baseline']
+    Vhat,D = load_decomposition(reg,K,typeV=typeV)
     N = D.shape[0]
     K = Ym.shape[1]
     match = np.zeros((N,K))
@@ -319,22 +375,25 @@ def calc_alignment_by_region():
         D['match']=match[:,i]
         D['MDTBRegion']=np.ones((N,1))*(i+1)
         R= pd.concat([R,D],ignore_index=True)
-    sns.lineplot(data=R,x="MDTBRegion",y="match",hue='rn',palette=plt.get_cmap('tab10'))
-    plt.legend(labels=["Cerebellum 10","Cortex 10","Cortex 17"])
-    pass
+    R['roi']=np.floor(R.rn/2)
+    sns.lineplot(data=R,x="MDTBRegion",y="match",hue='roi',style='typeV',palette=plt.get_cmap('tab10'))
+    return R
 
 
 if __name__ == '__main__':
     # M = vmatch_baseline([17,17],N=62)
     # correspondence_sim()
-    d = do_all_decomposition(roi="tessels1002",K=17,num=5,sim_baseline=True)
-    d = do_all_decomposition(roi="tessels1002",K=10,num=5,sim_baseline=True)
-    # check_alignment(roi=["tessels1002","tessels1002"],K=[10,17])
+
+    # d = do_all_decomposition(roi="tessels1002",K=17,num=5,sim_baseline=True)
+    # d = do_all_decomposition(roi="tessels1002",K=10,num=5,sim_baseline=True)
+    # check_alignment(roi=["cerebellum_suit","tessels1002"],K=[10,17])
+    # plot_match_self()
     # Vhat1,D1 = load_decomposition(['cerebellum_suit'],[10],typeV='decomp')
     # Vhat2,D2 = load_decomposition(['cerebellum_suit'],[10],typeV='baseline')
-    
+    check_alignment_to_baseline(roi="cerebellum_suit",K=10)
+    # 
     # vmatch_baseline_fK()
-    # calc_alignment_by_region()
+    # R = calc_alignment_by_region()
     # COV = [np.diag([3,1,0.1,0.1,0.1]),np.diag([1,1,1,1,1])]
     # vmatch_baseline_cov(COV,[2,2],P=20)
     pass
