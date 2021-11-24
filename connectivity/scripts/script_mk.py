@@ -110,8 +110,6 @@ def train_ridge(
         Returns pandas dataframe of train_summary
     """
 
-    train_subjs, test_subjs = split_subjects(const.return_subjs)
-
     # get default train parameters
     config = run_connect.get_default_train_config()
 
@@ -130,7 +128,7 @@ def train_ridge(
         config["weighting"] = True
         config["averaging"] = "sess"
         config["train_exp"] = train_exp
-        config["subjects"] = test_subjs #const.return_subjs
+        config["subjects"] = const.return_subjs
         config["validate_model"] = True
         config["cv_fold"] = 4 # other options: 'sess' or 'run' or None
         config["mode"] = "crossed"
@@ -190,8 +188,6 @@ def train_WTA(
         Returns pandas dataframe of train_summary
     """
 
-    train_subjs, test_subjs = split_subjects(const.return_subjs)
-
     # get default train parameters
     config = run_connect.get_default_train_config()
 
@@ -208,7 +204,7 @@ def train_WTA(
     config["weighting"] = True
     config["averaging"] = "sess"
     config["train_exp"] = train_exp
-    config["subjects"] = test_subjs #const.return_subjs
+    config["subjects"] = const.return_subjs 
     config["validate_model"] = True
     config["cv_fold"] = 4
     config["mode"] = "crossed"
