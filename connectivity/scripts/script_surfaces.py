@@ -16,7 +16,8 @@ import connectivity.constants as const
 def surfaces_voxels(
     exp='sc1',
     weights='nonzero', 
-    method='lasso', # L2regression
+    method='lasso',
+    save_maps=True, 
     ):
     """compute surface maps for cerebellum (count # of non-zero coefs for each cerebellar voxel)
 
@@ -40,7 +41,7 @@ def surfaces_voxels(
                                     cortex=cortex, 
                                     train_exp=exp,
                                     weights=weights,
-                                    save_maps=False)
+                                    save_maps=save_maps)
 
         for k,v in data_voxels.items():
             data_voxels_all[k].extend(v)
@@ -109,9 +110,9 @@ def run(exp='sc1',
         regions (str): 'voxels' or 'rois'
     """
     if regions=='voxels':
-        surfaces_voxels(exp, weights, method)
+        surfaces_voxels(exp=exp, weights=weights, method=method)
     elif regions=='rois':
-        surfaces_rois(exp, weights, method)
+        surfaces_rois(exp=exp, weights=weights, method=method)
 
 if __name__ == "__main__":
     run()
