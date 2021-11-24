@@ -56,6 +56,32 @@ def log_to_neptune(
             neptune.set_property(k, v)
     neptune.stop()
 
+def split_subjects(
+    subj_ids, 
+    test_size=0.3
+    ):
+    """Randomly divide subject list into train and test subsets.
+    Train subjects are used to train, validate, and test models(s).
+    Test subjects are kept until the end of the project to evaluate
+    the best (and final) model.
+    Args:
+        subj_ids (list): list of subject ids (e.g., ['s01', 's02'])
+        test_size (int): size of test set
+    Returns:
+        train_subjs (list of subject ids), test_subjs (list of subject ids)
+    """
+    # set random seed
+    seed(1)
+
+    # get number of subjects in test (round down)
+    num_in_test = int(np.floor(test_size * len(subj_ids)))
+
+    # select test set
+    test_subjs = list(sample(subj_ids, num_in_test))
+    train_subjs = list([x for x in subj_ids if x not in test_subjs])
+
+    return train_subjs, test_subjs
+
 def train_ridge(
     hyperparameter,
     train_exp="sc1",
@@ -84,6 +110,8 @@ def train_ridge(
         Returns pandas dataframe of train_summary
     """
 
+    train_subjs, test_subjs = split_subjects(const.return_subjs)
+
     # get default train parameters
     config = run_connect.get_default_train_config()
 
@@ -102,7 +130,7 @@ def train_ridge(
         config["weighting"] = True
         config["averaging"] = "sess"
         config["train_exp"] = train_exp
-        config["subjects"] = const.return_subjs
+        config["subjects"] = test_subjs #const.return_subjs
         config["validate_model"] = True
         config["cv_fold"] = 4 # other options: 'sess' or 'run' or None
         config["mode"] = "crossed"
@@ -162,6 +190,8 @@ def train_WTA(
         Returns pandas dataframe of train_summary
     """
 
+    train_subjs, test_subjs = split_subjects(const.return_subjs)
+
     # get default train parameters
     config = run_connect.get_default_train_config()
 
@@ -178,7 +208,7 @@ def train_WTA(
     config["weighting"] = True
     config["averaging"] = "sess"
     config["train_exp"] = train_exp
-    config["subjects"] = const.return_subjs
+    config["subjects"] = test_subjs #const.return_subjs
     config["validate_model"] = True
     config["cv_fold"] = 4
     config["mode"] = "crossed"
@@ -512,7 +542,7 @@ def run(cortex="tessels0362",
                 if delete_train:
                     _delete_models(exp=f"sc{2-exp}", best_model=best_model)
 
-                eval = True
+                # eval = True
                 if eval:
                     # test best train model
                     eval_model(model_name=best_model, cortex=cortex, train_exp=f"sc{2-exp}", eval_exp=f"sc{exp+1}")
