@@ -24,8 +24,11 @@ export PYTHONPATH
 
 cd /global/scratch/users/maedbhking/projects/cerebellum_connectivity/connectivity/scripts
 
-# run cortical surface
-python3 script_surfaces.py --exp="sc1" --weights="nonzero" --method="lasso"
+# run cortical surface (voxels)
+python3 script_surfaces.py --exp="sc1" --weights="nonzero" --method="lasso" --regions='voxels'
+
+# run cortical surfaces (rois)
+python3 script_surfaces.py --exp="sc1" --weights="nonzero" --method="lasso" --regions='rois'
 
 atlases=(MDTB10 Buckner7 Buckner17 Anatom)
 # run dispersion

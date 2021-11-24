@@ -47,9 +47,9 @@ def surfaces_voxels(
     # save dataframe to disk
     fpath = os.path.join(dirs.conn_train_dir, 'cortical_surface_voxels_stats.csv')
     df = pd.DataFrame.from_dict(data_voxels_all)  
-    if os.path.isfile(fpath):
-        df_exist = pd.read_csv(fpath) 
-        df = pd.concat([df_exist, df])
+    # if os.path.isfile(fpath):
+    #     df_exist = pd.read_csv(fpath) 
+    #     df = pd.concat([df_exist, df])
     df.to_csv(fpath)
 
 def surfaces_rois(
@@ -89,14 +89,16 @@ def surfaces_rois(
     # save dataframe to disk
     df = pd.DataFrame.from_dict(data_rois_all)
     fpath = os.path.join(dirs.conn_train_dir, 'cortical_surface_rois_stats.csv')  
-    if os.path.isfile(fpath):
-        df_exist = pd.read_csv(fpath) 
-        df = pd.concat([df_exist, df])
+    # if os.path.isfile(fpath):
+    #     df_exist = pd.read_csv(fpath) 
+    #     df = pd.concat([df_exist, df])
     df.to_csv(fpath)
 
-def run():
-    # surfaces_voxels()
-    surfaces_rois()
+def run(exp, weights, method, regions='voxels'):
+    if regions=='voxels':
+        surfaces_voxels(exp, weights, method)
+    elif regions=='rois':
+        surfaces_rois(exp, weights, method)
 
 if __name__ == "__main__":
     run()
