@@ -63,7 +63,10 @@ def cortical_weight_maps(
         fname = f'group_{atlas}_threshold_{threshold}'
         [nib.save(gii, os.path.join(fpath, f'{fname}.{hem}.func.gii')) for (gii, hem) in zip(giis, ['L', 'R'])]
 
-def run(atlas, method, exp):
+def run(atlas='MDTB10', 
+        method='ridge',
+        exp='sc1'
+        ):
     cortical_weight_maps(atlas, method, exp)
 
 if __name__ == "__main__":

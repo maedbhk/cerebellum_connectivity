@@ -95,7 +95,11 @@ def surfaces_rois(
     #     df = pd.concat([df_exist, df])
     df.to_csv(fpath)
 
-def run(exp, weights, method, regions):
+def run(exp='sc1', 
+    weights='nonzero', 
+    method='lasso', 
+    regions='voxels'
+    ):
     """run surfaces
 
     Args: 

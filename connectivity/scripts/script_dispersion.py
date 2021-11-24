@@ -51,7 +51,10 @@ def dispersion_summary(
     fpath = os.path.join(dirs.conn_train_dir, 'cortical_dispersion_stats.csv')  
     df.to_csv(fpath)
 
-def run(atlas, method, exp):
+def run(atlas='MDTB10', 
+        method='ridge', 
+        exp='sc1'
+        ):
     dispersion_summary(atlas, method, exp)
 
 if __name__ == "__main__":
