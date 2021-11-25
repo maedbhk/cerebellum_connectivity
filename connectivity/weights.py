@@ -634,7 +634,7 @@ def best_weights(
 
     """
     # get best models
-    models, cortex_names = get_best_models(train_exp='sc1', method=method)
+    models, cortex_names = get_best_models(train_exp=train_exp, method=method)
 
     for (best_model, cortex) in zip(models, cortex_names):
 
@@ -654,4 +654,7 @@ def best_weights(
         if not os.path.exists(outdir):
             os.makedirs(outdir)
         dd.io.save(os.path.join(outdir, f'{best_model}.h5'), {'weights': group_weights})
+
+    # save model and cortex names
+    dd.io.save(os.path.join(outdir, f'best_models_{method}.h5'), {'models': models, 'cortex_names': cortex_names})
     
