@@ -64,6 +64,7 @@ def run(connect_dir, learn_dir):
     for file in files:
         for k,v in data_dict.items():
             if k in file:
+                fname = file
                 if 'ridge' in file:
                     fname = file.replace(k, v).replace('ridge', 'RIDGE')
                 elif 'lasso' in file:
@@ -74,9 +75,10 @@ def run(connect_dir, learn_dir):
                 copyfile(src, dest)
 
                 # transpose the data first
-                data = dd.io.load(dest)
-                data['weights'] = data['weights'].T
-                dd.io.save(dest, data)
+                if 'best_models' not in file:
+                    data = dd.io.load(dest)
+                    data['weights'] = data['weights'].T
+                    dd.io.save(dest, data)
 
                 print('worked')
 
