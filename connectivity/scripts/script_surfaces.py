@@ -29,6 +29,8 @@ def surfaces_voxels(
         saves cerebellar gifti to disk and summary csv
     """
 
+    print('running surfaces_voxels')
+
     dirs = const.Dirs(exp_name=exp)
     models, cortex_names = summary.get_best_models(method=method) 
 
@@ -69,6 +71,8 @@ def surfaces_rois(
         saves summary csv to disk
     """
 
+    print('running surfaces_rois')
+
     dirs = const.Dirs(exp_name=exp)
     models, cortex_names = summary.get_best_models(method=method) 
 
@@ -95,6 +99,12 @@ def surfaces_rois(
     #     df_exist = pd.read_csv(fpath) 
     #     df = pd.concat([df_exist, df])
     df.to_csv(fpath)
+
+@click.command()
+@click.option("--exp")
+@click.option("--weights")
+@click.option("--method")
+@click.option("--regions")
 
 def run(exp='sc1', 
     weights='nonzero', 

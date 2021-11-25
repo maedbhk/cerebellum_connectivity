@@ -51,6 +51,9 @@ def run(connect_dir, learn_dir):
     if not os.path.exists(mdtb_dir):
         os.makedirs(mdtb_dir)
 
+    if not os.path.exists(connect_dir):
+        os.makedirs(connect_dir)
+
     # navigate to connectivity weight dir and grab files
     os.chdir(connect_dir)
     files = glob.glob('*.h5')

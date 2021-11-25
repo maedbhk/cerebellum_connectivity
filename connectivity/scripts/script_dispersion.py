@@ -12,16 +12,13 @@ from connectivity import visualize as summary
 from connectivity import data as cdata
 import connectivity.constants as const
 
-@click.command()
-@click.option("--atlas")
-@click.option("--method")
-@click.option("--exp")
-
 def dispersion_summary(
     atlas='MDTB10', 
     method='ridge', # L2regression
     exp='sc1',
     ):
+
+    print('running dispersion summary')
 
     df = pd.DataFrame()         # Empty data frame to start with
     dirs = const.Dirs(exp_name=exp)
@@ -51,11 +48,16 @@ def dispersion_summary(
     fpath = os.path.join(dirs.conn_train_dir, 'cortical_dispersion_stats.csv')  
     df.to_csv(fpath)
 
+@click.command()
+@click.option("--atlas")
+@click.option("--method")
+@click.option("--exp")
+
 def run(atlas='MDTB10', 
         method='ridge', 
         exp='sc1'
         ):
-    dispersion_summary(atlas, method, exp)
+    dispersion_summary(atlas=atlas, method=method, exp=exp)
 
 if __name__ == "__main__":
      run()

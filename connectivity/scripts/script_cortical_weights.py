@@ -35,6 +35,8 @@ def cortical_weight_maps(
         saves cortical weight maps (*.func.gii) to disk for left and right hemispheres
     """
 
+    print('running cortical weight maps')
+
     dirs = const.Dirs(exp_name=exp)
 
     models, cortex_names = summary.get_best_models(method=method) 
@@ -63,11 +65,17 @@ def cortical_weight_maps(
         fname = f'group_{atlas}_threshold_{threshold}'
         [nib.save(gii, os.path.join(fpath, f'{fname}.{hem}.func.gii')) for (gii, hem) in zip(giis, ['L', 'R'])]
 
+
+@click.command()
+@click.option("--atlas")
+@click.option("--method")
+@click.option("--exp")
+
 def run(atlas='MDTB10', 
         method='ridge',
         exp='sc1'
         ):
-    cortical_weight_maps(atlas, method, exp)
+    cortical_weight_maps(atlas=atlas, method=method, exp=exp)
 
 if __name__ == "__main__":
     run()
