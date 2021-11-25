@@ -311,16 +311,19 @@ def average_region_data(
     # set directory
     dirs = const.Dirs(exp_name=exp)
 
+    if 'MDTB' in atlas:
+        atlas_dir = os.path.join(dirs.cerebellar_atlases, 'king_2019')
+        catlas.fetch_king_2019(data='atl', data_dir=dirs.cerebellar_atlases)
+    elif 'Buckner' in atlas:
+        atlas_dir = os.path.join(dirs.cerebellar_atlases, 'buckner_2011')
+        catlas.fetch_buckner_2011(data_dir=dirs.cerebellar_atlases)
+    elif 'Anatom' in atlas:
+        atlas_dir = os.path.join(dirs.cerebellar_atlases, 'diedrichsen_2009')
+        catlas.fetch_diedrichsen_2009(data_dir=dirs.cerebellar_atlases)
+
     # fetch `atlas`
-    atlas_dir = os.path.join(dirs.cerebellar_atlases, 'king_2019')
     cerebellum_nifti = os.path.join(atlas_dir, f'atl-{atlas}_space-SUIT_dseg.nii')
     cerebellum_gifti = os.path.join(atlas_dir, f'atl-{atlas}_dseg.label.gii')
-
-    if not os.path.isfile(cerebellum_nifti):
-        # print(Exception('please download atlases using SUITPy.atlas fetchers'))
-        catlas.fetch_king_2019(data='atl', data_dir=dirs.cerebellar_atlases)
-        catlas.fetch_buckner_2011(data_dir=dirs.cerebellar_atlases)
-        catlas.fetch_diedrichsen_2009(data_dir=dirs.cerebellar_atlases)
 
     # Load and average region data (average all subjs)
     Ydata = cdata.Dataset(experiment=exp, roi="cerebellum_suit", subj_id=subjs) 
