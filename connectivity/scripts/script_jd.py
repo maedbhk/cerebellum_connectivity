@@ -125,8 +125,8 @@ def plot_Fig2c():
     labelsize = 30
 
     ax3=plt.subplot(1,1,1)
-    df = vis.eval_summary(exps=['sc2'])
-    vis.plot_eval_predictions(dataframe=df, exps=['sc2'], methods=['WTA', 'ridge', 'lasso'], hue='model', ax=ax3)
+    df = vis.eval_summary(eval_name=['weighted_all'],exps=['sc2'],atlas=['tessels'],method=['WTA', 'ridge', 'lasso'])
+    vis.plot_eval_predictions(dataframe=df, exps=['sc2'], hue='method', ax=ax3)
     ax3.set_xticks([80, 304, 670, 1190, 1848])
 
 def eval_best_models(model_type=["ridge", "lasso", "WTA"]):
@@ -154,5 +154,6 @@ if __name__ == "__main__":
     # d = const.Dirs()
     # T = eval_models(['ridge','ridge','ridge','ridge','ridge','ridge','NN','NN','NN'],'tessels0162',[-2,0,2,4,6,8,-2,0,2],sn=['all'])
     # T.to_csv(d.conn_eval_dir / "group_model.dat")
-    eval_best_models()
+    # eval_best_models()
+    plot_Fig2c()
     pass

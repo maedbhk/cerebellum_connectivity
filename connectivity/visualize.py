@@ -100,10 +100,10 @@ def train_summary(
         # add NTakeAll number to `train_model` (WNTA_N<1>)
         wnta = df_concat.query('train_model=="WNTA"')
         wnta['hyperparameter'] = wnta['name'].str.split('_').str.get(-1)
-        wnta['model'] = wnta['model'] + '_' + wnta['name'].str.split('_').str.get(-3)
+        wnta['method'] = wnta['method'] + '_' + wnta['name'].str.split('_').str.get(-3)
 
         # get rest of dataframe
-        other = df_concat.query('model!="WNTA"')
+        other = df_concat.query('method!="WNTA"')
 
         #concat dataframes
         df_concat = pd.concat([wnta, other])
@@ -120,23 +120,24 @@ def train_summary(
         else:
             return x
 
-    df_concat['model'] = df_concat['model'].apply(lambda x: _relabel_model(x))
+    df_concat['method'] = df_concat['method'].apply(lambda x: _relabel_model(x))
 
     if models_to_include:
-        df_concat = df_concat[df_concat['model'].isin(models_to_include)]
+        df_concat = df_concat[df_concat['method'].isin(models_to_include)]
 
     return df_concat
 
 def eval_summary(
-    summary_name="eval_summary",
+    eval_name=[None],
     exps=['sc2'], 
-    splitby=['unique', 'all'],
-    models_to_include=['WTA', 'lasso', 'ridge']
+    splitby= None,
+    method = None,
+    atlas = None
     ):
     """load eval summary containing all metrics about eval models.
-    Summary across exps is concatenated and prefix 'eval' is appended to cols.
+    Appends different summary names and filters based on inputs
     Args:
-        summary_name (str): name of summary file
+        eval_name (list of str): name of summary file
         exps (list of str): default is ['sc2']
         splitby (list of str): default is ['unique']
         models_to_include (list of str):
@@ -148,34 +149,33 @@ def eval_summary(
     # NOTE: DON'T TRY TO DO THIS AUTOMAtiCALLY
 
     # look at model summary for eval results
+    if type(eval_name) is not list: 
+        eval_name=[eval_name]
+    if type(exps) is not list: 
+        exps=[exps]
+    
     df_concat = pd.DataFrame()
-    for exp in exps:
+    for exp,name in zip(exps,eval_name):
         dirs = const.Dirs(exp_name=exp)
-        fpath = os.path.join(dirs.conn_eval_dir, f"{summary_name}.csv")
+        if name:
+            fname = f"eval_summary_{name}.csv"
+        else: 
+            fname = f"eval_summary.csv"
+        fpath = os.path.join(dirs.conn_eval_dir, fname)
         df = pd.read_csv(fpath)
         df_concat = pd.concat([df_concat, df])
-
-    # select trained subjects 
-    df_concat = df_concat[df_concat['subj_id'].isin(const.return_subjs)]
     
     # add atlas
     df_concat['atlas'] = df_concat['X_data'].apply(lambda x: _add_atlas(x))
-
-    # remap splitby and filter
-    df_concat['splitby'] = df_concat['splitby'].map({np.nan: 'all', 'unique': 'unique'})
-
-    if splitby is not None:
-        df_concat = df_concat[df_concat['splitby'].isin(splitby)]
-
-    # df_concat.columns = cols
-    df_concat['model'] = df_concat['name'].str.split('_').str[0]
+    # add method 
+    df_concat['method'] = df_concat['name'].str.split('_').str[0]
 
     try: 
-        wnta = df_concat.query('model=="wnta"')
-        wnta['model'] = wnta['model'] + '_' + wnta['name'].str.split('_').str.get(-3)
+        wnta = df_concat.query('method=="wnta"')
+        wnta['method'] = wnta['method'] + '_' + wnta['name'].str.split('_').str.get(-3)
 
         # get rest of dataframe
-        other = df_concat.query('model!="wnta"')
+        other = df_concat.query('method!="wnta"')
 
         #concat dataframes
         df_concat = pd.concat([wnta, other])
@@ -186,8 +186,13 @@ def eval_summary(
     df_concat["noiseceiling_Y"] = np.sqrt(df_concat.noise_Y_R)
     df_concat["noiseceiling_XY"] = np.sqrt(df_concat.noise_Y_R) * np.sqrt(df_concat.noise_X_R)
 
-    if models_to_include:
-        df_concat = df_concat[df_concat['model'].isin(models_to_include)]
+    # Now filter the data frame 
+    if splitby is not None:
+        df_concat = df_concat[df_concat['splitby'].isin(splitby)]
+    if method is not None:
+        df_concat = df_concat[df_concat['method'].isin(method)]
+    if atlas is not None:
+        df_concat = df_concat[df_concat['atlas'].isin(atlas)]
 
     return df_concat
 
@@ -339,13 +344,12 @@ def plot_train_predictions(
         plt.savefig(os.path.join(dirs.figure, f'{fname}.svg'), pad_inches=0.1, bbox_inches='tight')
 
 def plot_eval_predictions(
-    dataframe=None,
+    dataframe,
     exps=['sc2'], 
     x='num_regions', 
     hue=None, 
     save=False,
     atlases=['tessels'],
-    splitby=['unique'],
     methods=['ridge', 'WTA'],
     ax=None,
     title=False,
@@ -355,21 +359,13 @@ def plot_eval_predictions(
         exps (list of str): default is ['sc2']
         hue (str or None): can be 'train_exp', 'Y_data' etc.
     """
-    if dataframe is None:
-        dataframe = eval_summary(exps=exps)
-
     # filer out atlases
     if atlases is not None:
         dataframe = dataframe[dataframe['atlas'].isin(atlases)]
 
     # filter out methods
     if methods is not None:
-        dataframe = dataframe[dataframe['model'].isin(methods)]
-
-    # filter out splitby
-    if splitby is not None:
-        dataframe = dataframe[dataframe['splitby'].isin(splitby)]
-
+        dataframe = dataframe[dataframe['method'].isin(methods)]
 
     # #plt.figure(figsize=(8,8))
     ax = sns.lineplot(x=x, y="R_eval", hue=hue, data=dataframe) # legend=True,
@@ -888,7 +884,7 @@ def get_best_model(
 
      # filter dataframe by method
     if method is not None:
-        dataframe = dataframe[dataframe['model']==method]
+        dataframe = dataframe[dataframe['method']==method]
 
     # filter dataframe by atlas
     if atlas is not None:
@@ -930,19 +926,19 @@ def get_best_models(
 
      # filter dataframe by method
     if method is not None:
-        dataframe = dataframe[dataframe['model']==method]
+        dataframe = dataframe[dataframe['method']==method]
     
     # filter dataframe by atlas
     if atlas is not None:
         dataframe = dataframe[dataframe['atlas']==atlas]
 
-    df_mean = dataframe.groupby(['X_data', 'model', 'name'], sort=True).apply(lambda x: x['R_cv'].mean()).reset_index(name='R_cv_mean')
-    df_best = df_mean.groupby(['X_data', 'model']).apply(lambda x: x[['name', 'R_cv_mean']].max()).reset_index()
+    df_mean = dataframe.groupby(['X_data', 'method', 'name'], sort=True).apply(lambda x: x['R_cv'].mean()).reset_index(name='R_cv_mean')
+    df_best = df_mean.groupby(['X_data', 'method']).apply(lambda x: x[['name', 'R_cv_mean']].max()).reset_index()
 
-    tmp = dataframe.groupby(['X_data', 'model', 'hyperparameter', 'name']).mean().reset_index()
+    tmp = dataframe.groupby(['X_data', 'method', 'hyperparameter', 'name']).mean().reset_index()
 
     # group by `X_data` and `model`
-    grouped =  tmp.groupby(['X_data', 'model'])
+    grouped =  tmp.groupby(['X_data', 'method'])
 
     model_names = []; cortex_names = []
     for name, group in grouped:
