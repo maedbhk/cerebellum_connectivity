@@ -9,11 +9,6 @@ from connectivity import weights as cweights
 from connectivity import visualize as summary
 import connectivity.constants as const
 
-@click.command()
-@click.option("--atlas")
-@click.option("--method")
-@click.option("--exp")
-
 def cortical_weight_maps(
     atlas='MDTB10', 
     method='ridge', 
@@ -64,7 +59,6 @@ def cortical_weight_maps(
             
         fname = f'group_{atlas}_threshold_{threshold}'
         [nib.save(gii, os.path.join(fpath, f'{fname}.{hem}.func.gii')) for (gii, hem) in zip(giis, ['L', 'R'])]
-
 
 @click.command()
 @click.option("--atlas")

@@ -7,12 +7,6 @@ from connectivity import weights as cweights
 from connectivity import visualize as summary
 import connectivity.constants as const
 
-@click.command()
-@click.option("--exp")
-@click.option("--weights")
-@click.option("--method")
-@click.option("--regions")
-
 def surfaces_voxels(
     exp='sc1',
     weights='nonzero', 
