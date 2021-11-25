@@ -41,8 +41,6 @@ def _remap():
 @click.option("--learn_dir")
 
 def run(connect_dir, learn_dir):
-    # connect_dir = '/global/scratch/users/maedbhking/projects/cerebellum_connectivity/data/sc1/conn_models/train/best_weights'
-    # learn_dir = '/global/scratch/users/maedbhking/projects/cerebellum_learning_connect/data/BIDS_dir/derivatives/conn_models/train'
 
     mdtb_dir = os.path.join(learn_dir, 'mdtb')
 
