@@ -28,8 +28,6 @@ def surfaces_voxels(
     dirs = const.Dirs(exp_name=exp)
     models, cortex_names = summary.get_best_models(method=method) 
 
-    # cortex = 'tessels1002'; models = [f'{method}_{cortex}_alpha_-2']; cortex_names = ['tessels1002']
-
     data_voxels_all = defaultdict(list)
     for (best_model, cortex) in zip(models, cortex_names):
 
@@ -45,9 +43,6 @@ def surfaces_voxels(
     # save dataframe to disk
     fpath = os.path.join(dirs.conn_train_dir, 'cortical_surface_voxels_stats.csv')
     df = pd.DataFrame.from_dict(data_voxels_all)  
-    # if os.path.isfile(fpath):
-    #     df_exist = pd.read_csv(fpath) 
-    #     df = pd.concat([df_exist, df])
     df.to_csv(fpath)
 
 def surfaces_rois(
@@ -70,8 +65,6 @@ def surfaces_rois(
     dirs = const.Dirs(exp_name=exp)
     models, cortex_names = summary.get_best_models(method=method) 
 
-    # models = [f'{method}_tessels1002_alpha_-2']; cortex_names = ['tessels1002']
-
     data_rois_all = defaultdict(list)
     for (best_model, cortex) in zip(models, cortex_names):
         
@@ -89,9 +82,6 @@ def surfaces_rois(
     # save dataframe to disk
     df = pd.DataFrame.from_dict(data_rois_all)
     fpath = os.path.join(dirs.conn_train_dir, 'cortical_surface_rois_stats.csv')  
-    # if os.path.isfile(fpath):
-    #     df_exist = pd.read_csv(fpath) 
-    #     df = pd.concat([df_exist, df])
     df.to_csv(fpath)
 
 @click.command()
