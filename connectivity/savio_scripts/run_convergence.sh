@@ -24,11 +24,11 @@ export PYTHONPATH
 
 cd /global/scratch/users/maedbhking/projects/cerebellum_connectivity/connectivity/scripts
 
-# run cortical surface (voxels)
-python3 script_surfaces.py --exp="sc1" --weights="nonzero" --method="lasso" --regions="voxels"
+# # run cortical surface (voxels)
+# python3 script_surfaces.py --exp="sc1" --weights="nonzero" --method="lasso" --regions="voxels"
 
-# run cortical surfaces (rois)
-python3 script_surfaces.py --exp="sc1" --weights="nonzero" --method="lasso" --regions="rois"
+# # run cortical surfaces (rois)
+# python3 script_surfaces.py --exp="sc1" --weights="nonzero" --method="lasso" --regions="rois"
 
 atlases=(MDTB10 Buckner7 Buckner17 Anatom)
 # run dispersion
@@ -40,7 +40,7 @@ for ((a=0; a<${#atlas[@]}; a++)); do \
 python3 script_cortical_weights.py --atlas=${atlases[a]} --method="ridge" --exp="sc1"; done
 
 # transfer best weights
-connect_dir=/global/scratch/users/maedbhking/projects/cerebellum_connectivity/data/sc1/conn_models/train/best_weights
-learn_dir=/global/scratch/users/maedbhking/projects/cerebellum_learning_connect/data/BIDS_dir/derivatives/conn_models/train
+# connect_dir=/global/scratch/users/maedbhking/projects/cerebellum_connectivity/data/sc1/conn_models/train/best_weights
+# learn_dir=/global/scratch/users/maedbhking/projects/cerebellum_learning_connect/data/BIDS_dir/derivatives/conn_models/train
 
-python3 run_transfer_weights.py --connect_dir=${connect_dir} --learn_dir=${learn_dir}
+# python3 run_transfer_weights.py --connect_dir=${connect_dir} --learn_dir=${learn_dir}
