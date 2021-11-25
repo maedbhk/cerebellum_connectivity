@@ -64,7 +64,10 @@ def run(connect_dir, learn_dir):
     for file in files:
         for k,v in data_dict.items():
             if k in file:
-                fname = file.replace(k, v).replace('ridge', 'RIDGE')
+                if 'ridge' in file:
+                    fname = file.replace(k, v).replace('ridge', 'RIDGE')
+                elif 'lasso' in file:
+                    fname = file.replace(k, v).replace('lasso', 'LASSO')
 
                 src = os.path.join(connect_dir, file)
                 dest = os.path.join(mdtb_dir, Path(fname).stem + '_mdtb.h5')

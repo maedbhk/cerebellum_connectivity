@@ -625,7 +625,7 @@ def best_weights(
 
     Args: 
         train_exp (str): default is 'sc1'
-        method (str): default is 'L2regression'
+        method (str): default is 'ridge'
     Returns: 
         group_weights (n-dim np array)
 
