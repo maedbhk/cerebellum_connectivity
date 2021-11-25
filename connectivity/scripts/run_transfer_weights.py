@@ -69,26 +69,26 @@ def run(connect_dir, learn_dir):
         copyfile(src, dest)
 
     
-    # # copy best weights from connectivity to learning dir (change filenames)
-    # for file in files:
-    #     for k,v in data_dict.items():
-    #         if k in file:
-    #             fname = file
-    #             if 'ridge' in file:
-    #                 fname = file.replace(k, v).replace('ridge', 'RIDGE')
-    #             elif 'lasso' in file:
-    #                 fname = file.replace(k, v).replace('lasso', 'LASSO')
+    # copy best weights from connectivity to learning dir (change filenames)
+    for file in files:
+        for k,v in data_dict.items():
+            if k in file:
+                fname = file
+                if 'ridge' in file:
+                    fname = file.replace(k, v).replace('ridge', 'RIDGE')
+                elif 'lasso' in file:
+                    fname = file.replace(k, v).replace('lasso', 'LASSO')
 
-    #             src = os.path.join(connect_dir, file)
-    #             dest = os.path.join(mdtb_dir, Path(fname).stem + '_mdtb.h5')
-    #             copyfile(src, dest)
+                src = os.path.join(connect_dir, file)
+                dest = os.path.join(mdtb_dir, Path(fname).stem + '_mdtb.h5')
+                copyfile(src, dest)
 
-    #             # transpose the data first
-    #             data = dd.io.load(dest)
-    #             data['weights'] = data['weights'].T
-    #             dd.io.save(dest, data)
+                # transpose the data first
+                data = dd.io.load(dest)
+                data['weights'] = data['weights'].T
+                dd.io.save(dest, data)
 
-                # print('worked')
+                print('worked')
 
 if __name__ == "__main__":
     run()
