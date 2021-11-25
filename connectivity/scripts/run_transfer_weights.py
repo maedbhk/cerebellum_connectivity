@@ -59,26 +59,34 @@ def run(connect_dir, learn_dir):
 
     # get remapping of file names
     data_dict = _remap()
+
+    # transfer best models
+    best_models = [f for f in files if 'best_model in f']
+
+    for model in best_models: 
+        src = os.path.join(connect_dir, model)
+        dest = os.path.join(mdtb_dir, Path(model).stem + '_mdtb.h5')
+        copyfile(src, dest)
+
     
-    # copy best weights from connectivity to learning dir (change filenames)
-    for file in files:
-        for k,v in data_dict.items():
-            if k in file:
-                fname = file
-                if 'ridge' in file:
-                    fname = file.replace(k, v).replace('ridge', 'RIDGE')
-                elif 'lasso' in file:
-                    fname = file.replace(k, v).replace('lasso', 'LASSO')
+    # # copy best weights from connectivity to learning dir (change filenames)
+    # for file in files:
+    #     for k,v in data_dict.items():
+    #         if k in file:
+    #             fname = file
+    #             if 'ridge' in file:
+    #                 fname = file.replace(k, v).replace('ridge', 'RIDGE')
+    #             elif 'lasso' in file:
+    #                 fname = file.replace(k, v).replace('lasso', 'LASSO')
 
-                src = os.path.join(connect_dir, file)
-                dest = os.path.join(mdtb_dir, Path(fname).stem + '_mdtb.h5')
-                copyfile(src, dest)
+    #             src = os.path.join(connect_dir, file)
+    #             dest = os.path.join(mdtb_dir, Path(fname).stem + '_mdtb.h5')
+    #             copyfile(src, dest)
 
-                # transpose the data first
-                if 'best_models' not in file:
-                    data = dd.io.load(dest)
-                    data['weights'] = data['weights'].T
-                    dd.io.save(dest, data)
+    #             # transpose the data first
+    #             data = dd.io.load(dest)
+    #             data['weights'] = data['weights'].T
+    #             dd.io.save(dest, data)
 
                 print('worked')
 
