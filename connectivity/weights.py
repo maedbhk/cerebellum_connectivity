@@ -619,7 +619,7 @@ def get_labels_hemisphere(
 
 def best_weights(
     train_exp='sc1',
-    method='L2regression',
+    method='ridge',
     ):
     """Get group average model weights for best trained model
 
@@ -630,8 +630,7 @@ def best_weights(
         group_weights (n-dim np array)
 
     """
-    # get best L2regression model
-    # best_model, cortex = get_best_model(dataframe=None, train_exp=train_exp, method=method)
+    # get best models
     models, cortex_names = get_best_models(train_exp='sc1', method=method)
 
     for (best_model, cortex) in zip(models, cortex_names):
