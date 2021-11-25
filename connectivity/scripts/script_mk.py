@@ -6,7 +6,6 @@ import pandas as pd
 import nibabel as nib
 from scipy.stats import mode
 from random import seed, sample
-# import neptune
 from pathlib import Path
 from SUITPy import flatmap
 
@@ -17,77 +16,11 @@ import connectivity.run_mk as run_connect
 from connectivity import weights as cmaps
 from connectivity import visualize as summary
 
-def log_to_neptune(
-    dataframe, 
-    config, 
-    modeltype="train"
-    ):
-    """log training and evaluation data to neptune (ML experiment tracker)
-
-    This case won't work unless you have registered with neptune and get your own api_token
-
-    Args:
-        dataframe (pd dataframe): data you want to log
-        config (dict): keys you want to log
-        modeltype (str): 'train' or 'eval'
-    """
-    # set up experiment
-    print("tracking experiment")
-    neptune.init(
-        project_qualified_name=f"maedbhking/connectivity",
-        api_token="eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vdWkubmVwdHVuZS5haSIsImFwaV91cmwiOiJodHRwczovL3VpLm5lcHR1bmUuYWkiLCJhcGlfa2V5IjoiY2ExNWUwODktZDBmNS00YzdjLTg3YWUtMWYzNTE1ZmExYWZlIn0=",
-    )
-    neptune.create_experiment()
-
-    # data cols to log
-    cols = [col for col in dataframe.columns if any(s in col for s in ("R", "rmse"))]
-    df = dataframe[cols].mean()  # get average value (across subjs)
-
-    # log metrics to neptune
-    for idx in df.index:
-        neptune.log_metric(idx, df[idx])
-
-    # append model type
-    neptune.append_tag(modeltype)
-
-    # add config values as tags
-    for k, v in config.items():
-        if not isinstance(v, (list, dict)):
-            neptune.set_property(k, v)
-    neptune.stop()
-
-def split_subjects(
-    subj_ids, 
-    test_size=0.3
-    ):
-    """Randomly divide subject list into train and test subsets.
-    Train subjects are used to train, validate, and test models(s).
-    Test subjects are kept until the end of the project to evaluate
-    the best (and final) model.
-    Args:
-        subj_ids (list): list of subject ids (e.g., ['s01', 's02'])
-        test_size (int): size of test set
-    Returns:
-        train_subjs (list of subject ids), test_subjs (list of subject ids)
-    """
-    # set random seed
-    seed(1)
-
-    # get number of subjects in test (round down)
-    num_in_test = int(np.floor(test_size * len(subj_ids)))
-
-    # select test set
-    test_subjs = list(sample(subj_ids, num_in_test))
-    train_subjs = list([x for x in subj_ids if x not in test_subjs])
-
-    return train_subjs, test_subjs
-
 def train_ridge(
     hyperparameter,
     train_exp="sc1",
     cortex="tessels0642",
     cerebellum="cerebellum_suit",
-    log_online=False,
     log_locally=True,
     model_ext=None,
     experimenter='mk'
@@ -138,9 +71,6 @@ def train_ridge(
         models, df = run_connect.train_models(config, save=log_locally)
         df_all = pd.concat([df_all, df])
 
-        # write online to neptune
-        if log_online:
-            log_to_neptune(dataframe=df, config=config, modeltype="train")
 
     # save out train summary
     dirs = const.Dirs(exp_name=train_exp)
@@ -165,7 +95,6 @@ def train_WTA(
     cortex="tessels0642",
     cerebellum="cerebellum_suit",
     positive=True,
-    log_online=False,
     log_locally=True,
     model_ext=None,
     experimenter='mk'
@@ -214,9 +143,6 @@ def train_WTA(
     models, df = run_connect.train_models(config, save=log_locally)
     df_all = pd.concat([df_all, df])
 
-    # write online to neptune
-    if log_online:
-        log_to_neptune(dataframe=df, config=config, modeltype="train")
 
     # save out train summary
     dirs = const.Dirs(exp_name=train_exp)
@@ -242,7 +168,6 @@ def train_NNLS(
     train_exp="sc1",
     cortex="tessels0642",
     cerebellum="cerebellum_suit",
-    log_online=False,
     log_locally=True,
     model_ext=None,
     experimenter='mk'
@@ -293,9 +218,6 @@ def train_NNLS(
         models, df = run_connect.train_models(config, save=log_locally)
         df_all = pd.concat([df_all, df])
 
-        # write online to neptune
-        if log_online:
-            log_to_neptune(dataframe=df, config=config, modeltype="train")
 
     # save out train summary
     dirs = const.Dirs(exp_name=train_exp)
@@ -391,7 +313,6 @@ def eval_model(
         eval_exp (str): 'sc1' or 'sc2'
         cortex (str): cortical ROI
         cerebellum (str): cerebellar ROI
-        log_online (bool): log results to ML tracking platform
         log_locally (bool): log results locally
         experimenter (str or None): 'mk' or 'ls' or None
     Returns:
@@ -426,10 +347,6 @@ def eval_model(
         for k, v in voxels.items():
             save_maps_cerebellum(data=np.stack(v, axis=0), 
                                 fpath=os.path.join(fpath, f'group_{k}'))
-
-    # write to neptune
-    if log_online:
-        log_to_neptune(dataframe=df, config=config, modeltype="eval")
 
     # eval summary
     if experimenter:

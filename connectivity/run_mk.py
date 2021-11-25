@@ -264,7 +264,7 @@ def eval_models(config):
         print(f"Evaluating model on {subj}")
 
         # get data
-        Y, Y_info, X, X_info = _get_data(config=config, exp=config["eval_exp"], subj=subj)
+        Y, Y_info, X, X_info = _get_XYdata(config=config, exp=config["eval_exp"], subj=subj)
 
         # Get the model from file
         fname = _get_model_name(train_name=config["name"], exp=config["train_exp"], subj_id=subj)
@@ -356,7 +356,7 @@ def _get_eval(Y, Y_pred, Y_info, X_info):
 
     return data
 
-def _get_data(config, exp, subj):
+def _get_XYdata(config, exp, subj):
     """get X and Y data for exp and subj
 
     Args:
@@ -383,7 +383,7 @@ def _get_data(config, exp, subj):
 
     # figure out splitby
     subset = None
-    if 'splitby' in config:
+    if config['splitby']!='all':
         subset = (df['split']==config['splitby']) & (df['inst']!=config['exclude_instruct'])
 
     Y, Y_info = Ydata.get_data(averaging=config["averaging"], weighting=config["weighting"], subset=subset)

@@ -63,7 +63,7 @@ def _concat_summary(
         df_all.to_csv(f'{summary_name}.csv')
 
 def train_summary(
-    summary_name="train_summary",
+    summary_name="train_summary_mk",
     exps=['sc1'], 
     models_to_include=['lasso', 'ridge', 'WTA']
     ):
@@ -79,7 +79,7 @@ def train_summary(
     # concat summary
     # YOU SHOULD NOT CALL THIS HERE TO AVOID PROBLEMS OF FILES 
     # JUST COMMENT ON THE FUNCTION THAT PRODUCES THIS.  
-    _concat_summary(summary_name, exps=exps)
+    # _concat_summary(summary_name, exps=exps)
 
     # look at model summary for train results
     df_concat = pd.DataFrame()
@@ -99,18 +99,18 @@ def train_summary(
         # add hyperparameter for wnta models (was NaN before) - this should be fixed in modeling routine
         # add NTakeAll number to `train_model` (WNTA_N<1>)
         wnta = df_concat.query('train_model=="WNTA"')
-        wnta['train_hyperparameter'] = wnta['train_name'].str.split('_').str.get(-1)
-        wnta['train_model'] = wnta['train_model'] + '_' + wnta['train_name'].str.split('_').str.get(-3)
+        wnta['hyperparameter'] = wnta['name'].str.split('_').str.get(-1)
+        wnta['model'] = wnta['model'] + '_' + wnta['name'].str.split('_').str.get(-3)
 
         # get rest of dataframe
-        other = df_concat.query('train_model!="WNTA"')
+        other = df_concat.query('model!="WNTA"')
 
         #concat dataframes
         df_concat = pd.concat([wnta, other])
     except: 
         pass
     
-    df_concat['train_hyperparameter'] = df_concat['train_hyperparameter'].astype(float) # was float
+    df_concat['hyperparameter'] = df_concat['hyperparameter'].astype(float) # was float
 
     def _relabel_model(x):
         if x=='L2regression':
@@ -120,10 +120,10 @@ def train_summary(
         else:
             return x
 
-    df_concat['train_model'] = df_concat['train_model'].apply(lambda x: _relabel_model(x))
+    df_concat['model'] = df_concat['model'].apply(lambda x: _relabel_model(x))
 
     if models_to_include:
-        df_concat = df_concat[df_concat['train_model'].isin(models_to_include)]
+        df_concat = df_concat[df_concat['model'].isin(models_to_include)]
 
     return df_concat
 
@@ -888,22 +888,22 @@ def get_best_model(
 
      # filter dataframe by method
     if method is not None:
-        dataframe = dataframe[dataframe['train_model']==method]
+        dataframe = dataframe[dataframe['model']==method]
 
     # filter dataframe by atlas
     if atlas is not None:
-        dataframe = dataframe[dataframe['train_atlas']==atlas]
+        dataframe = dataframe[dataframe['atlas']==atlas]
 
     # get mean values for each model
-    tmp = dataframe.groupby(["train_name", "train_X_data"]).mean().reset_index()
+    tmp = dataframe.groupby(["name", "X_data"]).mean().reset_index()
 
     # get best model (based on R CV or R train)
     try: 
-        best_model = tmp[tmp["train_R_cv"] == tmp["train_R_cv"].max()]["train_name"].values[0]
-        cortex = tmp[tmp["train_R_cv"] == tmp["train_R_cv"].max()]["train_X_data"].values[0]
+        best_model = tmp[tmp["R_cv"] == tmp["R_cv"].max()]["name"].values[0]
+        cortex = tmp[tmp["R_cv"] == tmp["R_cv"].max()]["X_data"].values[0]
     except:
-        best_model = tmp[tmp["R_train"] == tmp["R_train"].max()]["train_name"].values[0]
-        cortex = tmp[tmp["R_train"] == tmp["R_train"].max()]["train_X_data"].values[0]
+        best_model = tmp[tmp["R_train"] == tmp["R_train"].max()]["name"].values[0]
+        cortex = tmp[tmp["R_train"] == tmp["R_train"].max()]["X_data"].values[0]
 
     print(f"best model for {train_exp} is {best_model}")
 
@@ -930,25 +930,24 @@ def get_best_models(
 
      # filter dataframe by method
     if method is not None:
-        dataframe = dataframe[dataframe['train_model']==method]
+        dataframe = dataframe[dataframe['model']==method]
     
     # filter dataframe by atlas
     if atlas is not None:
-        dataframe = dataframe[dataframe['train_atlas']==atlas]
+        dataframe = dataframe[dataframe['atlas']==atlas]
 
-    df_mean = dataframe.groupby(['train_X_data', 'train_model', 'train_name'], sort=True).apply(lambda x: x['train_R_cv'].mean()).reset_index(name='train_R_cv_mean')
-    df_best = df_mean.groupby(['train_X_data', 'train_model']).apply(lambda x: x[['train_name', 'train_R_cv_mean']].max()).reset_index()
+    df_mean = dataframe.groupby(['X_data', 'model', 'name'], sort=True).apply(lambda x: x['R_cv'].mean()).reset_index(name='R_cv_mean')
+    df_best = df_mean.groupby(['X_data', 'model']).apply(lambda x: x[['name', 'R_cv_mean']].max()).reset_index()
 
-    tmp = dataframe.groupby(['train_X_data', 'train_model', 'train_hyperparameter', 'train_name']
-                ).mean().reset_index()
+    tmp = dataframe.groupby(['X_data', 'model', 'hyperparameter', 'name']).mean().reset_index()
 
     # group by `X_data` and `model`
-    grouped =  tmp.groupby(['train_X_data', 'train_model'])
+    grouped =  tmp.groupby(['X_data', 'model'])
 
     model_names = []; cortex_names = []
     for name, group in grouped:
-        model_name = group.sort_values(by='train_R_cv', ascending=False)['train_name'].head(1).tolist()[0]
-        cortex_name = group.sort_values(by='train_R_cv', ascending=False)['train_X_data'].head(1).tolist()[0]
+        model_name = group.sort_values(by='R_cv', ascending=False)['name'].head(1).tolist()[0]
+        cortex_name = group.sort_values(by='R_cv', ascending=False)['X_data'].head(1).tolist()[0]
         model_names.append(model_name)
         cortex_names.append(cortex_name)
 
