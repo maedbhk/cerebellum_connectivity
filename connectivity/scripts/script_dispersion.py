@@ -28,6 +28,8 @@ def dispersion_summary(
     data_dict_all = defaultdict(list)
     for (best_model, cortex) in zip(models, cortex_names):
 
+        os.path.join(dirs.conn_train_dir, best_model)
+
         # get alpha for each model
         alpha = int(best_model.split('_')[-1])
         for subj in const.return_subjs:
