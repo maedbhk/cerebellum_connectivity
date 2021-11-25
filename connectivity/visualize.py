@@ -54,7 +54,7 @@ def _concat_summary(
             os.chdir(dirs.conn_eval_dir)
        
         files = glob.glob(f'*{summary_name}_*')
-
+        files = ['eval_summary_mk.csv']
         df_all = pd.DataFrame()
         for file in files:
             df = pd.read_csv(file)
@@ -77,6 +77,8 @@ def train_summary(
         pandas dataframe containing concatenated exp summary
     """
     # concat summary
+    # YOU SHOULD NOT CALL THIS HERE TO AVOID PROBLEMS OF FILES 
+    # JUST COMMENT ON THE FUNCTION THAT PRODUCES THIS.  
     _concat_summary(summary_name, exps=exps)
 
     # look at model summary for train results
@@ -92,15 +94,6 @@ def train_summary(
     
     df_concat['atlas'] = df_concat['X_data'].apply(lambda x: _add_atlas(x))
 
-    # rename cols
-    cols = []
-    for col in df_concat.columns:
-        if "train" not in col:
-            cols.append("train_" + col)
-        else:
-            cols.append(col)
-
-    df_concat.columns = cols
 
     try: 
         # add hyperparameter for wnta models (was NaN before) - this should be fixed in modeling routine
@@ -150,8 +143,9 @@ def eval_summary(
     Returns:
         pandas dataframe containing concatenated exp summary
     """
-    # concat summary
-    _concat_summary(summary_name, exps=exps)
+    # concat summary: THIS IS HOW IT IS PRODUCED: 
+    # _concat_summary(summary_name, exps=exps)
+    # NOTE: DON'T TRY TO DO THIS AUTOMAtiCALLY
 
     # look at model summary for eval results
     df_concat = pd.DataFrame()
@@ -173,22 +167,15 @@ def eval_summary(
     if splitby is not None:
         df_concat = df_concat[df_concat['splitby'].isin(splitby)]
 
-    cols = []
-    for col in df_concat.columns:
-        if any(s in col for s in ("eval", "train")):
-            cols.append(col)
-        else:
-            cols.append("eval_" + col)
-
-    df_concat.columns = cols
-    df_concat['eval_model'] = df_concat['eval_name'].str.split('_').str[0]
+    # df_concat.columns = cols
+    df_concat['model'] = df_concat['name'].str.split('_').str[0]
 
     try: 
-        wnta = df_concat.query('eval_model=="wnta"')
-        wnta['eval_model'] = wnta['eval_model'] + '_' + wnta['eval_name'].str.split('_').str.get(-3)
+        wnta = df_concat.query('model=="wnta"')
+        wnta['model'] = wnta['model'] + '_' + wnta['name'].str.split('_').str.get(-3)
 
         # get rest of dataframe
-        other = df_concat.query('eval_model!="wnta"')
+        other = df_concat.query('model!="wnta"')
 
         #concat dataframes
         df_concat = pd.concat([wnta, other])
@@ -196,11 +183,11 @@ def eval_summary(
         pass
 
     # get noise ceilings
-    df_concat["eval_noiseceiling_Y"] = np.sqrt(df_concat.eval_noise_Y_R)
-    df_concat["eval_noiseceiling_XY"] = np.sqrt(df_concat.eval_noise_Y_R) * np.sqrt(df_concat.eval_noise_X_R)
+    df_concat["noiseceiling_Y"] = np.sqrt(df_concat.noise_Y_R)
+    df_concat["noiseceiling_XY"] = np.sqrt(df_concat.noise_Y_R) * np.sqrt(df_concat.noise_X_R)
 
     if models_to_include:
-        df_concat = df_concat[df_concat['eval_model'].isin(models_to_include)]
+        df_concat = df_concat[df_concat['model'].isin(models_to_include)]
 
     return df_concat
 
@@ -354,7 +341,7 @@ def plot_train_predictions(
 def plot_eval_predictions(
     dataframe=None,
     exps=['sc2'], 
-    x='eval_num_regions', 
+    x='num_regions', 
     hue=None, 
     save=False,
     atlases=['tessels'],
@@ -373,19 +360,20 @@ def plot_eval_predictions(
 
     # filer out atlases
     if atlases is not None:
-        dataframe = dataframe[dataframe['eval_atlas'].isin(atlases)]
+        dataframe = dataframe[dataframe['atlas'].isin(atlases)]
 
     # filter out methods
     if methods is not None:
-        dataframe = dataframe[dataframe['eval_model'].isin(methods)]
+        dataframe = dataframe[dataframe['model'].isin(methods)]
 
     # filter out splitby
     if splitby is not None:
-        dataframe = dataframe[dataframe['eval_splitby'].isin(splitby)]
+        dataframe = dataframe[dataframe['splitby'].isin(splitby)]
+
 
     # #plt.figure(figsize=(8,8))
     ax = sns.lineplot(x=x, y="R_eval", hue=hue, data=dataframe) # legend=True,
-    ax = sns.lineplot(x=x, y='eval_noiseceiling_Y', data=dataframe, color='k', ax=ax, ci=None, linewidth=4)
+    ax = sns.lineplot(x=x, y='noiseceiling_Y', data=dataframe, color='k', ax=ax, ci=None, linewidth=4)
     ax.legend(loc='best', frameon=False) # bbox_to_anchor=(1, 1)
     plt.xticks(rotation="45", ha="right")
     ax.lines[-1].set_linestyle("--")
