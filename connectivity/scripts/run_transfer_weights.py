@@ -88,7 +88,7 @@ def run(connect_dir, learn_dir):
     #             data['weights'] = data['weights'].T
     #             dd.io.save(dest, data)
 
-                print('worked')
+                # print('worked')
 
 if __name__ == "__main__":
     run()
