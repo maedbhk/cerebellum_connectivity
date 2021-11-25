@@ -198,6 +198,8 @@ class Dataset:
         info["id"] = np.kron(np.ones((num_runs,)), np.arange(num_reg)).astype(int)
         if subset is None:
             subset = np.arange(num_reg)
+        elif type(subset) is pd.Series: 
+            subset = subset.to_numpy().nonzero()[0]
         elif subset.dtype == "bool":
             subset = subset.nonzero()[0]
 
