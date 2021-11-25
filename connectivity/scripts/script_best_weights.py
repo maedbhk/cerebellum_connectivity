@@ -12,7 +12,7 @@ def run(
     ):
 
     # save out np array of best weights
-    cmaps.best_weights(train_exp=exp, method=method, save=True)
+    cmaps.best_weights(train_exp=exp, method=method)
 
 if __name__ == "__main__":
     run()
