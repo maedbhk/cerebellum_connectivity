@@ -316,7 +316,7 @@ def average_region_data(
     cerebellum_nifti = os.path.join(atlas_dir, f'atl-{atlas}_space-SUIT_dseg.nii')
     cerebellum_gifti = os.path.join(atlas_dir, f'atl-{atlas}_dseg.label.gii')
 
-    if not os.path.exists(cerebellum_nifti):
+    if not os.path.isfile(cerebellum_nifti):
         # print(Exception('please download atlases using SUITPy.atlas fetchers'))
         catlas.fetch_king_2019(data='atl', data_dir=dirs.cerebellar_atlases)
         catlas.fetch_buckner_2011(data_dir=dirs.cerebellar_atlases)
