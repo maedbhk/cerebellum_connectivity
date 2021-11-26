@@ -656,5 +656,6 @@ def best_weights(
         dd.io.save(os.path.join(outdir, f'{best_model}.h5'), {'weights': group_weights})
 
     # save model and cortex names
-    dd.io.save(os.path.join(outdir, f'best_models_{method}.h5'), {'models': models, 'cortex_names': cortex_names})
+    df = pd.DataFrame.from_dict({'models': models, 'cortex_names': cortex_names})
+    df.to_csv(os.path.join(outdir, f'best_models_{method}.csv'))
     

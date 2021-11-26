@@ -63,21 +63,24 @@ def run(connect_dir, learn_dir):
     # transfer best models
     best_models = [f for f in files if 'best_model in f']
 
-    for model in best_models: 
-        src = os.path.join(connect_dir, model)
-        dest = os.path.join(mdtb_dir, Path(model).stem + '_mdtb.h5')
-        copyfile(src, dest)
+    # load names of models and filter based on `_remap()`
+    df_all = pd.DataFrame()
+    for model in best_models:
+        df = pd.read_csv(model)  
+        df_all = pd.concat([df, df_all])
+    df_filter = df_all[df_all['cortex_names'].isin(data_dict.keys())]
+    df_filter.to_csv(os.path.join(mdtb_dir, 'best_models.csv'))
 
-    
     # copy best weights from connectivity to learning dir (change filenames)
     for file in files:
         for k,v in data_dict.items():
             if k in file:
-                fname = file
                 if 'ridge' in file:
                     fname = file.replace(k, v).replace('ridge', 'RIDGE')
                 elif 'lasso' in file:
                     fname = file.replace(k, v).replace('lasso', 'LASSO')
+                else:
+                    fname = file.replace(k, v)
 
                 src = os.path.join(connect_dir, file)
                 dest = os.path.join(mdtb_dir, Path(fname).stem + '_mdtb.h5')
