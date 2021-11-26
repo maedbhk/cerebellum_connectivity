@@ -144,7 +144,7 @@ def fig3(format='svg'):
     ax2.axis('off')
 
     ax3 = fig.add_subplot(gs[0,2])
-    vis.plot_surfaces(y='percent', atlas='tessels', regions=['Region1', 'Region2', 'Region3', 'Region4', 'Region5', 'Region6', 'Region7', 'Region8', 'Region9', 'Region10'], weights='nonzero', x='reg_names', hue=None, method='lasso', ax=ax3);
+    vis.plot_surfaces(y='percent', cortex_group='tessels', regions=['Region1', 'Region2', 'Region3', 'Region4', 'Region5', 'Region6', 'Region7', 'Region8', 'Region9', 'Region10'], weights='nonzero', x='reg_names', hue=None, method='lasso', ax=ax3);
     # ax3.set_xticks([80, 304, 670, 1190, 1848])
     # ax3.legend(['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'])
     ax3.text(x_pos, y_pos, 'C', transform=ax3.transAxes, fontsize=labelsize, verticalalignment='top')
@@ -186,7 +186,7 @@ def fig3(format='svg'):
     # ax7.text(x_pos, y_pos, 'G', transform=ax7.transAxes, fontsize=labelsize, verticalalignment='top')
 
     ax8 = fig.add_subplot(gs[1,3])
-    vis.plot_dispersion(hue='hem', y='Variance', cortex='tessels1002', regions=[1,2,4,5], ax=ax8)
+    vis.plot_dispersion(hue='hem', y='Variance', cortex_group='tessels', cortex='tessels1002', atlas='MDTB10', regions=[1,2,4,5], ax=ax8)
     ax8.text(x_pos, y_pos, 'H', transform=ax8.transAxes, fontsize=labelsize, verticalalignment='top')
     # ax8.set_xticks([80, 304, 670, 1190, 1848])
 
@@ -289,7 +289,7 @@ def figS2(format='png'):
     labelsize = 30
 
     ax2 = fig.add_subplot(gs[0,0])
-    vis.plot_surfaces(y='percent', cortex='tessels', weights='nonzero', regions=['Region3', 'Region6', 'Region7', 'Region8', 'Region9', 'Region10'], hue='reg_names', method='lasso', ax=ax2);
+    vis.plot_surfaces(y='percent', cortex_group='tessels', weights='nonzero', regions=['Region3', 'Region6', 'Region7', 'Region8', 'Region9', 'Region10'], hue='reg_names', method='lasso', ax=ax2);
     ax2.set_xticks([80, 304, 670, 1190, 1848])
     ax2.text(x_pos, y_pos, 'A', transform=ax2.transAxes, fontsize=labelsize, verticalalignment='top')
 
@@ -342,7 +342,7 @@ def figS2(format='png'):
     ax8.text(x_pos, y_pos, 'G', transform=ax8.transAxes, fontsize=labelsize, verticalalignment='top')
 
     ax9 = fig.add_subplot(gs[1,3])
-    vis.plot_dispersion(hue='hem', y='Variance', cortex='tessels1002', regions=[3,6,7,8,9,10], ax=ax9)
+    vis.plot_dispersion(hue='hem', y='Variance', cortex_group='tessels', cortex='tessels1002', atlas='MDTB10', regions=[3,6,7,8,9,10], ax=ax9)
     ax9.text(x_pos, y_pos, 'H', transform=ax9.transAxes, fontsize=labelsize, verticalalignment='top')
 
     plt.subplots_adjust(left=0.125, bottom=0.001, right=2.0, top=2.0, wspace=.2, hspace=.3)

@@ -457,6 +457,8 @@ def plot_test_predictions(
         dirs = const.Dirs()
         plt.savefig(os.path.join(dirs.figure, f'test_predictions_learning.png'), pad_inches=0, bbox_inches='tight')
 
+    return dataframe
+
 def plot_best_eval(
     dataframe=None,
     exps=['sc2'],
@@ -577,10 +579,11 @@ def plot_surfaces(
         exp='sc1',
         x='num_regions',
         y='percent',    
-        atlas='tessels',
-        cortex=None,
+        cortex_group='tessels',
+        cortex='tessels1002',
         weights='nonzero', 
         method='lasso',
+        atlas='MDTB10',
         hue=None,
         regions=None,
         save=False,
@@ -597,15 +600,15 @@ def plot_surfaces(
 
     # dataframe['subregion'] = dataframe['reg_names'].str.replace(re.compile('[^a-zA-Z]'), '', regex=True)
     dataframe_concat['num_regions'] = dataframe_concat['cortex'].str.split('_').str.get(-1).str.extract('(\d+)').astype(float)*2
-    dataframe_concat['atlas'] = dataframe_concat['cortex'].apply(lambda x: _add_atlas(x))
+    dataframe_concat['cortex_group'] = dataframe_concat['cortex'].apply(lambda x: _add_atlas(x))
 
     # filter out methods
     if regions is not None:
         dataframe_concat = dataframe_concat[dataframe_concat['reg_names'].isin(regions)]
 
     # filter out methods
-    if cortex is not None:
-        dataframe_concat = dataframe_concat[dataframe_concat['cortex'].isin([cortex])]
+    if cortex_group is not None:
+        dataframe_concat = dataframe_concat[dataframe_concat['cortex_group'].isin([cortex])]
     
     # filter out methods
     if atlas is not None:
@@ -655,6 +658,8 @@ def plot_dispersion(
         exp='sc1',
         y='Std',    
         cortex='tessels1002', 
+        cortex_group='tessels',
+        atlas='MDTB10',
         method='ridge',
         hue=None,
         regions=None, # [1,2,5]
@@ -671,11 +676,19 @@ def plot_dispersion(
     dataframe['hem'] = dataframe['hem'].map({0: 'L', 1: 'R'})
     dataframe['roi'] = dataframe['roi']+1
     dataframe['num_regions'] = dataframe['cortex'].str.split('_').str.get(-1).str.extract('(\d+)').astype(float)*2
-    dataframe['atlas'] = dataframe['cortex'].apply(lambda x: _add_atlas(x))
+    dataframe['cortex_group'] = dataframe['cortex'].apply(lambda x: _add_atlas(x))
 
     # filter out methods
     if cortex is not None:
         dataframe = dataframe[dataframe['cortex'].isin([cortex])]
+
+    # filter out methods
+    if cortex_group is not None:
+        dataframe = dataframe[dataframe['cortex_group'].isin([cortex_group])]
+    
+    # filter out methods
+    if atlas is not None:
+        dataframe = dataframe[dataframe['atlas'].isin([atlas])]
 
     # filter out methods
     if method is not None:
