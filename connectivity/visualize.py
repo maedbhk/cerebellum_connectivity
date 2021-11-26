@@ -577,7 +577,8 @@ def plot_surfaces(
         exp='sc1',
         x='num_regions',
         y='percent',    
-        cortex='tessels',
+        atlas='tessels',
+        cortex=None,
         weights='nonzero', 
         method='lasso',
         hue=None,
@@ -604,7 +605,11 @@ def plot_surfaces(
 
     # filter out methods
     if cortex is not None:
-        dataframe_concat = dataframe_concat[dataframe_concat['atlas'].isin([cortex])]
+        dataframe_concat = dataframe_concat[dataframe_concat['cortex'].isin([cortex])]
+    
+    # filter out methods
+    if atlas is not None:
+        dataframe_concat = dataframe_concat[dataframe_concat['atlas'].isin([atlas])]
 
     # filter out methods
     if weights is not None:
@@ -620,12 +625,20 @@ def plot_surfaces(
         _, cpal, _ = nio.get_gifti_colors(fpath)
         palette = cpal
 
-    ax = sns.lineplot(x=x, 
-                y=y, 
-                hue=hue, 
-                data=dataframe_concat,
-                palette=palette,
-                )
+    if x=='num_regions':
+        ax = sns.lineplot(x=x, 
+                    y=y, 
+                    hue=hue, 
+                    data=dataframe_concat,
+                    palette=palette,
+                    )
+    else:
+        ax = sns.barplot(x=x, 
+            y=y, 
+            hue=hue, 
+            data=dataframe_concat,
+            palette=palette,
+            )
     ax.set_xlabel('')
     ax.set_ylabel('Percentage of cortical surface')
     plt.xticks(rotation="45", ha="right")
@@ -653,7 +666,7 @@ def plot_dispersion(
     
     # load in distances
     dataframe = pd.read_csv(os.path.join(dirs.conn_train_dir, 'cortical_dispersion_stats.csv'))
-    
+
     dataframe['w_var']=dataframe.Variance*dataframe.sum_w
     dataframe['hem'] = dataframe['hem'].map({0: 'L', 1: 'R'})
     dataframe['roi'] = dataframe['roi']+1
