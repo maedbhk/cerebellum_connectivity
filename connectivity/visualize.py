@@ -653,7 +653,8 @@ def plot_dispersion(
     
     # load in distances
     dataframe = pd.read_csv(os.path.join(dirs.conn_train_dir, 'cortical_dispersion_stats.csv'))
-
+    
+    dataframe['w_var']=dataframe.Variance*dataframe.sum_w
     dataframe['hem'] = dataframe['hem'].map({0: 'L', 1: 'R'})
     dataframe['roi'] = dataframe['roi']+1
     dataframe['num_regions'] = dataframe['cortex'].str.split('_').str.get(-1).str.extract('(\d+)').astype(float)*2
