@@ -157,14 +157,16 @@ class Dataset:
         }
         df = pd.DataFrame(d)
 
+        # Give each instruction the corresponding task-number
+        instr_ind = df.index[df.task==0]
+        df.task[instr_ind]=df.task[instr_ind+1]
         # get common tasks
         df['TN'] = df['TN'].str.replace('2', '')
-        common_tasks = ['verbGeneration', 'spatialNavigation', 'motorSequence', 'nBackPic', 'visualSearch', 'ToM', 'actionObservation', 'rest']
-
+        common_TN = ['verbGeneration', 'spatialNavigation', 'motorSequence', 'nBackPic', 'visualSearch', 'ToM', 'actionObservation', 'rest']
+        common_tasks = np.unique(df.task[df['TN'].isin(common_TN)])
         # split tasks into 'common' and 'unique'
-        df.loc[df['TN'].isin(common_tasks), 'split'] = 'common'
-        df.loc[~df['TN'].isin(common_tasks), 'split'] = 'unique'
-
+        df.loc[df['task'].isin(common_tasks), 'split'] = 'common'
+        df.loc[~df['task'].isin(common_tasks), 'split'] = 'unique'
         return df
 
     def get_info_run(self):

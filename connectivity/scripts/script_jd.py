@@ -154,6 +154,6 @@ if __name__ == "__main__":
     # d = const.Dirs()
     # T = eval_models(['ridge','ridge','ridge','ridge','ridge','ridge','NN','NN','NN'],'tessels0162',[-2,0,2,4,6,8,-2,0,2],sn=['all'])
     # T.to_csv(d.conn_eval_dir / "group_model.dat")
-    # eval_best_models()
-    plot_Fig2c()
+    eval_best_models()
+    # plot_Fig2c()
     pass

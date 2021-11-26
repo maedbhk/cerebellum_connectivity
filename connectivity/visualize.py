@@ -32,121 +32,26 @@ def plotting_style():
             'axes.spines.right': False}
     plt.rcParams.update(params)    
 
-def _concat_summary(
-    summary_name='train_summary',
-    exps=['sc1']
-    ):
-    """concat dataframes from different experimenters
-
-    Args: 
-        summary_name (str): 'train_summary' or 'eval_summary'
-
-    Returns: 
-        saves concatenated dataframe <summary_name>.csv to disk
-    """
-    for exp in exps:
-
-        dirs = const.Dirs(exp_name=exp)
-        
-        if summary_name=='train_summary':
-            os.chdir(dirs.conn_train_dir)
-        elif summary_name=='eval_summary':
-            os.chdir(dirs.conn_eval_dir)
-       
-        files = glob.glob(f'*{summary_name}_*')
-        files = ['eval_summary_mk.csv']
-        df_all = pd.DataFrame()
-        for file in files:
-            df = pd.read_csv(file)
-            df_all = pd.concat([df_all, df])
-
-        df_all.to_csv(f'{summary_name}.csv')
-
-def train_summary(
-    summary_name="train_summary_mk",
-    exps=['sc1'], 
-    models_to_include=['lasso', 'ridge', 'WTA']
-    ):
-    """load train summary containing all metrics about training models.
-    Summary across exps is concatenated and prefix 'train' is appended to cols.
-    Args:
-        summary_name (str): name of summary file
-        exps (list of str): default is ['sc1', 'sc2']
-        models_to_include (list of str or None):
-    Returns:
-        pandas dataframe containing concatenated exp summary
-    """
-    # concat summary
-    # YOU SHOULD NOT CALL THIS HERE TO AVOID PROBLEMS OF FILES 
-    # JUST COMMENT ON THE FUNCTION THAT PRODUCES THIS.  
-    # _concat_summary(summary_name, exps=exps)
-
-    # look at model summary for train results
-    df_concat = pd.DataFrame()
-    for exp in exps:
-        dirs = const.Dirs(exp_name=exp)
-        fpath = os.path.join(dirs.conn_train_dir, f"{summary_name}.csv")
-        df = pd.read_csv(fpath)
-        df_concat = pd.concat([df_concat, df])
-
-    # select trained subjects 
-    df_concat = df_concat[df_concat['subj_id'].isin(const.return_subjs)]
-    
-    df_concat['atlas'] = df_concat['X_data'].apply(lambda x: _add_atlas(x))
-
-
-    try: 
-        # add hyperparameter for wnta models (was NaN before) - this should be fixed in modeling routine
-        # add NTakeAll number to `train_model` (WNTA_N<1>)
-        wnta = df_concat.query('train_model=="WNTA"')
-        wnta['hyperparameter'] = wnta['name'].str.split('_').str.get(-1)
-        wnta['method'] = wnta['method'] + '_' + wnta['name'].str.split('_').str.get(-3)
-
-        # get rest of dataframe
-        other = df_concat.query('method!="WNTA"')
-
-        #concat dataframes
-        df_concat = pd.concat([wnta, other])
-    except: 
-        pass
-    
-    df_concat['hyperparameter'] = df_concat['hyperparameter'].astype(float) # was float
-
-    def _relabel_model(x):
-        if x=='L2regression':
-            return 'ridge'
-        elif x=='LASSO':
-            return 'lasso'
-        else:
-            return x
-
-    df_concat['method'] = df_concat['method'].apply(lambda x: _relabel_model(x))
-
-    if models_to_include:
-        df_concat = df_concat[df_concat['method'].isin(models_to_include)]
-
-    return df_concat
-
-def eval_summary(
-    eval_name=[None],
+def get_summary(
+    summary_type= 'eval',
+    summary_name=[None],
     exps=['sc2'], 
     splitby= None,
     method = None,
     atlas = None
     ):
-    """load eval summary containing all metrics about eval models.
-    Appends different summary names and filters based on inputs
+    """Appends different summary csv files (train or eval) and filters based on inputs
     Args:
-        eval_name (list of str): name of summary file
+        summary_type (str): 'eval','train'
+        summary_name (list of str): name of summary file
         exps (list of str): default is ['sc2']
-        splitby (list of str): default is ['unique']
-        models_to_include (list of str):
+        splitby (list of str): splits to include is None
+        method (list of str): methods to include 
+        atlas (list of str): atlasses to include 
     Returns:
         pandas dataframe containing concatenated exp summary
     """
-    # concat summary: THIS IS HOW IT IS PRODUCED: 
-    # _concat_summary(summary_name, exps=exps)
-    # NOTE: DON'T TRY TO DO THIS AUTOMAtiCALLY
+
 
     # look at model summary for eval results
     if type(eval_name) is not list: 
@@ -167,11 +72,19 @@ def eval_summary(
     
     # add atlas
     df_concat['atlas'] = df_concat['X_data'].apply(lambda x: _add_atlas(x))
-    # add method 
-    df_concat['method'] = df_concat['name'].str.split('_').str[0]
+    df_concat['hyperparameter'] = df_concat['hyperparameter'].astype(float) # 
+    def _relabel_model(x):
+        if x=='L2regression':
+            return 'ridge'
+        elif x=='LASSO':
+            return 'lasso'
+        else:
+            return x
+    df_concat['method'] = df_concat['model'].apply(lambda x: _relabel_model(x))
 
     try: 
         wnta = df_concat.query('method=="wnta"')
+        wnta['hyperparameter'] = wnta['name'].str.split('_').str.get(-1)
         wnta['method'] = wnta['method'] + '_' + wnta['name'].str.split('_').str.get(-3)
 
         # get rest of dataframe
@@ -181,10 +94,6 @@ def eval_summary(
         df_concat = pd.concat([wnta, other])
     except:
         pass
-
-    # get noise ceilings
-    df_concat["noiseceiling_Y"] = np.sqrt(df_concat.noise_Y_R)
-    df_concat["noiseceiling_XY"] = np.sqrt(df_concat.noise_Y_R) * np.sqrt(df_concat.noise_X_R)
 
     # Now filter the data frame 
     if splitby is not None:
@@ -201,7 +110,11 @@ def test_summary(
     train_exp='sc1',
     models_to_include=['RIDGE']
     ):
-    """load test summary containing all metrics about test models (mdtb models tested on external data).
+    """
+    JD:I GUESS THIS IS FOR GENERALIZATION TESTING. 
+    YOU LIKELY DO NOT NEED THIS - INSTEAD YOU SHOULD BE ABLE TO 
+    RELY ON 
+    load test summary containing all metrics about test models (mdtb models tested on external data).
     Prefix 'gen' is appended to cols.
     Args:
         summary_name (str): name of summary file
@@ -281,44 +194,24 @@ def _add_atlas(x):
     return atlas
 
 def plot_train_predictions( 
-    dataframe=None,
+    df,
     exps=['sc1'], 
     x='train_num_regions', 
     hue=None, 
     atlases=None,
     save=False, 
     title=False,
-    ax=None,
-    best_models=True,
-    methods=['ridge', 'WTA', 'lasso']
-    ):
+    ax=None):
     """plots training predictions (R CV) for all models in dataframe.
+    JD: NOTE HERE THAT ALL the FILTERING IS DONE BY GET_SUMMARY
+    DON'T REPLICATE THE WORK AND CONPLEXITY BY FILTERING WITHIN THE 
+    FUNCTION 
     Args:
+        dataframe: Training data frame from get_summary
         exps (list of str): default is ['sc1']
         hue (str or None): can be 'train_exp', 'Y_data' etc.
     """
-    if dataframe is None:
-        # get train summary
-        dataframe = train_summary(exps=exps)
-
-    # filer out atlases
-    if atlases is not None:
-        dataframe = dataframe[dataframe['train_atlas'].isin(atlases)]
-
-    # filter data
-    if methods is not None:
-        dataframe = dataframe[dataframe['train_model'].isin(methods)]
-
-    if (best_models):
-        # get best model for each method
-        model_names, _ = get_best_models(dataframe=dataframe)
-        df1 = dataframe[dataframe['train_name'].isin(model_names)]
-    else:
-        df1 = dataframe
-
-    df1['train_num_regions'] = df1['train_num_regions'].astype(int)
-    # R
-    ax = sns.lineplot(x=x, y="train_R_cv", hue=hue, data=df1, legend=True)
+    ax = sns.lineplot(x=x, y="R_cv", hue=hue, data=df, legend=True)
     ax.legend(loc='best', frameon=False) # bbox_to_anchor=(1, 1)
     plt.xticks(rotation="45", ha="right")
     ax.set_xlabel("")
@@ -349,8 +242,6 @@ def plot_eval_predictions(
     x='num_regions', 
     hue=None, 
     save=False,
-    atlases=['tessels'],
-    methods=['ridge', 'WTA'],
     ax=None,
     title=False,
     ):
@@ -359,14 +250,6 @@ def plot_eval_predictions(
         exps (list of str): default is ['sc2']
         hue (str or None): can be 'train_exp', 'Y_data' etc.
     """
-    # filer out atlases
-    if atlases is not None:
-        dataframe = dataframe[dataframe['atlas'].isin(atlases)]
-
-    # filter out methods
-    if methods is not None:
-        dataframe = dataframe[dataframe['method'].isin(methods)]
-
     # #plt.figure(figsize=(8,8))
     ax = sns.lineplot(x=x, y="R_eval", hue=hue, data=dataframe) # legend=True,
     ax = sns.lineplot(x=x, y='noiseceiling_Y', data=dataframe, color='k', ax=ax, ci=None, linewidth=4)
@@ -387,12 +270,10 @@ def plot_eval_predictions(
 
 def plot_test_predictions(
     dataframe=None,
-    x='test_num_regions', 
+    x='num_regions', 
     routines=['session_1'],
     hue=None, 
     save=False,
-    atlases=['icosahedron'],
-    methods=['RIDGE'],
     noiseceiling=True,
     ax=None,
     title=False,
@@ -402,21 +283,6 @@ def plot_test_predictions(
         exps (list of str): default is ['sc2']
         hue (str or None): can be 'train_exp', 'Y_data' etc.
     """
-
-    if dataframe is None:
-        dataframe = test_summary()
-
-    # filer out atlases
-    if atlases is not None:
-        dataframe = dataframe[dataframe['test_atlas'].isin(atlases)]
-
-    # filter out methods
-    if methods is not None:
-        dataframe = dataframe[dataframe['test_model'].isin(methods)]
-
-    if routines is not None:
-        dataframe = dataframe[dataframe['test_routine'].isin(routines)]
-
     if noiseceiling:
         # #plt.figure(figsize=(8,8))
         ax = sns.lineplot(x=x, y="R_eval", hue=hue, ci=70, color='g', legend=True, data=dataframe, ax=ax)
