@@ -661,7 +661,7 @@ def plot_dispersion(
         cortex_group='tessels',
         atlas='MDTB10',
         method='ridge',
-        hue=None,
+        hue='hem',
         regions=None, # [1,2,5]
         save=False,
         ax=None
@@ -674,7 +674,6 @@ def plot_dispersion(
 
     dataframe['w_var']=dataframe.Variance*dataframe.sum_w
     dataframe['hem'] = dataframe['hem'].map({0: 'L', 1: 'R'})
-    dataframe['roi'] = dataframe['roi']+1
     dataframe['num_regions'] = dataframe['cortex'].str.split('_').str.get(-1).str.extract('(\d+)').astype(float)*2
     dataframe['cortex_group'] = dataframe['cortex'].apply(lambda x: _add_atlas(x))
 
@@ -698,10 +697,14 @@ def plot_dispersion(
     if regions is not None:
         dataframe = dataframe[dataframe['roi'].isin(regions)]
 
+    T = pd.pivot_table(dataframe,values=['sum_w','w_var','Variance'],index=['subj','roi', 'hem'],aggfunc='mean')
+    T = T.reset_index()
+    T['var_w'] = T.w_var/T.sum_w
+
     ax = sns.boxplot(x='roi', 
                 y=y, 
                 hue=hue, 
-                data=dataframe,
+                data=T,
                 )
     ax.set_xlabel('')
     ax.set_ylabel('Cortical Dispersion')
