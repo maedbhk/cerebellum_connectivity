@@ -577,7 +577,7 @@ def plot_distances(
 
 def plot_surfaces(
         exp='sc1',
-        x='num_regions',
+        x='reg_names',
         y='percent',    
         cortex_group='tessels',
         cortex='tessels1002',
@@ -608,7 +608,11 @@ def plot_surfaces(
 
     # filter out methods
     if cortex_group is not None:
-        dataframe_concat = dataframe_concat[dataframe_concat['cortex_group'].isin([cortex])]
+        dataframe_concat = dataframe_concat[dataframe_concat['cortex_group'].isin([cortex_group])]
+
+    # filter out methods
+    if cortex is not None:
+        dataframe_concat = dataframe_concat[dataframe_concat['cortex'].isin([cortex])]
     
     # filter out methods
     if atlas is not None:
@@ -623,10 +627,9 @@ def plot_surfaces(
         dataframe_concat = dataframe_concat[dataframe_concat['method'].isin([method])]
     
     # color plot according to MDTB10 atlas
-    if hue=='reg_names':
-        fpath = nio.get_cerebellar_atlases(atlas_keys=['atl-MDTB10'])[0]
-        _, cpal, _ = nio.get_gifti_colors(fpath)
-        palette = cpal
+    fpath = nio.get_cerebellar_atlases(atlas_keys=['atl-MDTB10'])[0]
+    _, cpal, _ = nio.get_gifti_colors(fpath)
+    palette = cpal
 
     if x=='num_regions':
         ax = sns.lineplot(x=x, 
@@ -656,7 +659,7 @@ def plot_surfaces(
 
 def plot_dispersion(
         exp='sc1',
-        y='Std',    
+        y='var_w',    
         cortex='tessels1002', 
         cortex_group='tessels',
         atlas='MDTB10',
@@ -673,6 +676,7 @@ def plot_dispersion(
     dataframe = pd.read_csv(os.path.join(dirs.conn_train_dir, 'cortical_dispersion_stats.csv'))
 
     dataframe['w_var']=dataframe.Variance*dataframe.sum_w
+    dataframe['var_w'] = dataframe.w_var/dataframe.sum_w
     dataframe['hem'] = dataframe['hem'].map({0: 'L', 1: 'R'})
     dataframe['num_regions'] = dataframe['cortex'].str.split('_').str.get(-1).str.extract('(\d+)').astype(float)*2
     dataframe['cortex_group'] = dataframe['cortex'].apply(lambda x: _add_atlas(x))
@@ -697,14 +701,14 @@ def plot_dispersion(
     if regions is not None:
         dataframe = dataframe[dataframe['roi'].isin(regions)]
 
-    T = pd.pivot_table(dataframe,values=['sum_w','w_var','Variance'],index=['subj','roi', 'hem'],aggfunc='mean')
-    T = T.reset_index()
-    T['var_w'] = T.w_var/T.sum_w
+    # T = pd.pivot_table(dataframe,values=['sum_w','w_var','Variance'],index=['subj','roi', 'hem'],aggfunc='mean')
+    # T = T.reset_index()
+    # T['var_w'] = T.w_var/T.sum_w
 
     ax = sns.boxplot(x='roi', 
                 y=y, 
                 hue=hue, 
-                data=T,
+                data=dataframe,
                 )
     ax.set_xlabel('')
     ax.set_ylabel('Cortical Dispersion')

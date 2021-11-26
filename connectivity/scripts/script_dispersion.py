@@ -48,7 +48,7 @@ def dispersion_summary(
                     df = pd.concat([df,df_res])
             
     # save dataframe to disk
-    fpath = os.path.join(dirs.conn_train_dir, 'cortical_dispersion_stats.csv')  
+    fpath = os.path.join(dirs.conn_train_dir, f'cortical_dispersion_stats_{atlas}.csv')  
     df.to_csv(fpath)
 
 @click.command()

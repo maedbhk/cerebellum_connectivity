@@ -83,7 +83,7 @@ def surfaces_rois(
 
     # save dataframe to disk
     df = pd.DataFrame.from_dict(data_rois_all)
-    fpath = os.path.join(dirs.conn_train_dir, 'cortical_surface_rois_stats.csv')  
+    fpath = os.path.join(dirs.conn_train_dir, f'cortical_surface_rois_stats_{atlas}.csv')  
     df.to_csv(fpath)
 
 @click.command()

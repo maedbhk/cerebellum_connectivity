@@ -186,7 +186,7 @@ def fig3(format='svg'):
     # ax7.text(x_pos, y_pos, 'G', transform=ax7.transAxes, fontsize=labelsize, verticalalignment='top')
 
     ax8 = fig.add_subplot(gs[1,3])
-    vis.plot_dispersion(hue='hem', y='Variance', cortex_group='tessels', cortex='tessels1002', atlas='MDTB10', regions=[1,2,4,5], ax=ax8)
+    vis.plot_dispersion(hue='hem', y='var_w', cortex_group='tessels', cortex='tessels1002', atlas='MDTB10', regions=[1,2,4,5], ax=ax8)
     ax8.text(x_pos, y_pos, 'H', transform=ax8.transAxes, fontsize=labelsize, verticalalignment='top')
     # ax8.set_xticks([80, 304, 670, 1190, 1848])
 
