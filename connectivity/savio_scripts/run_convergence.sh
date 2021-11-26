@@ -27,10 +27,11 @@ cd /global/scratch/users/maedbhking/projects/cerebellum_connectivity/connectivit
 # # run cortical surface (voxels)
 # python3 script_surfaces.py --exp="sc1" --weights="nonzero" --method="lasso" --regions="voxels"
 
-# # run cortical surfaces (rois)
-# python3 script_surfaces.py --exp="sc1" --weights="nonzero" --method="lasso" --regions="rois"
+atlases=(MDTB10 Buckner7 Anatom) # Buckner17 Anatom (problem with these two atlases)
 
-atlases=(MDTB10 Buckner7) # Buckner17 Anatom (problem with these two atlases)
+# run cortical surfaces (rois)
+for ((a=0; a<${#atlases[@]}; a++)); do \
+python3 script_surfaces.py --exp="sc1" --weights="nonzero" --method="lasso" --regions="rois" --atlas=${atlases[a]}; done
 
 # # run dispersion
 for ((a=0; a<${#atlases[@]}; a++)); do \

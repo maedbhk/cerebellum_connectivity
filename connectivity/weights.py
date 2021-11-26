@@ -589,7 +589,7 @@ def dispersion_cortex(roi_betas,
 
         V = 1-R # This is the Spherical variance
         Std = np.sqrt(-2*np.log(R)) # This is the spherical standard deviation
-        df1 = pd.DataFrame({'Variance':V,'Std':Std,'hem':h*np.ones((num_roi,)),'roi':np.arange(num_roi),'sum_w':sum_w})
+        df1 = pd.DataFrame({'Variance':V,'Std':Std,'hem':h*np.ones((num_roi,)),'roi':np.arange(num_roi)+1,'sum_w':sum_w})
         df = pd.concat([df,df1])
     return df
 

@@ -48,6 +48,7 @@ def surfaces_voxels(
 def surfaces_rois(
     exp='sc1',
     weights='nonzero', 
+    atlas='MDTB10',
     method='lasso', # L2regression
     ):
     """compute summary data for cerebellar regions (count # of non-zero coefs for each cerebellar region)
@@ -74,6 +75,7 @@ def surfaces_rois(
                                     train_exp=exp,
                                     weights=weights,
                                     alpha=alpha,
+                                    atlas=atlas,
                                     cortex=cortex
                                     )
         for k,v in data_rois.items():
@@ -89,11 +91,13 @@ def surfaces_rois(
 @click.option("--weights")
 @click.option("--method")
 @click.option("--regions")
+@click.option("--atlas")
 
 def run(exp='sc1', 
     weights='nonzero', 
     method='lasso', 
-    regions='voxels'
+    regions='voxels',
+    atlas='MDTB10'
     ):
     """run surfaces
 
@@ -106,7 +110,7 @@ def run(exp='sc1',
     if regions=='voxels':
         surfaces_voxels(exp=exp, weights=weights, method=method)
     elif regions=='rois':
-        surfaces_rois(exp=exp, weights=weights, method=method)
+        surfaces_rois(exp=exp, weights=weights, method=method, atlas=atlas)
 
 if __name__ == "__main__":
     run()

@@ -44,6 +44,7 @@ def dispersion_summary(
                     df_res['subj']=[subj]*N
                     df_res['cortex']=[cortex]*N
                     df_res['method']=[method]*N
+                    df_res['atlas']=[atlas]*N
                     df = pd.concat([df,df_res])
             
     # save dataframe to disk

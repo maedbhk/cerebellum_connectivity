@@ -144,9 +144,9 @@ def fig3(format='svg'):
     ax2.axis('off')
 
     ax3 = fig.add_subplot(gs[0,2])
-    vis.plot_surfaces(y='percent', cortex='tessels', regions=['Region1', 'Region2', 'Region3', 'Region4', 'Region5', 'Region6', 'Region7', 'Region8', 'Region9', 'Region10'], weights='nonzero', hue='reg_names', method='lasso', ax=ax3);
-    ax3.set_xticks([80, 304, 670, 1190, 1848])
-    ax3.legend(['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'])
+    vis.plot_surfaces(y='percent', atlas='tessels', regions=['Region1', 'Region2', 'Region3', 'Region4', 'Region5', 'Region6', 'Region7', 'Region8', 'Region9', 'Region10'], weights='nonzero', x='reg_names', hue=None, method='lasso', ax=ax3);
+    # ax3.set_xticks([80, 304, 670, 1190, 1848])
+    # ax3.legend(['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'])
     ax3.text(x_pos, y_pos, 'C', transform=ax3.transAxes, fontsize=labelsize, verticalalignment='top')
 
     ax4 = fig.add_subplot(gs[0,3])
