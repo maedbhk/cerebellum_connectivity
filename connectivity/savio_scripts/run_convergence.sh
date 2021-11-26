@@ -33,8 +33,8 @@ cd /global/scratch/users/maedbhking/projects/cerebellum_connectivity/connectivit
 atlases=(MDTB10 Buckner7 Buckner17 Anatom)
 
 # run dispersion
-for ((a=0; a<${#atlases[@]}; a++)); do \
-python3 script_dispersion.py --atlas=${atlases[a]} --method="ridge" --exp="sc1"; done
+# for ((a=0; a<${#atlases[@]}; a++)); do \
+# python3 script_dispersion.py --atlas=${atlases[a]} --method="ridge" --exp="sc1"; done
 
 # cortical weights
 for ((a=0; a<${#atlases[@]}; a++)); do \

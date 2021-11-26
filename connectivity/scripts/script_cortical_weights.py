@@ -34,27 +34,28 @@ def cortical_weight_maps(
 
     dirs = const.Dirs(exp_name=exp)
 
-    models, cortex_names = summary.get_best_models(method=method) 
+    # models, cortex_names = summary.get_best_models(method=method) 
+
+    models = ['ridge_tessels1002_alpha_8']
+    cortex_names = ['tessels1002']
 
     for (best_model, cortex) in zip(models, cortex_names):
-
-        if 'mdtb4002' not in best_model:
         
-            # full path to best model
-            fpath = os.path.join(dirs.conn_train_dir, best_model)
-            if not os.path.exists(fpath):
-                os.makedirs(fpath)
+        # full path to best model
+        fpath = os.path.join(dirs.conn_train_dir, best_model)
+        if not os.path.exists(fpath):
+            os.makedirs(fpath)
 
-            # get alpha for each model
-            alpha = int(best_model.split('_')[-1])
-            roi_betas_all = []
-            for subj in const.return_subjs:
-                roi_betas, reg_names, colors = cweights.average_region_data(subj,
-                                        exp=exp, cortex=cortex, 
-                                        atlas=atlas, method=method, alpha=alpha, 
-                                        weights=weights, average_subjs=False)
-                                        
-                roi_betas_all.append(roi_betas)
+        # get alpha for each model
+        alpha = int(best_model.split('_')[-1])
+        roi_betas_all = []
+        for subj in const.return_subjs:
+            roi_betas, reg_names, colors = cweights.average_region_data(subj,
+                                    exp=exp, cortex=cortex, 
+                                    atlas=atlas, method=method, alpha=alpha, 
+                                    weights=weights, average_subjs=False)
+                                    
+            roi_betas_all.append(roi_betas)
 
         roi_betas_group = np.nanmean(np.stack(roi_betas_all), axis=0)
         giis = cweights.regions_cortex(roi_betas_group, reg_names, cortex=cortex, threshold=threshold)
