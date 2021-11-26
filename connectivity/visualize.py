@@ -575,6 +575,7 @@ def plot_distances(
 
 def plot_surfaces(
         exp='sc1',
+        x='num_regions',
         y='percent',    
         cortex='tessels',
         weights='nonzero', 
@@ -619,7 +620,7 @@ def plot_surfaces(
         _, cpal, _ = nio.get_gifti_colors(fpath)
         palette = cpal
 
-    ax = sns.lineplot(x='num_regions', 
+    ax = sns.lineplot(x=x, 
                 y=y, 
                 hue=hue, 
                 data=dataframe_concat,
