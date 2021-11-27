@@ -22,7 +22,7 @@ np.seterr(divide="ignore", invalid="ignore")
 
 """Main module for training and evaluating connectivity models.
 
-   @authors: Maedbh King, Jörn Diedrichsen  
+   @authors: Maedbh King, Jörn Diedrichsen
 
   Typical usage example:
 
@@ -50,7 +50,7 @@ def get_default_train_config():
         "train_exp": "sc1",  # Experiment used for training data
         "averaging": "sess",  # Averaging scheme for X and Y (see data.py)
         "weighting": True,  # "none" "full" "diag"
-        "incl_inst": True, #Include instructions? 
+        "incl_inst": True, #Include instructions?
         "X_data": "tessels0162",
         "Y_data": "cerebellum_suit",
         "validate_model": True,
@@ -58,8 +58,8 @@ def get_default_train_config():
         # JD: Please keep formating - no automatic linting
         "subjects": ["s01","s03","s04","s06","s08","s09","s10","s12","s14",
                     "s15","s17","s18","s19","s20","s21","s22","s24","s25",
-                    "s26","s27","s28","s29","s30","s31",],   
-        "mode": "crossed",  
+                    "s26","s27","s28","s29","s30","s31",],
+        "mode": "crossed",
         "save_weights": False, #Training mode
     }
     return config
@@ -78,16 +78,16 @@ def get_default_eval_config():
         "eval_exp": "sc2",
         "averaging": "sess",
         "weighting": True,  # 0: none, 1: by regr., 2: by full matrix???
-        "incl_inst": True,  # Include Instruction? 
+        "incl_inst": True,  # Include Instruction?
         "X_data": "tessels1002",
         "Y_data": "cerebellum_suit",
         "subjects": ["s01","s03","s04","s06","s08","s09","s10","s12","s14",
                     "s15","s17","s18","s19","s20","s21","s22","s24","s25",
-                    "s26","s27","s28","s29","s30","s31",],   
+                    "s26","s27","s28","s29","s30","s31",],
         "mode": "crossed",
         "splitby": None, # ('all') other options: 'unique', 'common'
         "save_maps": False,
-        "threshold": 0.1,  # JD: Unclear where threshold is used - Clarify here 
+        "threshold": 0.1,  # JD: Unclear where threshold is used - Clarify here
     }
     return config
 
@@ -195,7 +195,7 @@ def validate_metrics(model, X, Y, X_info, cv_fold):
     """
     # get cv rmse and R
     rmse_cv_all = np.sqrt(cross_val_score(model, X, Y, scoring="neg_mean_squared_error", cv=cv_fold) * -1)
-   
+
     # TO DO: implement train/validate splits for "sess", "run"
     r_cv_all = cross_val_score(model, X, Y, scoring=ev.calculate_R_cv, cv=cv_fold)
 
@@ -231,7 +231,7 @@ def eval_models(config):
 
         # get rmse
         rmse = mean_squared_error(Y, Y_pred, squared=False)
-        data = {"rmse_eval": rmse, 
+        data = {"rmse_eval": rmse,
                 "subj_id": subj,
                 "num_regions": X.shape[1]}
 
@@ -261,7 +261,7 @@ def eval_models(config):
         # append data for each subj
         for k, v in data.items():
             eval_all[k].append(v)
-    
+
     # Return list of models
     return pd.DataFrame.from_dict(eval_all), eval_voxels
 
@@ -320,7 +320,7 @@ def _get_XYdata(config, exp, subj):
     Returns:
         Y (nd array), Y_info (pd dataframe), X (nd array), X_info (pd dataframe)
     """
-    
+
     # Get cerebellar data and load mat
     Ydata = cdata.Dataset(
         experiment=exp,
@@ -338,7 +338,13 @@ def _get_XYdata(config, exp, subj):
     # figure out splitby
     subset = None
     if config['splitby']!='all':
-        subset = (df['split']==config['splitby']) & (df['inst']!=config['exclude_instruct'])
+        subset = (df['split']==config['splitby'])
+    else:
+        subset = df['task']>0 # Should be all true
+
+    # Include the instructions?
+    if not config['incl_inst']:
+        subset = subset & (df['inst']==0)
 
     Y, Y_info = Ydata.get_data(averaging=config["averaging"], weighting=config["weighting"], subset=subset)
 

@@ -15,7 +15,7 @@ import connectivity.constants as const
 import connectivity.nib_utils as nio
 
 def plotting_style():
-    plt.style.use('seaborn-poster') # ggplot 
+    plt.style.use('seaborn-poster') # ggplot
     params = {'axes.labelsize': 25,
             'axes.titlesize': 25,
             'legend.fontsize': 20,
@@ -26,16 +26,16 @@ def plotting_style():
             # 'font.size': 'regular',
             'font.family': 'sans-serif',
             'font.serif': 'Helvetica Neue',
-            'lines.linewidth': 3, 
+            'lines.linewidth': 3,
             'axes.grid': False,
             'axes.spines.top': False,
             'axes.spines.right': False}
-    plt.rcParams.update(params)    
+    plt.rcParams.update(params)
 
 def get_summary(
     summary_type= 'eval',
     summary_name=[None],
-    exps=['sc2'], 
+    exps=['sc2'],
     splitby= None,
     method = None,
     atlas = None
@@ -46,33 +46,36 @@ def get_summary(
         summary_name (list of str): name of summary file
         exps (list of str): default is ['sc2']
         splitby (list of str): splits to include is None
-        method (list of str): methods to include 
-        atlas (list of str): atlasses to include 
+        method (list of str): methods to include
+        atlas (list of str): atlasses to include
     Returns:
         pandas dataframe containing concatenated exp summary
     """
 
 
     # look at model summary for eval results
-    if type(eval_name) is not list: 
-        eval_name=[eval_name]
-    if type(exps) is not list: 
+    if type(summary_name) is not list:
+        summary_name=[summary_name]
+    if type(exps) is not list:
         exps=[exps]
-    
+
     df_concat = pd.DataFrame()
-    for exp,name in zip(exps,eval_name):
+    for exp,name in zip(exps,summary_name):
         dirs = const.Dirs(exp_name=exp)
         if name:
-            fname = f"eval_summary_{name}.csv"
-        else: 
-            fname = f"eval_summary.csv"
-        fpath = os.path.join(dirs.conn_eval_dir, fname)
+            fname = f"{summary_type}_summary_{name}.csv"
+        else:
+            fname = f"{summary_type}_summary.csv"
+        if summary_type=="eval":
+            fpath = os.path.join(dirs.conn_eval_dir, fname)
+        elif summary_type =="train":
+            fpath = os.path.join(dirs.conn_train_dir, fname)
         df = pd.read_csv(fpath)
         df_concat = pd.concat([df_concat, df])
-    
+
     # add atlas
     df_concat['atlas'] = df_concat['X_data'].apply(lambda x: _add_atlas(x))
-    df_concat['hyperparameter'] = df_concat['hyperparameter'].astype(float) # 
+    df_concat['hyperparameter'] = df_concat['hyperparameter'].astype(float) #
     def _relabel_model(x):
         if x=='L2regression':
             return 'ridge'
@@ -82,7 +85,7 @@ def get_summary(
             return x
     df_concat['method'] = df_concat['model'].apply(lambda x: _relabel_model(x))
 
-    try: 
+    try:
         wnta = df_concat.query('method=="wnta"')
         wnta['hyperparameter'] = wnta['name'].str.split('_').str.get(-1)
         wnta['method'] = wnta['method'] + '_' + wnta['name'].str.split('_').str.get(-3)
@@ -95,7 +98,7 @@ def get_summary(
     except:
         pass
 
-    # Now filter the data frame 
+    # Now filter the data frame
     if splitby is not None:
         df_concat = df_concat[df_concat['splitby'].isin(splitby)]
     if method is not None:
@@ -106,14 +109,14 @@ def get_summary(
     return df_concat
 
 def test_summary(
-    summary_name="test_summary_learning", 
+    summary_name="test_summary_learning",
     train_exp='sc1',
     models_to_include=['RIDGE']
     ):
     """
-    JD:I GUESS THIS IS FOR GENERALIZATION TESTING. 
-    YOU LIKELY DO NOT NEED THIS - INSTEAD YOU SHOULD BE ABLE TO 
-    RELY ON 
+    JD:I GUESS THIS IS FOR GENERALIZATION TESTING.
+    YOU LIKELY DO NOT NEED THIS - INSTEAD YOU SHOULD BE ABLE TO
+    RELY ON
     load test summary containing all metrics about test models (mdtb models tested on external data).
     Prefix 'gen' is appended to cols.
     Args:
@@ -126,7 +129,7 @@ def test_summary(
     dirs = const.Dirs(exp_name=train_exp)
     fpath = os.path.join(dirs.data_dir, "conn_models", f"{summary_name}.csv")
     df = pd.read_csv(fpath)
-    
+
     df['atlas'] = df['X_data'].apply(lambda x: _add_atlas(x))
 
     cols = []
@@ -149,23 +152,23 @@ def test_summary(
     return df
 
 def roi_summary(
-    data_fpath, 
+    data_fpath,
     atlas_nifti,
-    atlas_gifti, 
+    atlas_gifti,
     plot=False
     ):
     """plot roi summary of data in `fpath`
 
-    Args: 
+    Args:
         data_fpath (str): full path to nifti image
         atlas_nifti (str): full path to nifti atlas  (e.g., ./MDTB_10Regions.nii')
         atlas_gifti (str): full path to gifti atlas (e.g., ./MDTB_10Regions.label.gii)
         plot (bool): default is False
-    Returns: 
+    Returns:
         dataframe (pd dataframe)
     """
     # get rois for `atlas`
-    rois = cdata.read_suit_nii(atlas_nifti) 
+    rois = cdata.read_suit_nii(atlas_nifti)
 
     # get roi colors
     rgba, cpal, cmap = nio.get_gifti_colors(fpath=atlas_gifti, ignore_0=True)
@@ -193,19 +196,19 @@ def _add_atlas(x):
 
     return atlas
 
-def plot_train_predictions( 
+def plot_train_predictions(
     df,
-    exps=['sc1'], 
-    x='train_num_regions', 
-    hue=None, 
+    exps=['sc1'],
+    x='train_num_regions',
+    hue=None,
     atlases=None,
-    save=False, 
+    save=False,
     title=False,
     ax=None):
     """plots training predictions (R CV) for all models in dataframe.
     JD: NOTE HERE THAT ALL the FILTERING IS DONE BY GET_SUMMARY
-    DON'T REPLICATE THE WORK AND CONPLEXITY BY FILTERING WITHIN THE 
-    FUNCTION 
+    DON'T REPLICATE THE WORK AND CONPLEXITY BY FILTERING WITHIN THE
+    FUNCTION
     Args:
         dataframe: Training data frame from get_summary
         exps (list of str): default is ['sc1']
@@ -238,9 +241,9 @@ def plot_train_predictions(
 
 def plot_eval_predictions(
     dataframe,
-    exps=['sc2'], 
-    x='num_regions', 
-    hue=None, 
+    exps=['sc2'],
+    x='num_regions',
+    hue=None,
     save=False,
     ax=None,
     title=False,
@@ -261,7 +264,7 @@ def plot_eval_predictions(
 
     if title:
         plt.title("Model Evaluation", fontsize=20)
-    
+
     if save:
         dirs = const.Dirs()
         exp_fname = '_'.join(exps)
@@ -270,9 +273,9 @@ def plot_eval_predictions(
 
 def plot_test_predictions(
     dataframe=None,
-    x='num_regions', 
+    x='num_regions',
     routines=['session_1'],
-    hue=None, 
+    hue=None,
     save=False,
     noiseceiling=True,
     ax=None,
@@ -302,7 +305,7 @@ def plot_test_predictions(
 
     if title:
         plt.title("Model Generalization", fontsize=20)
-    
+
     if save:
         dirs = const.Dirs()
         plt.savefig(os.path.join(dirs.figure, f'test_predictions_learning.png'), pad_inches=0, bbox_inches='tight')
@@ -325,7 +328,7 @@ def plot_best_eval(
     dataframe_all = pd.DataFrame()
     for exp in exps:
 
-        if exp is "sc1":
+        if exp == "sc1":
             train_exp = "sc2"
         else:
             train_exp = "sc1"
@@ -378,10 +381,10 @@ def plot_distances(
     ax=None):
 
     dirs = const.Dirs(exp_name=exp)
-    
+
     # load in distances
     df = pd.read_csv(os.path.join(dirs.conn_train_dir, 'cortical_distances_stats.csv'))
-    
+
     df['threshold'] = df['threshold']*100
     df['labels'] = df['labels'].str.replace(re.compile('Region|-'), '', regex=True)
     df['subregion'] = df['labels'].str.replace(re.compile('[^a-zA-Z]'), '', regex=True)
@@ -394,7 +397,7 @@ def plot_distances(
     # filter out methods
     if cortex is not None:
         df = df[df['cortex'].isin([cortex])]
-    
+
     # filter out methods
     if metric is not None:
         df = df[df['metric'].isin([metric])]
@@ -403,9 +406,9 @@ def plot_distances(
     if threshold is not None:
         df = df[df['threshold'].isin([threshold])]
 
-    ax = sns.boxplot(x='labels', 
-                y='distance', 
-                hue=hue, 
+    ax = sns.boxplot(x='labels',
+                y='distance',
+                hue=hue,
                 data=df,
                 )
     ax.set_xlabel('Cerebellar Regions')
@@ -416,18 +419,18 @@ def plot_distances(
 
     if title:
         plt.title("Cortical Distances", fontsize=20)
-    
+
     if save:
         dirs = const.Dirs()
         plt.savefig(os.path.join(dirs.figure, f'cortical_distances_{exp}_{cortex}_{threshold}.svg'), pad_inches=0, bbox_inches='tight')
-    
+
     return df
 
 def plot_surfaces(
         exp='sc1',
-        y='percent',    
+        y='percent',
         cortex='tessels',
-        weights='nonzero', 
+        weights='nonzero',
         method='lasso',
         hue=None,
         regions=None,
@@ -437,11 +440,11 @@ def plot_surfaces(
         ):
 
     dirs = const.Dirs(exp_name=exp)
-    
+
     # load in distances
-    dataframe_vox = pd.read_csv(os.path.join(dirs.conn_train_dir, 'cortical_surface_voxels_stats.csv')) 
-    dataframe_roi = pd.read_csv(os.path.join(dirs.conn_train_dir, 'cortical_surface_rois_stats.csv')) 
-    dataframe_concat = pd.concat([dataframe_vox, dataframe_roi]) 
+    dataframe_vox = pd.read_csv(os.path.join(dirs.conn_train_dir, 'cortical_surface_voxels_stats.csv'))
+    dataframe_roi = pd.read_csv(os.path.join(dirs.conn_train_dir, 'cortical_surface_rois_stats.csv'))
+    dataframe_concat = pd.concat([dataframe_vox, dataframe_roi])
 
     # dataframe['subregion'] = dataframe['reg_names'].str.replace(re.compile('[^a-zA-Z]'), '', regex=True)
     dataframe_concat['num_regions'] = dataframe_concat['cortex'].str.split('_').str.get(-1).str.extract('(\d+)').astype(float)*2
@@ -462,16 +465,16 @@ def plot_surfaces(
     # filter out methods
     if method is not None:
         dataframe_concat = dataframe_concat[dataframe_concat['method'].isin([method])]
-    
+
     # color plot according to MDTB10 atlas
     if hue=='reg_names':
         fpath = nio.get_cerebellar_atlases(atlas_keys=['atl-MDTB10'])[0]
         _, cpal, _ = nio.get_gifti_colors(fpath)
         palette = cpal
 
-    ax = sns.lineplot(x='num_regions', 
-                y=y, 
-                hue=hue, 
+    ax = sns.lineplot(x='num_regions',
+                y=y,
+                hue=hue,
                 data=dataframe_concat,
                 palette=palette,
                 )
@@ -480,7 +483,7 @@ def plot_surfaces(
     plt.xticks(rotation="45", ha="right")
     if hue:
         plt.legend(loc='best', frameon=False) # bbox_to_anchor=(1, 1)
-    
+
     if save:
         dirs = const.Dirs()
         plt.savefig(os.path.join(dirs.figure, f'cortical_surfaces_{exp}_{y}.svg'), pad_inches=0, bbox_inches='tight')
@@ -489,8 +492,8 @@ def plot_surfaces(
 
 def plot_dispersion(
         exp='sc1',
-        y='Std',    
-        cortex='tessels1002', 
+        y='Std',
+        cortex='tessels1002',
         method='ridge',
         hue=None,
         regions=None, # [1,2,5]
@@ -499,7 +502,7 @@ def plot_dispersion(
         ):
 
     dirs = const.Dirs(exp_name=exp)
-    
+
     # load in distances
     dataframe = pd.read_csv(os.path.join(dirs.conn_train_dir, 'cortical_dispersion_stats.csv'))
 
@@ -520,9 +523,9 @@ def plot_dispersion(
     if regions is not None:
         dataframe = dataframe[dataframe['roi'].isin(regions)]
 
-    ax = sns.boxplot(x='roi', 
-                y=y, 
-                hue=hue, 
+    ax = sns.boxplot(x='roi',
+                y=y,
+                hue=hue,
                 data=dataframe,
                 )
     ax.set_xlabel('')
@@ -530,7 +533,7 @@ def plot_dispersion(
     plt.xticks(rotation="45", ha="right")
     if hue:
         plt.legend(loc='best', frameon=False) # bbox_to_anchor=(1, 1)
-    
+
     if save:
         dirs = const.Dirs()
         plt.savefig(os.path.join(dirs.figure, f'cortical_dispersion_{exp}_{y}.svg'), pad_inches=0, bbox_inches='tight')
@@ -541,11 +544,11 @@ def map_distances_cortex(
     atlas='MDTB10',
     threshold=1,
     column=0,
-    borders=False, 
-    model_name='best_model', 
+    borders=False,
+    model_name='best_model',
     method='ridge',
     surf='flat',
-    colorbar=True,  
+    colorbar=True,
     outpath=None,
     title=None
     ):
@@ -569,7 +572,7 @@ def map_distances_cortex(
     # get best model
     if model_name=="best_model":
         model_name, cortex = get_best_model(train_exp='sc1', method=method)
-    
+
     giftis = []
     for hemisphere in ['L', 'R']:
         fname = f'group_{atlas}_threshold_{threshold}.{hemisphere}.func.gii'
@@ -579,7 +582,7 @@ def map_distances_cortex(
     for i, hem in enumerate(['L', 'R']):
         if surf=='flat':
             nio.view_cortex(giftis[i], surf=surf, hemisphere=hem, title=title, column=column, colorbar=colorbar, outpath=outpath)
-    
+
     if surf=='inflated':
         nio.view_cortex_inflated(giftis, column=column, borders=borders, outpath=outpath)
 
@@ -589,20 +592,20 @@ def subtract_AP_distances(
     method='ridge',
     atlas='MDTB10-subregions'
     ):
-    
+
     dirs = const.Dirs(exp_name='sc1')
-    
+
     if model_name=="best_model":
         model_name, cortex = get_best_model(train_exp='sc1', method=method)
     else:
         cortex = model_name.split('_')[1] # assumes model_name follows format: `<method>_<cortex>_alpha_<num>`
-    
+
     # get model fpath
     fpath = os.path.join(dirs.conn_train_dir, model_name)
-    
+
     # which regions are we subtracting?
     regions_to_subtract = {'L': [1, 11], 'R': [0,10]}
-    
+
     giftis_all = []
     for k,v in regions_to_subtract.items():
         fname = f'group_{method}_{cortex}_{atlas}_threshold_{threshold}.{k}.func.gii'
@@ -615,13 +618,13 @@ def subtract_AP_distances(
     nio.view_cortex_inflated(giftis_all, column=None, borders=None, outpath=None)
 
 def map_eval_cerebellum(
-    data="R", 
-    exp="sc1", 
-    model_name='best_model', 
+    data="R",
+    exp="sc1",
+    model_name='best_model',
     method='ridge',
     atlas='tessels',
-    colorbar=True, 
-    cscale=None,  
+    colorbar=True,
+    cscale=None,
     outpath=None,
     title=None,
     new_figure=True
@@ -643,19 +646,19 @@ def map_eval_cerebellum(
         model,_ = get_best_model(train_exp=exp, method=method, atlas=atlas)
 
     fpath = os.path.join(dirs.conn_eval_dir, model, f'group_{data}_vox.func.gii')
-    view = nio.view_cerebellum(gifti=fpath, cscale=cscale, colorbar=colorbar, 
+    view = nio.view_cerebellum(gifti=fpath, cscale=cscale, colorbar=colorbar,
                     new_figure=new_figure, title=title, outpath=outpath);
 
     return view
 
 def map_lasso_cerebellum(
     model_name,
-    exp="sc1", 
+    exp="sc1",
     stat='percent',
     weights='nonzero',
     atlas='tessels',
-    colorbar=False, 
-    cscale=None,  
+    colorbar=False,
+    cscale=None,
     outpath=None,
     title=None,
     new_figure=True
@@ -678,26 +681,26 @@ def map_lasso_cerebellum(
 
     fname = f"group_lasso_{stat}_{weights}_cerebellum"
     gifti = os.path.join(fpath, f'{fname}.func.gii')
-    view = nio.view_cerebellum(gifti=gifti, 
-                            cscale=cscale, 
-                            colorbar=colorbar, 
-                            title=title, 
+    view = nio.view_cerebellum(gifti=gifti,
+                            cscale=cscale,
+                            colorbar=colorbar,
+                            title=title,
                             outpath=outpath,
                             new_figure=new_figure
                             )
     return view
 
 def map_weights(
-    structure='cerebellum', 
-    exp='sc1', 
-    model_name='best_model', 
-    hemisphere='R', 
-    colorbar=False, 
-    cscale=None, 
+    structure='cerebellum',
+    exp='sc1',
+    model_name='best_model',
+    hemisphere='R',
+    colorbar=False,
+    cscale=None,
     save=True
     ):
     """plot training weights for cortex or cerebellum
-    Args: 
+    Args:
         gifti_func (str): '
     """
     # initialise directories
@@ -707,7 +710,7 @@ def map_weights(
     model = model_name
     if model_name=='best_model':
         model,_ = get_best_model(train_exp=exp)
-    
+
     # get path to model
     fpath = os.path.join(dirs.conn_train_dir, model)
 
@@ -760,7 +763,7 @@ def get_best_model(
     tmp = dataframe.groupby(["name", "X_data"]).mean().reset_index()
 
     # get best model (based on R CV or R train)
-    try: 
+    try:
         best_model = tmp[tmp["R_cv"] == tmp["R_cv"].max()]["name"].values[0]
         cortex = tmp[tmp["R_cv"] == tmp["R_cv"].max()]["X_data"].values[0]
     except:
@@ -771,33 +774,13 @@ def get_best_model(
 
     return best_model, cortex
 
-def get_best_models(
-    dataframe=None,
-    train_exp='sc1',
-    method=None,
-    atlas=None
-    ):
-    """Get model_names, cortex_names for best models (NNLS, ridge, WTA) based on R_cv
+def get_best_models(dataframe):
+    """Get model_names, cortex_names for best models (NNLS, ridge, WTA) based on R_cv from train_summary
     Args:
-        dataframe (pd dataframe or None):
-        train_exp (str): 'sc1' or 'sc2' or None (if dataframe is given)
-        method (str or None): filter models by method
-        atlas (str or None): filter models by atlas
+        dataframe (pd dataframe ):
     Returns:
         model_names (list of str), cortex_names (list of str)
     """
-    # load train summary (contains R CV of all trained models)
-    if dataframe is None:
-        dataframe = train_summary(exps=[train_exp])
-
-     # filter dataframe by method
-    if method is not None:
-        dataframe = dataframe[dataframe['method']==method]
-    
-    # filter dataframe by atlas
-    if atlas is not None:
-        dataframe = dataframe[dataframe['atlas']==atlas]
-
     df_mean = dataframe.groupby(['X_data', 'method', 'name'], sort=True).apply(lambda x: x['R_cv'].mean()).reset_index(name='R_cv_mean')
     df_best = df_mean.groupby(['X_data', 'method']).apply(lambda x: x[['name', 'R_cv_mean']].max()).reset_index()
 
@@ -827,9 +810,9 @@ def plot_distance_matrix(
     roi='tessels0042',
     ):
     """Plot matrix of distances for cortical `roi`
-    Args: 
+    Args:
         roi (str): default is 'tessels0042'
-    Returns: 
+    Returns:
         plots distance matrix
     """
 
@@ -845,11 +828,11 @@ def plot_distance_matrix(
     return distances
 
 def plot_png(
-    fpath, 
+    fpath,
     ax=None
     ):
     """ Plots a png image from `fpath`
-        
+
     Args:
         fpath (str): full path to image to plot
         ax (bool): figure axes. Default is None
@@ -866,16 +849,16 @@ def plot_png(
     ax.imshow(img, origin='upper', vmax=abs(img).max(), vmin=-abs(img).max(), aspect='equal')
 
 def join_png(
-    fpaths, 
-    outpath=None, 
+    fpaths,
+    outpath=None,
     offset=0
     ):
     """Join together pngs into one png
 
-    Args: 
+    Args:
         fpaths (list of str): full path(s) to images
         outpath (str): full path to new image. If None, saved in current directory.
-        offset (int): default is 0. 
+        offset (int): default is 0.
     """
 
     # join images together

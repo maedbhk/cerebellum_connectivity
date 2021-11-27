@@ -1,15 +1,15 @@
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt 
+import matplotlib.pyplot as plt
 import os
 import connectivity.constants as const
 from connectivity.data import Dataset
 import connectivity.model as model
 import connectivity.data as data
-import connectivity.run_mk as run
+import connectivity.run as run
 import connectivity.visualize as vis
-import connectivity.figures as fig 
-import itertools 
+import connectivity.figures as fig
+import itertools
 
 def train_ridge(corticalParc, logalpha, sn=const.return_subjs):
     config = run.get_default_train_config()
@@ -60,7 +60,7 @@ def eval_model(
         cortex (str): cortical ROI
         cerebellum (str): cerebellar ROI
         log_locally (bool): log results locally
-        eval_name (str or None): suffix to csv file for setting 
+        eval_name (str or None): suffix to csv file for setting
     Returns:
         Appends eval data for each model and subject into `eval_summary_<eval_name>.csv`
         Returns pandas dataframe of eval_summary
@@ -91,7 +91,7 @@ def eval_model(
         fpath = os.path.join(dirs.conn_eval_dir, model_name)
         cio.make_dirs(fpath)
         for k, v in voxels.items():
-            save_maps_cerebellum(data=np.stack(v, axis=0), 
+            save_maps_cerebellum(data=np.stack(v, axis=0),
                                 fpath=os.path.join(fpath, f'group_{k}'))
 
     # eval summary
@@ -106,14 +106,14 @@ def eval_model(
     df.to_csv(eval_fpath, index=False)
 
 
-def make_group_data(exp = "sc1", roi="cerebellum_suit"): 
+def make_group_data(exp = "sc1", roi="cerebellum_suit"):
     Xdata = Dataset(experiment=exp, glm="glm7", roi=roi, subj_id=const.return_subjs)
     # const.return_subjs
     Xdata.load_mat()
     Xdata.average_subj()
     Xdata.save(dataname="all")
 
-def sum_model_eval(): 
+def sum_model_eval():
     ax3 = plt.subplot(1,1,1)
     df = vis.eval_summary(exps=['sc2'])
     vis.plot_eval_predictions(dataframe=df, exps=['sc2'], methods=['WTA', 'ridge', 'lasso'], hue='eval_model', ax=ax3)
@@ -132,14 +132,15 @@ def plot_Fig2c():
 def eval_best_models(model_type=["ridge", "lasso", "WTA"]):
     """ Run connectivity routine (train and evaluate)
 
-    Args: 
+    Args:
         cortex (str): 'tesselsWB162', 'tesselsWB642' etc.
         model_type (str): 'WTA' or 'ridge' or 'NNLS'
         train_or_test (str): 'train' or 'eval'
     """
             # get best model (for each method and parcellation)
+    df = vis.get_summary('train',exps='sc1')
     models, cortex_names = vis.get_best_models(train_exp=f"sc1")
-    sel=['tessels' in c for c in cortex_names] 
+    sel=['tessels' in c for c in cortex_names]
     models = list(itertools.compress(models,sel))
     cortex_names = list(itertools.compress(cortex_names,sel))
 
