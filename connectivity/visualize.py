@@ -595,7 +595,7 @@ def plot_surfaces(
     
     # load in distances
     dataframe_vox = pd.read_csv(os.path.join(dirs.conn_train_dir, 'cortical_surface_voxels_stats.csv')) 
-    dataframe_roi = pd.read_csv(os.path.join(dirs.conn_train_dir, 'cortical_surface_rois_stats.csv')) 
+    dataframe_roi = pd.read_csv(os.path.join(dirs.conn_train_dir, f'cortical_surface_rois_stats_{atlas}.csv')) 
     dataframe_concat = pd.concat([dataframe_vox, dataframe_roi]) 
 
     # dataframe['subregion'] = dataframe['reg_names'].str.replace(re.compile('[^a-zA-Z]'), '', regex=True)
@@ -659,7 +659,7 @@ def plot_surfaces(
 
 def plot_dispersion(
         exp='sc1',
-        y='var_w',    
+        y='Variance',    
         cortex='tessels1002', 
         cortex_group='tessels',
         atlas='MDTB10',
@@ -673,7 +673,7 @@ def plot_dispersion(
     dirs = const.Dirs(exp_name=exp)
     
     # load in distances
-    dataframe = pd.read_csv(os.path.join(dirs.conn_train_dir, 'cortical_dispersion_stats.csv'))
+    dataframe = pd.read_csv(os.path.join(dirs.conn_train_dir, f'cortical_dispersion_stats_{atlas}.csv'))
 
     dataframe['w_var']=dataframe.Variance*dataframe.sum_w
     dataframe['var_w'] = dataframe.w_var/dataframe.sum_w
