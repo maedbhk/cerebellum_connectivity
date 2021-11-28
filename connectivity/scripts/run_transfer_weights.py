@@ -61,12 +61,12 @@ def run(connect_dir, learn_dir):
     data_dict = _remap()
 
     # transfer best models
-    best_models = [f for f in files if 'best_model in f']
+    best_models = [f for f in files if 'best_model' in f]
 
     # load names of models and filter based on `_remap()`
     df_all = pd.DataFrame()
     for model in best_models:
-        df = pd.read_csv(model)  
+        df = pd.read_csv(os.path.join(connect_dir, model)) 
         df_all = pd.concat([df, df_all])
     df_filter = df_all[df_all['cortex_names'].isin(data_dict.keys())]
     df_filter.to_csv(os.path.join(mdtb_dir, 'best_models.csv'))
