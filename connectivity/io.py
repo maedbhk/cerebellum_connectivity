@@ -110,13 +110,13 @@ def convert_to_dataframe(file_obj, cols):
     dataframe = pd.DataFrame.from_records(dict_all)
 
     return dataframe
-    
+
 
 def _convertobj(file_obj, key):
     """converts object reference for `key` in `file_obj`"""
     dataset = file_obj[key]
-    tostring = lambda obj: "".join(chr(i) for i in obj[:])
-    return [tostring(file_obj[val]) for val in dataset[()].flatten()]
+    # in newer version of hpf5, we need the i[0] index
+    return [''.join(chr(i[0]) for i in file_obj[val]) for val in dataset[()].flatten()]
 
 
 def make_dirs(fpath):
