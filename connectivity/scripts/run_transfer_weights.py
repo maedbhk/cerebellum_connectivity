@@ -9,14 +9,14 @@ import numpy as np
 
 def _remap():
 
-    return {'Schaefer_7_100': 'Schaefer_2018_7Networks_100',
-            'Schaefer_7_200': 'Schaefer_2018_7Networks_200',
-            'Schaefer_7_300': 'Schaefer_2018_7Networks_300', 
+    return {'Schaefer_7_100': 'Schaefer_7Networks_100',
+            'Schaefer_7_200': 'Schaefer_7Networks_200',
+            'Schaefer_7_300': 'Schaefer_7Networks_300', 
             'arslan_100': 'Arslan_1_100', 
             'arslan_200': 'Arslan_1_200',
             'arslan_250': 'Arslan_1_250',
             'arslan_50': 'Arslan_1_50', 
-            'fan': 'Fan_2016', 
+            'fan': 'Fan', 
             'gordon': 'Gordon',
             'mdtb1002_007': 'mdtb1002_007',
             'mdtb1002_025': 'mdtb1002_025',
@@ -32,8 +32,8 @@ def _remap():
             'tessels0362': 'Icosahedron-362',
             'tessels0642': 'Icosahedron-642',
             'tessels1002': 'Icosahedron-1002',
-            'yeo17': 'Yeo_JNeurophysiol11_17Networks',
-            'yeo7': 'Yeo_JNeurophysiol11_7Networks'
+            'yeo17': 'Yeo_17Networks',
+            'yeo7': 'Yeo_7Networks'
             }
 
 @click.command()
