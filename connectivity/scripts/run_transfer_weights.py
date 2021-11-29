@@ -41,6 +41,8 @@ def _remap():
 @click.option("--learn_dir")
 
 def run(connect_dir, learn_dir):
+    """
+    """
 
     mdtb_dir = os.path.join(learn_dir, 'mdtb')
 
