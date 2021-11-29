@@ -24,10 +24,10 @@ export PYTHONPATH
 
 cd /global/scratch/users/maedbhking/projects/cerebellum_connectivity/connectivity/scripts
 
-# get best weights
-methods=(ridge lasso WTA) # ridge
-for ((m=0; m<${#methods[@]}; m++)); do \
-python3 script_best_weights.py --exp="sc1" --method=${methods[m]}; done
+# # get best weights
+# methods=(ridge lasso WTA) # ridge
+# for ((m=0; m<${#methods[@]}; m++)); do \
+# python3 script_best_weights.py --exp="sc1" --method=${methods[m]}; done
 
 # transfer best weights
 connect_dir=/global/scratch/users/maedbhking/projects/cerebellum_connectivity/data/sc1/conn_models/train/best_weights
