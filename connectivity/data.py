@@ -180,7 +180,7 @@ class Dataset:
         Args:
             averaging (str): sess (within each session); None (no averaging); exp (across whole experiment)
             weighting (bool): Should the betas be weighted by X.T * X?
-            subset (index-like): Indicate the subset of regressors that should be considered
+            subset (index-like): boolean variable of regressors that should be considered (vector/series of N, or None)
         Returns:
             data (np.array): aggregated data
             data_info (pandas dataframe): dataframe for the aggregated data
@@ -199,38 +199,33 @@ class Dataset:
         # Create unique ID for each regressor for averaging and subsetting it
         info["id"] = np.kron(np.ones((num_runs,)), np.arange(num_reg)).astype(int)
         if subset is None:
-            subset = np.arange(num_reg)
+            subset = np.ones((self.data.shape[0],),dtype = bool)
         elif type(subset) is pd.Series: 
-            subset = subset.to_numpy().nonzero()[0]
-        elif subset.dtype == "bool":
-            subset = subset.nonzero()[0]
+            subset = subset.to_numpy()>0
 
         # Different ways of averaging
         if averaging == "sess":
-            X = matrix.indicator(info.id + (self.sess - 1) * num_reg)
-            data = np.linalg.solve(X.T @ X, X.T @ self.data)
-            data_info = info[np.logical_or(info.run == 1, info.run == 9)]
+            X = matrix.indicator(info.id[subset] + (self.sess[subset] - 1) * num_reg)
+            data = np.linalg.solve(X.T @ X, X.T @ self.data[subset,:])
+            data_info = info[((info.run == 1) | (info.run == 9)) & subset]
         elif averaging == "exp":
-            X = matrix.indicator(info.id)
-            data = np.linalg.solve(X.T @ X, X.T @ self.data)
-            data_info = info[info.run == 1]
+            X = matrix.indicator(info.id[subset])
+            data = np.linalg.solve(X.T @ X, X.T @ self.data[subset,:])
+            data_info = info[(info.run == 1) & subset]
         elif averaging == "none":
-            data_info = info
-            data = self.data
+            data_info = info[subset]
+            data = self.data[subset,:]
         else:
             raise (NameError("averaging needs to be sess, exp, or none"))
 
-        # data_infoubset the data
-        indx = np.in1d(data_info.id, subset)
-        data = data[indx, :]
-        data_info = data_info[indx]
 
         # Now weight the different betas by the variance that they predict for the time series.
         # This also removes the mean of the time series implictly.
         # Note that weighting is done always on the average regressor structure, so that regressors still remain exchangeable across sessions
         if weighting:
             XXm = np.mean(self.XX, 0)
-            XXm = XXm[subset, :][:, subset]  # Get the desired subset only
+            ind = np.where((info.run==1) & subset)[0]
+            XXm = XXm[ind, :][:, ind]  # Get the desired subset only
             XXs = scipy.linalg.sqrtm(XXm)  # Note that XXm = XXs @ XXs.T
             for r in np.unique(data_info["run"]):  # WEight each run/session seperately
                 idx = data_info.run == r
