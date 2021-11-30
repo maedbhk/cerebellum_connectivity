@@ -75,7 +75,7 @@ def eval_best_models(model_type=["ridge", "lasso", "WTA"],save_maps=False,eval_n
         train_or_test (str): 'train' or 'eval'
     """
     # get best model (for each method and parcellation)
-    df = vis.get_summary('train',exps='sc1')
+    df = vis.get_summary('train',exps='sc1',atlas=['shen','tessels','yeo'])
     models, cortex_names = vis.get_best_models(df)
     # sel=['tessels' in c for c in cortex_names]
     # models = list(itertools.compress(models,sel))
