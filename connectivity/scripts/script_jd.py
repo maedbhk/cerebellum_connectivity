@@ -97,7 +97,7 @@ def eval_best_models(model_type=["ridge", "lasso", "WTA"],save_maps=False,eval_n
         config["train_exp"] = 'sc1'
         config["eval_exp"] = 'sc2'
         config["subjects"] = const.return_subjs
-        config["splitby"] = "unique"
+        config["splitby"] = split
         config['incl_inst']=True
         # eval model(s)
         df, voxels = run.eval_models(config)
