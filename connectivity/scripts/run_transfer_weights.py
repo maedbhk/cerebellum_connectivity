@@ -72,29 +72,21 @@ def run(connect_dir, learn_dir):
         df_all = pd.concat([df, df_all])
     df_filter = df_all[df_all['cortex_names'].isin(data_dict.keys())]
     df_filter['cortex_names'] = [data_dict[name] for name in df_filter['cortex_names']]
+    df_filter['models_old'] = df_filter['models']
+    df_filter['models'] = df_filter['models'].replace(data_dict, regex=True).replace({'ridge': 'RIDGE', 'lasso': 'LASSO'}, regex=True)
     df_filter.to_csv(os.path.join(mdtb_dir, 'best_models.csv'))
 
-    # copy best weights from connectivity to learning dir (change filenames)
-    for file in files:
-        for k,v in data_dict.items():
-            if k in file:
-                if 'ridge' in file:
-                    fname = file.replace(k, v).replace('ridge', 'RIDGE')
-                elif 'lasso' in file:
-                    fname = file.replace(k, v).replace('lasso', 'LASSO')
-                else:
-                    fname = file.replace(k, v)
+    for (model_old, model_new) in zip(df_filter['models_old'], df_filter['models']):
+        src = os.path.join(connect_dir, model_old)
+        dest = os.path.join(mdtb_dir, model_new + '_mdtb.h5')
+        copyfile(src, dest)
 
-                src = os.path.join(connect_dir, file)
-                dest = os.path.join(mdtb_dir, Path(fname).stem + '_mdtb.h5')
-                copyfile(src, dest)
+        # transpose the data first
+        data = dd.io.load(dest)
+        data['weights'] = data['weights'].T
+        dd.io.save(dest, data)
 
-                # transpose the data first
-                data = dd.io.load(dest)
-                data['weights'] = data['weights'].T
-                dd.io.save(dest, data)
-
-                print('worked')
+        print('worked')
 
 if __name__ == "__main__":
     run()
