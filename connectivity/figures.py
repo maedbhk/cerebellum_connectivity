@@ -66,20 +66,21 @@ def fig2(format='svg'):
     y_pos = 1.1
     labelsize = 30
 
-    dataframe = vis.train_summary(exps=['sc1'])
     ax1 = fig.add_subplot(gs[0,0])
-    vis.plot_train_predictions(dataframe=dataframe, x='train_hyperparameter', hue='train_num_regions', best_models=False, atlases=['tessels'], methods=['ridge'], ax=ax1)
+    df = vis.get_summary("train",exps='sc1',method=['ridge'],atlas=['tessels'])
+    vis.plot_train_predictions(df, x='hyperparameter', hue='num_regions', ax=ax1)
     ax1.set_xlabel('Hyperparameter')
     ax1.text(x_pos, y_pos, 'A', transform=ax1.transAxes, fontsize=labelsize, verticalalignment='top')
     ax1.set_ylim([.05, .4])
 
     ax2 = fig.add_subplot(gs[0,1])
-    vis.plot_train_predictions(dataframe=dataframe.query('train_hyperparameter>-5'), x='train_hyperparameter', hue='train_num_regions', best_models=False, atlases=['tessels'], methods=['lasso'], ax=ax2)
+    df = vis.get_summary("train",exps='sc1',method=['lasso'],atlas=['tessels'])
+    vis.plot_train_predictions(df.query('hyperparameter>-5'), x='hyperparameter', hue='num_regions', ax=ax2)
     ax2.text(x_pos, y_pos, 'B', transform=ax2.transAxes, fontsize=labelsize, verticalalignment='top')
     ax2.set_ylim([.05, .4])
     
     ax3 = fig.add_subplot(gs[0,2])
-    dataframe = vis.eval_summary(exps=['sc2'])
+    dataframe = vis.get_summary('eval',[''],exps=['sc2'])
     vis.plot_eval_predictions(dataframe=dataframe, exps=['sc2'], methods=['WTA', 'ridge', 'lasso'], hue='eval_model', ax=ax3)
     ax3.text(x_pos, y_pos, 'C', transform=ax3.transAxes, fontsize=labelsize, verticalalignment='top')
     ax3.set_xticks([80, 304, 670, 1190, 1848])

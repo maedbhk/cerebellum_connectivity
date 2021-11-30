@@ -57,7 +57,7 @@ def get_summary(
     if type(summary_name) is not list:
         summary_name=[summary_name]
     if type(exps) is not list:
-        exps=[exps]
+        exps=[exps]*len(summary_name)
 
     df_concat = pd.DataFrame()
     for exp,name in zip(exps,summary_name):
@@ -201,7 +201,6 @@ def plot_train_predictions(
     exps=['sc1'],
     x='train_num_regions',
     hue=None,
-    atlases=None,
     save=False,
     title=False,
     ax=None):
@@ -766,36 +765,17 @@ def map_weights(
 
     return view
 
-def get_best_model(
-    dataframe=None,
-    train_exp='sc1',
-    method=None,
-    atlas=None
-    ):
+def get_best_model(df):
     """Get idx for best model based on either R_cv (or R_train)
     Args:
-        dataframe (pd dataframe or None):
-        train_exp (str): 'sc1' or 'sc2' or None (if dataframe is given)
-        method (str or None): filter models by method
-        atlas (str or None): 'mdtb', 'yeo', 'tessels'
+        df (pd dataframe ):
+            Data frame with training summary data (from get_summary)
     Returns:
         model name (str)
     """
 
-    # load train summary (contains R CV of all trained models)
-    if dataframe is None:
-        dataframe = train_summary(exps=[train_exp])
-
-     # filter dataframe by method
-    if method is not None:
-        dataframe = dataframe[dataframe['method']==method]
-
-    # filter dataframe by atlas
-    if atlas is not None:
-        dataframe = dataframe[dataframe['atlas']==atlas]
-
     # get mean values for each model
-    tmp = dataframe.groupby(["name", "X_data"]).mean().reset_index()
+    tmp = df.groupby(["name", "X_data"]).mean().reset_index()
 
     # get best model (based on R CV or R train)
     try:
