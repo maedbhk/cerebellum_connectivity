@@ -53,12 +53,13 @@ def get_summary(
     """
 
 
-    # look at model summary for eval results
+    # Get the names and exps into list of same length 
     if type(summary_name) is not list:
         summary_name=[summary_name]
     if type(exps) is not list:
         exps=[exps]*len(summary_name)
 
+    # Load and concatenate the desired summary files 
     df_concat = pd.DataFrame()
     for exp,name in zip(exps,summary_name):
         dirs = const.Dirs(exp_name=exp)
@@ -73,30 +74,18 @@ def get_summary(
         df = pd.read_csv(fpath)
         df_concat = pd.concat([df_concat, df])
 
-    # add atlas
+    # add atlas and method
     df_concat['atlas'] = df_concat['X_data'].apply(lambda x: _add_atlas(x))
-    df_concat['hyperparameter'] = df_concat['hyperparameter'].astype(float) #
-    def _relabel_model(x):
-        if x=='L2regression':
-            return 'ridge'
-        elif x=='LASSO':
-            return 'lasso'
-        else:
-            return x
-    df_concat['method'] = df_concat['model'].apply(lambda x: _relabel_model(x))
+    df_concat['method'] = df_concat['name'].str.split('_').str.get(0)
 
-    try:
-        wnta = df_concat.query('method=="wnta"')
-        wnta['hyperparameter'] = wnta['name'].str.split('_').str.get(-1)
-        wnta['method'] = wnta['method'] + '_' + wnta['name'].str.split('_').str.get(-3)
+    # Training specific items: 
+    if summary_type == 'train':
+        df_concat['hyperparameter'] = df_concat['hyperparameter'].astype(float) 
 
-        # get rest of dataframe
-        other = df_concat.query('method!="wnta"')
-
-        #concat dataframes
-        df_concat = pd.concat([wnta, other])
-    except:
-        pass
+    # Evaluation specific items: 
+    if summary_type=='eval':
+        df_concat['noiseceiling_Y']=np.sqrt(df_concat.noise_Y_R)
+        df_concat['noiseceiling_XY']=np.sqrt(df_concat.noise_Y_R * df_concat.noise_X_R)
 
     # Now filter the data frame
     if splitby is not None:

@@ -75,7 +75,7 @@ def eval_best_models(model_type=["ridge", "lasso", "WTA"],save_maps=False,eval_n
         train_or_test (str): 'train' or 'eval'
     """
     # get best model (for each method and parcellation)
-    df = vis.get_summary('train',exps='sc1',atlas=['shen','tessels','yeo'])
+    df = vis.get_summary('train',exps='sc1')
     models, cortex_names = vis.get_best_models(df)
     # sel=['tessels' in c for c in cortex_names]
     # models = list(itertools.compress(models,sel))
@@ -97,7 +97,7 @@ def eval_best_models(model_type=["ridge", "lasso", "WTA"],save_maps=False,eval_n
         config["train_exp"] = 'sc1'
         config["eval_exp"] = 'sc2'
         config["subjects"] = const.return_subjs
-        config["splitby"] = split
+        config["splitby"] = splitipyth
         config['incl_inst']=True
         # eval model(s)
         df, voxels = run.eval_models(config)
@@ -128,7 +128,11 @@ if __name__ == "__main__":
     # d = const.Dirs()
     # T = eval_models(['ridge','ridge','ridge','ridge','ridge','ridge','NN','NN','NN'],'tessels0162',[-2,0,2,4,6,8,-2,0,2],sn=['all'])
     # T.to_csv(d.conn_eval_dir / "group_model.dat")
-    eval_best_models()
+    # eval_best_models()
+    df = vis.get_summary('train',exps=['sc1'],atlas=['tessels'])
+    pass
+    df = vis.get_summary('eval',summary_name="weighted_all",exps=['sc2'],atlas=['tessels'])
+    pass
     # plot_Fig2c()
     # fig.fig2()
     pass
