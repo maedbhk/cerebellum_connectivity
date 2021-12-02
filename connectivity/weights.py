@@ -20,7 +20,7 @@ import connectivity.io as cio
 from connectivity import model
 from connectivity import data as cdata
 from connectivity import nib_utils as nio
-from connectivity.visualize import get_best_models
+from connectivity import visualize as summary
 
 def save_maps_cerebellum(
     data, 
@@ -633,7 +633,8 @@ def best_weights(
 
     """
     # get best models
-    models, cortex_names = get_best_models(train_exp=train_exp, method=method)
+    dataframe = summary.get_summary(exps=[train_exp], summary_type='train', method=[method])
+    models, cortex_names= summary.get_best_models(dataframe)
 
     for (best_model, cortex) in zip(models, cortex_names):
 
