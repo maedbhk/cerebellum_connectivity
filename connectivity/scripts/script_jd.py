@@ -43,69 +43,6 @@ def train_NNLS(corticalParc, logalpha, sn=const.return_subjs):
             Model = run.train_models(config, save=True)
     pass
 
-def eval_model(
-    model_name,
-    cortex,
-    train_exp="sc1",
-    eval_exp="sc2",
-    cerebellum="cerebellum_suit",
-    eval_name=None
-    ):
-    """Evaluate model(s)
-
-    Args:
-        model_name (str): name of trained model
-        train_exp (str): 'sc1' or 'sc2'
-        eval_exp (str): 'sc1' or 'sc2'
-        cortex (str): cortical ROI
-        cerebellum (str): cerebellar ROI
-        log_locally (bool): log results locally
-        eval_name (str or None): suffix to csv file for setting
-    Returns:
-        Appends eval data for each model and subject into `eval_summary_<eval_name>.csv`
-        Returns pandas dataframe of eval_summary
-    """
-    dirs = const.Dirs(exp_name=eval_exp)
-
-    # get default eval parameters
-    config = run.get_default_eval_config()
-
-    print(f"evaluating {model_name}")
-    config["name"] = model_name
-    config["X_data"] = cortex
-    config["Y_data"] = cerebellum
-    config["weighting"] = True
-    config["averaging"] = "sess"
-    config["train_exp"] = train_exp
-    config["eval_exp"] = eval_exp
-    config["subjects"] = const.return_subjs
-    config["save_maps"] = False
-    config["splitby"] = "all"
-    config["exclude_instruct"] = False
-
-    # eval model(s)
-    df, voxels = run.eval_models(config)
-
-    # save voxel data to gifti(only for cerebellum_suit)
-    if config["save_maps"] and config["Y_data"] == "cerebellum_suit":
-        fpath = os.path.join(dirs.conn_eval_dir, model_name)
-        cio.make_dirs(fpath)
-        for k, v in voxels.items():
-            save_maps_cerebellum(data=np.stack(v, axis=0),
-                                fpath=os.path.join(fpath, f'group_{k}'))
-
-    # eval summary
-    if eval_name:
-        eval_fpath = os.path.join(dirs.conn_eval_dir, f'eval_summary_{eval_name}.csv')
-    else:
-        eval_fpath = os.path.join(dirs.conn_eval_dir, f'eval_summary.csv')
-
-    # concat data to eval summary (if file already exists)
-    if os.path.isfile(eval_fpath):
-        df = pd.concat([df, pd.read_csv(eval_fpath)])
-    df.to_csv(eval_fpath, index=False)
-
-
 def make_group_data(exp = "sc1", roi="cerebellum_suit"):
     Xdata = Dataset(experiment=exp, glm="glm7", roi=roi, subj_id=const.return_subjs)
     # const.return_subjs
@@ -129,7 +66,7 @@ def plot_Fig2c():
     vis.plot_eval_predictions(dataframe=df, exps=['sc2'], hue='method', ax=ax3)
     ax3.set_xticks([80, 304, 670, 1190, 1848])
 
-def eval_best_models(model_type=["ridge", "lasso", "WTA"]):
+def eval_best_models(model_type=["ridge", "lasso", "WTA"],save_maps=False,eval_name='weighted_all',split='all'):
     """ Run connectivity routine (train and evaluate)
 
     Args:
@@ -137,16 +74,52 @@ def eval_best_models(model_type=["ridge", "lasso", "WTA"]):
         model_type (str): 'WTA' or 'ridge' or 'NNLS'
         train_or_test (str): 'train' or 'eval'
     """
-            # get best model (for each method and parcellation)
+    # get best model (for each method and parcellation)
     df = vis.get_summary('train',exps='sc1')
-    models, cortex_names = vis.get_best_models(train_exp=f"sc1")
-    sel=['tessels' in c for c in cortex_names]
-    models = list(itertools.compress(models,sel))
-    cortex_names = list(itertools.compress(cortex_names,sel))
+    models, cortex_names = vis.get_best_models(df)
+    # sel=['tessels' in c for c in cortex_names]
+    # models = list(itertools.compress(models,sel))
+    # cortex_names = list(itertools.compress(cortex_names,sel))
 
     for (model_name, cortex) in zip(models, cortex_names):
-        eval_model(model_name,cortex=cortex,eval_name='weighted_all')
 
+        dirs = const.Dirs(exp_name='sc2')
+
+        # get default eval parameters
+        config = run.get_default_eval_config()
+
+        print(f"evaluating {model_name}")
+        config["name"] = model_name
+        config["X_data"] = cortex
+        config["Y_data"] = 'cerebellum_suit'
+        config["weighting"] = True
+        config["averaging"] = "sess"
+        config["train_exp"] = 'sc1'
+        config["eval_exp"] = 'sc2'
+        config["subjects"] = const.return_subjs
+        config["splitby"] = splitipyth
+        config['incl_inst']=True
+        # eval model(s)
+        df, voxels = run.eval_models(config)
+
+        # save voxel data to gifti(only for cerebellum_suit)
+        if config["save_maps"]:
+            fpath = os.path.join(dirs.conn_eval_dir, model_name)
+            cio.make_dirs(fpath)
+            for k, v in voxels.items():
+                save_maps_cerebellum(data=np.stack(v, axis=0),
+                                fpath=os.path.join(fpath, f'group_{k}'))
+
+        # eval summary
+        if eval_name:
+            eval_fpath = os.path.join(dirs.conn_eval_dir, f'eval_summary_{eval_name}.csv')
+        else:
+            eval_fpath = os.path.join(dirs.conn_eval_dir, f'eval_summary.csv')
+
+        # concat data to eval summary (if file already exists)
+        if os.path.isfile(eval_fpath):
+            df = pd.concat([df, pd.read_csv(eval_fpath)])
+        df.to_csv(eval_fpath, index=False)
 
 if __name__ == "__main__":
     # D = train_NNLS('tessels0162', [-2,0,2],sn=['all'])
@@ -155,6 +128,11 @@ if __name__ == "__main__":
     # d = const.Dirs()
     # T = eval_models(['ridge','ridge','ridge','ridge','ridge','ridge','NN','NN','NN'],'tessels0162',[-2,0,2,4,6,8,-2,0,2],sn=['all'])
     # T.to_csv(d.conn_eval_dir / "group_model.dat")
-    eval_best_models()
+    # eval_best_models()
+    df = vis.get_summary('train',exps=['sc1'],atlas=['tessels'])
+    pass
+    df = vis.get_summary('eval',summary_name="weighted_all",exps=['sc2'],atlas=['tessels'])
+    pass
     # plot_Fig2c()
+    # fig.fig2()
     pass
