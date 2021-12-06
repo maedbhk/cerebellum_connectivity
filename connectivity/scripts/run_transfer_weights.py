@@ -75,7 +75,7 @@ def run(connect_dir, learn_dir):
     df_filter.to_csv(os.path.join(mdtb_dir, 'best_models.csv'))
 
     for (model_old, model_new) in zip(df_filter['models_old'], df_filter['models']):
-        src = os.path.join(connect_dir, model_old)
+        src = os.path.join(connect_dir, model_old + '.h5')
         dest = os.path.join(mdtb_dir, model_new + '_mdtb.h5')
         copyfile(src, dest)
 
