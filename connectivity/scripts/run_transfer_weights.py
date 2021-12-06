@@ -56,8 +56,6 @@ def run(connect_dir, learn_dir):
 
     # navigate to connectivity weight dir and grab files
     os.chdir(connect_dir)
-    files = glob.glob('*.h5')
-    print(files)
 
     # get remapping of file names
     data_dict = _remap()

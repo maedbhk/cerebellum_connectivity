@@ -33,7 +33,7 @@ def plotting_style():
     plt.rcParams.update(params)
 
 def get_summary(
-    summary_type= 'eval',
+    summary_type='eval',
     summary_name=[None],
     exps=['sc2'],
     splitby=None,
