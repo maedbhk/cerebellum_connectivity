@@ -7,6 +7,9 @@ import matplotlib.image as mpimg
 from PIL import Image
 import matplotlib.pyplot as plt
 from nilearn.surface import load_surf_data
+from nilearn.image import math_img
+import nibabel as nib
+from SUITPy import flatmap
 import re
 from random import seed, sample
 
@@ -223,6 +226,7 @@ def plot_eval_predictions(
     dataframe,
     x='num_regions',
     normalized=True,
+    plot_noiseceiling=True,
     hue=None,
     save=False,
     ax=None,
@@ -241,7 +245,8 @@ def plot_eval_predictions(
         y='R_eval_norm'
 
     ax = sns.lineplot(x=x, y=y, hue=hue, data=dataframe) # legend=True,
-    # ax = sns.lineplot(x=x, y='noiseceiling_Y', data=dataframe, color='k', ax=ax, ci=None, linewidth=4)
+    if plot_noiseceiling:
+        ax = sns.lineplot(x=x, y='noiseceiling_Y', data=dataframe, color='k', ax=ax, ci=None, linewidth=4)
     ax.legend(loc='best', frameon=False) # bbox_to_anchor=(1, 1)
     plt.xticks(rotation="45", ha="right")
     ax.lines[-1].set_linestyle("--")
@@ -524,6 +529,7 @@ def map_eval_cerebellum(
     model_name='best_model',
     method='ridge',
     atlas='tessels',
+    normalize=False,
     colorbar=True,
     cscale=None,
     outpath=None,
@@ -547,7 +553,20 @@ def map_eval_cerebellum(
         dataframe = get_summary(exps=['sc1'], summary_type='train', method=[method], atlas=[atlas])
         model_name, cortex = get_best_model(dataframe)
 
-    fpath = os.path.join(dirs.conn_eval_dir, model_name, f'group_{data}_vox.func.gii')
+    fpath = os.path.join(dirs.conn_eval_dir, model_name, f'group_{data}_vox')
+    fpath_normalize = os.path.join(dirs.conn_eval_dir, model_name, f'group_{data}_vox_normalize.func.gii')
+
+    if normalize:
+        if not os.path.isfile(fpath_normalize):
+            noise_fpath = os.path.join(dirs.conn_eval_dir, model_name, f'group_noiseceiling_XY_R_vox.nii')
+            img3 = math_img('img1 / img2', img1=fpath + '.nii', img2=noise_fpath)
+            func_data = flatmap.vol_to_surf(img3)
+            gii = flatmap.make_func_gifti(func_data, anatomical_struct='Cerebellum')
+            nib.save(gii, fpath_normalize)
+        fpath = fpath_normalize
+    else:
+        fpath = fpath + '.func.gii'
+
     view = nio.view_cerebellum(gifti=fpath, cscale=cscale, colorbar=colorbar,
                     new_figure=new_figure, title=title, outpath=outpath);
 
