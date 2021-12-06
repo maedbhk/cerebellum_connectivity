@@ -222,6 +222,7 @@ def plot_train_predictions(
 def plot_eval_predictions(
     dataframe,
     x='num_regions',
+    normalized=True,
     hue=None,
     save=False,
     ax=None,
@@ -232,8 +233,15 @@ def plot_eval_predictions(
         exps (list of str): default is ['sc2']
         hue (str or None): can be 'train_exp', 'Y_data' etc.
     """
-    ax = sns.lineplot(x=x, y="R_eval", hue=hue, data=dataframe) # legend=True,
-    ax = sns.lineplot(x=x, y='noiseceiling_Y', data=dataframe, color='k', ax=ax, ci=None, linewidth=4)
+
+    dataframe['R_eval_norm'] = dataframe['R_eval']/dataframe['noiseceiling_XY']
+
+    y='R_eval'
+    if normalized:
+        y='R_eval_norm'
+
+    ax = sns.lineplot(x=x, y=y, hue=hue, data=dataframe) # legend=True,
+    # ax = sns.lineplot(x=x, y='noiseceiling_Y', data=dataframe, color='k', ax=ax, ci=None, linewidth=4)
     ax.legend(loc='best', frameon=False) # bbox_to_anchor=(1, 1)
     plt.xticks(rotation="45", ha="right")
     ax.lines[-1].set_linestyle("--")
@@ -360,48 +368,44 @@ def plot_surfaces(
     # load in distances
     dataframe_vox = pd.read_csv(os.path.join(dirs.conn_train_dir, 'cortical_surface_voxels_stats.csv')) 
     dataframe_roi = pd.read_csv(os.path.join(dirs.conn_train_dir, f'cortical_surface_rois_stats_{atlas}.csv')) 
-    dataframe_concat = pd.concat([dataframe_vox, dataframe_roi]) 
+    df = pd.concat([dataframe_vox, dataframe_roi]) 
 
     # dataframe['subregion'] = dataframe['reg_names'].str.replace(re.compile('[^a-zA-Z]'), '', regex=True)
-    dataframe_concat['num_regions'] = dataframe_concat['cortex'].str.split('_').str.get(-1).str.extract('(\d+)').astype(float)*2
-    dataframe_concat['cortex_group'] = dataframe_concat['cortex'].apply(lambda x: _add_atlas(x))
+    df['num_regions'] = df['cortex'].str.split('_').str.get(-1).str.extract('(\d+)').astype(float)*2
+    df['cortex_group'] = df['cortex'].apply(lambda x: _add_atlas(x))
 
     # filter 
     if regions is not None:
-        dataframe_concat = dataframe_concat[dataframe_concat['reg_names'].isin(regions)]
+        df = df[df['reg_names'].isin(regions)]
     if cortex_group is not None:
-        dataframe_concat = dataframe_concat[dataframe_concat['cortex_group'].isin([cortex_group])]
+        df = df[df['cortex_group'].isin([cortex_group])]
     if cortex is not None:
-        dataframe_concat = dataframe_concat[dataframe_concat['cortex'].isin([cortex])]
+        df = df[df['cortex'].isin([cortex])]
     if atlas is not None:
-        dataframe_concat = dataframe_concat[dataframe_concat['atlas'].isin([atlas])]
+        df = df[df['atlas'].isin([atlas])]
     if weights is not None:
-        dataframe_concat = dataframe_concat[dataframe_concat['weights'].isin([weights])]
+        df = df[df['weights'].isin([weights])]
     if method is not None:
-        dataframe_concat = dataframe_concat[dataframe_concat['method'].isin([method])]
+        df = df[df['method'].isin([method])]
 
     # color plot according to MDTB10 atlas
     fpath = nio.get_cerebellar_atlases(atlas_keys=['atl-MDTB10'])[0]
     _, cpal, _ = nio.get_gifti_colors(fpath)
     palette = cpal
 
-    if x=='num_regions':
-        ax = sns.lineplot(x=x, 
-                    y=y, 
-                    hue=hue, 
-                    data=dataframe_concat,
-                    palette=palette,
-                    )
-    else:
-        ax = sns.barplot(x=x, 
-            y=y, 
-            hue=hue, 
-            data=dataframe_concat,
-            palette=palette,
-            )
+    tmp = df.groupby(['subj', x]).mean().reset_index();
+
+    ax = sns.barplot(x=x, 
+        y=y, 
+        hue=hue, 
+        data=tmp,
+        palette=palette,
+        )
     ax.set_xlabel('')
     ax.set_ylabel('Percentage of cortical surface')
     plt.xticks(rotation="45", ha="right")
+    plt.show()
+
     if hue:
         plt.legend(loc='best', frameon=False) # bbox_to_anchor=(1, 1)
 
@@ -409,7 +413,7 @@ def plot_surfaces(
         dirs = const.Dirs()
         plt.savefig(os.path.join(dirs.figure, f'cortical_surfaces_{exp}_{y}.svg'), pad_inches=0, bbox_inches='tight')
 
-    return dataframe_concat
+    return df
 
 def plot_dispersion(
     exp='sc1',
@@ -543,7 +547,7 @@ def map_eval_cerebellum(
         dataframe = get_summary(exps=['sc1'], summary_type='train', method=[method], atlas=[atlas])
         model_name, cortex = get_best_model(dataframe)
 
-    fpath = os.path.join(dirs.conn_eval_dir, model, f'group_{data}_vox.func.gii')
+    fpath = os.path.join(dirs.conn_eval_dir, model_name, f'group_{data}_vox.func.gii')
     view = nio.view_cerebellum(gifti=fpath, cscale=cscale, colorbar=colorbar,
                     new_figure=new_figure, title=title, outpath=outpath);
 
@@ -577,7 +581,7 @@ def map_lasso_cerebellum(
         model_name, cortex = get_best_model(dataframe)
 
     # plot map
-    fpath = os.path.join(dirs.conn_train_dir, model)
+    fpath = os.path.join(dirs.conn_train_dir, model_name)
 
     fname = f"group_lasso_{stat}_{weights}_cerebellum"
     gifti = os.path.join(fpath, f'{fname}.func.gii')
@@ -615,12 +619,12 @@ def map_weights(
         model_name, cortex = get_best_model(dataframe)
 
     # get path to model
-    fpath = os.path.join(dirs.conn_train_dir, model)
+    fpath = os.path.join(dirs.conn_train_dir, model_name)
 
     outpath = None
     if save:
         dirs = const.Dirs()
-        outpath = os.path.join(dirs.figure, f'{model}_{structure}_{hemisphere}_weights_{exp}.png')
+        outpath = os.path.join(dirs.figure, f'{model_name}_{structure}_{hemisphere}_weights_{exp}.png')
 
     # plot either cerebellum or cortex
     if structure=='cerebellum':
