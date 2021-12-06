@@ -23,9 +23,9 @@ def dispersion_summary(
     df = pd.DataFrame()         # Empty data frame to start with
     dirs = const.Dirs(exp_name=exp)
 
-    models, cortex_names = summary.get_best_models(method=method) 
+    dataframe = summary.get_summary(exps=[exp], summary_type='train', method=[method])
+    models, cortex_names= summary.get_best_models(dataframe)
 
-    data_dict_all = defaultdict(list)
     for (best_model, cortex) in zip(models, cortex_names):
 
         if 'mdtb4002' not in cortex:

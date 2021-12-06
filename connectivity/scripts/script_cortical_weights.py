@@ -34,7 +34,8 @@ def cortical_weight_maps(
 
     dirs = const.Dirs(exp_name=exp)
 
-    # models, cortex_names = summary.get_best_models(method=method) 
+    # dataframe = summary.get_summary(exps=[exp], summary_type='train', method=[method])
+    # models, cortex_names= summary.get_best_models(dataframe)
 
     models = ['ridge_tessels1002_alpha_8']
     cortex_names = ['tessels1002']

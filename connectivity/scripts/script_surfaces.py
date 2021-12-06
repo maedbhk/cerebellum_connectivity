@@ -26,7 +26,8 @@ def surfaces_voxels(
     print('running surfaces_voxels')
 
     dirs = const.Dirs(exp_name=exp)
-    models, cortex_names = summary.get_best_models(method=method) 
+    dataframe = summary.get_summary(exps=[exp], summary_type='train', method=[method])
+    models, cortex_names= summary.get_best_models(dataframe)
 
     data_voxels_all = defaultdict(list)
     for (best_model, cortex) in zip(models, cortex_names):
@@ -64,7 +65,8 @@ def surfaces_rois(
     print('running surfaces_rois')
 
     dirs = const.Dirs(exp_name=exp)
-    models, cortex_names = summary.get_best_models(method=method) 
+    dataframe = summary.get_summary(exps=[exp], summary_type='train', method=[method])
+    models, cortex_names= summary.get_best_models(dataframe)
 
     data_rois_all = defaultdict(list)
     for (best_model, cortex) in zip(models, cortex_names):
