@@ -189,6 +189,77 @@ def eval_best_models(model_type=["ridge", "lasso", "WTA"],
             df = pd.concat([df, pd.read_csv(eval_fpath)])
         df.to_csv(eval_fpath, index=False)
 
+def eval_map_names(cortex,methods=['ridge','WTA','lasso']): 
+    df = vis.get_summary('eval',exps='sc2',summary_name='weighted_all',
+                method=methods)
+    a = df.name.str.contains(cortex)
+    names = np.unique(df.name[a])
+    return names
+
+def show_maps(cortex):
+    names = eval_map_names(cortex)
+    dirs = const.Dirs(exp_name='sc2')
+    for m in range(3): 
+        ax = plt.subplot(2,3,m+1)
+        # plot 
+        filename = os.path.join(dirs.conn_eval_dir, names[m],
+                            'group_R_vox.func.gii')
+        flatmap.plot(filename,cscale=[0,0.5])
+        ax.set_title(names[m])
+        # plot noiseceilint 
+        ax = plt.subplot(2,3,m+4)
+        # plot 
+        filename = os.path.join(dirs.conn_eval_dir, names[m],
+                            'group_noise_Y_R_vox.func.gii')
+        flatmap.plot(filename,cscale=[0,0.5])
+        pass
+    pass 
+
+def diff_maps(cortex):
+    plt.figure(figsize=(10,10))
+    names = eval_map_names(cortex,methods=['WTA','ridge'])
+    dirs = const.Dirs(exp_name='sc2')
+    vmap=[]
+    vceil=[]
+    VMAP = np.empty((2,28935))
+    VCEIL = np.empty((2,28935))
+    for m in range(2): 
+        filename = os.path.join(dirs.conn_eval_dir, names[m],
+                            'group_R_vox.func.gii')
+        vmap.append(nib.load(filename))
+        VMAP[m,:]=vmap[m].agg_data()
+        filename = os.path.join(dirs.conn_eval_dir, names[m],
+                            'group_noiseceiling_XY_R_vox.func.gii')
+        vceil.append(nib.load(filename))
+        VCEIL[m,:]=vceil[m].agg_data()
+
+    ax = plt.subplot(3,3,1)
+    flatmap.plot(VMAP[0],cscale=[0,0.5])
+    ax.set_title(names[0])
+    ax.set_ylabel('Correlation(R)')
+    ax = plt.subplot(3,3,2)
+    flatmap.plot(VMAP[1],cscale=[0,0.5])
+    ax.set_title(names[1])
+    ax = plt.subplot(3,3,3)    
+    flatmap.plot(VMAP[1]-VMAP[0],cscale=[-0.2,0.2])
+    ax.set_title('Ridge-WTA')
+    ax = plt.subplot(3,3,4)    
+    flatmap.plot(VCEIL[0],cscale=[0,0.5])
+    ax.set_ylabel('Noiseceiling XY')
+    ax = plt.subplot(3,3,5)    
+    flatmap.plot(VCEIL[1],cscale=[0,0.5])
+    ax = plt.subplot(3,3,6)    
+    flatmap.plot(VCEIL[1]-VCEIL[0],cscale=[-0.2,0.2])
+    ax = plt.subplot(3,3,7)    
+    flatmap.plot(VMAP[0]/VCEIL[0],cscale=[0,0.7])
+    ax.set_ylabel('R/Noiseceiling')
+    ax = plt.subplot(3,3,8)    
+    flatmap.plot(VMAP[1]/VCEIL[1],cscale=[0,0.7])
+    ax = plt.subplot(3,3,9)    
+    flatmap.plot(VMAP[1]/VCEIL[1]-VMAP[0]/VCEIL[0],cscale=[-0.2,0.2])
+    pass
+
+    
 if __name__ == "__main__":
     # D = train_NNLS('tessels0162', [-2,0,2],sn=['all'])
     # D = train_ridge('tessels0162',[-2,0,2,4,6,8],sn=['all'])
@@ -196,7 +267,8 @@ if __name__ == "__main__":
     # d = const.Dirs()
     # T = eval_models(['ridge','ridge','ridge','ridge','ridge','ridge','NN','NN','NN'],'tessels0162',[-2,0,2,4,6,8,-2,0,2],sn=['all'])
     # T.to_csv(d.conn_eval_dir / "group_model.dat")
-    eval_best_models(save_maps=True,atlas=['tessels','yeo'])
+    # eval_best_models(save_maps=True,atlas=['tessels','yeo'])
+    diff_maps('yeo17')
     # df = vis.get_summary('train',exps=['sc1'],atlas=['tessels'])
     # pass
     # df = vis.get_summary('eval',summary_name="weighted_all",exps=['sc2'],atlas=['tessels'])
