@@ -8,6 +8,7 @@ from PIL import Image
 import matplotlib.pyplot as plt
 from nilearn.surface import load_surf_data
 from nilearn.image import math_img
+from scipy import stats as sp
 import nibabel as nib
 from SUITPy import flatmap
 import re
@@ -158,6 +159,8 @@ def roi_summary(
     Returns:
         dataframe (pd dataframe)
     """
+
+
     # get rois for `atlas`
     rois = cdata.read_suit_nii(atlas_nifti)
 
@@ -262,6 +265,9 @@ def plot_eval_predictions(
         if hue:
             fname = f'eval_predictions_{hue}_{x}.svg'
         plt.savefig(os.path.join(dirs.figure, fname, pad_inches=0, bbox_inches='tight'))
+    
+    df = pd.pivot_table(dataframe, values=y, index='subj_id', columns='method', aggfunc=np.mean)
+    print(sp.ttest_rel(df.WTA, df.ridge, nan_policy='omit'))
 
 def plot_test_predictions(
     dataframe,
@@ -373,37 +379,37 @@ def plot_surfaces(
     # load in distances
     dataframe_vox = pd.read_csv(os.path.join(dirs.conn_train_dir, 'cortical_surface_voxels_stats.csv')) 
     dataframe_roi = pd.read_csv(os.path.join(dirs.conn_train_dir, f'cortical_surface_rois_stats_{atlas}.csv')) 
-    df = pd.concat([dataframe_vox, dataframe_roi]) 
+    dataframe = pd.concat([dataframe_vox, dataframe_roi]) 
 
     # dataframe['subregion'] = dataframe['reg_names'].str.replace(re.compile('[^a-zA-Z]'), '', regex=True)
-    df['num_regions'] = df['cortex'].str.split('_').str.get(-1).str.extract('(\d+)').astype(float)*2
-    df['cortex_group'] = df['cortex'].apply(lambda x: _add_atlas(x))
+    dataframe['num_regions'] = dataframe['cortex'].str.split('_').str.get(-1).str.extract('(\d+)').astype(float)*2
+    dataframe['cortex_group'] = dataframe['cortex'].apply(lambda x: _add_atlas(x))
 
     # filter 
     if regions is not None:
-        df = df[df['reg_names'].isin(regions)]
+        dataframe = dataframe[dataframe['reg_names'].isin(regions)]
     if cortex_group is not None:
-        df = df[df['cortex_group'].isin([cortex_group])]
+        dataframe = dataframe[dataframe['cortex_group'].isin([cortex_group])]
     if cortex is not None:
-        df = df[df['cortex'].isin([cortex])]
+        dataframe = dataframe[dataframe['cortex'].isin([cortex])]
     if atlas is not None:
-        df = df[df['atlas'].isin([atlas])]
+        dataframe = dataframe[dataframe['atlas'].isin([atlas])]
     if weights is not None:
-        df = df[df['weights'].isin([weights])]
+        dataframe = dataframe[dataframe['weights'].isin([weights])]
     if method is not None:
-        df = df[df['method'].isin([method])]
+        dataframe = dataframe[dataframe['method'].isin([method])]
 
     # color plot according to MDTB10 atlas
     fpath = nio.get_cerebellar_atlases(atlas_keys=['atl-MDTB10'])[0]
     _, cpal, _ = nio.get_gifti_colors(fpath)
     palette = cpal
 
-    tmp = df.groupby(['subj', x]).mean().reset_index();
+    # df = dataframe.groupby(['subj', x]).mean().reset_index();
 
     ax = sns.barplot(x=x, 
         y=y, 
         hue=hue, 
-        data=tmp,
+        data=dataframe,
         palette=palette,
         )
     ax.set_xlabel('')
@@ -418,11 +424,18 @@ def plot_surfaces(
         dirs = const.Dirs()
         plt.savefig(os.path.join(dirs.figure, f'cortical_surfaces_{exp}_{y}.svg'), pad_inches=0, bbox_inches='tight')
 
-    return df
+    if atlas=='MDTB10':
+        df1 = pd.pivot_table(dataframe, values='percent', index='subj', columns='reg_names', aggfunc=np.mean)
+        df1['motor'] = df1['Region1'] + df1['Region2']
+        df1['cognitive'] = df1['Region3'] + df1['Region4'] + df1['Region5'] + df1['Region6'] + df1['Region7'] + df1['Region8'] + df1['Region9'] + df1['Region10']
+
+    print(sp.ttest_rel(df1.motor, df1.cognitive, nan_policy='omit'))
+
+    return dataframe
 
 def plot_dispersion(
     exp='sc1',
-    y='Variance',    
+    y='var_w',    
     cortex='tessels1002', 
     cortex_group='tessels',
     atlas='MDTB10',
@@ -459,7 +472,7 @@ def plot_dispersion(
     # T = pd.pivot_table(dataframe,values=['sum_w','w_var','Variance'],index=['subj','roi', 'hem'],aggfunc='mean')
     # T = T.reset_index()
     # T['var_w'] = T.w_var/T.sum_w
-    ax = sns.boxplot(x='roi', 
+    ax = sns.barplot(x='roi', 
                 y=y, 
                 hue=hue, 
                 data=dataframe,
