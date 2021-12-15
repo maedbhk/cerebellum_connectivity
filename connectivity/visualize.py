@@ -227,7 +227,7 @@ def plot_train_predictions(
 def plot_eval_predictions(
     dataframe,
     x='num_regions',
-    normalized=True,
+    normalize=True,
     plot_noiseceiling=True,
     hue=None,
     save=False,
@@ -243,7 +243,7 @@ def plot_eval_predictions(
     dataframe['R_eval_norm'] = dataframe['R_eval']/dataframe['noiseceiling_XY']
 
     y='R_eval'
-    if normalized:
+    if normalize:
         y='R_eval_norm'
 
     ax = sns.lineplot(x=x, y=y, hue=hue, data=dataframe) # legend=True,
@@ -406,11 +406,14 @@ def plot_surfaces(
 
     # df = dataframe.groupby(['subj', x]).mean().reset_index();
 
+    dataframe['reg_names'] = dataframe['reg_names'].str.replace('Region', '')
+
     ax = sns.barplot(x=x, 
         y=y, 
         hue=hue, 
         data=dataframe,
         palette=palette,
+        ax=ax
         )
     ax.set_xlabel('')
     ax.set_ylabel('Percentage of cortical surface')
@@ -429,10 +432,8 @@ def plot_surfaces(
         df1['cognitive'] = df1['Region3'] + df1['Region4'] + df1['Region5'] + df1['Region6'] + df1['Region7'] + df1['Region8'] + df1['Region9'] + df1['Region10']
 
         print(sp.ttest_rel(df1.motor, df1.cognitive, nan_policy='omit'))
-    
-    plt.show()
 
-    return ax
+    return ax, dataframe
 
 def plot_dispersion(
     exp='sc1',
@@ -479,6 +480,7 @@ def plot_dispersion(
                 hue=hue, 
                 data=dataframe,
                 palette='rocket',
+                ax=ax
                 )
     ax.set_xlabel('')
     ax.set_ylabel('Cortical Dispersion')
@@ -490,7 +492,7 @@ def plot_dispersion(
         dirs = const.Dirs()
         plt.savefig(os.path.join(dirs.figure, f'cortical_dispersion_{y}.svg'), pad_inches=0, bbox_inches='tight')
 
-    return dataframe
+    return ax, dataframe
 
 def map_distances_cortex(
     atlas='MDTB10',
@@ -541,7 +543,6 @@ def map_distances_cortex(
 
 def map_eval_cerebellum(
     data="R",
-    exp="sc1",
     model_name='best_model',
     method='ridge',
     atlas='tessels',
@@ -558,10 +559,7 @@ def map_eval_cerebellum(
         exp (str): 'sc1' or 'sc2'
         model_name ('best_model' or model name):
     """
-    if exp == "sc1":
-        dirs = const.Dirs(exp_name="sc2")
-    else:
-        dirs = const.Dirs(exp_name="sc1")
+    dirs = const.Dirs(exp_name="sc2")
 
     # get best model
     model = model_name
@@ -590,7 +588,6 @@ def map_eval_cerebellum(
 
 def map_lasso_cerebellum(
     model_name,
-    exp="sc1",
     stat='percent',
     weights='nonzero',
     atlas='tessels',
@@ -607,7 +604,7 @@ def map_lasso_cerebellum(
         exp (str): 'sc1' or 'sc2'
         stat (str): 'percent' or 'count'
     """
-    dirs = const.Dirs(exp_name=exp)
+    dirs = const.Dirs(exp_name='sc1')
 
     # get best model
     model = model_name
