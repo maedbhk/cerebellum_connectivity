@@ -181,7 +181,7 @@ def make_func_gifti_cortex(
 
 def get_gifti_colors(
     fpath,
-    ignore_0=True
+    ignore_0=True,
     ):
     """get gifti labels for fpath (should be *.label.gii)
 
@@ -622,7 +622,7 @@ def view_cortex_inflated(
 
         p.add_layer({'left': np.nan_to_num(data_lh.data), 'right': np.nan_to_num(data_rh.data)},  cbar_label=col, as_outline=borders, cbar=colorbar) # cmap='YlOrBr_r',
 
-        kws = {'location': 'right', 'label_direction': 45, 'decimals': 3,
+        kws = {'location': 'right', 'label_direction': 360, 'decimals': 3,
        'fontsize': 16, 'n_ticks': 2, 'shrink': .15, 'aspect': 8,
        'draw_border': False}
         fig = p.build(cbar_kws=kws)

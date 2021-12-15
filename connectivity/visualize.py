@@ -9,6 +9,8 @@ import matplotlib.pyplot as plt
 from nilearn.surface import load_surf_data
 from nilearn.image import math_img
 from scipy import stats as sp
+from matplotlib.colors import LinearSegmentedColormap
+import matplotlib as mpl
 import nibabel as nib
 from SUITPy import flatmap
 import re
@@ -220,10 +222,7 @@ def plot_train_predictions(
 
     if save:
         dirs = const.Dirs()
-        fname = f'train_predictions_{x}'
-        if hue:
-            fname = f'train_predictions_{hue}_{x}'
-        plt.savefig(os.path.join(dirs.figure, f'{fname}.svg'), pad_inches=0.1, bbox_inches='tight')
+        plt.savefig(os.path.join(dirs.figure, 'train_predictions.svg'), pad_inches=0.1, bbox_inches='tight')
 
 def plot_eval_predictions(
     dataframe,
@@ -370,6 +369,7 @@ def plot_surfaces(
     hue=None,
     regions=None,
     save=False,
+    stats=False,
     ax=None,
     palette=None
     ):
@@ -400,7 +400,7 @@ def plot_surfaces(
         dataframe = dataframe[dataframe['method'].isin([method])]
 
     # color plot according to MDTB10 atlas
-    fpath = nio.get_cerebellar_atlases(atlas_keys=['atl-MDTB10'])[0]
+    fpath = nio.get_cerebellar_atlases(atlas_keys=[f'atl-{atlas}'])[0]
     _, cpal, _ = nio.get_gifti_colors(fpath)
     palette = cpal
 
@@ -415,7 +415,6 @@ def plot_surfaces(
     ax.set_xlabel('')
     ax.set_ylabel('Percentage of cortical surface')
     plt.xticks(rotation="45", ha="right")
-    plt.show()
 
     if hue:
         plt.legend(loc='best', frameon=False) # bbox_to_anchor=(1, 1)
@@ -424,14 +423,16 @@ def plot_surfaces(
         dirs = const.Dirs()
         plt.savefig(os.path.join(dirs.figure, f'cortical_surfaces_{exp}_{y}.svg'), pad_inches=0, bbox_inches='tight')
 
-    if atlas=='MDTB10':
+    if atlas=='MDTB10' and stats:
         df1 = pd.pivot_table(dataframe, values='percent', index='subj', columns='reg_names', aggfunc=np.mean)
         df1['motor'] = df1['Region1'] + df1['Region2']
         df1['cognitive'] = df1['Region3'] + df1['Region4'] + df1['Region5'] + df1['Region6'] + df1['Region7'] + df1['Region8'] + df1['Region9'] + df1['Region10']
 
-    print(sp.ttest_rel(df1.motor, df1.cognitive, nan_policy='omit'))
+        print(sp.ttest_rel(df1.motor, df1.cognitive, nan_policy='omit'))
+    
+    plt.show()
 
-    return dataframe
+    return ax
 
 def plot_dispersion(
     exp='sc1',
@@ -469,13 +470,15 @@ def plot_dispersion(
     if regions is not None:
         dataframe = dataframe[dataframe['roi'].isin(regions)]
 
-    # T = pd.pivot_table(dataframe,values=['sum_w','w_var','Variance'],index=['subj','roi', 'hem'],aggfunc='mean')
-    # T = T.reset_index()
-    # T['var_w'] = T.w_var/T.sum_w
+    # # color plot according to MDTB10 atlas
+    fpath = nio.get_cerebellar_atlases(atlas_keys=[f'atl-{atlas}'])[0]
+    rgba, cpal, _ = nio.get_gifti_colors(fpath)
+
     ax = sns.barplot(x='roi', 
                 y=y, 
                 hue=hue, 
                 data=dataframe,
+                palette='rocket',
                 )
     ax.set_xlabel('')
     ax.set_ylabel('Cortical Dispersion')
