@@ -24,8 +24,8 @@ export PYTHONPATH
 
 cd /global/scratch/users/maedbhking/projects/cerebellum_connectivity/connectivity/scripts
 
-# # run cortical surface (voxels)
-python3 script_surfaces.py --exp="sc1" --weights="nonzero" --method="lasso" --regions="voxels"
+# # # run cortical surface (voxels)
+# python3 script_surfaces.py --exp="sc1" --weights="nonzero" --method="lasso" --regions="voxels"
 
 atlases=(MDTB10) # Buckner7 Buckner17 Anatom (problem with these atlases)
 
@@ -33,10 +33,10 @@ atlases=(MDTB10) # Buckner7 Buckner17 Anatom (problem with these atlases)
 for ((a=0; a<${#atlases[@]}; a++)); do \
 python3 script_surfaces.py --exp="sc1" --weights="nonzero" --method="lasso" --regions="rois" --atlas=${atlases[a]}; done
 
-# # run dispersion
-for ((a=0; a<${#atlases[@]}; a++)); do \
-python3 script_dispersion.py --atlas=${atlases[a]} --method="ridge" --exp="sc1"; done
+# # # run dispersion
+# for ((a=0; a<${#atlases[@]}; a++)); do \
+# python3 script_dispersion.py --atlas=${atlases[a]} --method="ridge" --exp="sc1"; done
 
-# cortical weights
-for ((a=0; a<${#atlases[@]}; a++)); do \
-python3 script_cortical_weights.py --atlas=${atlases[a]} --method="ridge" --exp="sc1"; done
+# # cortical weights
+# for ((a=0; a<${#atlases[@]}; a++)); do \
+# python3 script_cortical_weights.py --atlas=${atlases[a]} --method="ridge" --exp="sc1"; done

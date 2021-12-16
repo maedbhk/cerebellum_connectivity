@@ -1,5 +1,6 @@
 # import libraries
 import os
+from matplotlib.pyplot import get
 import numpy as np
 import nibabel as nib
 from numpy.core.fromnumeric import repeat
@@ -209,7 +210,7 @@ def cortical_surface_rois(
     alpha,
     train_exp='sc1',
     atlas='MDTB10',
-    weights='nonzero'
+    weights='nonzero',
     ):
     """save weight summary for cerebellar rois (count number of non-zero cortical coef)
 
@@ -235,27 +236,31 @@ def cortical_surface_rois(
         roi_betas, reg_names, colors = average_region_data(subj,
                                 exp=train_exp, cortex=cortex, 
                                 atlas=atlas, method=method, alpha=int(alpha), 
-                                weights=weights, average_subjs=False)
-        # count number of non-zero weights
-        data_nonzero = np.count_nonzero(~np.isnan(roi_betas,), axis=1)
-        n_cereb, n_cortex = roi_betas.shape
+                                weights=weights, average_subjs=False, hemispheres=True)
+        
+        for hem in ['L', 'R']:
 
-        data = {'count': data_nonzero,
-                'percent': np.divide(data_nonzero,  n_cortex)*100,
-                'subj': np.repeat(subj, n_cereb),
-                'method': np.repeat(method, n_cereb),
-                'cortex': np.repeat(cortex, n_cereb),
-                'reg_names': reg_names,
-                'weights': np.repeat(weights, n_cereb),
-                'train_exp': np.repeat(train_exp, n_cereb),
-                'atlas': np.repeat(atlas, n_cereb),
-                }
-        # colors_dict = pd.DataFrame.to_dict(pd.DataFrame(colors, columns=['R','G','B','A']), orient='list')
-        # data.update(colors_dict)
+            labels = get_labels_hemisphere(roi=cortex, hemisphere=hem)
+
+            # count number of non-zero weights
+            data_nonzero = np.count_nonzero(~np.isnan(roi_betas[:,labels],), axis=1)
+            n_cereb, n_cortex = roi_betas.shape
+
+            data = {'count': data_nonzero,
+                    'percent': np.divide(data_nonzero,  n_cortex)*100,
+                    'subj': np.repeat(subj, n_cereb),
+                    'method': np.repeat(method, n_cereb),
+                    'cortex': np.repeat(cortex, n_cereb),
+                    'reg_names': reg_names,
+                    'hem': np.repeat(hem, n_cereb),
+                    'weights': np.repeat(weights, n_cereb),
+                    'train_exp': np.repeat(train_exp, n_cereb),
+                    'atlas': np.repeat(atlas, n_cereb),
+                    }
         
-        for k, v in data.items():
-            data_all[k].extend(v)
-        
+            for k, v in data.items():
+                data_all[k].extend(v)
+                
     return data_all
 
 def threshold_data(
@@ -288,7 +293,8 @@ def average_region_data(
     method='ridge',
     alpha=8,
     weights='nonzero',
-    average_subjs=True
+    average_subjs=True,
+    hemispheres=True
     ):
     """fit model using `method` and `alpha` for cerebellar `atlas` and `cortex`.
     
@@ -303,6 +309,7 @@ def average_region_data(
         alpha (int): default is 8
         weights (str): default is 'nonzero'. other option is 'positive'
         average_subjs (bool): average betas across subjs? default is True
+        hemispheres (bool): fit model to each hemisphere separately?
     Returns:    
        roi_mean (shape; n_cerebellar_regs x n_cortical_regs)
        reg_names (shape; n_cerebellar_regs,) 
@@ -350,9 +357,20 @@ def average_region_data(
     elif method=='ridge':
         model_name = 'L2regression'
 
-    fit_roi = getattr(model, model_name)(**{'alpha':  np.exp(alpha)})
-    fit_roi.fit(X,Ym)
-    roi_mean = fit_roi.coef_[1:]
+    if hemispheres:
+        # preallocate np array
+        n_X = Ym.shape[1]-1; n_Y = X.shape[1]
+        roi_mean = np.zeros((n_X, n_Y))
+        for hem in ['L', 'R']:
+            labels = get_labels_hemisphere(roi=cortex, hemisphere=hem)
+
+            fit_roi = getattr(model, model_name)(**{'alpha':  np.exp(alpha)})
+            fit_roi.fit(X[:,labels],Ym)
+            roi_mean[:,labels] = fit_roi.coef_[1:]
+    else:
+        fit_roi = getattr(model, model_name)(**{'alpha':  np.exp(alpha)})
+        fit_roi.fit(X,Ym)
+        roi_mean = fit_roi.coef_[1:]
 
     if weights=='positive':
         roi_mean[roi_mean <= 0] = np.nan
