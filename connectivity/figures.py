@@ -118,7 +118,7 @@ def fig2():
     ax6.text(x_pos, y_pos, 'F', transform=ax6.transAxes, fontsize=labelsize, verticalalignment='top')
 
     plt.subplots_adjust(left=0.125, bottom=0.001, right=2.0, top=2.0, wspace=.2, hspace=.3)
-    save_path = os.path.join(dirs.figure, f'fig2.{format}')
+    save_path = os.path.join(dirs.figure, f'fig2.svg')
     plt.savefig(save_path, bbox_inches="tight", dpi=300)
 
 def fig3():
@@ -295,7 +295,7 @@ def fig3():
     ax21.text(x_pos, y_pos, 'J', transform=ax21.transAxes, fontsize=labelsize, verticalalignment='top')
 
     plt.subplots_adjust(left=0.125, bottom=0.001, right=2.0, top=2.0, wspace=.2, hspace=.3)
-    save_path = os.path.join(dirs.figure, f'fig3.png')
+    save_path = os.path.join(dirs.figure, f'fig3.svg')
     plt.savefig(save_path, bbox_inches="tight", dpi=300)
 
 def fig4():
@@ -320,7 +320,7 @@ def fig4():
     ax1.text(x_pos, y_pos, 'A', transform=ax1.transAxes, fontsize=labelsize, verticalalignment='top')
 
     ax2 = fig.add_subplot(gs[0,1:])
-    ax2,_ = vis.plot_surfaces(x='reg_names', hue=None, cortex='tessels0042', method='lasso', regions=None, ax=ax2);
+    ax2,_ = vis.plot_surfaces(x='reg_names', hue=None, cortex='tessels0362', method='lasso', regions=None, stats=False, ax=ax2);
     ax2.text(x_pos, y_pos, 'B', transform=ax2.transAxes, fontsize=labelsize, verticalalignment='top')
 
     ax3 = fig.add_subplot(gs[1,1:])
@@ -329,7 +329,7 @@ def fig4():
     ax3.text(x_pos, y_pos, 'C', transform=ax3.transAxes, fontsize=labelsize, verticalalignment='top')
 
     plt.subplots_adjust(left=0.125, bottom=0.001, right=2.0, top=2.0, wspace=.2, hspace=.3)
-    save_path = os.path.join(dirs.figure, f'fig4.png')
+    save_path = os.path.join(dirs.figure, f'fig4.svg')
     plt.savefig(save_path, bbox_inches="tight", dpi=300)
 
 def fig5(format='png'):

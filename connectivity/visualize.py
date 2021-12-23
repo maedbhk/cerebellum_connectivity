@@ -428,8 +428,8 @@ def plot_surfaces(
 
     if atlas=='MDTB10' and stats:
         df1 = pd.pivot_table(dataframe, values='percent', index='subj', columns='reg_names', aggfunc=np.mean)
-        df1['motor'] = df1['Region1'] + df1['Region2']
-        df1['cognitive'] = df1['Region3'] + df1['Region4'] + df1['Region5'] + df1['Region6'] + df1['Region7'] + df1['Region8'] + df1['Region9'] + df1['Region10']
+        df1['motor'] = df1['1'] + df1['2']
+        df1['cognitive'] = df1['3'] + df1['4'] + df1['5'] + df1['6'] + df1['7'] + df1['8'] + df1['9'] + df1['10']
 
         print(sp.ttest_rel(df1.motor, df1.cognitive, nan_policy='omit'))
 
