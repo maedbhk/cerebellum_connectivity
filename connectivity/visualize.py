@@ -368,7 +368,7 @@ def plot_surfaces(
     atlas='MDTB10',
     hue=None,
     regions=None,
-    save=False,
+    save=True,
     stats=False,
     ax=None,
     palette=None
@@ -428,10 +428,7 @@ def plot_surfaces(
 
     if atlas=='MDTB10' and stats:
         df1 = pd.pivot_table(dataframe, values='percent', index='subj', columns='reg_names', aggfunc=np.mean)
-        df1['motor'] = df1['1'] + df1['2']
-        df1['cognitive'] = df1['3'] + df1['4'] + df1['5'] + df1['6'] + df1['7'] + df1['8'] + df1['9'] + df1['10']
-
-        print(sp.ttest_rel(df1.motor, df1.cognitive, nan_policy='omit'))
+        print(sp.f_oneway(df1['1'], df1['2'], df1['3'], df1['4'], df1['5'], df1['6'], df1['7'], df1['8'], df1['9'], df1['10']))
 
     return ax, dataframe
 
@@ -442,8 +439,9 @@ def plot_dispersion(
     cortex_group='tessels',
     atlas='MDTB10',
     method='ridge',
-    hue='hem',
+    hue=None,
     regions=None, # [1,2,5]
+    stats=True,
     save=False,
     ax=None
     ):
@@ -487,6 +485,10 @@ def plot_dispersion(
     plt.xticks(rotation="45", ha="right")
     if hue:
         plt.legend(loc='best', frameon=False) # bbox_to_anchor=(1, 1)
+
+    if stats and atlas=='MDTB10':
+        df1 = pd.pivot_table(dataframe, values=y, index='subj', columns='roi', aggfunc=np.mean)
+        print(sp.f_oneway(df1[1], df1[2], df1[3], df1[4], df1[5], df1[6], df1[7], df1[8], df1[9], df1[10]))
 
     if save:
         dirs = const.Dirs()
