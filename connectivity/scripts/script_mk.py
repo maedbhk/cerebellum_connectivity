@@ -459,6 +459,7 @@ def run(cortex="tessels0362",
                 if delete_train:
                     _delete_models(exp="sc1", best_model=best_model)
 
+                eval = True
                 if eval:
                     # test best train model
                     eval_model(model_name=best_model, 
