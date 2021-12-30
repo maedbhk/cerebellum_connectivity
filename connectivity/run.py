@@ -116,7 +116,7 @@ def train_models(config, save=False):
         print(f"Training model on {subj}")
 
         # get data
-        Y, Y_info, X, X_info = _get_data(config=config, exp=config["train_exp"], subj=subj)
+        Y, Y_info, X, X_info = _get_XYdata(config=config, exp=config["train_exp"], subj=subj)
 
         # Generate new model and put in the list
         new_model = getattr(model, config["model"])(**config["param"])

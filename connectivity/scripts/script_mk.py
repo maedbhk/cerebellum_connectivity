@@ -12,7 +12,7 @@ from SUITPy import flatmap
 import connectivity.constants as const
 import connectivity.io as cio
 from connectivity import data as cdata
-import connectivity.run_mk as run_connect
+import connectivity.run as run_connect
 from connectivity import weights as cmaps
 from connectivity import visualize as summary
 
@@ -299,11 +299,11 @@ def eval_model(
     model_name,
     train_exp="sc1",
     eval_exp="sc2",
-    cortex="tesselsWB642",
+    cortex="tessels0042",
     cerebellum="cerebellum_suit",
-    log_online=False,
     log_locally=True,
-    experimenter='mk'
+    eval_name='weighted_all',
+    splitby='all'
     ):
     """Evaluate model(s)
 
@@ -328,14 +328,14 @@ def eval_model(
     config["name"] = model_name
     config["X_data"] = cortex
     config["Y_data"] = cerebellum
-    config["weighting"] = False
+    config["weighting"] = True
     config["averaging"] = "sess"
     config["train_exp"] = train_exp
     config["eval_exp"] = eval_exp
     config["subjects"] = const.return_subjs
     config["save_maps"] = True
-    config["splitby"] = "unique"
-    config["exclude_instruct"] = True
+    config["splitby"] = splitby
+    config["incl_inst"] = True
 
     # eval model(s)
     df, voxels = run_connect.eval_models(config)
@@ -349,8 +349,8 @@ def eval_model(
                                 fpath=os.path.join(fpath, f'group_{k}'))
 
     # eval summary
-    if experimenter:
-        eval_fpath = os.path.join(dirs.conn_eval_dir, f'eval_summary_{experimenter}.csv')
+    if eval_name:
+        eval_fpath = os.path.join(dirs.conn_eval_dir, f'eval_summary_{eval_name}.csv')
     else:
         eval_fpath = os.path.join(dirs.conn_eval_dir, f'eval_summary.csv')
 
@@ -416,7 +416,8 @@ def _check_eval(model_name, train_exp, eval_exp):
 def run(cortex="tessels0362", 
         model_type="ridge", 
         train_or_eval="train", 
-        delete_train=False):
+        delete_train=False
+        ):
     """ Run connectivity routine (train and evaluate)
 
     Args: 
@@ -426,41 +427,49 @@ def run(cortex="tessels0362",
     """
     print(f'doing model {train_or_eval}')
     if train_or_eval=="train":
-        for exp in [0]: # range(2)
-            if model_type=="ridge":
-                # train ridge
-                train_ridge(hyperparameter=[-2,0,2,4,6,8,10], train_exp=f"sc{exp+1}", cortex=cortex)
-            elif model_type=="WTA":
-                train_WTA(train_exp=f"sc{exp+1}", cortex=cortex)
-            elif model_type=="NNLS":
-                train_NNLS(alphas=[0], gammas=[0], train_exp=f"sc{exp+1}", cortex=cortex)
-            else:
-                print('please enter a model (ridge, WTA, NNLS)')
-            
-            # log models
-            _log_models(exp=f"sc{exp+1}")
+        if model_type=="ridge":
+            # train ridge
+            train_ridge(hyperparameter=[-2,0,2,4,6,8,10], train_exp="sc1", cortex=cortex)
+        elif model_type=="WTA":
+            train_WTA(train_exp=f"sc1", cortex=cortex)
+        elif model_type=="NNLS":
+            train_NNLS(alphas=[0], gammas=[0], train_exp="sc1", cortex=cortex)
+        else:
+            print('please enter a model (ridge, WTA, NNLS)')
+        
+        # log models
+        _log_models(exp=f"sc1")
 
     elif train_or_eval=="eval":
-        for exp in [1]:
-            
-            # get best model (for each method and parcellation)
-            models, cortex_names = summary.get_best_models(train_exp=f"sc{2-exp}")
+        # get best model (for each method and parcellation)
+        dataframe = summary.get_summary('train', exps=['sc1'], method=['lasso'])
+        models, cortex_names = summary.get_best_models(dataframe)
+
+        eval_names = ['weighted_all', 'weighted_common', 'weighted_unique']
+        splitbys = ['all', 'common', 'unique']
+
+        for (eval_name, splitby) in zip(eval_names, splitbys):
 
             for (best_model, cortex) in zip(models, cortex_names):
                 
                 # should trained model be evaluated?
-                eval = _check_eval(model_name=best_model, train_exp=f"sc{2-exp}", eval_exp=f"sc{exp+1}")
+                eval = _check_eval(model_name=best_model, train_exp="sc1", eval_exp="sc2")
 
                 # delete training models that are suboptimal (save space)
                 if delete_train:
-                    _delete_models(exp=f"sc{2-exp}", best_model=best_model)
+                    _delete_models(exp="sc1", best_model=best_model)
 
                 if eval:
                     # test best train model
-                    eval_model(model_name=best_model, cortex=cortex, train_exp=f"sc{2-exp}", eval_exp=f"sc{exp+1}")
+                    eval_model(model_name=best_model, 
+                            cortex=cortex, 
+                            train_exp="sc1", 
+                            eval_exp="sc2", 
+                            eval_name=eval_name, 
+                            splitby=splitby,
+                            )
                 else:
                     print(f'{best_model} was not evaluated')
-
 
 if __name__ == "__main__":
     run()
