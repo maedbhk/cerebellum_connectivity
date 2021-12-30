@@ -6,6 +6,7 @@ from matplotlib.gridspec import GridSpec
 import numpy as np
 import os
 import pandas as pd
+from scipy import stats as sp
 from pathlib import Path
 
 from connectivity import visualize as vis
@@ -60,7 +61,7 @@ def fig2():
     dirs = const.Dirs()
 
     fig = plt.figure()
-    gs = GridSpec(2, 3, figure=fig)
+    gs = GridSpec(2, 4, figure=fig)
 
     x_pos = -0.1
     y_pos = 1.1
@@ -73,49 +74,64 @@ def fig2():
     ax.text(x_pos, y_pos, 'A', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
     ax.set_ylim([.05, .4])
 
-    ax = fig.add_subplot(gs[0,1])
+    ax = fig.add_subplot(gs[1,0])
     df = vis.get_summary("train", exps=['sc1'], method=['lasso'], atlas=['tessels'], summary_name=[''])
     vis.plot_train_predictions(df, x='hyperparameter', hue='num_regions', ax=ax)
     ax.text(x_pos, y_pos, 'B', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
     ax.set_ylim([.05, .4])
     
-    ax = fig.add_subplot(gs[0,2])
+    ax = fig.add_subplot(gs[0,1])
     dataframe = vis.get_summary('eval', exps=['sc2'], atlas=['tessels'], method=['WTA', 'ridge', 'lasso'], summary_name=['weighted_all'])
-    vis.plot_eval_predictions(dataframe=dataframe, plot_noiseceiling=True, normalize=False, hue='method', ax=ax)
+    df = vis.plot_eval_predictions(dataframe=dataframe, plot_noiseceiling=True, normalize=False, hue='method', ax=ax)
     ax.text(x_pos, y_pos, 'C', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
     ax.set_xticks([80, 304, 670, 1190, 1848])
+    # do statistics
+    result = sp.ttest_rel(df.lasso, df.ridge, nan_policy='omit')
+    print(f'F test for evaluation between lasso and ridge is: {result}')
 
-    ax = fig.add_subplot(gs[1,0])
+    ax = fig.add_subplot(gs[1,1])
     dataframe = vis.get_summary('eval', exps=['sc2'], atlas=['tessels'], method=['WTA', 'ridge', 'lasso'], summary_name=['weighted_all'])
-    vis.plot_eval_predictions(dataframe=dataframe, plot_noiseceiling=False, normalize=True, hue='method', ax=ax)
+    df = vis.plot_eval_predictions(dataframe=dataframe, plot_noiseceiling=False, normalize=True, hue='method', ax=ax)
     ax.text(x_pos, y_pos, 'D', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
     ax.set_xticks([80, 304, 670, 1190, 1848])
+    # do statistics
+    result = sp.ttest_rel(df.WTA, df.ridge, nan_policy='omit')
+    print(f'F test for evaluation between WTA and ridge is: {result}')
+
+    ax = fig.add_subplot(gs[0,2])
+    dataframe = vis.get_summary('eval', exps=['sc2'], atlas=['yeo', 'schaefer', 'gordon', 'arslan', 'shen', 'fan'], method=['WTA', 'ridge', 'lasso'], summary_name=['weighted_all'])
+    df = vis.plot_eval_predictions(dataframe=dataframe, plot_noiseceiling=True, normalize=False, hue='method', ax=ax)
+    ax.text(x_pos, y_pos, 'E', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+    # ax.set_xticks([7, 17])
+    # do statistics
+    result = sp.ttest_rel(df.WTA, df.ridge, nan_policy='omit')
+    print(f'F test for evaluation between lasso and ridge is: {result}')
+
+    ax = fig.add_subplot(gs[1,2])
+    dataframe = vis.get_summary('eval', exps=['sc2'], atlas=['yeo', 'schaefer', 'gordon', 'arslan', 'shen', 'fan'], method=['WTA', 'ridge', 'lasso'], summary_name=['weighted_all'])
+    df = vis.plot_eval_predictions(dataframe=dataframe, plot_noiseceiling=False, normalize=True, hue='method', ax=ax)
+    ax.text(x_pos, y_pos, 'F', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+    # ax.set_xticks([7, 17])
+    # do statistics
+    result = sp.ttest_rel(df.WTA, df.ridge, nan_policy='omit')
+    print(f'F test for evaluation between WTA and ridge is: {result}')
     
-    ax = fig.add_subplot(gs[1,1])
+    ax = fig.add_subplot(gs[0,3])
     fpath = os.path.join(dirs.figure, f'map_R_ridge_best_model_normalize.png')
     best_model = 'ridge_tessels1002_alpha_8'
     if not os.path.isfile(fpath):
         vis.map_eval_cerebellum(data="R", model_name=best_model, normalize=True, method='ridge', outpath=fpath); # cscale=[0, 0.4]
     vis.plot_png(fpath, ax=ax)
     ax.axis('off')
-    ax.text(x_pos, y_pos, 'E', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+    ax.text(x_pos, y_pos, 'G', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
 
-    # ax = fig.add_subplot(gs[1,1])
-    # fpath = os.path.join(dirs.figure, f'map_R_lasso_best_model.png')
-    # best_model = 'lasso_tessels1002_alpha_-2'
-    # if not os.path.isfile(fpath):
-    #     vis.map_eval_cerebellum(data="R", model_name=best_model, method='lasso', cscale=[0, 0.4], outpath=fpath); # ax=ax
-    # vis.plot_png(fpath, ax=ax)
-    # ax.axis('off')
-    # ax.text(x_pos, y_pos, 'E', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
-
-    ax = fig.add_subplot(gs[1,2])
+    ax = fig.add_subplot(gs[1,3])
     fpath = os.path.join(dirs.figure, f'map_noiseceiling_XY_R_ridge_best_model.png')
     if not os.path.isfile(fpath):
         vis.map_eval_cerebellum(data="noiseceiling_XY_R", normalize=False, model_name='best_model', method='ridge', outpath=fpath); # ax=ax
     vis.plot_png(fpath, ax=ax)
     ax.axis('off')
-    ax.text(x_pos, y_pos, 'F', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+    ax.text(x_pos, y_pos, 'H', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
 
     plt.subplots_adjust(left=0.125, bottom=0.001, right=2.0, top=2.0, wspace=.2, hspace=.3)
     save_path = os.path.join(dirs.figure, f'fig2.svg')
@@ -137,13 +153,13 @@ def fig3():
     ax = fig.add_subplot(gs[0,0])
     fpath = os.path.join(dirs.figure, f'group_distances_best_model_MDTB10-reg1.png')
     if not os.path.isfile(fpath):
-        vis.map_distances_cortex(model_name='best_model', atlas='MDTB10', surf='inflated', threshold=100, column=0, outpath=fpath, colorbar=False)
+        vis.map_distances_cortex(model_name='best_model', atlas='MDTB10', surf='inflated', threshold=100, column=0, outpath=fpath, colorbar=True)
     vis.plot_png(fpath, ax=ax)
     ax.axis('off')
     ax.text(x_pos, y_pos, 'A', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
 
     ax = fig.add_subplot(gs[0,1])
-    ax,_ = vis.plot_dispersion(y='var_w', hue=None, regions=[1], cortex='tessels0042', atlas='MDTB10',regions=None, stats=True, ax=ax);
+    ax,df = vis.plot_dispersion(y='var_w', hue='hem', x_label='region', plt_legend=True, y_label='dispersion', regions=[1], cortex='tessels0042', atlas='MDTB10', ax=ax);
     # plt.ylim([0.58, .83]);
 
     ax = fig.add_subplot(gs[0,2])
@@ -163,7 +179,7 @@ def fig3():
     ax.text(x_pos, y_pos, 'B', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
 
     ax = fig.add_subplot(gs[0,4])
-    ax,_ = vis.plot_dispersion(y='var_w', hue=None, regions=[2], cortex='tessels0042', atlas='MDTB10',regions=None, stats=True, ax=ax);
+    ax,df = vis.plot_dispersion(y='var_w', hue='hem', regions=[2], cortex='tessels0042', atlas='MDTB10', ax=ax);
 
     ax = fig.add_subplot(gs[0,5])
     fpath = os.path.join(dirs.figure, f'MDTB-reg2.png')
@@ -182,7 +198,7 @@ def fig3():
     ax.text(x_pos, y_pos, 'C', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
 
     ax = fig.add_subplot(gs[1,1])
-    ax,_ = vis.plot_dispersion(y='var_w', hue=None, regions=[3], cortex='tessels0042', atlas='MDTB10',regions=None, stats=True, ax=ax);
+    ax,df= vis.plot_dispersion(y='var_w', hue='hem', regions=[3], cortex='tessels0042', atlas='MDTB10', ax=ax);
 
     ax = fig.add_subplot(gs[1,2])
     fpath = os.path.join(dirs.figure, f'MDTB-reg3.png')
@@ -201,7 +217,7 @@ def fig3():
     ax.text(x_pos, y_pos, 'D', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
 
     ax = fig.add_subplot(gs[1,4])
-    ax,_ = vis.plot_dispersion(y='var_w', hue=None, regions=[4], cortex='tessels0042', atlas='MDTB10',regions=None, stats=True, ax=ax);
+    ax,_ = vis.plot_dispersion(y='var_w', hue='hem', regions=[4], cortex='tessels0042', atlas='MDTB10', ax=ax);
 
     ax = fig.add_subplot(gs[1,5])
     fpath = os.path.join(dirs.figure, f'MDTB-reg4.png')
@@ -220,7 +236,7 @@ def fig3():
     ax.text(x_pos, y_pos, 'E', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
 
     ax = fig.add_subplot(gs[2,1])
-    ax,_ = vis.plot_dispersion(y='var_w', hue=None, regions=[5], cortex='tessels0042', atlas='MDTB10',regions=None, stats=True, ax=ax);
+    ax,_ = vis.plot_dispersion(y='var_w', hue='hem', regions=[5], cortex='tessels0042', atlas='MDTB10', ax=ax);
 
     ax = fig.add_subplot(gs[2,2])
     fpath = os.path.join(dirs.figure, f'MDTB-reg5.png')
@@ -239,7 +255,7 @@ def fig3():
     ax.text(x_pos, y_pos, 'F', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
 
     ax = fig.add_subplot(gs[2,4])
-    ax,_ = vis.plot_dispersion(y='var_w', hue=None, regions=[6], cortex='tessels0042', atlas='MDTB10',regions=None, stats=True, ax=ax);
+    ax,_ = vis.plot_dispersion(y='var_w', hue='hem', regions=[6], cortex='tessels0042', atlas='MDTB10', ax=ax);
 
     ax = fig.add_subplot(gs[2,5])
     fpath = os.path.join(dirs.figure, f'MDTB-reg6.png')
@@ -258,7 +274,7 @@ def fig3():
     ax.text(x_pos, y_pos, 'G', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
 
     ax = fig.add_subplot(gs[3,1])
-    ax,_ = vis.plot_dispersion(y='var_w', hue=None, regions=[7], cortex='tessels0042', atlas='MDTB10',regions=None, stats=True, ax=ax);
+    ax,_ = vis.plot_dispersion(y='var_w', hue='hem', regions=[7], cortex='tessels0042', atlas='MDTB10', ax=ax);
 
     ax = fig.add_subplot(gs[3,2])
     fpath = os.path.join(dirs.figure, f'MDTB-reg7.png')
@@ -277,7 +293,7 @@ def fig3():
     ax.text(x_pos, y_pos, 'H', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
 
     ax = fig.add_subplot(gs[3,4])
-    ax,_ = vis.plot_dispersion(y='var_w', hue=None, regions=[8], cortex='tessels0042', atlas='MDTB10',regions=None, stats=True, ax=ax);
+    ax,_ = vis.plot_dispersion(y='var_w', hue='hem', regions=[8], cortex='tessels0042', atlas='MDTB10', ax=ax);
 
     ax = fig.add_subplot(gs[3,5])
     fpath = os.path.join(dirs.figure, f'MDTB-reg8.png')
@@ -296,7 +312,7 @@ def fig3():
     ax.text(x_pos, y_pos, 'I', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
 
     ax = fig.add_subplot(gs[4,1])
-    ax,_ = vis.plot_dispersion(y='var_w', hue=None, regions=[9], cortex='tessels0042', atlas='MDTB10',regions=None, stats=True, ax=ax);
+    ax,_ = vis.plot_dispersion(y='var_w', hue='hem', regions=[9], cortex='tessels0042', atlas='MDTB10', ax=ax);
 
     ax = fig.add_subplot(gs[4,2])
     fpath = os.path.join(dirs.figure, f'MDTB-reg9.png')
@@ -315,7 +331,7 @@ def fig3():
     ax.text(x_pos, y_pos, 'J', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
 
     ax = fig.add_subplot(gs[4,4])
-    ax,_ = vis.plot_dispersion(y='var_w', hue=None, regions=[10], cortex='tessels0042', atlas='MDTB10',regions=None, stats=True, ax=ax);
+    ax,_ = vis.plot_dispersion(y='var_w', hue='hem', regions=[10], cortex='tessels0042', atlas='MDTB10', ax=ax);
 
     ax = fig.add_subplot(gs[4,5])
     fpath = os.path.join(dirs.figure, f'MDTB-reg10.png')
@@ -329,7 +345,7 @@ def fig3():
     save_path = os.path.join(dirs.figure, f'fig3.svg')
     plt.savefig(save_path, bbox_inches="tight", dpi=300)
 
-def fig4():
+def fig3B():
     plt.clf()
     vis.plotting_style()
 
@@ -345,22 +361,35 @@ def fig4():
     ax = fig.add_subplot(gs[:,0])
     fpath = os.path.join(dirs.figure, f'group_lasso_percent_nonzero_cerebellum.png')
     if not os.path.isfile(fpath):
-        vis.map_lasso_cerebellum(model_name='lasso_tessels0362_alpha_-2', stat='percent', weights='nonzero', stats=True, outpath=fpath);
+        vis.map_lasso_cerebellum(model_name='lasso_tessels0362_alpha_-2', stat='percent', weights='nonzero', outpath=fpath);
     vis.plot_png(fpath, ax=ax)
     ax.axis('off')
     ax.text(x_pos, y_pos, 'A', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
 
     ax = fig.add_subplot(gs[0,1:])
-    ax,_ = vis.plot_surfaces(x='reg_names', hue=None, cortex='tessels0362', method='lasso', regions=None, stats=False, ax=ax);
-    ax.text(x_pos, y_pos, 'B', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+    ax,df = vis.plot_surfaces(x='reg_names', hue=None, cortex='tessels0362', method='lasso', regions=None, ax=ax);
+    # ax.text(x_pos, y_pos, 'B', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+    plt.ylim([0.1, 0.5])
+    plt.ylabel('% of cortical surface', fontsize=35)
+    plt.yticks([0.1, 0.2, 0.3, 0.4, 0.5], fontsize=40)
+    plt.xticks(fontsize=40)
+    # stats
+    result = sp.f_oneway(df['1'], df['2'], df['3'], df['4'], df['5'], df['6'], df['7'], df['8'], df['9'], df['10'])
+    print(f'F test for surfaces is {result}')
 
     ax = fig.add_subplot(gs[1,1:])
-    ax,_ = vis.plot_dispersion(y='var_w', hue=None, cortex='tessels0042', atlas='MDTB10',regions=None, stats=True, ax=ax);
-    plt.ylim([0.58, .83]);
-    ax.text(x_pos, y_pos, 'C', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+    ax,df = vis.plot_dispersion(y='var_w', hue=None, y_label='cortical dispersion', cortex='tessels0042', atlas='MDTB10', regions=None, ax=ax);
+    # ax.text(x_pos, y_pos, 'C', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+    plt.ylim([0.6, 0.8])
+    plt.ylabel('dispersion', fontsize=35)
+    plt.yticks([0.6, 0.7, 0.8], fontsize=40)
+    plt.xticks(fontsize=40)
+    # stats
+    result = sp.f_oneway(df[1], df[2], df[3], df[4], df[5], df[6], df[7], df[8], df[9], df[10])
+    print(f'F test for dispersion is {result}')
 
     plt.subplots_adjust(left=0.125, bottom=0.001, right=2.0, top=2.0, wspace=.2, hspace=.3)
-    save_path = os.path.join(dirs.figure, f'fig4.svg')
+    save_path = os.path.join(dirs.figure, f'fig3B.svg')
     plt.savefig(save_path, bbox_inches="tight", dpi=300)
 
 def fig5(format='png'):

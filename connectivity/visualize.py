@@ -8,7 +8,6 @@ from PIL import Image
 import matplotlib.pyplot as plt
 from nilearn.surface import load_surf_data
 from nilearn.image import math_img
-from scipy import stats as sp
 from matplotlib.colors import LinearSegmentedColormap
 import matplotlib as mpl
 import nibabel as nib
@@ -37,6 +36,7 @@ def plotting_style():
             'axes.spines.top': False,
             'axes.spines.right': False}
     plt.rcParams.update(params)
+    np.set_printoptions(formatter={'float_kind':'{:f}'.format})
 
 def get_summary(
     summary_type='eval',
@@ -264,9 +264,9 @@ def plot_eval_predictions(
         if hue:
             fname = f'eval_predictions_{hue}_{x}.svg'
         plt.savefig(os.path.join(dirs.figure, fname, pad_inches=0, bbox_inches='tight'))
-    
-    df = pd.pivot_table(dataframe, values=y, index='subj_id', columns='method', aggfunc=np.mean)
-    print(sp.ttest_rel(df.WTA, df.ridge, nan_policy='omit'))
+
+    df = pd.pivot_table(dataframe, values=y, index='subj_id', columns=['method', 'X_data'], aggfunc=np.mean)
+    return df
 
 def plot_test_predictions(
     dataframe,
@@ -369,7 +369,6 @@ def plot_surfaces(
     hue=None,
     regions=None,
     save=True,
-    stats=False,
     ax=None,
     palette=None
     ):
@@ -426,22 +425,22 @@ def plot_surfaces(
         dirs = const.Dirs()
         plt.savefig(os.path.join(dirs.figure, f'cortical_surfaces_{exp}_{y}.svg'), pad_inches=0, bbox_inches='tight')
 
-    if atlas=='MDTB10' and stats:
-        df1 = pd.pivot_table(dataframe, values='percent', index='subj', columns='reg_names', aggfunc=np.mean)
-        print(sp.f_oneway(df1['1'], df1['2'], df1['3'], df1['4'], df1['5'], df1['6'], df1['7'], df1['8'], df1['9'], df1['10']))
+    df1 = pd.pivot_table(dataframe, values='percent', index='subj', columns='reg_names', aggfunc=np.mean)
 
-    return ax, dataframe
+    return ax, df1
 
 def plot_dispersion(
     exp='sc1',
-    y='var_w',    
+    y='var_w',   
+    y_label=None,
+    x_label=None, 
     cortex='tessels1002', 
     cortex_group='tessels',
     atlas='MDTB10',
     method='ridge',
     hue=None,
+    plt_legend=False,
     regions=None, # [1,2,5]
-    stats=True,
     save=False,
     ax=None
     ):
@@ -469,32 +468,41 @@ def plot_dispersion(
     if regions is not None:
         dataframe = dataframe[dataframe['roi'].isin(regions)]
 
-    # # color plot according to MDTB10 atlas
+    # color plot according to MDTB10 atlas
     fpath = nio.get_cerebellar_atlases(atlas_keys=[f'atl-{atlas}'])[0]
-    rgba, cpal, _ = nio.get_gifti_colors(fpath)
+    _, cpal, _ = nio.get_gifti_colors(fpath)
+
+    palette = 'rocket'
+    if regions is None:
+        palette = cpal
 
     ax = sns.barplot(x='roi', 
                 y=y, 
                 hue=hue, 
                 data=dataframe,
-                palette='rocket',
+                palette=palette,
                 ax=ax
                 )
-    ax.set_xlabel('')
-    ax.set_ylabel('Cortical Dispersion')
+    ax.set_ylabel(y_label)
+    ax.set_xlabel(x_label)
     plt.xticks(rotation="45", ha="right")
-    if hue:
-        plt.legend(loc='best', frameon=False) # bbox_to_anchor=(1, 1)
 
-    if stats and atlas=='MDTB10':
-        df1 = pd.pivot_table(dataframe, values=y, index='subj', columns='roi', aggfunc=np.mean)
-        print(sp.f_oneway(df1[1], df1[2], df1[3], df1[4], df1[5], df1[6], df1[7], df1[8], df1[9], df1[10]))
+    if regions is not None:
+        plt.ylim([0.6, 0.85])
+        plt.yticks([0.65, 0.75, 0.85])
+
+    if hue and plt_legend:
+        plt.legend(loc='best', frameon=False) # bbox_to_anchor=(1, 1)
+    else:
+        plt.legend([],[], frameon=False)
+
+    df1 = pd.pivot_table(dataframe, values=y, index='subj', columns='roi', aggfunc=np.mean)
 
     if save:
         dirs = const.Dirs()
         plt.savefig(os.path.join(dirs.figure, f'cortical_dispersion_{y}.svg'), pad_inches=0, bbox_inches='tight')
 
-    return ax, dataframe
+    return ax, df1
 
 def map_distances_cortex(
     atlas='MDTB10',
@@ -541,7 +549,7 @@ def map_distances_cortex(
             nio.view_cortex(giftis[i], surf=surf, hemisphere=hem, title=title, column=column, colorbar=colorbar, outpath=outpath)
 
     if surf=='inflated':
-        nio.view_cortex_inflated(giftis, column=column, borders=borders, outpath=outpath)
+        nio.view_cortex_inflated(giftis, column=column, borders=borders, outpath=outpath, colorbar=colorbar)
 
 def map_eval_cerebellum(
     data="R",
