@@ -445,32 +445,26 @@ def run(cortex="tessels0362",
         dataframe = summary.get_summary('train', exps=['sc1'], method=['ridge', 'WTA', 'lasso']) 
         models, cortex_names = summary.get_best_models(dataframe)
 
-        eval_names = ['weighted_all'] #  'weighted_common', 'weighted_unique'
-        splitbys = ['all'] # 'common', 'unique'
+        for (best_model, cortex) in zip(models, cortex_names):
+            
+            # should trained model be evaluated?
+            eval = _check_eval(model_name=best_model, train_exp="sc1", eval_exp="sc2")
 
-        for (eval_name, splitby) in zip(eval_names, splitbys):
+            # delete training models that are suboptimal (save space)
+            if delete_train:
+                _delete_models(exp="sc1", best_model=best_model)
 
-            for (best_model, cortex) in zip(models, cortex_names):
-                
-                # should trained model be evaluated?
-                eval = _check_eval(model_name=best_model, train_exp="sc1", eval_exp="sc2")
-
-                # delete training models that are suboptimal (save space)
-                if delete_train:
-                    _delete_models(exp="sc1", best_model=best_model)
-
-                eval = True
-                if eval:
-                    # test best train model
-                    eval_model(model_name=best_model, 
-                            cortex=cortex, 
-                            train_exp="sc1", 
-                            eval_exp="sc2", 
-                            eval_name=eval_name, 
-                            splitby=splitby,
-                            )
-                else:
-                    print(f'{best_model} was not evaluated')
+            if eval:
+                # test best train model
+                eval_model(model_name=best_model, 
+                        cortex=cortex, 
+                        train_exp="sc1", 
+                        eval_exp="sc2", 
+                        eval_name='weighted_all', 
+                        splitby='all',
+                        )
+            else:
+                print(f'{best_model} was not evaluated')
 
 if __name__ == "__main__":
     run()
