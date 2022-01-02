@@ -76,7 +76,7 @@ def run(connect_dir, learn_dir):
 
     for (model_old, model_new) in zip(df_filter['models_old'], df_filter['models']):
         src = os.path.join(connect_dir, model_old + '.h5')
-        dest = os.path.join(mdtb_dir, model_new + '_mdtb.h5')
+        dest = os.path.join(mdtb_dir, model_new + '.h5')
         copyfile(src, dest)
 
         # transpose the data first

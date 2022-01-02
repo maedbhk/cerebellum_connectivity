@@ -442,7 +442,7 @@ def run(cortex="tessels0362",
 
     elif train_or_eval=="eval":
         # get best model (for each method and parcellation)
-        dataframe = summary.get_summary('train', exps=['sc1'], method=['ridge', 'WTA']) # 'lasso'
+        dataframe = summary.get_summary('train', exps=['sc1'], method=['ridge', 'WTA', 'lasso']) # 'lasso'
         models, cortex_names = summary.get_best_models(dataframe)
 
         eval_names = ['weighted_all', 'weighted_common', 'weighted_unique']
@@ -458,8 +458,7 @@ def run(cortex="tessels0362",
                 # delete training models that are suboptimal (save space)
                 if delete_train:
                     _delete_models(exp="sc1", best_model=best_model)
-
-                eval = True
+                    
                 if eval:
                     # test best train model
                     eval_model(model_name=best_model, 
