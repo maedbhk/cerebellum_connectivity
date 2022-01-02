@@ -454,7 +454,7 @@ def run(cortex="tessels0362",
             if delete_train:
                 _delete_models(exp="sc1", best_model=best_model)
 
-            if eval:
+            if eval and 'mdtb1002' not in best_model:
                 # test best train model
                 eval_model(model_name=best_model, 
                         cortex=cortex, 
