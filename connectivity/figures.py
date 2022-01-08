@@ -2,6 +2,7 @@
 from matplotlib import pyplot as plt
 import matplotlib as mpl
 from matplotlib.gridspec import GridSpec
+import seaborn as sns
 
 import numpy as np
 import os
@@ -61,11 +62,11 @@ def fig2():
     dirs = const.Dirs()
 
     fig = plt.figure()
-    gs = GridSpec(2, 4, figure=fig)
+    gs = GridSpec(2, 3, figure=fig)
 
     x_pos = -0.1
     y_pos = 1.1
-    labelsize = 30
+    labelsize = 40
 
     ax = fig.add_subplot(gs[0,0])
     df = vis.get_summary("train",exps='sc1', method=['ridge'], atlas=['tessels'], summary_name=[''])
@@ -82,56 +83,46 @@ def fig2():
     
     ax = fig.add_subplot(gs[0,1])
     dataframe = vis.get_summary('eval', exps=['sc2'], atlas=['tessels'], method=['WTA', 'ridge', 'lasso'], summary_name=['weighted_all'])
-    df = vis.plot_eval_predictions(dataframe=dataframe, plot_noiseceiling=True, normalize=False, hue='method', ax=ax)
+    df,ax = vis.plot_eval_predictions(dataframe=dataframe, noiseceiling='Y', normalize=False, hue='method', ax=ax)
     ax.text(x_pos, y_pos, 'C', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
     ax.set_xticks([80, 304, 670, 1190, 1848])
+    ax.set_xticklabels([80, 304, 670, 1190, 1848], rotation=45);
     # do statistics
-    result = sp.ttest_rel(df.lasso, df.ridge, nan_policy='omit')
-    print(f'F test for evaluation between lasso and ridge is: {result}')
+    result = sp.ttest_rel(df.ridge, df.lasso, nan_policy='omit')
+    print(f'F test for evaluation between lasso and ridge for TESSELS is: {result}')
 
     ax = fig.add_subplot(gs[1,1])
-    dataframe = vis.get_summary('eval', exps=['sc2'], atlas=['tessels'], method=['WTA', 'ridge', 'lasso'], summary_name=['weighted_all'])
-    df = vis.plot_eval_predictions(dataframe=dataframe, plot_noiseceiling=False, normalize=True, hue='method', ax=ax)
+    fpath = os.path.join(dirs.figure, f'map_noiseceiling_Y_R_ridge_best_model.png')
+    if not os.path.isfile(fpath):
+        vis.map_eval_cerebellum(data="noiseceiling_Y_R", normalize=False, model_name='best_model', method='ridge', outpath=fpath); # ax=ax
+    vis.plot_png(fpath, ax=ax)
+    ax.axis('off')
     ax.text(x_pos, y_pos, 'D', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
-    ax.set_xticks([80, 304, 670, 1190, 1848])
-    # do statistics
-    result = sp.ttest_rel(df.WTA, df.ridge, nan_policy='omit')
-    print(f'F test for evaluation between WTA and ridge is: {result}')
 
     ax = fig.add_subplot(gs[0,2])
-    dataframe = vis.get_summary('eval', exps=['sc2'], atlas=['yeo', 'schaefer', 'gordon', 'arslan', 'shen', 'fan'], method=['WTA', 'ridge', 'lasso'], summary_name=['weighted_all'])
-    df = vis.plot_eval_predictions(dataframe=dataframe, plot_noiseceiling=True, normalize=False, hue='method', ax=ax)
-    ax.text(x_pos, y_pos, 'E', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
-    # ax.set_xticks([7, 17])
+    dataframe = vis.get_summary('eval', exps=['sc2'], atlas=['yeo'], cortex=['yeo7'], method=['WTA', 'ridge', 'lasso'], summary_name=['weighted_all'])
+    df,ax = vis.plot_eval_predictions(dataframe=dataframe, noiseceiling=None, normalize=True, plot_type='point', hue='method', ax=ax)
     # do statistics
-    result = sp.ttest_rel(df.WTA, df.ridge, nan_policy='omit')
-    print(f'F test for evaluation between lasso and ridge is: {result}')
+    result = sp.ttest_rel(df.ridge, df.WTA, nan_policy='omit')
+    print(f'F test for evaluation between WTA and ridge for YEO is: {result}')
 
-    ax = fig.add_subplot(gs[1,2])
-    dataframe = vis.get_summary('eval', exps=['sc2'], atlas=['yeo', 'schaefer', 'gordon', 'arslan', 'shen', 'fan'], method=['WTA', 'ridge', 'lasso'], summary_name=['weighted_all'])
-    df = vis.plot_eval_predictions(dataframe=dataframe, plot_noiseceiling=False, normalize=True, hue='method', ax=ax)
-    ax.text(x_pos, y_pos, 'F', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
-    # ax.set_xticks([7, 17])
+    dataframe = vis.get_summary('eval', exps=['sc2'], atlas=['tessels'], method=['WTA', 'ridge', 'lasso'], summary_name=['weighted_all'])
+    df,ax = vis.plot_eval_predictions(dataframe=dataframe, noiseceiling=None, normalize=True, hue='method', ax=ax)
+    ax.text(x_pos, y_pos, 'E', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+    ax.set_xticks([7, 80, 304, 670, 1190, 1848])
+    ax.set_xticklabels([7, 80, 304, 670, 1190, 1848], rotation=45);
     # do statistics
-    result = sp.ttest_rel(df.WTA, df.ridge, nan_policy='omit')
-    print(f'F test for evaluation between WTA and ridge is: {result}')
+    result = sp.ttest_rel(df.ridge, df.WTA, nan_policy='omit')
+    print(f'F test for evaluation between WTA and ridge for TESSELS is: {result}')
     
-    ax = fig.add_subplot(gs[0,3])
+    ax = fig.add_subplot(gs[1,2])
     fpath = os.path.join(dirs.figure, f'map_R_ridge_best_model_normalize.png')
     best_model = 'ridge_tessels1002_alpha_8'
     if not os.path.isfile(fpath):
         vis.map_eval_cerebellum(data="R", model_name=best_model, normalize=True, method='ridge', outpath=fpath); # cscale=[0, 0.4]
     vis.plot_png(fpath, ax=ax)
     ax.axis('off')
-    ax.text(x_pos, y_pos, 'G', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
-
-    ax = fig.add_subplot(gs[1,3])
-    fpath = os.path.join(dirs.figure, f'map_noiseceiling_XY_R_ridge_best_model.png')
-    if not os.path.isfile(fpath):
-        vis.map_eval_cerebellum(data="noiseceiling_XY_R", normalize=False, model_name='best_model', method='ridge', outpath=fpath); # ax=ax
-    vis.plot_png(fpath, ax=ax)
-    ax.axis('off')
-    ax.text(x_pos, y_pos, 'H', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+    ax.text(x_pos, y_pos, 'F', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
 
     plt.subplots_adjust(left=0.125, bottom=0.001, right=2.0, top=2.0, wspace=.2, hspace=.3)
     save_path = os.path.join(dirs.figure, f'fig2.svg')
@@ -392,28 +383,46 @@ def fig3B():
     save_path = os.path.join(dirs.figure, f'fig3B.svg')
     plt.savefig(save_path, bbox_inches="tight", dpi=300)
 
-def fig5(format='png'):
+def fig4():
     plt.clf()
     vis.plotting_style()
-
-    dirs = const.Dirs()
 
     fig = plt.figure()
     gs = GridSpec(1, 2, figure=fig)
 
     x_pos = -0.1
     y_pos = 1.1
-    labelsize = 30
+    labelsize = 40
 
     ax = fig.add_subplot(gs[0,0])
-    vis.plot_test_predictions(ax=ax, hue='test_routine')
-    ax.set_xticks([80, 304, 670, 1190, 1848])
+    dataframe = vis.get_summary_test(summary_name='learning', 
+                        atlas=['icosahedron'], 
+                        best_models=False, 
+                        method=['WTA', 'RIDGE', 'LASSO'], 
+                        incl_rest=True,
+                        routine=None,
+                        incl_instruct=False
+                        )
+    dataframe['method'] = dataframe['method'].rename({'RIDGE': 'ridge', 'LASSO': 'lasso'})
+    df, ax = vis.plot_eval_predictions(dataframe=dataframe.query('num_regions<=1190'), 
+                        x='regions', 
+                        hue='method', 
+                        noiseceiling=None, 
+                        normalize=True,
+                        ax=ax
+                        );
+    ax.set_xticks([7, 80, 304, 670, 1190]) #1848
     ax.text(x_pos, y_pos, 'A', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+    # do statistics
+    result = sp.ttest_rel(df.RIDGE, df.WTA, nan_policy='omit')
+    print(f'F test for evaluation between wta and ridge for TESSELS is: {result}')
 
     ax = fig.add_subplot(gs[0,1])
+    ax.text(x_pos, y_pos, 'B', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
 
     plt.subplots_adjust(left=0.125, bottom=0.001, right=2.0, top=2.0, wspace=.2, hspace=.3)
-    plt.savefig(os.path.join(dirs.figure, f'fig4.{format}'), bbox_inches="tight", dpi=300)
+    dirs = const.Dirs()
+    plt.savefig(os.path.join(dirs.figure, 'fig4.svg'), bbox_inches="tight", dpi=300)
 
 def figS1(format='png'):
     plt.clf()

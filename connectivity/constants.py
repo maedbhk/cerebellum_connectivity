@@ -47,6 +47,7 @@ class Dirs:
         self.reg_dir = self.data_dir / "RegionOfInterest"
         self.glm_dir = self.data_dir / f"GLM_firstlevel_{glm_num}"
         self.beta_reg_dir = self.data_dir / "beta_roi" / glm
+        self.conn_dir = self.data_dir / "conn_models"
         self.conn_train_dir = self.data_dir / "conn_models" / "train"
         self.conn_eval_dir = self.data_dir / "conn_models" / "eval"
         self.atlas = base_dir / "atlases"

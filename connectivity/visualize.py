@@ -21,17 +21,17 @@ import connectivity.nib_utils as nio
 
 def plotting_style():
     plt.style.use('seaborn-poster') # ggplot
-    params = {'axes.labelsize': 25,
+    params = {'axes.labelsize': 30,
             'axes.titlesize': 25,
             'legend.fontsize': 20,
-            'xtick.labelsize': 20,
-            'ytick.labelsize': 20,
+            'xtick.labelsize': 25,
+            'ytick.labelsize': 25,
             # 'figure.figsize': (10,5),
             'font.weight': 'regular',
             # 'font.size': 'regular',
             'font.family': 'sans-serif',
             'font.serif': 'Helvetica Neue',
-            'lines.linewidth': 3,
+            'lines.linewidth': 6,
             'axes.grid': False,
             'axes.spines.top': False,
             'axes.spines.right': False}
@@ -44,6 +44,7 @@ def get_summary(
     exps=['sc2'],
     splitby=None,
     method=None,
+    cortex=None,
     atlas=None
     ):
     """Appends different summary csv files (train or eval) and filters based on inputs
@@ -99,51 +100,80 @@ def get_summary(
         df_concat = df_concat[df_concat['method'].isin(method)]
     if atlas is not None:
         df_concat = df_concat[df_concat['atlas'].isin(atlas)]
+    if cortex is not None:
+        df_concat = df_concat[df_concat['X_data'].isin(cortex)]
 
     return df_concat
 
-def test_summary(
-    summary_name="test_summary_learning",
-    train_exp='sc1',
-    models_to_include=['RIDGE']
+def get_summary_test(
+    summary_name=None,
+    best_models=False,
+    splitby=None,
+    method=None,
+    atlas=None,
+    routine=None,
+    data_to_predict=None,
+    task_subset=None,
+    incl_rest=True,
+    incl_instruct=False,
     ):
+    """Loads generalization dataframe (mdtb models evaluated on new experiments)
+
+    Args: 
+        summary_name (str or None): name of summary file e.g., 'learning'
+        best_models (bool): default is False
+        splitby (list of str or None):
+        method (list of str or None):
+        atlas (list of str or None):
+        routine (list of str or None):
+        data_to_predict (list of str or None):
+        task_subset (list of str or None):
+        incl_rest (bool): default is True
+        incl_instruct (bool): default is False
+        ax (mpl axis or None):
     """
-    JD:I GUESS THIS IS FOR GENERALIZATION TESTING.
-    YOU LIKELY DO NOT NEED THIS - INSTEAD YOU SHOULD BE ABLE TO
-    RELY ON
-    load test summary containing all metrics about test models (mdtb models tested on external data).
-    Prefix 'gen' is appended to cols.
-    Args:
-        summary_name (str): name of summary file
-        train_exp (str): default is 'sc1'
-        models_to_include (list of str):
-    Returns:
-        pandas dataframe containing test summary
-    """
-    dirs = const.Dirs(exp_name=train_exp)
-    fpath = os.path.join(dirs.data_dir, "conn_models", f"{summary_name}.csv")
+    
+    dirs = const.Dirs(exp_name='sc1')
+    if summary_name:
+        fpath = os.path.join(dirs.conn_dir, f'test_summary_{summary_name}.csv')
+    else:
+        fpath = os.path.join(dirs.conn_dir, f'test_summary.csv')
+
+    # load dataframe
     df = pd.read_csv(fpath)
+    
+    if best_models:
+        print('filtering for best models')
+        df = df[df['name'].isin(['RIDGE_Icosahedron-1002_alpha_8', 'LASSO_Icosahedron-362_alpha_-3', 'WTA_Icosahedron-42'])].reset_index()
 
+    # reformat columns
     df['atlas'] = df['X_data'].apply(lambda x: _add_atlas(x))
+    df['method'] = df['name'].str.split('_').str.get(0)
+    df['task'] = df['task'].str.replace('_', ' ')
+    df['trial_type'] = df['task'] + ' (' + df['trial_type'].str.split('_').str.get(-1) + ")"
+    df['condition'] = df['trial_type'].str.extract(r'\(([a-z].*)\)')
+    df['sess_id'] = 'ses-' + df['sess_id'].astype(int).astype(str)
+    df['R_eval'] = df['R']
 
-    cols = []
-    for col in df.columns:
-        if any(s in col for s in ("eval", "train")):
-            cols.append(col)
-        else:
-            cols.append("test_" + col)
+    # filter task
+    if task_subset is not None:
+        df = df[df['task'].isin(task_subset)]
+    if splitby is not None:
+        df = df[df['splitby'].isin(splitby)]
+    if method is not None:
+        df = df[df['method'].isin(method)]
+    if atlas is not None:
+        df = df[df['atlas'].isin(atlas)]
+    if routine is not None:
+        df = df[df['routine'].isin(routine)]
+    if data_to_predict is not None:
+        df = df[df['data_to_predict'].isin(data_to_predict)]
+    if not incl_rest:
+        df = df[~df['condition'].str.contains("fixation")]
+    if not incl_instruct:
+        df = df.query('instruct==False')
 
-    df.columns = cols
-    df['test_model'] = df['test_name'].str.split('_').str[0]
-
-    # get noise ceilings
-    df["test_noiseceiling_Y"] = np.sqrt(df.test_noise_Y_R)
-    # df["test_noiseceiling_XY"] = np.sqrt(df.test_noise_Y_R) * np.sqrt(df.test_noise_X_R)
-
-    if models_to_include:
-        df = df[df['test_model'].isin(models_to_include)]
-
-    return df
+    return df.reset_index()
 
 def roi_summary(
     data_fpath,
@@ -205,7 +235,7 @@ def plot_train_predictions(
         exps (list of str): default is ['sc1']
         hue (str or None): can be 'exp', 'Y_data' etc.
     """
-    ax = sns.lineplot(x=x, y="R_cv", hue=hue, data=dataframe, legend=True)
+    ax = sns.lineplot(x=x, y="R_cv", hue=hue, data=dataframe, legend=True, err_style='bars', palette='crest')
     ax.legend(loc='best', frameon=False) # bbox_to_anchor=(1, 1)
     plt.xticks(rotation="45", ha="right")
     ax.set_xlabel("")
@@ -228,77 +258,56 @@ def plot_eval_predictions(
     dataframe,
     x='num_regions',
     normalize=True,
-    plot_noiseceiling=True,
+    noiseceiling='Y',
     hue=None,
     save=False,
     ax=None,
     title=False,
+    plot_type='line'
     ):
     """plots eval predictions (R CV) for all models in dataframe.
     Args:
-        exps (list of str): default is ['sc2']
-        hue (str or None): can be 'train_exp', 'Y_data' etc.
+        dataframe (pd dataframe):
+        x (str or None): default is 'num_regions'
+        normalize (bool): default is True
+        noiseceiling (str): options: 'Y', 'Y_group'. default is 'Y'
+        hue (str of None): default is None
+        save (bool): default is False
+        ax (mpl axis or None): default is None
+        title (bool): default is False
+        plot_type (str): default is 'line'
     """
 
     dataframe['R_eval_norm'] = dataframe['R_eval']/dataframe['noiseceiling_XY']
 
-    y='R_eval'
+    y = 'R_eval'
     if normalize:
         y='R_eval_norm'
 
-    ax = sns.lineplot(x=x, y=y, hue=hue, data=dataframe) # legend=True,
-    if plot_noiseceiling:
-        ax = sns.lineplot(x=x, y='noiseceiling_Y', data=dataframe, color='k', ax=ax, ci=None, linewidth=4)
-    ax.legend(loc='best', frameon=False) # bbox_to_anchor=(1, 1)
-    plt.xticks(rotation="45", ha="right")
-    ax.lines[-1].set_linestyle("--")
-    ax.set_xlabel("")
+    if plot_type=='line':
+        ax = sns.lineplot(x=x, y=y, hue=hue, data=dataframe, err_style='bars', palette='rocket') # legend=True,
+        ax.legend(loc='best', frameon=False)
+    elif plot_type=='point':
+        ax = sns.pointplot(x=x, y=y, hue=hue, data=dataframe, err_style='bars', palette='rocket')
+    elif plot_type=='bar':
+        ax = sns.barplot(x=x, y=y, hue=hue, data=dataframe, err_style='bars', palette='rocket')
+
+    if noiseceiling:
+        ax = sns.lineplot(x=x, y=f'noiseceiling_{noiseceiling}', data=dataframe, color='k', ax=ax, ci=None, linewidth=4)
+        ax.lines[-1].set_linestyle("--")
+    ax.set_xlabel("Regions")
     ax.set_ylabel("R")
+    plt.xticks(rotation="45", ha="right")
 
     if title:
         plt.title("Model Evaluation", fontsize=20)
 
     if save:
         dirs = const.Dirs()
-        fname = f'eval_predictions_{x}.svg'
-        if hue:
-            fname = f'eval_predictions_{hue}_{x}.svg'
-        plt.savefig(os.path.join(dirs.figure, fname, pad_inches=0, bbox_inches='tight'))
+        plt.savefig(os.path.join(dirs.figure, 'eval_predictions.svg', pad_inches=0, bbox_inches='tight'))
 
-    df = pd.pivot_table(dataframe, values=y, index='subj_id', columns=['method', 'X_data'], aggfunc=np.mean)
-    return df
-
-def plot_test_predictions(
-    dataframe,
-    x='num_regions',
-    hue=None,
-    save=False,
-    noiseceiling='group',
-    ax=None,
-    title=False,
-    ):
-    """plots eval predictions (R CV) for all models in dataframe.
-    Args:
-        exps (list of str): default is ['sc2']
-        hue (str or None): can be 'train_exp', 'Y_data' etc.
-    """
-    ax = sns.lineplot(x=x, y="R_eval", hue=hue, ci=70, color='g', legend=True, data=dataframe, ax=ax)
-    ax = sns.lineplot(x=x, y='test_noiseceiling_Y', data=dataframe, color='k', ax=ax, ci=None, linewidth=4)
-    ax.legend(loc='best', frameon=False) # bbox_to_anchor=(1, 1)
-    plt.xticks(rotation="45", ha="right")
-    ax.lines[-1].set_linestyle("--")
-    # ax.lines[0].set_color('g')
-    ax.set_xlabel("")
-    ax.set_ylabel("R")
-
-    if title:
-        plt.title("Model Generalization", fontsize=20)
-
-    if save:
-        dirs = const.Dirs()
-        plt.savefig(os.path.join(dirs.figure, f'test_predictions_learning.png'), pad_inches=0, bbox_inches='tight')
-
-    return dataframe
+    df = pd.pivot_table(dataframe, values=y, index='subj_id', columns=['method', 'num_regions'], aggfunc=np.mean) # 'X_data'
+    return df, ax
 
 def plot_distances(
     exp='sc1',
