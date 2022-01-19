@@ -105,7 +105,7 @@ def get_summary(
 
     return df_concat
 
-def get_summary_test(
+def get_summary_learning(
     summary_name=None,
     best_models=False,
     splitby=None,
