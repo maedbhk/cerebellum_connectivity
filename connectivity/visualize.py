@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import seaborn as sns
 import glob
+from pathlib import Path
 import matplotlib.image as mpimg
 from PIL import Image
 import matplotlib.pyplot as plt
@@ -176,38 +177,42 @@ def get_summary_learning(
     return df.reset_index()
 
 def roi_summary(
-    data_fpath,
-    atlas_nifti,
-    atlas_gifti,
-    plot=False
+    nifti,
+    atlas='MDTB10',
+    plot=True,
+    ax=None
     ):
     """plot roi summary of data in `fpath`
 
     Args:
-        data_fpath (str): full path to nifti image
-        atlas_nifti (str): full path to nifti atlas  (e.g., ./MDTB_10Regions.nii')
-        atlas_gifti (str): full path to gifti atlas (e.g., ./MDTB_10Regions.label.gii)
+        nifti (str): full path to nifti image
+        atlas (str): default is 'MDTB10'
         plot (bool): default is False
     Returns:
         dataframe (pd dataframe)
     """
 
+    atlas_gifti = nio.get_cerebellar_atlases(atlas_keys=[f'atl-{atlas}'])[0]
+    labels = nio.get_gifti_labels(fpath=atlas_gifti)
+    rgba, cpal, cmap = nio.get_gifti_colors(fpath=atlas_gifti, ignore_0=True)
 
     # get rois for `atlas`
-    rois = cdata.read_suit_nii(atlas_nifti)
+    if atlas=='MDTB10':
+        atlas_name = 'atl-MDTB10_space-SUIT_dseg.nii'
+    elif atlas=='Buckner7':
+        atlas_name = 'atl-Buckner7_space-SUIT_dseg.nii'
+    elif atlas=='Buckner17':
+        atlas_name = 'atl-Buckner17_space-SUIT_dseg.nii'
+    
+    rois = cdata.read_suit_nii(os.path.join(Path(atlas_gifti).parent, atlas_name))
 
-    # get roi colors
-    rgba, cpal, cmap = nio.get_gifti_colors(fpath=atlas_gifti, ignore_0=True)
-    labels = nio.get_gifti_labels(fpath=atlas_gifti)
-
-    data = cdata.read_suit_nii(data_fpath)
+    data = cdata.read_suit_nii(nifti)
     roi_mean, regs = cdata.average_by_roi(data, rois)
     df = pd.DataFrame({'mean': list(np.hstack(roi_mean)),
                     'regions': list(regs),
                     'labels': list(labels)
                     })
     if plot:
-        #plt.figure(figsize=(8,8))
         df = df.query('regions!=0')
         sns.barplot(x='labels', y='mean', data=df, palette=cpal)
         plt.xticks(rotation='45')
@@ -371,7 +376,7 @@ def plot_surfaces(
     x='reg_names',
     y='percent',    
     cortex_group='tessels',
-    cortex='tessels1002',
+    cortex='tessels0362',
     weights='nonzero', 
     method='lasso',
     atlas='MDTB10',
@@ -385,13 +390,13 @@ def plot_surfaces(
     dirs = const.Dirs(exp_name=exp)
 
     # load in distances
-    dataframe_vox = pd.read_csv(os.path.join(dirs.conn_train_dir, 'cortical_surface_voxels_stats.csv')) 
-    dataframe_roi = pd.read_csv(os.path.join(dirs.conn_train_dir, f'cortical_surface_rois_stats_{atlas}.csv')) 
-    dataframe = pd.concat([dataframe_vox, dataframe_roi]) 
+    # dataframe_vox = pd.read_csv(os.path.join(dirs.conn_train_dir, 'cortical_surface_voxels_stats.csv')) 
+    dataframe = pd.read_csv(os.path.join(dirs.conn_train_dir, f'cortical_surface_rois_stats_{atlas}.csv')) 
 
     # dataframe['subregion'] = dataframe['reg_names'].str.replace(re.compile('[^a-zA-Z]'), '', regex=True)
     dataframe['num_regions'] = dataframe['cortex'].str.split('_').str.get(-1).str.extract('(\d+)').astype(float)*2
     dataframe['cortex_group'] = dataframe['cortex'].apply(lambda x: _add_atlas(x))
+    dataframe['reg_names'] = dataframe['reg_names'].str.replace('Region', '').astype(int)
 
     # filter 
     if regions is not None:
@@ -410,11 +415,10 @@ def plot_surfaces(
     # color plot according to MDTB10 atlas
     fpath = nio.get_cerebellar_atlases(atlas_keys=[f'atl-{atlas}'])[0]
     _, cpal, _ = nio.get_gifti_colors(fpath)
-    palette = cpal
 
-    # df = dataframe.groupby(['subj', x]).mean().reset_index();
-
-    dataframe['reg_names'] = dataframe['reg_names'].str.replace('Region', '')
+    palette = 'rocket'
+    if regions is None:
+        palette = cpal
 
     ax = sns.barplot(x=x, 
         y=y, 
@@ -437,6 +441,53 @@ def plot_surfaces(
     df1 = pd.pivot_table(dataframe, values='percent', index='subj', columns='reg_names', aggfunc=np.mean)
 
     return ax, df1
+
+def plot_surfaces_group(
+    model_name='best_model',
+    atlas='MDTB10',
+    x='regions',
+    y='mean', 
+    hue=None,
+    ax=None,
+    save=False
+    ):
+
+    dirs = const.Dirs(exp_name='sc1')
+
+    # get best model
+    if model_name=="best_model":
+        dataframe = get_summary(exps=['sc1'], summary_type='train', method=['lasso'], atlas=['tessels'])
+        model_name, cortex = get_best_model(dataframe)
+
+    # get model
+    fpath = os.path.join(dirs.conn_train_dir, model_name)
+    nifti = os.path.join(fpath, 'group_lasso_percent_nonzero_cerebellum.nii')
+    
+    # get roi summary of `nifti`
+    dataframe = roi_summary(nifti, atlas=atlas, plot=False, ax=ax)
+
+        # color plot according to MDTB10 atlas
+    fpath = nio.get_cerebellar_atlases(atlas_keys=[f'atl-{atlas}'])[0]
+    _, cpal, _ = nio.get_gifti_colors(fpath)
+    palette = cpal
+
+    ax = sns.barplot(x=x, 
+        y=y, 
+        hue=hue, 
+        data=dataframe.query('regions!=0'),
+        palette=palette,
+        ax=ax
+        )
+    ax.set_xlabel('Regions')
+    ax.set_ylabel('Percentage of cortical surface (group)')
+    plt.xticks(rotation="45", ha="right")
+
+    if hue:
+        plt.legend(loc='best', frameon=False) # bbox_to_anchor=(1, 1)
+
+    if save:
+        dirs = const.Dirs()
+        plt.savefig(os.path.join(dirs.figure, f'cortical_surfaces_group.svg'), pad_inches=0, bbox_inches='tight')
 
 def plot_dispersion(
     exp='sc1',

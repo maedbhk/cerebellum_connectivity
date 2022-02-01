@@ -405,7 +405,7 @@ def get_cortical_surfaces(
 
 def get_cerebellar_atlases(
     atlas_keys=None,
-    download_suit_atlases=False
+    download_suit_atlases=True
     ):
     """returns: fpaths (list of str): list of full paths to cerebellar atlases
 
@@ -422,8 +422,8 @@ def get_cerebellar_atlases(
         catlas.fetch_king_2019(data_dir=dirs.cerebellar_atlases, data='atl')
         catlas.fetch_diedrichsen_2009(data_dir=dirs.cerebellar_atlases)
         catlas.fetch_buckner_2011(data_dir=dirs.cerebellar_atlases)
-        catlas.fetch_xue_2021(data_dir=dirs.cerebellar_atlases)
-        catlas.fetch_ji_2019(data_dir=dirs.cerebellar_atlases);
+        # catlas.fetch_xue_2021(data_dir=dirs.cerebellar_atlases)
+        # catlas.fetch_ji_2019(data_dir=dirs.cerebellar_atlases);
 
     fpaths = []
     # get atlases in cerebellar atlases

@@ -510,24 +510,8 @@ def figS2():
     ax.set_xticks([80, 304, 670, 1190, 1848])
     ax.text(x_pos, y_pos, 'A', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
 
-    ax = fig.add_subplot(gs[0,1])
-    fpath = os.path.join(dirs.figure, f'group_distances_best_model_MDTB10-reg3.png')
-    if not os.path.isfile(fpath):
-        vis.map_distances_cortex(model_name='best_model', atlas='MDTB10', surf='inflated', threshold=100, column=2, outpath=fpath)
-    vis.plot_png(fpath, ax=ax)
-    ax.axis('off')
-    ax.text(x_pos, y_pos, 'B', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
-
-    ax = fig.add_subplot(gs[0,2])
-    fpath = os.path.join(dirs.figure, f'group_distances_best_model_MDTB10-reg6.png')
-    if not os.path.isfile(fpath):
-        vis.map_distances_cortex(model_name='best_model', atlas='MDTB10', surf='inflated', threshold=100, column=5, outpath=fpath)
-    vis.plot_png(fpath, ax=ax)
-    ax.axis('off')
-    ax.text(x_pos, y_pos, 'C', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
-
     ax = fig.add_subplot(gs[0,3])
-    fpath = os.path.join(dirs.figure, f'group_distances_best_model_MDTB10-reg7.png')
+    fpath = os.path.join(dirs.figure, f'group_distances_best_model_MDTB10-reg1A.png')
     if not os.path.isfile(fpath):
         vis.map_distances_cortex(model_name='best_model', atlas='MDTB10', surf='inflated', threshold=100, column=6, outpath=fpath)
     vis.plot_png(fpath, ax=ax)
@@ -535,7 +519,7 @@ def figS2():
     ax.text(x_pos, y_pos, 'D', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
 
     ax = fig.add_subplot(gs[1,0])
-    fpath = os.path.join(dirs.figure, f'group_distances_best_model_MDTB10-reg8.png')
+    fpath = os.path.join(dirs.figure, f'group_distances_best_model_MDTB10-reg1B.png')
     if not os.path.isfile(fpath):
         vis.map_distances_cortex(model_name='best_model', atlas='MDTB10', surf='inflated', threshold=100, column=7, outpath=fpath)
     vis.plot_png(fpath, ax=ax)
@@ -543,7 +527,7 @@ def figS2():
     ax.text(x_pos, y_pos, 'E', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
 
     ax = fig.add_subplot(gs[1,1])
-    fpath = os.path.join(dirs.figure, f'group_distances_best_model_MDTB10-reg9.png')
+    fpath = os.path.join(dirs.figure, f'group_distances_best_model_MDTB10-reg2A.png')
     if not os.path.isfile(fpath):
         vis.map_distances_cortex(model_name='best_model', atlas='MDTB10', surf='inflated', threshold=100, column=8, outpath=fpath)
     vis.plot_png(fpath, ax=ax)
@@ -551,17 +535,9 @@ def figS2():
     ax.text(x_pos, y_pos, 'F', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
 
     ax = fig.add_subplot(gs[1,2])
-    fpath = os.path.join(dirs.figure, f'group_distances_best_model_MDTB10-reg10.png')
+    fpath = os.path.join(dirs.figure, f'group_distances_best_model_MDTB10-reg2B.png')
     if not os.path.isfile(fpath):
         vis.map_distances_cortex(model_name='best_model', atlas='MDTB10', surf='inflated', threshold=100, column=9, outpath=fpath)
     vis.plot_png(fpath, ax=ax)
     ax.axis('off')
     ax.text(x_pos, y_pos, 'G', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
-
-    ax = fig.add_subplot(gs[1,3])
-    vis.plot_dispersion(hue='hem', y='Variance', cortex_group='tessels', cortex='tessels1002', atlas='MDTB10', regions=[3,6,7,8,9,10], ax=ax)
-    ax.text(x_pos, y_pos, 'H', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
-
-    plt.subplots_adjust(left=0.125, bottom=0.001, right=2.0, top=2.0, wspace=.2, hspace=.3)
-    save_path = os.path.join(dirs.figure, f'figS3.{format}')
-    plt.savefig(save_path, bbox_inches="tight", dpi=300)
