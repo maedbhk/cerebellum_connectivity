@@ -9,6 +9,9 @@ from connectivity import weights as cweights
 from connectivity import visualize as summary
 import connectivity.constants as const
 
+import warnings
+warnings.filterwarnings('ignore')
+
 def cortical_weight_maps(
     atlas='MDTB10', 
     method='ridge', 
@@ -62,6 +65,8 @@ def cortical_weight_maps(
             
         fname = f'group_{atlas}_threshold_{threshold}'
         [nib.save(gii, os.path.join(fpath, f'{fname}.{hem}.func.gii')) for (gii, hem) in zip(giis, ['L', 'R'])]
+
+        print(f'cortical weights saved to disk for {atlas}')
 
 @click.command()
 @click.option("--atlas")

@@ -12,6 +12,9 @@ from connectivity import visualize as summary
 from connectivity import data as cdata
 import connectivity.constants as const
 
+import warnings
+warnings.filterwarnings('ignore')
+
 def dispersion_rois(
     atlas='MDTB10', 
     method='ridge', # L2regression
@@ -55,6 +58,7 @@ def dispersion_rois(
         df_atlas = pd.read_csv(fpath)
         df = pd.concat([df, df_atlas])
     df.to_csv(fpath)
+    print(f'dispersion stats saved to disk for {atlas}')
 
 def dispersion_voxels(
     method='ridge',
@@ -86,6 +90,8 @@ def dispersion_voxels(
             data = np.reshape(np.array(df_hem['var_w'].tolist()), (1, len(df_hem)))
             data_all[hem,:] = data
         cweights.save_maps_cerebellum(np.nanmean(data_all, axis=0), fpath=os.path.join(dirs.conn_train_dir, best_model, 'group_dispersion_var_w'))
+
+    print(f'dispersion stats saved to disk for voxels')
 
 @click.command()
 @click.option("--atlas")
