@@ -656,7 +656,7 @@ def map_eval_cerebellum(
 
     return view
 
-def map_lasso_cerebellum(
+def map_surface_cerebellum(
     model_name,
     stat='percent',
     weights='nonzero',

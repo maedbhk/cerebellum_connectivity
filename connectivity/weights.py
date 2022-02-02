@@ -48,7 +48,11 @@ def save_maps_cerebellum(
     Returns: 
         saves nifti and/or gifti image to disk, returns gifti
     """
-    num_cols, num_vox = data.shape
+    try:
+        num_cols, num_vox = data.shape
+    except: 
+        data = np.reshape(data, (1, len(data)))
+        num_cols, num_vox = data.shape
 
     # get mean or mode of data along first dim (first dim is usually subjects)
     if group=='nanmean':
@@ -263,7 +267,38 @@ def cortical_surface_rois(
                 
     return data_all
 
-def threshold_data(
+def get_model_data(
+    model_name,
+    train_exp='sc1',
+    average_subjs=False
+    ):
+    """save surface maps for cerebellum (count number of non-zero cortical coef)
+
+    Args:
+        model_name (str): full name of trained model. Has to follow naming convention <method>_<cortex>_alpha_<num>
+        train_exp (str): 'sc1' or 'sc2'
+        weights (str): 'positive' or 'nonzero' (neg. & pos.). default is 'nonzero'
+    """
+    # set directory
+    dirs = const.Dirs(exp_name=train_exp)
+
+    # get model path
+    fpath = os.path.join(dirs.conn_train_dir, model_name)
+
+    # get trained subject models
+    data_all = []
+    for subj in const.return_subjs:
+        model_fname = os.path.join(fpath, f'{model_name}_{subj}.h5')
+        # read model data
+        data = cio.read_hdf5(model_fname)
+        data_all.append(data.coef_)
+    
+    if average_subjs:
+        return np.nanmean(np.stack(data_all), axis=0)
+    else:
+        return np.stack(data_all)
+
+def _threshold_data(
     data, 
     threshold=5
     ):
@@ -410,7 +445,7 @@ def regions_cortex(
         # optionally threshold data
         if threshold is not None:
             # optionally threshold weights based on `threshold` (separately for each hem)
-            roi_mean_hem, _ = threshold_data(data=roi_mean_hem, threshold=threshold)
+            roi_mean_hem, _ = _threshold_data(data=roi_mean_hem, threshold=threshold)
 
         # loop over columns
         giis = []
@@ -460,10 +495,10 @@ def distances_cortex(
         # optionally threshold data
         if threshold is not None:
             # optionally threshold weights based on `threshold` (separately for each hem)
-            roi_mean_hem, _ = threshold_data(data=roi_mean_hem, threshold=threshold)
+            roi_mean_hem, _ = _threshold_data(data=roi_mean_hem, threshold=threshold)
         
         # distances
-        distances_sparse = sparsity_cortex(coef=roi_mean_hem, roi=cortex, metric=metric, hem_names=[hem])[hem]
+        distances_sparse = _sparsity_cortex(coef=roi_mean_hem, roi=cortex, metric=metric, hem_names=[hem])[hem]
         roi_dist_all.append(distances_sparse)
         
     # save to disk  
@@ -480,7 +515,7 @@ def distances_cortex(
 
     return data
 
-def sparsity_cortex(
+def _sparsity_cortex(
     coef, 
     roi, 
     metric='gmean', 
@@ -541,16 +576,11 @@ def sparsity_cortex(
 
     return data
 
-def dispersion_cortex(roi_betas,
-    reg_names,
-    colors,
-    cortex):
+def dispersion_cortex(roi_betas, cortex):
     """Caluclate spherical dispersion for the connectivity weights
 
     Args:
         roi_betas (np array):
-        reg_names (list of str):
-        colors (np array):
         cortex (str):
 
     Returns:

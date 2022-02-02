@@ -148,7 +148,6 @@ def dispersion_cortex(roi_betas,
         df = pd.concat([df,df1])
     return df
 
-
 def distances_map(
     atlas='MDTB10',
     method='ridge',
