@@ -72,13 +72,13 @@ def dispersion_voxels(
 
     dataframe = summary.get_summary(exps=[exp], summary_type='train', method=[method])
     models, cortex_names= summary.get_best_models(dataframe)
-    # models = ['lasso_tessels0042_alpha_-3']
-    # cortex_names = ['tessels0042']
+    models = [m for m in models if 'mdtb' not in m]
+    cortex_names = [c for c in cortex_names if 'mdtb' not in c]
 
     for (best_model, cortex) in zip(models, cortex_names):
-        if 'mdtb4002' not in cortex:
-            model_data = cweights.get_model_data(best_model, train_exp=exp, average_subjs=True)
         
+        model_data = cweights.get_model_data(best_model, train_exp=exp, average_subjs=True)
+    
         df = cweights.dispersion_cortex(roi_betas=model_data, cortex=cortex)
         df['w_var'] = df.Variance * df.sum_w
         df['var_w'] = df.w_var / df.sum_w
