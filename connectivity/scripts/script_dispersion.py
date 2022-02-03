@@ -33,25 +33,23 @@ def dispersion_rois(
 
     for (best_model, cortex) in zip(models, cortex_names):
 
-        if 'mdtb4002' not in cortex:
+        # get alpha for each model
+        alpha = int(best_model.split('_')[-1])
+        for subj in const.return_subjs:
+                roi_betas, _, _ = cweights.average_region_data(subj,
+                                        exp=exp, cortex=cortex, 
+                                        atlas=atlas, method=method, alpha=alpha, 
+                                        weights='nonzero', average_subjs=False)
 
-            # get alpha for each model
-            alpha = int(best_model.split('_')[-1])
-            for subj in const.return_subjs:
-                    roi_betas, _, _ = cweights.average_region_data(subj,
-                                            exp=exp, cortex=cortex, 
-                                            atlas=atlas, method=method, alpha=alpha, 
-                                            weights='nonzero', average_subjs=False)
-
-                    # save out cortical distances
-                    df_res = cweights.dispersion_cortex(roi_betas, cortex=cortex)
-                    N=df_res.shape[0]
-                    df_res['subj']=[subj]*N
-                    df_res['cortex']=[cortex]*N
-                    df_res['method']=[method]*N
-                    df_res['atlas']=[atlas]*N
-                    df = pd.concat([df,df_res])
-            
+                # save out cortical distances
+                df_res = cweights.dispersion_cortex(roi_betas, cortex=cortex)
+                N=df_res.shape[0]
+                df_res['subj']=[subj]*N
+                df_res['cortex']=[cortex]*N
+                df_res['method']=[method]*N
+                df_res['atlas']=[atlas]*N
+                df = pd.concat([df,df_res])
+        
     # save dataframe to disk
     fpath = os.path.join(dirs.conn_train_dir, f'cortical_dispersion_stats_{atlas}.csv') 
     if os.path.isfile(fpath): 

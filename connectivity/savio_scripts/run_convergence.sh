@@ -27,23 +27,23 @@ cd /global/scratch/users/maedbhking/projects/cerebellum_connectivity/connectivit
 # # # run cortical surface (voxels)
 # python3 script_surfaces.py --exp="sc1" --weights="nonzero" --method="lasso" --regions="voxels"
 
-atlases=(MDTB10-subregions) # Buckner7 Buckner17 Anatom (problem with these atlases)
+atlases=(MDTB10 MDTB10-subregions) # Buckner7 Buckner17 Anatom (problem with these atlases)
 methods=(ridge lasso) # lasso
 
 # # run cortical surfaces (rois)
 # for ((a=0; a<${#atlases[@]}; a++)); do \
 # python3 script_surfaces.py --exp="sc1" --weights="nonzero" --method="lasso" --regions="rois" --atlas=${atlases[a]}; done
 
-# # run dispersion (voxels)
-# for ((m=0; m<${#methods[@]}; m++)); do \
-# python3 script_dispersion.py --method=${methods[m]} --regions="voxels"; done
+# run dispersion (voxels)
+for ((m=0; m<${#methods[@]}; m++)); do \
+python3 script_dispersion.py --method=${methods[m]} --regions="voxels"; done
 
-# # run dispersion (rois)
-# for ((a=0; a<${#atlases[@]}; a++)); do \
-# for ((m=0; m<${#methods[@]}; m++)); do \
-# python3 script_dispersion.py --atlas=${atlases[a]} --method=${methods[m]} --regions="rois"; done; done
-
-# cortical weights
+# run dispersion (rois)
 for ((a=0; a<${#atlases[@]}; a++)); do \
 for ((m=0; m<${#methods[@]}; m++)); do \
-python3 script_cortical_weights.py --atlas=${atlases[a]} --method=${methods[m]} --exp="sc1"; done; done
+python3 script_dispersion.py --atlas=${atlases[a]} --method=${methods[m]} --regions="rois"; done; done
+
+# # cortical weights
+# for ((a=0; a<${#atlases[@]}; a++)); do \
+# for ((m=0; m<${#methods[@]}; m++)); do \
+# python3 script_cortical_weights.py --atlas=${atlases[a]} --method=${methods[m]} --exp="sc1"; done; done

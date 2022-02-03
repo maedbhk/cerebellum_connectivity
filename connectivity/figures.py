@@ -365,11 +365,11 @@ def fig3B():
     plt.yticks([0.1, 0.2, 0.3, 0.4, 0.5], fontsize=40)
     plt.xticks(fontsize=40)
     # stats
-    result = sp.f_oneway(df['1'], df['2'], df['3'], df['4'], df['5'], df['6'], df['7'], df['8'], df['9'], df['10'])
+    result = sp.f_oneway(df[1], df[2], df[3], df[4], df[5], df[6], df[7], df[8], df[9], df[10])
     print(f'F test for surfaces is {result}')
 
     ax = fig.add_subplot(gs[1,1:])
-    ax,df = vis.plot_dispersion(y='var_w', hue=None, y_label='cortical dispersion', method='ridge', cortex='tessels0042', atlas='MDTB10', regions=None, ax=ax);
+    ax,df = vis.plot_dispersion(y='var_w', hue=None, y_label='cortical dispersion', method='lasso', cortex='tessels0362', atlas='MDTB10', regions=None, ax=ax);
     # ax.text(x_pos, y_pos, 'C', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
     plt.ylim([0.6, 0.8])
     plt.ylabel('dispersion', fontsize=35)
