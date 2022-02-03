@@ -39,8 +39,8 @@ def cortical_weight_maps(
 
     dataframe = summary.get_summary(exps=[exp], summary_type='train', method=[method])
     models, cortex_names= summary.get_best_models(dataframe)
-    models = [m for m in models if 'mdtb' not in m]
-    cortex_names = [c for c in cortex_names if 'mdtb' not in c]
+    models = [m for m in models if 'mdtb' in m]
+    cortex_names = [c for c in cortex_names if 'mdtb' in c]
 
     for (best_model, cortex) in zip(models, cortex_names):
         # full path to best model
