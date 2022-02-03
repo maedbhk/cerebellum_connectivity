@@ -34,14 +34,14 @@ methods=(lasso ridge)
 # for ((a=0; a<${#atlases[@]}; a++)); do \
 # python3 script_surfaces.py --exp="sc1" --weights="nonzero" --method="lasso" --regions="rois" --atlas=${atlases[a]}; done
 
-# run dispersion (voxels)
-for ((m=0; m<${#methods[@]}; m++)); do \
-python3 script_dispersion.py --method=${methods[m]} --regions="voxels"; done
+# # run dispersion (voxels)
+# for ((m=0; m<${#methods[@]}; m++)); do \
+# python3 script_dispersion.py --method=${methods[m]} --regions="voxels"; done
 
-# run dispersion (rois)
-for ((a=0; a<${#atlases[@]}; a++)); do \
-for ((m=0; m<${#methods[@]}; m++)); do \
-python3 script_dispersion.py --atlas=${atlases[a]} --method=${methods[m]} --regions="rois"; done; done
+# # run dispersion (rois)
+# for ((a=0; a<${#atlases[@]}; a++)); do \
+# for ((m=0; m<${#methods[@]}; m++)); do \
+# python3 script_dispersion.py --atlas=${atlases[a]} --method=${methods[m]} --regions="rois"; done; done
 
 # cortical weights
 for ((a=0; a<${#atlases[@]}; a++)); do \
