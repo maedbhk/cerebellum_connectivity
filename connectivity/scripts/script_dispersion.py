@@ -56,7 +56,7 @@ def dispersion_rois(
         df_atlas = pd.read_csv(fpath)
         df = pd.concat([df, df_atlas])
     df.to_csv(fpath)
-    print(f'dispersion stats saved to disk for {atlas}')
+    print(f'dispersion stats saved to disk for {atlas} and {method}')
 
 def dispersion_voxels(
     method='ridge',
