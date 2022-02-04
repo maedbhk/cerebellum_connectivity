@@ -24,15 +24,15 @@ export PYTHONPATH
 
 cd /global/scratch/users/maedbhking/projects/cerebellum_connectivity/connectivity/scripts
 
+atlases=(MDTB10 MDTB10-subregions) # Buckner7 Buckner17 Anatom (problem with these atlases)
+methods=(lasso) # ridge
+
 # # # run cortical surface (voxels)
 # python3 script_surfaces.py --exp="sc1" --weights="nonzero" --method="lasso" --regions="voxels"
 
-atlases=(MDTB10 MDTB10-subregions) # Buckner7 Buckner17 Anatom (problem with these atlases)
-methods=(ridge) # lasso
-
-# # run cortical surfaces (rois)
-# for ((a=0; a<${#atlases[@]}; a++)); do \
-# python3 script_surfaces.py --exp="sc1" --weights="nonzero" --method="lasso" --regions="rois" --atlas=${atlases[a]}; done
+# run cortical surfaces (rois)
+for ((a=0; a<${#atlases[@]}; a++)); do \
+python3 script_surfaces.py --exp="sc1" --weights="nonzero" --method="lasso" --regions="rois" --atlas=${atlases[a]}; done
 
 # run dispersion (voxels)
 for ((m=0; m<${#methods[@]}; m++)); do \

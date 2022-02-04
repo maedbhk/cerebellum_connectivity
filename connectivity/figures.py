@@ -431,45 +431,13 @@ def figS1():
     dirs = const.Dirs()
 
     fig = plt.figure()
-    gs = GridSpec(2, 3, figure=fig)
+    gs = GridSpec(1, 1, figure=fig)
 
     x_pos = -0.1
     y_pos = 1.1
     labelsize = 40
 
     ax = fig.add_subplot(gs[0,0])
-    df = vis.get_summary("train",exps='sc1', method=['ridge'], atlas=['shen', 'gordon', 'fan', 'arslan', 'schaefer', 'yeo'], summary_name=[''])
-    vis.plot_train_predictions(df, x='hyperparameter', hue='num_regions', ax=ax)
-    ax.set_xlabel('Hyperparameter')
-    ax.text(x_pos, y_pos, 'A', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
-    ax.set_ylim([.05, .4])
-
-    ax = fig.add_subplot(gs[1,0])
-    df = vis.get_summary("train", exps=['sc1'], method=['lasso'], atlas=['shen', 'gordon', 'fan', 'arslan', 'schaefer', 'yeo'], summary_name=[''])
-    vis.plot_train_predictions(df, x='hyperparameter', hue='num_regions', ax=ax)
-    ax.text(x_pos, y_pos, 'B', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
-    ax.set_ylim([.05, .4])
-    
-    ax = fig.add_subplot(gs[0,1])
-    dataframe = vis.get_summary('eval', exps=['sc2'], atlas=['shen', 'gordon', 'fan', 'arslan', 'schaefer', 'yeo'], method=['WTA', 'ridge', 'lasso'], summary_name=['weighted_all'])
-    df,ax = vis.plot_eval_predictions(dataframe=dataframe, noiseceiling='Y', normalize=False, hue='method', ax=ax)
-    ax.text(x_pos, y_pos, 'C', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
-    # ax.set_xticks([80, 304, 670, 1190, 1848])
-    # ax.set_xticklabels([80, 304, 670, 1190, 1848], rotation=45);
-    # do statistics
-    # result = sp.ttest_rel(df.ridge, df.lasso, nan_policy='omit')
-    # print(f'F test for evaluation between lasso and ridge for FUNCTIONAL is: {result}')
-
-    ax = fig.add_subplot(gs[1,1])
-    fpath = os.path.join(dirs.figure, f'map_noiseceiling_Y_R_ridge_Schaefer_7_300.png')
-    best_model = 'ridge_Schaefer_7_300_alpha_6'
-    if not os.path.isfile(fpath):
-        vis.map_eval_cerebellum(data="noiseceiling_Y_R", normalize=False, model_name=best_model, method='ridge', outpath=fpath); # ax=ax
-    vis.plot_png(fpath, ax=ax)
-    ax.axis('off')
-    ax.text(x_pos, y_pos, 'D', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
-
-    ax = fig.add_subplot(gs[0,2])
     dataframe = vis.get_summary('eval', exps=['sc2'], atlas=['shen', 'gordon', 'fan', 'arslan', 'schaefer', 'yeo'], method=['WTA', 'ridge', 'lasso'], summary_name=['weighted_all'])
     df,ax = vis.plot_eval_predictions(dataframe=dataframe, noiseceiling=None, normalize=True, hue='method', ax=ax)
     ax.text(x_pos, y_pos, 'E', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
@@ -478,15 +446,6 @@ def figS1():
     # do statistics
     # result = sp.ttest_rel(df.ridge, df.WTA, nan_policy='omit')
     # print(f'F test for evaluation between WTA and ridge for FUNCTIONAL is: {result}')
-    
-    ax = fig.add_subplot(gs[1,2])
-    fpath = os.path.join(dirs.figure, f'map_R_ridge_Schaefer_7_300_normalize.png')
-    best_model = 'ridge_Schaefer_7_300_alpha_6'
-    if not os.path.isfile(fpath):
-        vis.map_eval_cerebellum(data="R", model_name=best_model, normalize=True, method='ridge', outpath=fpath); # cscale=[0, 0.4]
-    vis.plot_png(fpath, ax=ax)
-    ax.axis('off')
-    ax.text(x_pos, y_pos, 'F', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
 
     plt.subplots_adjust(left=0.125, bottom=0.001, right=2.0, top=2.0, wspace=.2, hspace=.3)
     save_path = os.path.join(dirs.figure, f'figS1.svg')
