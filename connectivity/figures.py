@@ -352,7 +352,7 @@ def fig3B():
     ax = fig.add_subplot(gs[:,0])
     fpath = os.path.join(dirs.figure, f'group_lasso_percent_nonzero_cerebellum.png')
     if not os.path.isfile(fpath):
-        vis.map_surface_cerebellum(model_name='lasso_tessels0362_alpha_-2', stat='percent', weights='nonzero', outpath=fpath);
+        vis.map_lasso_cerebellum(model_name='lasso_tessels0362_alpha_-2', stat='percent', weights='nonzero', outpath=fpath);
     vis.plot_png(fpath, ax=ax)
     ax.axis('off')
     ax.text(x_pos, y_pos, 'A', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
@@ -369,7 +369,7 @@ def fig3B():
     print(f'F test for surfaces is {result}')
 
     ax = fig.add_subplot(gs[1,1:])
-    ax,df = vis.plot_dispersion(y='var_w', hue=None, y_label='cortical dispersion', method='lasso', cortex='tessels0362', atlas='MDTB10', regions=None, ax=ax);
+    ax,df = vis.plot_dispersion(y='var_w', hue=None, y_label='cortical dispersion', cortex='tessels0042', method='ridge', atlas='MDTB10', regions=None, ax=ax);
     # ax.text(x_pos, y_pos, 'C', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
     plt.ylim([0.6, 0.8])
     plt.ylabel('dispersion', fontsize=35)

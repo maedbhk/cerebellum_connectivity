@@ -696,6 +696,45 @@ def map_surface_cerebellum(
                             )
     return view
 
+def map_dispersion_cerebellum(
+    model_name,
+    stat='var_w',
+    atlas='tessels',
+    method='lasso',
+    colorbar=False,
+    cscale=None,
+    outpath=None,
+    title=None,
+    new_figure=True
+    ):
+    """plot surface map for best model
+    Args:
+        model (None or model name):
+        exp (str): 'sc1' or 'sc2'
+        stat (str): 'percent' or 'count'
+    """
+    dirs = const.Dirs(exp_name='sc1')
+
+    # get best model
+    model = model_name
+    if model_name=="best_model":
+        dataframe = get_summary(exps=['sc1'], summary_type='train', method=[method], atlas=[atlas])
+        model_name, cortex = get_best_model(dataframe)
+
+    # plot map
+    fpath = os.path.join(dirs.conn_train_dir, model_name)
+
+    fname = f"group_dispersion_{stat}"
+    gifti = os.path.join(fpath, f'{fname}.func.gii')
+    view = nio.view_cerebellum(gifti=gifti,
+                            cscale=cscale,
+                            colorbar=colorbar,
+                            title=title,
+                            outpath=outpath,
+                            new_figure=new_figure
+                            )
+    return view
+
 def map_weights(
     structure='cerebellum',
     exp='sc1',

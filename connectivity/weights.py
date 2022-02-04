@@ -411,6 +411,8 @@ def average_region_data(
         roi_mean[roi_mean <= 0] = np.nan
     elif weights=='nonzero':
         roi_mean[roi_mean == 0] = np.nan
+    else:
+        pass
     
     return roi_mean, reg_names, colors
 
@@ -589,6 +591,9 @@ def dispersion_cortex(roi_betas, cortex):
     # get data
     num_roi, num_parcel = roi_betas.shape
 
+    # nan to number (to avoid problems with nan)
+    roi_betas = np.nan_to_num(roi_betas)
+
     hem_names = ['L', 'R']
 
     # optionally threshold weights based on `threshold`
@@ -612,12 +617,12 @@ def dispersion_cortex(roi_betas, cortex):
         # also set the sum of weights to 1
         w = roi_betas[:,labels]
         w[w<0]=0
-        sum_w = w.sum(axis=1)
+        sum_w = np.nansum(w, axis=1)
         w = w /sum_w.reshape(-1,1)
 
         # We then define a unit vector for each tessel, v_i:
         v = coord_hem.copy().T
-        v=v / np.sqrt(np.sum(v**2,axis=0))
+        v=v / np.sqrt(np.nansum(v**2,axis=0))
 
         # Weighted average vector =sum(w_i*v_i)
         # R is the length of this average vector
@@ -625,8 +630,8 @@ def dispersion_cortex(roi_betas, cortex):
         R = np.zeros((num_roi,))
         for i in range(num_roi):
 
-            mean_v = np.sum(w[i,:] * v,axis=1)
-            R[i] = np.sqrt(np.sum(mean_v**2))
+            mean_v = np.nansum(w[i,:] * v,axis=1)
+            R[i] = np.sqrt(np.nansum(mean_v**2))
 
             # Check with plot
             # fig = plt.figure()

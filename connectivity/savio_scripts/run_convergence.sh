@@ -28,7 +28,7 @@ cd /global/scratch/users/maedbhking/projects/cerebellum_connectivity/connectivit
 # python3 script_surfaces.py --exp="sc1" --weights="nonzero" --method="lasso" --regions="voxels"
 
 atlases=(MDTB10 MDTB10-subregions) # Buckner7 Buckner17 Anatom (problem with these atlases)
-methods=(ridge lasso) # lasso
+methods=(ridge) # lasso
 
 # # run cortical surfaces (rois)
 # for ((a=0; a<${#atlases[@]}; a++)); do \

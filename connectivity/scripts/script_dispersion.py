@@ -28,8 +28,8 @@ def dispersion_rois(
 
     dataframe = summary.get_summary(exps=[exp], summary_type='train', method=[method])
     models, cortex_names= summary.get_best_models(dataframe)
-    # models = ['lasso_tessels0042_alpha_-3']
-    # cortex_names = ['tessels0042']
+    models = [m for m in models if 'mdtb' not in m]
+    cortex_names = [c for c in cortex_names if 'mdtb' not in c]
 
     for (best_model, cortex) in zip(models, cortex_names):
 
@@ -48,6 +48,8 @@ def dispersion_rois(
                 df_res['cortex']=[cortex]*N
                 df_res['method']=[method]*N
                 df_res['atlas']=[atlas]*N
+                df_res['w_var'] = df_res.Variance * df_res.sum_w
+                df_res['var_w'] = df_res.w_var / df_res.sum_w
                 df = pd.concat([df,df_res])
         
     # save dataframe to disk
