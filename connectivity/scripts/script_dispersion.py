@@ -48,8 +48,6 @@ def dispersion_rois(
                 df_res['cortex']=[cortex]*N
                 df_res['method']=[method]*N
                 df_res['atlas']=[atlas]*N
-                df_res['w_var'] = df_res.Variance * df_res.sum_w
-                df_res['var_w'] = df_res.w_var / df_res.sum_w
                 df = pd.concat([df,df_res])
         
     # save dataframe to disk
