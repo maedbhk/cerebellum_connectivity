@@ -11,7 +11,7 @@ from matplotlib.colors import LinearSegmentedColormap
 from SUITPy import flatmap
 from SUITPy import atlas as catlas
 from nilearn.plotting import view_surf
-# from surfplot import Plot
+from surfplot import Plot
 
 import connectivity.constants as const
 from connectivity import data as cdata
@@ -182,12 +182,14 @@ def make_func_gifti_cortex(
 def get_gifti_colors(
     fpath,
     ignore_0=True,
+    regions=None
     ):
     """get gifti labels for fpath (should be *.label.gii)
 
     Args:
         fpath (str or nib obj): full path to atlas
         ignore_0 (bool): default is True. ignores 0 index
+        regions (list of int): optionally return only certain regions ()
     Returns:
         rgba (np array): shape num_labels x num_rgba
         cpal (matplotlib color palette)
@@ -209,6 +211,9 @@ def get_gifti_colors(
     if ignore_0:
         rgba = rgba[1:]
         labels = labels[1:]
+    
+    if regions is not None:
+        rgba = rgba[np.array(regions)-1,:]
 
     cmap = LinearSegmentedColormap.from_list('mylist', rgba, N=len(rgba))
     mpl.cm.register_cmap("mycolormap", cmap)
@@ -405,7 +410,7 @@ def get_cortical_surfaces(
 
 def get_cerebellar_atlases(
     atlas_keys=None,
-    download_suit_atlases=True
+    download_suit_atlases=False
     ):
     """returns: fpaths (list of str): list of full paths to cerebellar atlases
 

@@ -291,11 +291,13 @@ def plot_eval_predictions(
 
     if plot_type=='line':
         ax = sns.lineplot(x=x, y=y, hue=hue, data=dataframe, err_style='bars', palette='rocket') # legend=True,
-        ax.legend(loc='best', frameon=False)
     elif plot_type=='point':
         ax = sns.pointplot(x=x, y=y, hue=hue, data=dataframe, err_style='bars', palette='rocket')
     elif plot_type=='bar':
         ax = sns.barplot(x=x, y=y, hue=hue, data=dataframe, err_style='bars', palette='rocket')
+    
+    if hue is not None:
+        ax.legend(loc='best', frameon=False)
 
     if noiseceiling:
         ax = sns.lineplot(x=x, y=f'noiseceiling_{noiseceiling}', data=dataframe, color='k', ax=ax, ci=None, linewidth=4)
@@ -373,7 +375,7 @@ def plot_distances(
 
 def plot_surfaces(
     exp='sc1',
-    x='reg_names',
+    x='regions',
     y='percent',    
     cortex_group='tessels',
     cortex='tessels0362',
@@ -396,11 +398,16 @@ def plot_surfaces(
     # dataframe['subregion'] = dataframe['reg_names'].str.replace(re.compile('[^a-zA-Z]'), '', regex=True)
     dataframe['num_regions'] = dataframe['cortex'].str.split('_').str.get(-1).str.extract('(\d+)').astype(float)*2
     dataframe['cortex_group'] = dataframe['cortex'].apply(lambda x: _add_atlas(x))
-    dataframe['reg_names'] = dataframe['reg_names'].str.replace('Region', '').astype(int)
+    dataframe['regions'] = dataframe['reg_names'].str.extract('(\d+)').astype(int)
+
+    # hacky 
+    if atlas=='MDTB10-subregions':
+        dataframe['_add'] = dataframe['reg_names'].apply(lambda x: 'A' in x).map({True: 0, False: 10})
+        dataframe['regions'] = dataframe['regions'] + dataframe['_add']
 
     # filter 
     if regions is not None:
-        dataframe = dataframe[dataframe['reg_names'].isin(regions)]
+        dataframe = dataframe[dataframe['regions'].isin(regions)]
     if cortex_group is not None:
         dataframe = dataframe[dataframe['cortex_group'].isin([cortex_group])]
     if cortex is not None:
@@ -414,10 +421,10 @@ def plot_surfaces(
 
     # color plot according to MDTB10 atlas
     fpath = nio.get_cerebellar_atlases(atlas_keys=[f'atl-{atlas}'])[0]
-    _, cpal, _ = nio.get_gifti_colors(fpath)
+    _, cpal, _ = nio.get_gifti_colors(fpath, regions=regions)
 
     palette = 'rocket'
-    if regions is None:
+    if hue is None:
         palette = cpal
 
     ax = sns.barplot(x=x, 
@@ -438,7 +445,7 @@ def plot_surfaces(
         dirs = const.Dirs()
         plt.savefig(os.path.join(dirs.figure, f'cortical_surfaces_{exp}_{y}.svg'), pad_inches=0, bbox_inches='tight')
 
-    df1 = pd.pivot_table(dataframe, values='percent', index='subj', columns='reg_names', aggfunc=np.mean)
+    df1 = pd.pivot_table(dataframe, values='percent', index='subj', columns='regions', aggfunc=np.mean)
 
     return ax, df1
 
@@ -469,7 +476,10 @@ def plot_surfaces_group(
         # color plot according to MDTB10 atlas
     fpath = nio.get_cerebellar_atlases(atlas_keys=[f'atl-{atlas}'])[0]
     _, cpal, _ = nio.get_gifti_colors(fpath)
-    palette = cpal
+    
+    palette = 'rocket'
+    if hue is None:
+        palette = cpal
 
     ax = sns.barplot(x=x, 
         y=y, 
@@ -530,10 +540,10 @@ def plot_dispersion(
 
     # color plot according to MDTB10 atlas
     fpath = nio.get_cerebellar_atlases(atlas_keys=[f'atl-{atlas}'])[0]
-    _, cpal, _ = nio.get_gifti_colors(fpath)
+    _, cpal, _ = nio.get_gifti_colors(fpath, regions=regions, ignore_0=True)
 
     palette = 'rocket'
-    if regions is None:
+    if hue is None:
         palette = cpal
 
     ax = sns.barplot(x='roi', 
@@ -557,8 +567,6 @@ def plot_dispersion(
         plt.legend([],[], frameon=False)
 
     df1 = pd.pivot_table(dataframe, values=y, index='subj', columns='roi', aggfunc=np.mean)
-
-    plt.show()
 
     if save:
         dirs = const.Dirs()
