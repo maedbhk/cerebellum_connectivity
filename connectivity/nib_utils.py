@@ -486,6 +486,7 @@ def view_cerebellum(
         cmap=cmap,
         label_names=labels,
         colorbar=colorbar,
+        bordersize=4.0,
         new_figure=new_figure
         )
 
@@ -712,6 +713,7 @@ def view_atlas_cerebellum(
         cmap=cmap,
         label_names=label_names,
         colorbar=colorbar,
+        bordersize=4.0,
         new_figure=new_figure
         )
 

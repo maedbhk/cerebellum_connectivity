@@ -140,6 +140,7 @@ def cortical_surface_voxels(
     cortex,
     train_exp='sc1',
     weights='nonzero',
+    method='lasso',
     save_maps=True
     ):
     """save surface maps for cerebellum (count number of non-zero cortical coef)
@@ -168,6 +169,9 @@ def cortical_surface_voxels(
 
         # read model data
         data = cio.read_hdf5(model_fname)
+
+        if method=='ridge':
+            data.coef_, _ = _threshold_data(data=data.coef_, threshold=5)
 
         if weights=='positive':
             data.coef_[data.coef_ <= 0] = np.nan
@@ -203,8 +207,8 @@ def cortical_surface_voxels(
     
     if save_maps:
         # save maps to disk for cerebellum
-        save_maps_cerebellum(data=np.stack(cereb_all_count, axis=0), fpath=os.path.join(fpath, f'group_lasso_count_{weights}_cerebellum'))
-        save_maps_cerebellum(data=np.stack(cereb_all_percent, axis=0), fpath=os.path.join(fpath, f'group_lasso_percent_{weights}_cerebellum'))
+        save_maps_cerebellum(data=np.stack(cereb_all_count, axis=0), fpath=os.path.join(fpath, f'group_{method}_count_{weights}_cerebellum'))
+        save_maps_cerebellum(data=np.stack(cereb_all_percent, axis=0), fpath=os.path.join(fpath, f'group_{method}_percent_{weights}_cerebellum'))
 
     return subjs_all
 
@@ -212,6 +216,7 @@ def cortical_surface_rois(
     model_name, 
     cortex,
     alpha,
+    method='lasso',
     train_exp='sc1',
     atlas='MDTB10',
     weights='nonzero',
@@ -245,6 +250,9 @@ def cortical_surface_rois(
         for hem in ['L', 'R']:
 
             labels = get_labels_hemisphere(roi=cortex, hemisphere=hem)
+
+            if method=='ridge':
+                roi_betas, _ = _threshold_data(data=roi_betas, threshold=5)
 
             # count number of non-zero weights
             data_nonzero = np.count_nonzero(~np.isnan(roi_betas[:,labels],), axis=1)

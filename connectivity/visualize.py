@@ -1,4 +1,5 @@
 import os
+from black import err
 import pandas as pd
 import numpy as np
 import seaborn as sns
@@ -31,6 +32,7 @@ def plotting_style():
             'font.weight': 'regular',
             # 'font.size': 'regular',
             'font.family': 'sans-serif',
+            'lines.markersize': 10,
             'font.serif': 'Helvetica Neue',
             'lines.linewidth': 6,
             'axes.grid': False,
@@ -268,6 +270,10 @@ def plot_eval_predictions(
     save=False,
     ax=None,
     title=False,
+    markers=None,
+    linestyles=None,
+    errwidth=None,
+    palette=None,
     plot_type='line'
     ):
     """plots eval predictions (R CV) for all models in dataframe.
@@ -289,12 +295,24 @@ def plot_eval_predictions(
     if normalize:
         y='R_eval_norm'
 
+    if markers is None:
+        markers = 'o'
+    
+    if linestyles is None:
+        linestyles = 'solid'
+
+    if errwidth is None:
+        errwidth = 1.0
+    
+    if palette is None:
+        palette = 'rocket'
+
     if plot_type=='line':
-        ax = sns.lineplot(x=x, y=y, hue=hue, data=dataframe, err_style='bars', palette='rocket') # legend=True,
+        ax = sns.lineplot(x=x, y=y, hue=hue, data=dataframe, err_style='bars', markers=markers, palette=palette) # legend=True,
     elif plot_type=='point':
-        ax = sns.pointplot(x=x, y=y, hue=hue, data=dataframe, err_style='bars', palette='rocket')
+        ax = sns.pointplot(x=x, y=y, hue=hue, data=dataframe, err_style='bars', errwidth=errwidth, markers=markers, linestyles=linestyles, palette=palette)
     elif plot_type=='bar':
-        ax = sns.barplot(x=x, y=y, hue=hue, data=dataframe, err_style='bars', palette='rocket')
+        ax = sns.barplot(x=x, y=y, hue=hue, data=dataframe, err_style='bars', markers=markers, linestyles=linestyles, palette=palette)
     
     if hue is not None:
         ax.legend(loc='best', frameon=False)
@@ -386,6 +404,7 @@ def plot_surfaces(
     regions=None,
     save=True,
     ax=None,
+    plot_type='bar',
     palette=None
     ):
 
@@ -427,13 +446,30 @@ def plot_surfaces(
     if hue is None:
         palette = cpal
 
-    ax = sns.barplot(x=x, 
-        y=y, 
-        hue=hue, 
-        data=dataframe,
-        palette=palette,
-        ax=ax
-        )
+    if plot_type=='bar':
+        ax = sns.barplot(x=x, 
+            y=y, 
+            hue=hue, 
+            data=dataframe,
+            palette=palette,
+            ax=ax
+            )
+    elif plot_type=='point':
+        ax = sns.pointplot(x=x, 
+            y=y, 
+            hue=hue, 
+            data=dataframe,
+            palette=palette,
+            ax=ax
+            )
+    elif plot_type=='line':
+        ax = sns.lineplot(x=x, 
+            y=y, 
+            hue=hue, 
+            data=dataframe,
+            palette=palette,
+            ax=ax
+            )
     ax.set_xlabel('')
     ax.set_ylabel('Percentage of cortical surface')
     plt.xticks(rotation="45", ha="right")
@@ -501,7 +537,8 @@ def plot_surfaces_group(
 
 def plot_dispersion(
     exp='sc1',
-    y='var_w',   
+    y='var_w',  
+    x='roi', 
     y_label=None,
     x_label=None, 
     cortex='tessels1002', 
@@ -512,6 +549,7 @@ def plot_dispersion(
     plt_legend=False,
     regions=None, # [1,2,5]
     save=False,
+    plot_type='bar',
     ax=None
     ):
 
@@ -546,13 +584,22 @@ def plot_dispersion(
     if hue is None:
         palette = cpal
 
-    ax = sns.barplot(x='roi', 
-                y=y, 
-                hue=hue, 
-                data=dataframe,
-                palette=palette,
-                ax=ax
-                )
+    if plot_type=='bar':
+        ax = sns.barplot(x=x, 
+                    y=y, 
+                    hue=hue, 
+                    data=dataframe,
+                    palette=palette,
+                    ax=ax
+                    )
+    elif plot_type=='line':
+        ax = sns.lineplot(x=x, 
+            y=y, 
+            hue=hue, 
+            data=dataframe,
+            palette=palette,
+            ax=ax
+            )
     ax.set_ylabel(y_label)
     ax.set_xlabel(x_label)
     plt.xticks(rotation="45", ha="right")

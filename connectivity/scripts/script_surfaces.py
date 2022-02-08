@@ -35,6 +35,7 @@ def surfaces_voxels(
         data_voxels = cweights.cortical_surface_voxels(model_name=best_model,
                                     cortex=cortex, 
                                     train_exp=exp,
+                                    method=method,
                                     weights=weights,
                                     save_maps=save_maps)
 
@@ -42,8 +43,11 @@ def surfaces_voxels(
             data_voxels_all[k].extend(v)
 
     # save dataframe to disk
+    df = pd.DataFrame.from_dict(data_voxels_all)
     fpath = os.path.join(dirs.conn_train_dir, 'cortical_surface_voxels_stats.csv')
-    df = pd.DataFrame.from_dict(data_voxels_all)  
+    if not os.path.isfile(fpath):
+        df_exist = pd.read_csv(fpath)
+        df = pd.concat([df, df_exist])
     df.to_csv(fpath)
 
 def surfaces_rois(
@@ -78,6 +82,7 @@ def surfaces_rois(
                                     train_exp=exp,
                                     weights=weights,
                                     alpha=alpha,
+                                    method=method,
                                     atlas=atlas,
                                     cortex=cortex
                                     )
@@ -86,7 +91,10 @@ def surfaces_rois(
 
     # save dataframe to disk
     df = pd.DataFrame.from_dict(data_rois_all)
-    fpath = os.path.join(dirs.conn_train_dir, f'cortical_surface_rois_stats_{atlas}.csv')  
+    fpath = os.path.join(dirs.conn_train_dir, f'cortical_surface_rois_stats_{atlas}.csv') 
+    if not os.path.isfile(fpath):
+        df_exist = pd.read_csv(fpath)
+        df = pd.concat([df, df_exist])  
     df.to_csv(fpath)
 
 @click.command()
