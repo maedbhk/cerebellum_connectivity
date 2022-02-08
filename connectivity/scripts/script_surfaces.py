@@ -28,6 +28,8 @@ def surfaces_voxels(
     dirs = const.Dirs(exp_name=exp)
     dataframe = summary.get_summary(exps=[exp], summary_type='train', method=[method])
     models, cortex_names= summary.get_best_models(dataframe)
+    models = [m for m in models if 'mdtb' not in m]
+    cortex_names = [c for c in cortex_names if 'mdtb' not in c]
 
     data_voxels_all = defaultdict(list)
     for (best_model, cortex) in zip(models, cortex_names):
