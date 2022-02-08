@@ -33,7 +33,7 @@ python3 script_surfaces.py --exp="sc1" --weights="nonzero" --method=${methods[m]
 # run cortical surfaces (rois)
 for ((a=0; a<${#atlases[@]}; a++)); do \
 for ((m=0; m<${#methods[@]}; m++)); do \
-python3 script_surfaces.py --exp="sc1" --weights="nonzero" --method=${methods[m]} --regions="rois" --atlas=${atlases[a]}; done
+python3 script_surfaces.py --exp="sc1" --weights="nonzero" --method=${methods[m]} --regions="rois" --atlas=${atlases[a]}; done; done
 
 # # run dispersion (voxels)
 # for ((m=0; m<${#methods[@]}; m++)); do \
