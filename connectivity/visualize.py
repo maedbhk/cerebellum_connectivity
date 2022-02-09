@@ -742,7 +742,7 @@ def map_surface_cerebellum(
     # plot map
     fpath = os.path.join(dirs.conn_train_dir, model_name)
 
-    fname = f"group_lasso_{stat}_{weights}_cerebellum"
+    fname = f"group_{method}_{stat}_{weights}_cerebellum"
     gifti = os.path.join(fpath, f'{fname}.func.gii')
     view = nio.view_cerebellum(gifti=gifti,
                             cscale=cscale,

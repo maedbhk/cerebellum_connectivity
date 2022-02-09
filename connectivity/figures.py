@@ -554,27 +554,27 @@ def figS3():
     labelsize = 30
 
     ax = fig.add_subplot(gs[0,0])
-    # fpath = os.path.join(dirs.figure, f'group_lasso_percent_nonzero_cerebellum.png')
-    # if not os.path.isfile(fpath):
-    #     vis.map_surface_cerebellum(model_name='lasso_tessels0362_alpha_-3', stat='percent', colorbar=True, weights='nonzero', outpath=fpath);
-    # vis.plot_png(fpath, ax=ax)
-    # ax.axis('off')
+    fpath = os.path.join(dirs.figure, f'group_ridge_percent_nonzero_cerebellum.png')
+    if not os.path.isfile(fpath):
+        vis.map_surface_cerebellum(model_name='ridge_tessels0362_alpha_6', method='ridge', stat='percent', colorbar=True, weights='nonzero', outpath=fpath);
+    vis.plot_png(fpath, ax=ax)
+    ax.axis('off')
     ax.text(x_pos, y_pos, '', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
 
     ax = fig.add_subplot(gs[0,1])
-    # ax,df = vis.plot_surfaces(x='reg_names', hue=None, cortex='tessels0362', method='ridge', regions=None, ax=ax);
+    ax,df = vis.plot_surfaces(x='reg_names', hue=None, cortex='tessels0362', method='ridge', regions=None, ax=ax);
     ax.text(x_pos, y_pos, '', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
-    # plt.ylim([0.1, 0.5])
-    # plt.ylabel('% of cortical surface', fontsize=35)
-    # plt.yticks([0.1, 0.2, 0.3, 0.4, 0.5], fontsize=40)
-    # plt.xticks(fontsize=40)
-    # result = sp.f_oneway(df[1], df[2], df[3], df[4], df[5], df[6], df[7], df[8], df[9], df[10])
-    # print(f'F test for surfaces is {result}')
+    plt.ylim([0.1, 0.5])
+    plt.ylabel('% of cortical surface', fontsize=35)
+    plt.yticks([0.1, 0.2, 0.3, 0.4, 0.5], fontsize=40)
+    plt.xticks(fontsize=40)
+    result = sp.f_oneway(df[1], df[2], df[3], df[4], df[5], df[6], df[7], df[8], df[9], df[10])
+    print(f'F test for surfaces is {result}')
 
     ax = fig.add_subplot(gs[1,0])
     fpath = os.path.join(dirs.figure, f'group_lasso_dispersion_cerebellum.png')
     if not os.path.isfile(fpath):
-        vis.map_dispersion_cerebellum(model_name='lasso_tessels0362_alpha_-3', colorbar=True, stat='var_w', atlas='tessels', outpath=fpath)
+        vis.map_dispersion_cerebellum(model_name='lasso_tessels0042_alpha_-3', method='lasso', colorbar=True, stat='var_w', atlas='tessels', outpath=fpath)
     vis.plot_png(fpath, ax=ax)
     ax.axis('off')
     ax.text(x_pos, y_pos, '', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
@@ -590,7 +590,7 @@ def figS3():
     print(f'F test for dispersion is {result}')
 
     plt.subplots_adjust(left=0.125, bottom=0.001, right=2.0, top=2.0, wspace=.2, hspace=.3)
-    save_path = os.path.join(dirs.figure, f'figS2.svg')
+    save_path = os.path.join(dirs.figure, f'figS3.svg')
     plt.savefig(save_path, bbox_inches="tight", dpi=300)
 
 def figS4():
