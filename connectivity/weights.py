@@ -425,6 +425,79 @@ def average_region_data(
     
     return roi_mean, reg_names, colors
 
+def average_weight_roi(
+    method = "lasso", 
+    cortex = "tessels1002", 
+    alpha  = -6,
+    train_exp='sc1',
+    atlas = "MDTB10", 
+    sn = const.return_subjs):
+
+    """
+    calculates the average weight across subjects for each roi.
+    1. gets the average weight for each roi in the atlas for each subject
+    2. averages across subjects
+    Args: 
+        method (str) - options are "lasso", "ridge"
+        cortex (str) - name of the cortical parcellation.
+        alpha (int) -  (for lasso and ridge) the regularization parameter
+        train_exp (str) - experiment used in training
+        sn (list of strings) - list of subjects
+        atlas (str) - name of the atlas file
+    """
+
+    dirs = const.Dirs(exp_name=train_exp)
+
+    # get model name
+    model_name = f"{method}_{cortex}_alpha_{alpha}"
+    # full path to the model
+    fpath = os.path.join(dirs.conn_train_dir, model_name)
+
+    if 'MDTB' in atlas:
+        atlas_dir = os.path.join(dirs.cerebellar_atlases, 'king_2019')
+        catlas.fetch_king_2019(data='atl', data_dir=dirs.cerebellar_atlases)
+    elif 'Buckner' in atlas:
+        atlas_dir = os.path.join(dirs.cerebellar_atlases, 'buckner_2011')
+        catlas.fetch_buckner_2011(data_dir=dirs.cerebellar_atlases)
+    elif 'Anatom' in atlas:
+        atlas_dir = os.path.join(dirs.cerebellar_atlases, 'diedrichsen_2009')
+        catlas.fetch_diedrichsen_2009(data_dir=dirs.cerebellar_atlases)
+
+    # fetch `atlas`
+    cerebellum_nifti = os.path.join(atlas_dir, f'atl-{atlas}_space-SUIT_dseg.nii')
+
+    # get the indices for rois in the atlas
+    atlas_numbers = cdata.read_suit_nii(cerebellum_nifti)
+
+    # loop over subject
+    weights_all = []
+    for s in sn:
+        # load the model weights weights
+        data = dd.io.load(os.path.join(fpath, f"{model_name}_{s}.h5"))
+        weights_roi, region_numbers = cdata.average_by_roi(data.coef_.T, atlas_numbers)
+        weights_all.append(weights_roi)
+
+    # stack the weights from all subjects
+    weights_all = np.stack(weights_all, axis=0)
+
+    # average over subjects
+    mean_weights = np.nanmean(weights_all, axis = 0)
+
+    func_giis, hem_names = cdata.convert_cortex_to_gifti(
+                                                            mean_weights, 
+                                                            atlas = cortex,
+                                                            data_type='func',
+                                                            column_names=None,
+                                                            label_names=None,
+                                                            label_RGBA=None,
+                                                            hem_names=['L', 'R'])
+
+    for (func_gii, hem) in zip(func_giis, hem_names):
+        nib.save(func_gii, os.path.join(fpath,f'group_weight_roi_{atlas}.{hem}.func.gii'))
+    print('saving cortical map to disk')
+    
+    return
+
 def regions_cortex(
     roi_betas,
     reg_names,
