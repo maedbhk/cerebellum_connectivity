@@ -25,7 +25,7 @@ export PYTHONPATH
 cd /global/scratch/users/maedbhking/projects/cerebellum_connectivity/connectivity/scripts
 
 atlases=(MDTB10 MDTB10-subregions) # Buckner7 Buckner17 Anatom (problem with these atlases)
-methods=(lasso) # ridge
+methods=(ridge) # lasso
 
 # # # run cortical surface (voxels)
 # for ((m=0; m<${#methods[@]}; m++)); do \
