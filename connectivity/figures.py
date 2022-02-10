@@ -556,13 +556,13 @@ def figS3():
     ax = fig.add_subplot(gs[0,0])
     fpath = os.path.join(dirs.figure, f'group_ridge_percent_nonzero_cerebellum.png')
     if not os.path.isfile(fpath):
-        vis.map_surface_cerebellum(model_name='ridge_tessels0362_alpha_6', method='ridge', stat='percent', colorbar=True, weights='nonzero', outpath=fpath);
+        vis.map_surface_cerebellum(model_name='ridge_tessels1002_alpha_8', method='ridge', stat='percent', colorbar=True, weights='nonzero', outpath=fpath);
     vis.plot_png(fpath, ax=ax)
     ax.axis('off')
     ax.text(x_pos, y_pos, '', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
 
     ax = fig.add_subplot(gs[0,1])
-    ax,df = vis.plot_surfaces(x='reg_names', hue=None, cortex='tessels0362', method='ridge', regions=None, ax=ax);
+    ax,df = vis.plot_surfaces(x='reg_names', hue=None, cortex='tessels1002', method='ridge', regions=None, ax=ax);
     ax.text(x_pos, y_pos, '', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
     plt.ylim([0.1, 0.5])
     plt.ylabel('% of cortical surface', fontsize=35)
@@ -608,11 +608,16 @@ def figS4():
 
     ax = fig.add_subplot(gs[0,0])
     vis.plot_surfaces(cortex=None,  cortex_group='tessels', method='lasso', x='num_regions', plot_type='line', ax=ax)
-    ax.text(x_pos, y_pos, '', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+    ax.set_xlim([0, 1848])
+    ax.set_xticks([80, 304, 670, 1190, 1848])
+    ax.set_xticklabels([80, 304, 670, 1190, 1848]);
 
     ax = fig.add_subplot(gs[0,1])
-    vis.plot_surfaces(cortex=None,  cortex_group='tessels', method='ridge', x='num_regions', plot_type='line', ax=ax)
-    ax.text(x_pos, y_pos, '', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+    fpath = os.path.join(dirs.figure, f'group_lasso_dispersion_cerebellum.png')
+    if not os.path.isfile(fpath):
+        vis.map_dispersion_cerebellum(model_name='lasso_tessels0042_alpha_-3', method='lasso', colorbar=True, stat='var_w', atlas='tessels', outpath=fpath)
+    vis.plot_png(fpath, ax=ax)
+    ax.axis('off')
 
     plt.subplots_adjust(left=0.125, bottom=0.001, right=2.0, top=2.0, wspace=.2, hspace=.3)
     save_path = os.path.join(dirs.figure, f'figS4.svg')

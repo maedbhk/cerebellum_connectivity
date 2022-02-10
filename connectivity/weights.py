@@ -172,7 +172,7 @@ def cortical_surface_voxels(
         betas = data.coef_
 
         if method=='ridge':
-            betas, _ = _threshold_data(data=betas, threshold=5)
+            betas = _threshold_data(data=betas, threshold=betas.mean() + betas.std())
 
         if weights=='positive':
             betas[betas <= 0] = np.nan
@@ -253,7 +253,7 @@ def cortical_surface_rois(
             labels = get_labels_hemisphere(roi=cortex, hemisphere=hem)
 
             if method=='ridge':
-                roi_betas, _ = _threshold_data(data=roi_betas, threshold=5)
+                roi_betas, _ = _threshold_data(data=roi_betas, threshold=roi_betas.mean() + roi_betas.std())
 
             # count number of non-zero weights
             data_nonzero = np.count_nonzero(~np.isnan(roi_betas[:,labels],), axis=1)
@@ -311,23 +311,23 @@ def _threshold_data(
     data, 
     threshold=5
     ):
-    """threshold data (2d np array) taking top `threshold` % of strongest data
+    """threshold data (2d np array) setting values below `threshold` to NaN
 
     Args: 
         data (np array): weight matrix; shape n_cerebellar_regs x n_cortical_regs
-        threshold (int): default is 5 (takes top 5% of strongest data)
+        threshold (int): some number
 
     Returns:
         data (np array); same shape as `data`. NaN replaces all data below threshold
     """
-    num_vert = data.shape[1]
+    # num_vert = data.shape[1]
+    # thresh_regs = round(num_vert*(threshold*.01))
+    # sorted_roi = np.argsort(-data, axis=1)
+    # sorted_idx = sorted_roi[:,thresh_regs:]
+    # np.put_along_axis(data, sorted_idx, np.nan, axis=1)
+    # return data, sorted_idx
 
-    thresh_regs = round(num_vert*(threshold*.01))
-    sorted_roi = np.argsort(-data, axis=1)
-    sorted_idx = sorted_roi[:,thresh_regs:]
-    np.put_along_axis(data, sorted_idx, np.nan, axis=1)
-
-    return data, sorted_idx
+    return np.where(data < threshold, np.float("nan"), data)
 
 def average_region_data(
     subjs,

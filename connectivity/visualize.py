@@ -23,18 +23,18 @@ import connectivity.nib_utils as nio
 
 def plotting_style():
     plt.style.use('seaborn-poster') # ggplot
-    params = {'axes.labelsize': 30,
+    params = {'axes.labelsize': 40,
             'axes.titlesize': 25,
             'legend.fontsize': 20,
-            'xtick.labelsize': 25,
-            'ytick.labelsize': 25,
+            'xtick.labelsize': 30,
+            'ytick.labelsize': 30,
             # 'figure.figsize': (10,5),
             'font.weight': 'regular',
             # 'font.size': 'regular',
             'font.family': 'sans-serif',
             'lines.markersize': 10,
             'font.serif': 'Helvetica Neue',
-            'lines.linewidth': 6,
+            'lines.linewidth': 8,
             'axes.grid': False,
             'axes.spines.top': False,
             'axes.spines.right': False}
@@ -482,7 +482,6 @@ def plot_surfaces(
         plt.savefig(os.path.join(dirs.figure, f'cortical_surfaces_{exp}_{y}.svg'), pad_inches=0, bbox_inches='tight')
 
     df1 = pd.pivot_table(dataframe, values='percent', index='subj', columns='regions', aggfunc=np.mean)
-    plt.show()
 
     return ax, df1
 
