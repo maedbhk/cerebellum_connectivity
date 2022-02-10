@@ -169,18 +169,19 @@ def cortical_surface_voxels(
 
         # read model data
         data = cio.read_hdf5(model_fname)
+        betas = data.coef_
 
         if method=='ridge':
-            data.coef_, _ = _threshold_data(data=data.coef_, threshold=5)
+            betas, _ = _threshold_data(data=betas, threshold=5)
 
         if weights=='positive':
-            data.coef_[data.coef_ <= 0] = np.nan
+            betas[betas <= 0] = np.nan
         elif weights=='nonzero':
-            data.coef_[data.coef_ == 0] = np.nan
+            betas[betas == 0] = np.nan
         
         # count number of non-zero weights
-        data_nonzero = np.count_nonzero(~np.isnan(data.coef_,), axis=1)
-        n_cereb, n_cortex  = data.coef_.shape
+        data_nonzero = np.count_nonzero(~np.isnan(betas,), axis=1)
+        n_cereb, n_cortex  = betas.shape
 
         data_nonzero_percent = np.divide(data_nonzero,  n_cortex)*100
         cereb_all_count.append(data_nonzero)
@@ -241,7 +242,7 @@ def cortical_surface_rois(
     method = model_name.split('_')[0] # model_name
 
     data_all = defaultdict(list)
-    for subj in const.return_subjs:
+    for subj in const.return_subjs: #const.return_subjs 
         roi_betas, reg_names, colors = average_region_data(subj,
                                 exp=train_exp, cortex=cortex, 
                                 atlas=atlas, method=method, alpha=int(alpha), 

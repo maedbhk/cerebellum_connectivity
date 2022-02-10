@@ -28,8 +28,8 @@ def surfaces_voxels(
     dirs = const.Dirs(exp_name=exp)
     dataframe = summary.get_summary(exps=[exp], summary_type='train', method=[method])
     models, cortex_names= summary.get_best_models(dataframe)
-    models = [m for m in models if 'mdtb' not in m]
-    cortex_names = [c for c in cortex_names if 'mdtb' not in c]
+    models = [m for m in models if 'tessels' in m]
+    cortex_names = [c for c in cortex_names if 'tessels' in c]
 
     data_voxels_all = defaultdict(list)
     for (best_model, cortex) in zip(models, cortex_names):
@@ -47,9 +47,8 @@ def surfaces_voxels(
     # save dataframe to disk
     df = pd.DataFrame.from_dict(data_voxels_all)
     fpath = os.path.join(dirs.conn_train_dir, 'cortical_surface_voxels_stats.csv')
-    if not os.path.isfile(fpath):
-        df_exist = pd.read_csv(fpath)
-        df = pd.concat([df, df_exist])
+    if os.path.isfile(fpath):
+        df = pd.concat([df, pd.read_csv(fpath)])
     df.to_csv(fpath)
 
 def surfaces_rois(
@@ -73,8 +72,8 @@ def surfaces_rois(
     dirs = const.Dirs(exp_name=exp)
     dataframe = summary.get_summary(exps=[exp], summary_type='train', method=[method])
     models, cortex_names= summary.get_best_models(dataframe)
-    models = [m for m in models if 'mdtb' not in m]
-    cortex_names = [c for c in cortex_names if 'mdtb' not in c]
+    models = [m for m in models if 'tessels' in m]
+    cortex_names = [c for c in cortex_names if 'tessels' in c]
 
     data_rois_all = defaultdict(list)
     for (best_model, cortex) in zip(models, cortex_names):
@@ -94,9 +93,8 @@ def surfaces_rois(
     # save dataframe to disk
     df = pd.DataFrame.from_dict(data_rois_all)
     fpath = os.path.join(dirs.conn_train_dir, f'cortical_surface_rois_stats_{atlas}.csv') 
-    if not os.path.isfile(fpath):
-        df_exist = pd.read_csv(fpath)
-        df = pd.concat([df, df_exist])  
+    if os.path.isfile(fpath):
+        df = pd.concat([df, pd.read_csv(fpath)])  
     df.to_csv(fpath)
 
 @click.command()

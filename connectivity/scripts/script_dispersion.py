@@ -28,8 +28,8 @@ def dispersion_rois(
 
     dataframe = summary.get_summary(exps=[exp], summary_type='train', method=[method])
     models, cortex_names= summary.get_best_models(dataframe)
-    models = [m for m in models if 'mdtb' not in m]
-    cortex_names = [c for c in cortex_names if 'mdtb' not in c]
+    models = [m for m in models if 'tessels' in m]
+    cortex_names = [c for c in cortex_names if 'tessels' in c]
 
     for (best_model, cortex) in zip(models, cortex_names):
 
@@ -70,8 +70,8 @@ def dispersion_voxels(
 
     dataframe = summary.get_summary(exps=[exp], summary_type='train', method=[method])
     models, cortex_names= summary.get_best_models(dataframe)
-    models = [m for m in models if 'mdtb' not in m]
-    cortex_names = [c for c in cortex_names if 'mdtb' not in c]
+    models = [m for m in models if 'tessels' in m]
+    cortex_names = [c for c in cortex_names if 'tessels' in c]
 
     for (best_model, cortex) in zip(models, cortex_names):
         

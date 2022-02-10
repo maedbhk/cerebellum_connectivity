@@ -482,6 +482,7 @@ def plot_surfaces(
         plt.savefig(os.path.join(dirs.figure, f'cortical_surfaces_{exp}_{y}.svg'), pad_inches=0, bbox_inches='tight')
 
     df1 = pd.pivot_table(dataframe, values='percent', index='subj', columns='regions', aggfunc=np.mean)
+    plt.show()
 
     return ax, df1
 
