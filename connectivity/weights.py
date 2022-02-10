@@ -253,7 +253,7 @@ def cortical_surface_rois(
             labels = get_labels_hemisphere(roi=cortex, hemisphere=hem)
 
             if method=='ridge':
-                roi_betas, _ = _threshold_data(data=roi_betas, threshold=roi_betas.mean() + roi_betas.std())
+                roi_betas = _threshold_data(data=roi_betas, threshold=roi_betas.mean() + roi_betas.std())
 
             # count number of non-zero weights
             data_nonzero = np.count_nonzero(~np.isnan(roi_betas[:,labels],), axis=1)

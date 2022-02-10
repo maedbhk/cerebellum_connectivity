@@ -547,50 +547,173 @@ def figS3():
     dirs = const.Dirs()
 
     fig = plt.figure()
-    gs = GridSpec(2, 2, figure=fig)
+    gs = GridSpec(6, 4, figure=fig)
 
     x_pos = -0.1
     y_pos = 1.1
     labelsize = 30
 
-    ax = fig.add_subplot(gs[0,0])
-    fpath = os.path.join(dirs.figure, f'group_ridge_percent_nonzero_cerebellum.png')
-    if not os.path.isfile(fpath):
-        vis.map_surface_cerebellum(model_name='ridge_tessels1002_alpha_8', method='ridge', stat='percent', colorbar=True, weights='nonzero', outpath=fpath);
-    vis.plot_png(fpath, ax=ax)
-    ax.axis('off')
-    ax.text(x_pos, y_pos, '', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
-
     ax = fig.add_subplot(gs[0,1])
-    ax,df = vis.plot_surfaces(x='reg_names', hue=None, cortex='tessels1002', method='ridge', regions=None, ax=ax);
-    ax.text(x_pos, y_pos, '', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
-    plt.ylim([0.1, 0.5])
-    plt.ylabel('% of cortical surface', fontsize=35)
-    plt.yticks([0.1, 0.2, 0.3, 0.4, 0.5], fontsize=40)
-    plt.xticks(fontsize=40)
-    result = sp.f_oneway(df[1], df[2], df[3], df[4], df[5], df[6], df[7], df[8], df[9], df[10])
-    print(f'F test for surfaces is {result}')
-
-    ax = fig.add_subplot(gs[1,0])
-    fpath = os.path.join(dirs.figure, f'group_lasso_dispersion_cerebellum.png')
+    fpath = os.path.join(dirs.figure, f'group_distances_lasso_best_model_MDTB10-reg1.png')
     if not os.path.isfile(fpath):
-        vis.map_dispersion_cerebellum(model_name='lasso_tessels0042_alpha_-3', method='lasso', colorbar=True, stat='var_w', atlas='tessels', outpath=fpath)
+        vis.map_distances_cortex(model_name='best_model', atlas='MDTB10', method='lasso', surf='inflated', threshold=100, column=0, outpath=fpath, colorbar=True)
     vis.plot_png(fpath, ax=ax)
     ax.axis('off')
+    ax.text(x_pos, y_pos, 'A', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+
+    ax = fig.add_subplot(gs[0,0])
+    fpath = os.path.join(dirs.figure, f'MDTB-reg1.png')
+    if not os.path.isfile(fpath):
+        nio.view_atlas_cerebellum(outpath=fpath, labels=[1], atlas='MDTB10_dseg', colorbar=False)
+    vis.plot_png(fpath, ax=ax)
     ax.text(x_pos, y_pos, '', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+    ax.axis('off')
+
+    ax = fig.add_subplot(gs[0,3])
+    fpath = os.path.join(dirs.figure, f'group_distances_lasso_best_model_MDTB10-reg2.png')
+    if not os.path.isfile(fpath):
+        vis.map_distances_cortex(model_name='best_model', atlas='MDTB10', method='lasso', surf='inflated', threshold=100, column=1, outpath=fpath, colorbar=False)
+    vis.plot_png(fpath, ax=ax)
+    ax.axis('off')
+
+    ax = fig.add_subplot(gs[0,2])
+    fpath = os.path.join(dirs.figure, f'MDTB-reg2.png')
+    if not os.path.isfile(fpath):
+        nio.view_atlas_cerebellum(outpath=fpath, labels=[2], atlas='MDTB10_dseg', colorbar=False)
+    vis.plot_png(fpath, ax=ax)
+    ax.text(x_pos, y_pos, '', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+    ax.axis('off')
 
     ax = fig.add_subplot(gs[1,1])
-    ax,df = vis.plot_dispersion(y='var_w', hue=None, y_label='cortical dispersion', cortex='tessels0042', method='lasso', atlas='MDTB10', regions=None, ax=ax);
+    fpath = os.path.join(dirs.figure, f'group_distances_lasso_best_model_MDTB10-reg3.png')
+    if not os.path.isfile(fpath):
+        vis.map_distances_cortex(model_name='best_model', atlas='MDTB10', method='lasso', surf='inflated', threshold=100, column=2, outpath=fpath, colorbar=False)
+    vis.plot_png(fpath, ax=ax)
+    ax.axis('off')
+    ax.text(x_pos, y_pos, 'C', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+
+    ax = fig.add_subplot(gs[1,0])
+    fpath = os.path.join(dirs.figure, f'MDTB-reg3.png')
+    if not os.path.isfile(fpath):
+        nio.view_atlas_cerebellum(outpath=fpath, labels=[3], atlas='MDTB10_dseg', colorbar=False)
+    vis.plot_png(fpath, ax=ax)
     ax.text(x_pos, y_pos, '', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
-    plt.ylim([0.65, 0.85])
-    plt.ylabel('dispersion', fontsize=35)
-    plt.yticks([0.65, 0.75, 0.85], fontsize=40)
-    plt.xticks(fontsize=40)
-    result = sp.f_oneway(df[1], df[2], df[3], df[4], df[5], df[6], df[7], df[8], df[9], df[10])
-    print(f'F test for dispersion is {result}')
+    ax.axis('off')
+
+    ax = fig.add_subplot(gs[1,3])
+    fpath = os.path.join(dirs.figure, f'group_distances_lasso_best_model_MDTB10-reg4.png')
+    if not os.path.isfile(fpath):
+        vis.map_distances_cortex(model_name='best_model', atlas='MDTB10', method='lasso', surf='inflated', threshold=100, column=3, outpath=fpath, colorbar=False)
+    vis.plot_png(fpath, ax=ax)
+    ax.axis('off')
+    ax.text(x_pos, y_pos, 'D', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+
+    ax = fig.add_subplot(gs[1,2])
+    fpath = os.path.join(dirs.figure, f'MDTB-reg4.png')
+    if not os.path.isfile(fpath):
+        nio.view_atlas_cerebellum(outpath=fpath, labels=[4], atlas='MDTB10_dseg', colorbar=False)
+    vis.plot_png(fpath, ax=ax)
+    ax.text(x_pos, y_pos, '', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+    ax.axis('off')
+
+    ax = fig.add_subplot(gs[2,1])
+    fpath = os.path.join(dirs.figure, f'group_distances_lasso_best_model_MDTB10-reg5.png')
+    if not os.path.isfile(fpath):
+        vis.map_distances_cortex(model_name='best_model', atlas='MDTB10', method='lasso', surf='inflated', threshold=100, column=4, outpath=fpath, colorbar=False)
+    vis.plot_png(fpath, ax=ax)
+    ax.axis('off')
+    ax.text(x_pos, y_pos, 'E', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+
+    ax = fig.add_subplot(gs[2,0])
+    fpath = os.path.join(dirs.figure, f'MDTB-reg5.png')
+    if not os.path.isfile(fpath):
+        nio.view_atlas_cerebellum(outpath=fpath, labels=[5], atlas='MDTB10_dseg', colorbar=False)
+    vis.plot_png(fpath, ax=ax)
+    ax.text(x_pos, y_pos, '', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+    ax.axis('off')
+
+    ax = fig.add_subplot(gs[2,3])
+    fpath = os.path.join(dirs.figure, f'group_distances_lasso_best_model_MDTB10-reg6.png')
+    if not os.path.isfile(fpath):
+        vis.map_distances_cortex(model_name='best_model', atlas='MDTB10', method='lasso', surf='inflated', threshold=100, column=5, outpath=fpath, colorbar=False)
+    vis.plot_png(fpath, ax=ax)
+    ax.axis('off')
+    ax.text(x_pos, y_pos, 'F', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+
+    ax = fig.add_subplot(gs[2,2])
+    fpath = os.path.join(dirs.figure, f'MDTB-reg6.png')
+    if not os.path.isfile(fpath):
+        nio.view_atlas_cerebellum(outpath=fpath, labels=[6], atlas='MDTB10_dseg', colorbar=False)
+    vis.plot_png(fpath, ax=ax)
+    ax.text(x_pos, y_pos, '', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+    ax.axis('off')
+
+    ax = fig.add_subplot(gs[3,1])
+    fpath = os.path.join(dirs.figure, f'group_distances_lasso_best_model_MDTB10-reg7.png')
+    if not os.path.isfile(fpath):
+        vis.map_distances_cortex(model_name='best_model', atlas='MDTB10', method='lasso', surf='inflated', threshold=100, column=6, outpath=fpath, colorbar=False)
+    vis.plot_png(fpath, ax=ax)
+    ax.axis('off')
+    ax.text(x_pos, y_pos, 'G', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+
+    ax = fig.add_subplot(gs[3,0])
+    fpath = os.path.join(dirs.figure, f'MDTB-reg7.png')
+    if not os.path.isfile(fpath):
+        nio.view_atlas_cerebellum(outpath=fpath, labels=[7], atlas='MDTB10_dseg', colorbar=False)
+    vis.plot_png(fpath, ax=ax)
+    ax.text(x_pos, y_pos, '', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+    ax.axis('off')
+
+    ax = fig.add_subplot(gs[3,3])
+    fpath = os.path.join(dirs.figure, f'group_distances_lasso_best_model_MDTB10-reg8.png')
+    if not os.path.isfile(fpath):
+        vis.map_distances_cortex(model_name='best_model', atlas='MDTB10', method='lasso', surf='inflated', threshold=100, column=7, outpath=fpath, colorbar=False)
+    vis.plot_png(fpath, ax=ax)
+    ax.axis('off')
+    ax.text(x_pos, y_pos, 'H', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+
+    ax = fig.add_subplot(gs[3,2])
+    fpath = os.path.join(dirs.figure, f'MDTB-reg8.png')
+    if not os.path.isfile(fpath):
+        nio.view_atlas_cerebellum(outpath=fpath, labels=[8], atlas='MDTB10_dseg', colorbar=False)
+    vis.plot_png(fpath, ax=ax)
+    ax.text(x_pos, y_pos, '', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+    ax.axis('off')
+
+    ax = fig.add_subplot(gs[4,1])
+    fpath = os.path.join(dirs.figure, f'group_distances_lasso_best_model_MDTB10-reg9.png')
+    if not os.path.isfile(fpath):
+        vis.map_distances_cortex(model_name='best_model', atlas='MDTB10', method='lasso', surf='inflated', threshold=100, column=8, outpath=fpath, colorbar=False)
+    vis.plot_png(fpath, ax=ax)
+    ax.axis('off')
+    ax.text(x_pos, y_pos, 'I', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+
+    ax = fig.add_subplot(gs[4,0])
+    fpath = os.path.join(dirs.figure, f'MDTB-reg9.png')
+    if not os.path.isfile(fpath):
+        nio.view_atlas_cerebellum(outpath=fpath, labels=[9], atlas='MDTB10_dseg', colorbar=False)
+    vis.plot_png(fpath, ax=ax)
+    ax.text(x_pos, y_pos, '', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+    ax.axis('off')
+
+    ax = fig.add_subplot(gs[4,3])
+    fpath = os.path.join(dirs.figure, f'group_distances_lasso_best_model_MDTB10-reg10.png')
+    if not os.path.isfile(fpath):
+        vis.map_distances_cortex(model_name='best_model', atlas='MDTB10', method='lasso', surf='inflated', threshold=100, column=9, outpath=fpath, colorbar=False)
+    vis.plot_png(fpath, ax=ax)
+    ax.axis('off')
+    ax.text(x_pos, y_pos, 'J', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+
+    ax = fig.add_subplot(gs[4,2])
+    fpath = os.path.join(dirs.figure, f'MDTB-reg10.png')
+    if not os.path.isfile(fpath):
+        nio.view_atlas_cerebellum(outpath=fpath, labels=[10], atlas='MDTB10_dseg', colorbar=False)
+    vis.plot_png(fpath, ax=ax)
+    ax.text(x_pos, y_pos, '', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+    ax.axis('off')
 
     plt.subplots_adjust(left=0.125, bottom=0.001, right=2.0, top=2.0, wspace=.2, hspace=.3)
-    save_path = os.path.join(dirs.figure, f'figS3.svg')
+    save_path = os.path.join(dirs.figure, f'fig3.svg')
     plt.savefig(save_path, bbox_inches="tight", dpi=300)
 
 def figS4():
@@ -600,19 +723,42 @@ def figS4():
     dirs = const.Dirs()
 
     fig = plt.figure()
-    gs = GridSpec(1, 2, figure=fig)
+    gs = GridSpec(2, 2, figure=fig)
 
     x_pos = -0.1
     y_pos = 1.1
-    labelsize = 30
+    labelsize = 50
 
     ax = fig.add_subplot(gs[0,0])
-    vis.plot_surfaces(cortex=None,  cortex_group='tessels', method='lasso', x='num_regions', plot_type='line', ax=ax)
-    ax.set_xlim([0, 1848])
-    ax.set_xticks([80, 304, 670, 1190, 1848])
-    ax.set_xticklabels([80, 304, 670, 1190, 1848]);
+    ax,df = vis.plot_surfaces(x='reg_names', hue=None, cortex='tessels0362', method='ridge', regions=None, ax=ax);
+    ax.text(x_pos, y_pos, 'A', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+    # plt.ylim([0.1, 0.5])
+    plt.ylabel('% of cortical surface', fontsize=35)
+    # plt.yticks([0.1, 0.2, 0.3, 0.4, 0.5], fontsize=40)
+    plt.xticks(fontsize=40)
+    result = sp.f_oneway(df[1], df[2], df[3], df[4], df[5], df[6], df[7], df[8], df[9], df[10])
+    print(f'F test for surfaces is {result}')
 
     ax = fig.add_subplot(gs[0,1])
+    fpath = os.path.join(dirs.figure, f'group_ridge_percent_nonzero_cerebellum.png')
+    if not os.path.isfile(fpath):
+        vis.map_surface_cerebellum(model_name='ridge_tessels0362_alpha_6', method='ridge', stat='percent', colorbar=True, weights='nonzero', outpath=fpath);
+    vis.plot_png(fpath, ax=ax)
+    ax.axis('off')
+    ax.text(x_pos, y_pos, 'B', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+
+    ax = fig.add_subplot(gs[1,0])
+    ax,df = vis.plot_dispersion(y='var_w', hue=None, y_label='cortical dispersion', cortex='tessels0042', method='lasso', atlas='MDTB10', regions=None, ax=ax);
+    ax.text(x_pos, y_pos, 'C', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+    plt.ylim([0.65, 0.85])
+    plt.ylabel('dispersion', fontsize=35)
+    plt.yticks([0.65, 0.75, 0.85], fontsize=40)
+    plt.xticks(fontsize=40)
+    result = sp.f_oneway(df[1], df[2], df[3], df[4], df[5], df[6], df[7], df[8], df[9], df[10])
+    print(f'F test for dispersion is {result}')
+
+    ax = fig.add_subplot(gs[1,1])
+    ax.text(x_pos, y_pos, 'D', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
     fpath = os.path.join(dirs.figure, f'group_lasso_dispersion_cerebellum.png')
     if not os.path.isfile(fpath):
         vis.map_dispersion_cerebellum(model_name='lasso_tessels0042_alpha_-3', method='lasso', colorbar=True, stat='var_w', atlas='tessels', outpath=fpath)
@@ -622,3 +768,4 @@ def figS4():
     plt.subplots_adjust(left=0.125, bottom=0.001, right=2.0, top=2.0, wspace=.2, hspace=.3)
     save_path = os.path.join(dirs.figure, f'figS4.svg')
     plt.savefig(save_path, bbox_inches="tight", dpi=300)
+
