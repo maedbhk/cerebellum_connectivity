@@ -307,29 +307,31 @@ def plot_eval_predictions(
     if palette is None:
         palette = 'rocket'
 
-    if plot_type=='line':
-        ax = sns.lineplot(x=x, y=y, hue=hue, data=dataframe, err_style='bars', markers=markers, palette=palette) # legend=True,
-    elif plot_type=='point':
-        ax = sns.pointplot(x=x, y=y, hue=hue, data=dataframe, err_style='bars', errwidth=errwidth, markers=markers, linestyles=linestyles, palette=palette)
-    elif plot_type=='bar':
-        ax = sns.barplot(x=x, y=y, hue=hue, data=dataframe, err_style='bars', markers=markers, linestyles=linestyles, palette=palette)
-    
-    if hue is not None:
-        ax.legend(loc='best', frameon=False)
+    if plot_type is not None:
 
-    if noiseceiling:
-        ax = sns.lineplot(x=x, y=f'noiseceiling_{noiseceiling}', data=dataframe, color='k', ax=ax, ci=None, linewidth=4)
-        ax.lines[-1].set_linestyle("--")
-    ax.set_xlabel("Regions")
-    ax.set_ylabel("R")
-    plt.xticks(rotation="45", ha="right")
+        if plot_type=='line':
+            ax = sns.lineplot(x=x, y=y, hue=hue, data=dataframe, err_style='bars', markers=markers, palette=palette) # legend=True,
+        elif plot_type=='point':
+            ax = sns.pointplot(x=x, y=y, hue=hue, data=dataframe, err_style='bars', errwidth=errwidth, markers=markers, linestyles=linestyles, palette=palette)
+        elif plot_type=='bar':
+            ax = sns.barplot(x=x, y=y, hue=hue, data=dataframe, err_style='bars', markers=markers, linestyles=linestyles, palette=palette)
+        
+        if hue is not None:
+            ax.legend(loc='best', frameon=False)
 
-    if title:
-        plt.title("Model Evaluation", fontsize=20)
+        if noiseceiling:
+            ax = sns.lineplot(x=x, y=f'noiseceiling_{noiseceiling}', data=dataframe, color='k', ax=ax, ci=None, linewidth=4)
+            ax.lines[-1].set_linestyle("--")
+        ax.set_xlabel("Regions")
+        ax.set_ylabel("R")
+        plt.xticks(rotation="45", ha="right")
 
-    if save:
-        dirs = const.Dirs()
-        plt.savefig(os.path.join(dirs.figure, 'eval_predictions.svg', pad_inches=0, bbox_inches='tight'))
+        if title:
+            plt.title("Model Evaluation", fontsize=20)
+
+        if save:
+            dirs = const.Dirs()
+            plt.savefig(os.path.join(dirs.figure, 'eval_predictions.svg', pad_inches=0, bbox_inches='tight'))
 
     df = pd.pivot_table(dataframe, values=y, index='subj_id', columns=['method', 'num_regions'], aggfunc=np.mean) # 'X_data'
     return df, ax
@@ -558,8 +560,8 @@ def plot_dispersion(
     # load in distances
     dataframe = pd.read_csv(os.path.join(dirs.conn_train_dir, f'cortical_dispersion_stats_{atlas}.csv'))
 
-    dataframe['w_var']=dataframe.Variance*dataframe.sum_w
-    dataframe['var_w'] = dataframe.w_var/dataframe.sum_w
+    # dataframe['w_var']=dataframe.Variance*dataframe.sum_w
+    # dataframe['var_w'] = dataframe.w_var/dataframe.sum_w
     dataframe['hem'] = dataframe['hem'].map({0: 'L', 1: 'R'})
     dataframe['num_regions'] = dataframe['cortex'].str.split('_').str.get(-1).str.extract('(\d+)').astype(float)*2
     dataframe['cortex_group'] = dataframe['cortex'].apply(lambda x: _add_atlas(x))
@@ -575,6 +577,9 @@ def plot_dispersion(
         dataframe = dataframe[dataframe['method'].isin([method])]
     if regions is not None:
         dataframe = dataframe[dataframe['roi'].isin(regions)]
+
+    # nan 2 num
+    dataframe = dataframe.fillna(0)
 
     # color plot according to MDTB10 atlas
     fpath = nio.get_cerebellar_atlases(atlas_keys=[f'atl-{atlas}'])[0]
@@ -604,10 +609,6 @@ def plot_dispersion(
     ax.set_xlabel(x_label)
     plt.xticks(rotation="45", ha="right")
 
-    if regions is not None:
-        plt.ylim([0.6, 0.85])
-        plt.yticks([0.65, 0.75, 0.85])
-
     if hue and plt_legend:
         plt.legend(loc='best', frameon=False) # bbox_to_anchor=(1, 1)
     else:
@@ -618,6 +619,8 @@ def plot_dispersion(
     if save:
         dirs = const.Dirs()
         plt.savefig(os.path.join(dirs.figure, f'cortical_dispersion_{y}.svg'), pad_inches=0, bbox_inches='tight')
+    
+    plt.show()
 
     return ax, df1
 

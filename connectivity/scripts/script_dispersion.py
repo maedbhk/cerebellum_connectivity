@@ -9,7 +9,6 @@ import matplotlib.pyplot as plt
 
 from connectivity import weights as cweights
 from connectivity import visualize as summary
-from connectivity import data as cdata
 import connectivity.constants as const
 
 import warnings
@@ -35,11 +34,11 @@ def dispersion_rois(
 
         # get alpha for each model
         alpha = int(best_model.split('_')[-1])
-        for subj in const.return_subjs:
+        for subj in const.return_subjs: # const.return_subjs
                 roi_betas, _, _ = cweights.average_region_data(subj,
-                                        exp=exp, cortex=cortex, 
+                                        exp=exp, cortex=cortex, hemispheres=True,
                                         atlas=atlas, method=method, alpha=alpha, 
-                                        weights='nonzero', average_subjs=False)
+                                        weights='nonzero', average_subjs=True)
 
                 # save out cortical distances
                 df_res = cweights.dispersion_cortex(roi_betas, cortex=cortex)
@@ -48,6 +47,8 @@ def dispersion_rois(
                 df_res['cortex']=[cortex]*N
                 df_res['method']=[method]*N
                 df_res['atlas']=[atlas]*N
+                df_res['w_var']=df_res.Variance*df_res.sum_w
+                df_res['var_w'] = df_res.w_var/df_res.sum_w
                 df = pd.concat([df,df_res])
         
     # save dataframe to disk
@@ -72,6 +73,9 @@ def dispersion_voxels(
     models, cortex_names= summary.get_best_models(dataframe)
     models = [m for m in models if 'tessels' in m]
     cortex_names = [c for c in cortex_names if 'tessels' in c]
+
+    models = ['lasso_tessels0042_alpha_-3']
+    cortex_names = ['tessels0042']
 
     for (best_model, cortex) in zip(models, cortex_names):
         

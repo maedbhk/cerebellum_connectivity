@@ -2,9 +2,6 @@
 from matplotlib import pyplot as plt
 import matplotlib as mpl
 from matplotlib.gridspec import GridSpec
-import seaborn as sns
-
-import numpy as np
 import os
 import pandas as pd
 from scipy import stats as sp
@@ -320,17 +317,15 @@ def fig4():
     ax = fig.add_subplot(gs[0,0])
     fpath = os.path.join(dirs.figure, f'group_lasso_percent_nonzero_cerebellum.png')
     if not os.path.isfile(fpath):
-        vis.map_surface_cerebellum(model_name='lasso_tessels0362_alpha_-3', stat='percent', colorbar=True, weights='nonzero', outpath=fpath);
+        vis.map_surface_cerebellum(model_name='lasso_tessels0042_alpha_-3', stat='percent', colorbar=True, weights='nonzero', outpath=fpath);
     vis.plot_png(fpath, ax=ax)
     ax.axis('off')
     ax.text(x_pos, y_pos, 'K', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
 
     ax = fig.add_subplot(gs[0,1])
-    ax,df = vis.plot_surfaces(x='reg_names', hue=None, cortex='tessels0362', method='lasso', regions=None, ax=ax);
+    ax,df = vis.plot_surfaces(x='reg_names', hue=None, cortex='tessels0042', method='lasso', regions=None, ax=ax);
     ax.text(x_pos, y_pos, 'L', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
-    plt.ylim([0.1, 0.5])
     plt.ylabel('% of cortical surface', fontsize=35)
-    plt.yticks([0.1, 0.2, 0.3, 0.4, 0.5], fontsize=40)
     plt.xticks(fontsize=40)
     result = sp.f_oneway(df[1], df[2], df[3], df[4], df[5], df[6], df[7], df[8], df[9], df[10])
     print(f'F test for surfaces is {result}')
@@ -412,26 +407,21 @@ def figS1():
     labelsize = 40
 
     ax = fig.add_subplot(gs[0,0])
+    
+    # RIDGE
     dataframe = vis.get_summary('eval', exps=['sc2'], atlas=['shen', 'gordon', 'fan', 'arslan', 'schaefer', 'yeo'], method=['ridge'], summary_name=['weighted_all'])
-    
-    # RIGDE
-    df,ax = vis.plot_eval_predictions(dataframe=dataframe, noiseceiling=None, plot_type='point', normalize=True, hue='atlas', markers=["p", "x", "s", ".", ">", "^"], linestyles=['-', '-', '-', '-', '-' , '-'], palette='icefire', ax=ax) 
-    
-    # # lasso
-    # dataframe = vis.get_summary('eval', exps=['sc2'], atlas=['shen', 'gordon', 'fan', 'arslan', 'schaefer', 'yeo'], method=['lasso'], summary_name=['weighted_all'])
-    # df,ax = vis.plot_eval_predictions(dataframe=dataframe, noiseceiling=None, plot_type='point', normalize=True, hue='atlas', markers=["p", "x", "s", ".", ">", "^"], linestyles=['--', '--', '--', '--', '--', '--'], palette='mako', ax=ax) 
+    df,ax = vis.plot_eval_predictions(dataframe=dataframe, noiseceiling=None, plot_type='point', normalize=True, hue='atlas', markers=["p", "x", "s", ".", ">", "^"], palette='Greys', linestyles=['-', '-', '-', '-', '-' , '-'], ax=ax) 
     
     # WTA
     dataframe = vis.get_summary('eval', exps=['sc2'], atlas=['shen', 'gordon', 'fan', 'arslan', 'schaefer', 'yeo'], method=['WTA'], summary_name=['weighted_all'])
-    df,ax = vis.plot_eval_predictions(dataframe=dataframe, noiseceiling=None, plot_type='point', normalize=True, hue='atlas', markers=["p", "x", "s", ".", ">", "^"], linestyles=[':', ':', ':', ':', ':', ':'], palette='rocket', ax=ax) 
-    
-    ax.text(x_pos, y_pos, 'A', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+    df,ax = vis.plot_eval_predictions(dataframe=dataframe, noiseceiling=None, plot_type='point', normalize=True, hue='atlas', markers=["p", "x", "s", ".", ">", "^"], palette='Blues', linestyles=[':', ':', ':', ':', ':', ':'], ax=ax) 
     ax.set_ylim([0.4, 0.7])
     # ax.set_xticks([7, 80, 304, 670, 1190, 1848])
     # ax.set_xticklabels([7, 80, 304, 670, 1190, 1848], rotation=45);
     
     # do statistics
     dataframe = vis.get_summary('eval', exps=['sc2'], atlas=['shen', 'gordon', 'fan', 'arslan', 'schaefer', 'yeo'], method=['ridge', 'WTA'], summary_name=['weighted_all'])
+    df,_ = vis.plot_eval_predictions(dataframe=dataframe, plot_type=None) 
     result = sp.ttest_rel(df.ridge, df.WTA, nan_policy='omit')
     print(f'F test for evaluation between WTA and ridge for FUNCTIONAL is: {result}')
 
@@ -713,7 +703,7 @@ def figS3():
     ax.axis('off')
 
     plt.subplots_adjust(left=0.125, bottom=0.001, right=2.0, top=2.0, wspace=.2, hspace=.3)
-    save_path = os.path.join(dirs.figure, f'fig3.svg')
+    save_path = os.path.join(dirs.figure, f'figS3.svg')
     plt.savefig(save_path, bbox_inches="tight", dpi=300)
 
 def figS4():
@@ -730,11 +720,9 @@ def figS4():
     labelsize = 50
 
     ax = fig.add_subplot(gs[0,0])
-    ax,df = vis.plot_surfaces(x='reg_names', hue=None, cortex='tessels0362', method='ridge', regions=None, ax=ax);
+    ax,df = vis.plot_surfaces(x='reg_names', hue=None, cortex='tessels0042', method='ridge', regions=None, ax=ax);
     ax.text(x_pos, y_pos, 'A', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
-    # plt.ylim([0.1, 0.5])
     plt.ylabel('% of cortical surface', fontsize=35)
-    # plt.yticks([0.1, 0.2, 0.3, 0.4, 0.5], fontsize=40)
     plt.xticks(fontsize=40)
     result = sp.f_oneway(df[1], df[2], df[3], df[4], df[5], df[6], df[7], df[8], df[9], df[10])
     print(f'F test for surfaces is {result}')
@@ -742,7 +730,7 @@ def figS4():
     ax = fig.add_subplot(gs[0,1])
     fpath = os.path.join(dirs.figure, f'group_ridge_percent_nonzero_cerebellum.png')
     if not os.path.isfile(fpath):
-        vis.map_surface_cerebellum(model_name='ridge_tessels0362_alpha_6', method='ridge', stat='percent', colorbar=True, weights='nonzero', outpath=fpath);
+        vis.map_surface_cerebellum(model_name='ridge_tessels0042_alpha_4', method='ridge', stat='percent', colorbar=True, weights='nonzero', outpath=fpath);
     vis.plot_png(fpath, ax=ax)
     ax.axis('off')
     ax.text(x_pos, y_pos, 'B', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
@@ -750,9 +738,7 @@ def figS4():
     ax = fig.add_subplot(gs[1,0])
     ax,df = vis.plot_dispersion(y='var_w', hue=None, y_label='cortical dispersion', cortex='tessels0042', method='lasso', atlas='MDTB10', regions=None, ax=ax);
     ax.text(x_pos, y_pos, 'C', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
-    plt.ylim([0.65, 0.85])
-    plt.ylabel('dispersion', fontsize=35)
-    plt.yticks([0.65, 0.75, 0.85], fontsize=40)
+    plt.ylabel('Dispersion', fontsize=35)
     plt.xticks(fontsize=40)
     result = sp.f_oneway(df[1], df[2], df[3], df[4], df[5], df[6], df[7], df[8], df[9], df[10])
     print(f'F test for dispersion is {result}')
