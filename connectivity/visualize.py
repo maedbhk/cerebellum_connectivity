@@ -560,8 +560,6 @@ def plot_dispersion(
     # load in distances
     dataframe = pd.read_csv(os.path.join(dirs.conn_train_dir, f'cortical_dispersion_stats_{atlas}.csv'))
 
-    # dataframe['w_var']=dataframe.Variance*dataframe.sum_w
-    # dataframe['var_w'] = dataframe.w_var/dataframe.sum_w
     dataframe['hem'] = dataframe['hem'].map({0: 'L', 1: 'R'})
     dataframe['num_regions'] = dataframe['cortex'].str.split('_').str.get(-1).str.extract('(\d+)').astype(float)*2
     dataframe['cortex_group'] = dataframe['cortex'].apply(lambda x: _add_atlas(x))
@@ -588,6 +586,7 @@ def plot_dispersion(
     palette = 'rocket'
     if hue is None:
         palette = cpal
+        dataframe = dataframe.groupby(['subj', x]).mean().reset_index()
 
     if plot_type=='bar':
         ax = sns.barplot(x=x, 
@@ -619,8 +618,6 @@ def plot_dispersion(
     if save:
         dirs = const.Dirs()
         plt.savefig(os.path.join(dirs.figure, f'cortical_dispersion_{y}.svg'), pad_inches=0, bbox_inches='tight')
-    
-    plt.show()
 
     return ax, df1
 

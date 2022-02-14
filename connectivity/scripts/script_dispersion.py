@@ -37,10 +37,12 @@ def dispersion_rois(
 
         # get alpha for each model
         alpha = int(best_model.split('_')[-1])
+        if method=='lasso':
+            alpha = -5
         for subj in const.return_subjs: # const.return_subjs
             roi_betas, _, _ = cweights.average_region_data(subjs=subj,# const.return_subjs
                                     exp=exp, cortex=cortex, hemispheres=True,
-                                    atlas=atlas, method=method, alpha=-5, 
+                                    atlas=atlas, method=method, alpha=alpha, 
                                     weights='nonzero', average_subjs=False)
 
             # save out cortical distances
@@ -77,9 +79,6 @@ def dispersion_voxels(
     models, cortex_names= summary.get_best_models(dataframe)
     models = [m for m in models if 'tessels' in m]
     cortex_names = [c for c in cortex_names if 'tessels' in c]
-
-    models = ['lasso_tessels0042_alpha_-3']
-    cortex_names = ['tessels0042']
 
     for (best_model, cortex) in zip(models, cortex_names):
         
