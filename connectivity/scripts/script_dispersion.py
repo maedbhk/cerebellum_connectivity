@@ -30,27 +30,30 @@ def dispersion_rois(
     models = [m for m in models if 'tessels' in m]
     cortex_names = [c for c in cortex_names if 'tessels' in c]
 
+    # models = ['lasso_tessels0042_alpha_-3']
+    # cortex_names = ['tessels0042']
+
     for (best_model, cortex) in zip(models, cortex_names):
 
         # get alpha for each model
         alpha = int(best_model.split('_')[-1])
-        # for subj in const.return_subjs: # const.return_subjs
-        roi_betas, _, _ = cweights.average_region_data(subjs=const.return_subjs,
-                                exp=exp, cortex=cortex, hemispheres=True,
-                                atlas=atlas, method=method, alpha=alpha, 
-                                weights='nonzero', average_subjs=True)
+        for subj in const.return_subjs: # const.return_subjs
+            roi_betas, _, _ = cweights.average_region_data(subjs=subj,# const.return_subjs
+                                    exp=exp, cortex=cortex, hemispheres=True,
+                                    atlas=atlas, method=method, alpha=-5, 
+                                    weights='nonzero', average_subjs=False)
 
-        # save out cortical distances
-        df_res = cweights.dispersion_cortex(roi_betas, cortex=cortex)
-        N=df_res.shape[0]
-        # df_res['subj']=[subj]*N
-        df_res['subj']='all-subjs'
-        df_res['cortex']=[cortex]*N
-        df_res['method']=[method]*N
-        df_res['atlas']=[atlas]*N
-        df_res['w_var']=df_res.Variance*df_res.sum_w
-        df_res['var_w'] = df_res.w_var/df_res.sum_w
-        df = pd.concat([df,df_res])
+            # save out cortical distances
+            df_res = cweights.dispersion_cortex(roi_betas, cortex=cortex)
+            N=df_res.shape[0]
+            df_res['subj']=[subj]*N
+            # df_res['subj']='all-subjs'
+            df_res['cortex']=[cortex]*N
+            df_res['method']=[method]*N
+            df_res['atlas']=[atlas]*N
+            df_res['w_var']=df_res.Variance*df_res.sum_w
+            df_res['var_w'] = df_res.w_var/df_res.sum_w
+            df = pd.concat([df,df_res])
         
     # save dataframe to disk
     fpath = os.path.join(dirs.conn_train_dir, f'cortical_dispersion_stats_{atlas}.csv') 
