@@ -312,38 +312,40 @@ def fig4():
 
     x_pos = -0.1
     y_pos = 1.1
-    labelsize = 30
+    labelsize = 50
 
-    ax = fig.add_subplot(gs[0,0])
+    ax = fig.add_subplot(gs[0,1])
     fpath = os.path.join(dirs.figure, f'group_lasso_percent_nonzero_cerebellum.png')
     if not os.path.isfile(fpath):
         vis.map_surface_cerebellum(model_name='lasso_tessels0042_alpha_-3', stat='percent', colorbar=True, weights='nonzero', outpath=fpath);
     vis.plot_png(fpath, ax=ax)
     ax.axis('off')
-    ax.text(x_pos, y_pos, 'K', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+    ax.text(x_pos, y_pos, 'B', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
 
-    ax = fig.add_subplot(gs[0,1])
+    ax = fig.add_subplot(gs[0,0])
     ax,df = vis.plot_surfaces(x='reg_names', hue=None, cortex='tessels0042', method='lasso', regions=None, ax=ax);
-    ax.text(x_pos, y_pos, 'L', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+    ax.text(x_pos, y_pos, 'A', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
     plt.ylabel('% of cortical surface', fontsize=35)
+    plt.ylim([0.2, 2.2])
+    plt.yticks([0.2, 0.6, 1.0, 1.4, 1.8, 2.2], fontsize=40)
     plt.xticks(fontsize=40)
     result = sp.f_oneway(df[1], df[2], df[3], df[4], df[5], df[6], df[7], df[8], df[9], df[10])
     print(f'F test for surfaces is {result}')
 
-    ax = fig.add_subplot(gs[1,0])
-    fpath = os.path.join(dirs.figure, f'group_ridge_dispersion_cerebellum.png')
+    ax = fig.add_subplot(gs[1,1])
+    fpath = os.path.join(dirs.figure, f'group_lasso_dispersion_cerebellum.png')
     if not os.path.isfile(fpath):
-        vis.map_dispersion_cerebellum(model_name='ridge_tessels0042_alpha_4', colorbar=True, stat='var_w', atlas='tessels', outpath=fpath)
+        vis.map_dispersion_cerebellum(model_name='lasso_tessels0042_alpha_-3', method='lasso', colorbar=True, stat='var_w', atlas='tessels', outpath=fpath)
     vis.plot_png(fpath, ax=ax)
     ax.axis('off')
-    ax.text(x_pos, y_pos, 'M', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+    ax.text(x_pos, y_pos, 'D', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
 
-    ax = fig.add_subplot(gs[1,1])
-    ax,df = vis.plot_dispersion(y='var_w', hue=None, y_label='cortical dispersion', cortex='tessels0042', method='ridge', atlas='MDTB10', regions=None, ax=ax);
-    ax.text(x_pos, y_pos, 'N', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
-    plt.ylim([0.65, 0.85])
+    ax = fig.add_subplot(gs[1,0])
+    ax,df = vis.plot_dispersion(y='var_w', hue=None, y_label='cortical dispersion', cortex='tessels0042', method='lasso', atlas='MDTB10', regions=None, ax=ax);
+    ax.text(x_pos, y_pos, 'C', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
     plt.ylabel('dispersion', fontsize=35)
-    plt.yticks([0.65, 0.75, 0.85], fontsize=40)
+    plt.ylim([0.2, 0.6])
+    plt.yticks([0.2, 0.3, 0.4, 0.5, 0.6], fontsize=40)
     plt.xticks(fontsize=40)
     result = sp.f_oneway(df[1], df[2], df[3], df[4], df[5], df[6], df[7], df[8], df[9], df[10])
     print(f'F test for dispersion is {result}')
@@ -357,41 +359,80 @@ def fig5():
     vis.plotting_style()
 
     fig = plt.figure()
-    gs = GridSpec(1, 2, figure=fig)
+    gs = GridSpec(1, 1, figure=fig)
 
     x_pos = -0.1
     y_pos = 1.1
     labelsize = 40
+    
+    # plotting best models for ridge for both `learning` and `working_memory` experiments
+    ax = fig.add_subplot(gs[0,0])
+    df = vis.get_summary_generalize(method=['lasso', 'ridge', 'WTA'], best_models=True)
+    ax = vis.plot_eval_predictions(df, x='exp', normalize=True, hue='method', noiseceiling=None, plot_type='bar', ax=ax)
+    plt.ylim([0.3, 0.8])
+    plt.xticks(rotation=0)
+    plt.ylabel('Predictive Accuracy (Generalize)')
+    plt.xlabel('Novel Experiments')
+    plt.yticks([0.3, 0.4, 0.5, 0.6, 0.7, 0.8])
+
+    plt.subplots_adjust(left=0.125, bottom=0.001, right=2.0, top=2.0, wspace=.2, hspace=.3)
+    dirs = const.Dirs()
+    plt.savefig(os.path.join(dirs.figure, 'fig5.png'), bbox_inches="tight", dpi=300)
+
+def fig5_alt():
+    plt.clf()
+    vis.plotting_style()
+
+    fig = plt.figure()
+    gs = GridSpec(1, 2, figure=fig)
+
+    x_pos = -0.1
+    y_pos = 1.1
+    labelsize = 50
 
     ax = fig.add_subplot(gs[0,0])
     dataframe = vis.get_summary_learning(summary_name='learning', 
                         atlas=['icosahedron'], 
                         best_models=False, 
-                        method=['WTA', 'RIDGE', 'LASSO'], 
+                        method=['WTA', 'ridge', 'lasso'], 
+                        routine=['session_3'],
                         incl_rest=True,
-                        routine=None,
                         incl_instruct=False
                         )
-    dataframe['method'] = dataframe['method'].rename({'RIDGE': 'ridge', 'LASSO': 'lasso'})
-    df, ax = vis.plot_eval_predictions(dataframe=dataframe.query('num_regions<=1190'), 
-                        x='regions', 
+    df, ax = vis.plot_eval_predictions(dataframe=dataframe, # .query('num_regions!=670')
+                        x='num_regions', 
                         hue='method', 
                         noiseceiling=None, 
                         normalize=True,
                         ax=ax
                         );
-    ax.set_xticks([7, 80, 304, 670, 1190]) #1848
+    ax.set_xlim([0, 1848])
+    ax.set_xticks([0, 80, 304,670, 1190, 1848]) #1848
     ax.text(x_pos, y_pos, 'A', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
     # do statistics
-    result = sp.ttest_rel(df.RIDGE, df.WTA, nan_policy='omit')
-    print(f'F test for evaluation between wta and ridge for TESSELS is: {result}')
+    # result = sp.ttest_rel(df.RIDGE, df.WTA, nan_policy='omit')
+    # print(f'F test for evaluation between wta and ridge for TESSELS is: {result}')
 
     ax = fig.add_subplot(gs[0,1])
     ax.text(x_pos, y_pos, 'B', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+    dataframe = vis.get_summary_working_memory(summary_name='working_memory', 
+                        atlas=['icosahedron'], 
+                        best_models=False, 
+                        method=['WTA', 'ridge', 'lasso'], 
+                        )
+    df, ax = vis.plot_eval_predictions(dataframe=dataframe, # .query('num_regions!=670')
+                        x='num_regions', 
+                        hue='method', 
+                        noiseceiling=None, 
+                        normalize=True,
+                        ax=ax
+                        );
+    ax.set_xlim([0, 1848])
+    ax.set_xticks([80, 304, 670, 1190, 1848]) #1848
 
     plt.subplots_adjust(left=0.125, bottom=0.001, right=2.0, top=2.0, wspace=.2, hspace=.3)
     dirs = const.Dirs()
-    plt.savefig(os.path.join(dirs.figure, 'fig5.svg'), bbox_inches="tight", dpi=300)
+    plt.savefig(os.path.join(dirs.figure, 'fig5_alt.svg'), bbox_inches="tight", dpi=300)
 
 def figS1():
     plt.clf()
@@ -410,11 +451,11 @@ def figS1():
     
     # RIDGE
     dataframe = vis.get_summary('eval', exps=['sc2'], atlas=['shen', 'gordon', 'fan', 'arslan', 'schaefer', 'yeo'], method=['ridge'], summary_name=['weighted_all'])
-    df,ax = vis.plot_eval_predictions(dataframe=dataframe, noiseceiling=None, plot_type='point', normalize=True, hue='atlas', markers=["p", "x", "s", ".", ">", "^"], palette='Greys', linestyles=['-', '-', '-', '-', '-' , '-'], ax=ax) 
+    df,ax = vis.plot_eval_predictions(dataframe=dataframe, noiseceiling=None, plot_type='point', normalize=True, hue='atlas', markers=["p", "x", "s", ".", ">", "^"], palette=None, color=(0,0,0), linestyles=['-', '-', '-', '-', '-' , '-'], ax=ax) 
     
     # WTA
     dataframe = vis.get_summary('eval', exps=['sc2'], atlas=['shen', 'gordon', 'fan', 'arslan', 'schaefer', 'yeo'], method=['WTA'], summary_name=['weighted_all'])
-    df,ax = vis.plot_eval_predictions(dataframe=dataframe, noiseceiling=None, plot_type='point', normalize=True, hue='atlas', markers=["p", "x", "s", ".", ">", "^"], palette='Blues', linestyles=[':', ':', ':', ':', ':', ':'], ax=ax) 
+    df,ax = vis.plot_eval_predictions(dataframe=dataframe, noiseceiling=None, plot_type='point', normalize=True, hue='atlas', markers=["p", "x", "s", ".", ">", "^"], palette=None, color=(0,0,0), linestyles=[':', ':', ':', ':', ':', ':'], ax=ax) 
     ax.set_ylim([0.4, 0.7])
     # ax.set_xticks([7, 80, 304, 670, 1190, 1848])
     # ax.set_xticklabels([7, 80, 304, 670, 1190, 1848], rotation=45);
@@ -723,6 +764,8 @@ def figS4():
     ax,df = vis.plot_surfaces(x='reg_names', hue=None, cortex='tessels0042', method='ridge', regions=None, ax=ax);
     ax.text(x_pos, y_pos, 'A', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
     plt.ylabel('% of cortical surface', fontsize=35)
+    plt.ylim([2, 12])
+    plt.yticks([2, 4, 6, 8, 10, 12], fontsize=40)
     plt.xticks(fontsize=40)
     result = sp.f_oneway(df[1], df[2], df[3], df[4], df[5], df[6], df[7], df[8], df[9], df[10])
     print(f'F test for surfaces is {result}')
@@ -736,22 +779,66 @@ def figS4():
     ax.text(x_pos, y_pos, 'B', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
 
     ax = fig.add_subplot(gs[1,0])
-    ax,df = vis.plot_dispersion(y='var_w', hue=None, y_label='cortical dispersion', cortex='tessels0042', method='lasso', atlas='MDTB10', regions=None, ax=ax);
+    ax,df = vis.plot_dispersion(y='var_w', hue=None, y_label='cortical dispersion', cortex='tessels0042', method='ridge', atlas='MDTB10', regions=None, ax=ax);
     ax.text(x_pos, y_pos, 'C', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
     plt.ylabel('Dispersion', fontsize=35)
+    plt.ylim([0.65, 0.85])
+    plt.yticks([0.65, 0.7, 0.75, 0.8, 0.85], fontsize=40)
     plt.xticks(fontsize=40)
     result = sp.f_oneway(df[1], df[2], df[3], df[4], df[5], df[6], df[7], df[8], df[9], df[10])
     print(f'F test for dispersion is {result}')
 
     ax = fig.add_subplot(gs[1,1])
     ax.text(x_pos, y_pos, 'D', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
-    fpath = os.path.join(dirs.figure, f'group_lasso_dispersion_cerebellum.png')
+    fpath = os.path.join(dirs.figure, f'group_ridge_dispersion_cerebellum.png')
     if not os.path.isfile(fpath):
-        vis.map_dispersion_cerebellum(model_name='lasso_tessels0042_alpha_-3', method='lasso', colorbar=True, stat='var_w', atlas='tessels', outpath=fpath)
+        vis.map_dispersion_cerebellum(model_name='ridge_tessels0042_alpha_4', colorbar=True, stat='var_w', atlas='tessels', outpath=fpath)
+
     vis.plot_png(fpath, ax=ax)
     ax.axis('off')
 
     plt.subplots_adjust(left=0.125, bottom=0.001, right=2.0, top=2.0, wspace=.2, hspace=.3)
     save_path = os.path.join(dirs.figure, f'figS4.svg')
+    plt.savefig(save_path, bbox_inches="tight", dpi=300)
+
+def figS5():
+    plt.clf()
+    vis.plotting_style()
+
+    dirs = const.Dirs()
+
+    fig = plt.figure()
+    gs = GridSpec(2, 2, figure=fig)
+
+    x_pos = -0.1
+    y_pos = 1.1
+    labelsize = 50
+
+    ax = fig.add_subplot(gs[0,0])
+    ax,df = vis.plot_surfaces(x='num_regions', hue=None, cortex_group='tessels', cortex=None, method='lasso', plot_type='line', regions=None, ax=ax);
+    ax.set_xticks([80, 304, 670, 1190, 1848])
+    ax.set_xticklabels([80, 304, 670, 1190, 1848], rotation=45);
+    ax.text(x_pos, y_pos, 'A', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+
+    ax = fig.add_subplot(gs[0,1])
+    ax,df = vis.plot_surfaces(x='num_regions', hue=None, cortex_group='tessels', cortex=None, method='ridge', plot_type='line', regions=None, ax=ax);
+    ax.set_xticks([80, 304, 670, 1190, 1848])
+    ax.set_xticklabels([80, 304, 670, 1190, 1848], rotation=45);
+    ax.text(x_pos, y_pos, 'B', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+
+    ax = fig.add_subplot(gs[1,0])
+    ax,df = vis.plot_dispersion(y='var_w', x='num_regions', hue=None, y_label='cortical dispersion', cortex_group='tessels', plot_type='line', cortex=None, method='lasso', atlas='MDTB10', regions=None, ax=ax);
+    ax.set_xticks([80, 304, 670, 1190, 1848])
+    ax.set_xticklabels([80, 304, 670, 1190, 1848], rotation=45);
+    ax.text(x_pos, y_pos, 'C', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+
+    ax = fig.add_subplot(gs[1,1])
+    ax,df = vis.plot_dispersion(y='var_w', x='num_regions', hue=None, y_label='cortical dispersion', cortex_group='tessels', plot_type='line', cortex=None, method='ridge', atlas='MDTB10', regions=None, ax=ax);
+    ax.set_xticks([80, 304, 670, 1190, 1848])
+    ax.set_xticklabels([80, 304, 670, 1190, 1848], rotation=45);
+    ax.text(x_pos, y_pos, 'D', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+
+    plt.subplots_adjust(left=0.125, bottom=0.001, right=2.0, top=2.0, wspace=.2, hspace=.3)
+    save_path = os.path.join(dirs.figure, f'figS5.svg')
     plt.savefig(save_path, bbox_inches="tight", dpi=300)
 

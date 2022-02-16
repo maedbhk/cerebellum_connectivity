@@ -151,12 +151,15 @@ def get_summary_learning(
 
     # reformat columns
     df['atlas'] = df['X_data'].apply(lambda x: _add_atlas(x))
+    df['cortex'] = df['X_data']
+    df['name'] = df['name'].str.replace('RIDGE', 'ridge').str.replace('LASSO', 'lasso')
     df['method'] = df['name'].str.split('_').str.get(0)
     df['task'] = df['task'].str.replace('_', ' ')
     df['trial_type'] = df['task'] + ' (' + df['trial_type'].str.split('_').str.get(-1) + ")"
     df['condition'] = df['trial_type'].str.extract(r'\(([a-z].*)\)')
     df['sess_id'] = 'ses-' + df['sess_id'].astype(int).astype(str)
     df['R_eval'] = df['R']
+    df['exp'] = 'Learning'
 
     # filter task
     if task_subset is not None:
@@ -177,6 +180,111 @@ def get_summary_learning(
         df = df.query('instruct==False')
 
     return df.reset_index()
+
+def get_summary_working_memory(
+    summary_name=None,
+    best_models=False,
+    task_subset=None,
+    method=None,
+    atlas=None,
+    ):
+    """Loads generalization dataframe (mdtb models evaluated on new experiments)
+
+    Args: 
+        summary_name (str or None): name of summary file e.g., 'learning'
+        best_models (bool): default is False
+    """
+    
+    dirs = const.Dirs(exp_name='sc1')
+    if summary_name:
+        fpath = os.path.join(dirs.conn_dir, f'test_summary_{summary_name}.csv')
+    else:
+        fpath = os.path.join(dirs.conn_dir, f'test_summary.csv')
+
+    # load dataframe
+    df = pd.read_csv(fpath)
+
+    if best_models:
+        print('filtering for best models')
+        df = df[df['model'].isin(['ridge_tessels1002_alpha_8', 'lasso_tessels0362_alpha_-3', 'WTA_tessels0042'])].reset_index()
+
+    # remap cortex names to be in line with learning project ('tessels<num>' to 'icosahedron-<num>')
+    df['cortex'].replace(_remap(), regex=True, inplace=True)
+    df['model'].replace(_remap(), regex=True, inplace=True)
+    
+    # reformat columns
+    df['atlas'] = df['cortex'].apply(lambda x: _add_atlas(x))
+    df['noiseceiling_Y'] = np.sqrt(df['noise_Y_R'])
+    df['noiseceiling_XY'] = np.sqrt(df['noise_Y_R'] * np.sqrt(df['noise_X_R']))
+    df['exp'] = 'Working Memory'
+
+    # filter dataframe
+    if task_subset is not None:
+        df = df[df['task'].isin(task_subset)]
+    if method is not None:
+        df = df[df['method'].isin(method)]
+    if atlas is not None:
+        df = df[df['atlas'].isin(atlas)]
+
+    return df.reset_index()
+
+def _remap():
+
+    return {'Schaefer_7_100': 'Schaefer_7Networks_100',
+            'Schaefer_7_200': 'Schaefer_7Networks_200',
+            'Schaefer_7_300': 'Schaefer_7Networks_300', 
+            'arslan_100': 'Arslan_1_100', 
+            'arslan_200': 'Arslan_1_200',
+            'arslan_250': 'Arslan_1_250',
+            'arslan_50': 'Arslan_1_50', 
+            'fan': 'Fan', 
+            'gordon': 'Gordon',
+            'mdtb1002_007': 'mdtb1002_007',
+            'mdtb1002_025': 'mdtb1002_025',
+            'mdtb1002_050': 'mdtb1002_050',
+            'mdtb1002_100': 'mdtb1002_100',
+            'mdtb1002_150': 'mdtb1002_150',
+            'mdtb1002_300': 'mdtb1002_300',
+            'mdtb1002_400': 'mdtb1002_400',
+            'mdtb1002_500': 'mdtb1002_500',
+            'shen': 'Shen',
+            'tessels0042': 'Icosahedron-42',
+            'tessels0162': 'Icosahedron-162',
+            'tessels0362': 'Icosahedron-362',
+            'tessels0642': 'Icosahedron-642',
+            'tessels1002': 'Icosahedron-1002',
+            'yeo17': 'Yeo_17Networks',
+            'yeo7': 'Yeo_7Networks'
+            }
+
+def get_summary_generalize(
+    best_models=True,
+    task_subset=None,
+    method=None,
+    atlas=None
+    ):
+    """
+    Returns concatenated dataframe containing results for `learning` and `working_memory` experiments
+    Args: 
+        best_models (bool): default is True
+        splitby (list of str or None):
+        method (list of str or None):
+        atlas (list of str or None):
+    """
+    df_learn = get_summary_learning(summary_name='learning', 
+                            atlas=atlas, 
+                            best_models=best_models, 
+                            method=method,
+                            routine=None,
+                            task_subset=task_subset
+                            )
+    df_work = get_summary_working_memory(summary_name='working_memory',
+                                    atlas=atlas, 
+                                    best_models=best_models, 
+                                    method=method,
+                                    task_subset=task_subset
+                                    )
+    return pd.concat([df_learn, df_work])
 
 def roi_summary(
     nifti,
@@ -274,6 +382,7 @@ def plot_eval_predictions(
     linestyles=None,
     errwidth=None,
     palette=None,
+    color=None,
     plot_type='line'
     ):
     """plots eval predictions (R CV) for all models in dataframe.
@@ -304,7 +413,7 @@ def plot_eval_predictions(
     if errwidth is None:
         errwidth = 1.0
     
-    if palette is None:
+    if palette is None and color is None:
         palette = 'rocket'
 
     if plot_type is not None:
@@ -312,9 +421,9 @@ def plot_eval_predictions(
         if plot_type=='line':
             ax = sns.lineplot(x=x, y=y, hue=hue, data=dataframe, err_style='bars', markers=markers, palette=palette) # legend=True,
         elif plot_type=='point':
-            ax = sns.pointplot(x=x, y=y, hue=hue, data=dataframe, err_style='bars', errwidth=errwidth, markers=markers, linestyles=linestyles, palette=palette)
+            ax = sns.pointplot(x=x, y=y, hue=hue, data=dataframe, err_style='bars', errwidth=errwidth, markers=markers, color=color, linestyles=linestyles, palette=palette)
         elif plot_type=='bar':
-            ax = sns.barplot(x=x, y=y, hue=hue, data=dataframe, err_style='bars', markers=markers, linestyles=linestyles, palette=palette)
+            ax = sns.barplot(x=x, y=y, hue=hue, data=dataframe, palette=palette)
         
         if hue is not None:
             ax.legend(loc='best', frameon=False)
@@ -474,7 +583,7 @@ def plot_surfaces(
             )
     ax.set_xlabel('')
     ax.set_ylabel('Percentage of cortical surface')
-    plt.xticks(rotation="45", ha="right")
+    # plt.xticks(rotation="45", ha="right")
 
     if hue:
         plt.legend(loc='best', frameon=False) # bbox_to_anchor=(1, 1)
@@ -606,7 +715,7 @@ def plot_dispersion(
             )
     ax.set_ylabel(y_label)
     ax.set_xlabel(x_label)
-    plt.xticks(rotation="45", ha="right")
+    # plt.xticks(rotation="45", ha="right")
 
     if hue and plt_legend:
         plt.legend(loc='best', frameon=False) # bbox_to_anchor=(1, 1)
