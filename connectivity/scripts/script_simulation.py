@@ -3,6 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.stats import mode
 import os
+
 import connectivity.constants as const
 from connectivity.data import Dataset
 import connectivity.model as model
@@ -18,55 +19,101 @@ import nibabel as nib
 import h5py
 import deepdish as dd
 import seaborn as sns
+from sklearn.model_selection import cross_val_score
 
-def sim_from_cortex(atlas='tessels0042',sub = 's02',sigma=0.5):
-    """Generates an artificial data set assuming the one-to-one connectivity model for each cortical parcel. 
+def getX_random(N=60,Q=80):
+    """Generates an artificial data set using iid data for Cortex
+    """
+    X1 = np.random.normal(0,1,(N,Q))
+    X2 = np.random.normal(0,1,(N,Q))
+    return X1, X2
+
+def getX_cortex(atlas='tessels0042',sub = 's02'):
+    """Generates an artificial data set using real cortical data
     """
     Xdata = Dataset('sc1','glm7',atlas,sub)
-    Xdata.load_mat() # Load from Matlab 
-    X, INFO = Xdata.get_data(averaging="sess") # Get numpy 
-    # Get the test data set 
+    Xdata.load_mat() # Load from Matlab
+    X1, INFO1 = Xdata.get_data(averaging="sess") # Get numpy
+    # Get the test data set
     XTdata = Dataset('sc2','glm7',atlas,sub)
-    XTdata.load_mat() # Load from Matlab 
-    XT, INFO = Xdata.get_data(averaging="sess") # Get numpy 
+    XTdata.load_mat() # Load from Matlab
+    X2, INFO2 = Xdata.get_data(averaging="sess") # Get numpy
 
-    i1 = np.where(INFO.sess==1)
-    i2 = np.where(INFO.sess==2)
-    rel = np.sum(X[i1,:]*X[i2,:])/np.sqrt(np.sum(X[i1,:]**2) * np.sum(X[i2,:]**2))
+    i1 = np.where(INFO1.sess==1)
+    i2 = np.where(INFO1.sess==2)
+    rel = np.sum(X1[i1,:]*X1[i2,:])/np.sqrt(np.sum(X1[i1,:]**2) * np.sum(X1[i2,:]**2))
+    return X1,X2,INFO1,INFO2
+
+def getW(P,Q,conn_type='one2one',sparse_prob=0.05):
+    if conn_type=='one2one':
+        k = np.int(np.ceil(P/Q))
+        W = np.kron(np.ones((k,1)),np.eye(Q))
+        W = W[0:P,:]
+    elif conn_type=='sparse':
+        W=np.random.choice([0,1],p=[1-sparse_prob,sparse_prob],size=(P,Q))
+        W = W / (sparse_prob*np.sqrt(Q))
+    elif conn_type=='normal':
+        W=np.random.normal(0,1/np.sqrt(Q),(P,Q))
+    return W
+
+
+def gridsearch(modelclass,log_alpha,X,Y):
+    r_cv = np.empty((len(log_alpha),))
+    for i,a in enumerate(log_alpha):
+        model = modelclass(alpha=np.exp(a))
+        a = cross_val_score(model, X, Y, scoring=eval.calculate_R_cv, cv=4)
+        r_cv[i] = a.mean()
+    indx = r_cv.argmax()
+    return log_alpha[indx],r_cv
+
+def sim_random(N=60,Q=80,P=1000,sigma=0.1,conn_type='one2one'):
+    #  alphaR = validate_hyper(X,Y,model.L2regression)
     D=pd.DataFrame()
-    N,Q = X.shape
-    P = 1000
-    MOD =[]
-    MOD.append(model.L2regression(alpha=1))
-    MOD.append(model.Lasso(alpha=0.1))
-    MOD.append(model.WTA())
-    model_name = ['ridge','lasso','WTA']
+    X1,X2 = getX_random(N,Q)
+    W = getW(P,Q,conn_type)
+    Y1  = X1 @ W.T + np.random.normal(0,sigma,(N,P))
+    Y1a = X1 @ W.T + np.random.normal(0,sigma,(N,P)) # Within sample replication
+    Y2 = X2 @ W.T  + np.random.normal(0,sigma,(N,P)) # Out of sample
 
-    for i in range(Q): 
-        Y = X[:,i].reshape(N,1) + np.random.normal(0,sigma,(N,P))
-        Y1 = X[:,i].reshape(N,1) + np.random.normal(0,sigma,(N,P)) # Within sample replication
-        Y2 = XT[:,i].reshape(N,1) + np.random.normal(0,sigma,(N,P)) # Out of sample 
-        for m in range(len(MOD)):
-            MOD[m].fit(X,Y)
-            Ypred1 = MOD[m].predict(X)
-            Ypred2 = MOD[m].predict(XT)
-            r1,_ = eval.calculate_R(Y1,Ypred1)
-            r2,_ = eval.calculate_R(Y2,Ypred2)
-            T=pd.DataFrame({'atlas':atlas,
-                            'sub':sub,
-                            'Node':[i],
-                            'model':model_name[m],
-                            'modelNum':[m],
-                            'Rin':[r1],
-                            'Rout':[r2]})
-            D=pd.concat([D,T])
+    # Tune hyper parameters for Ridge and Lasso model
+    logalpha_ridge, r_cv_r = gridsearch(model.L2regression,[-4,-2,0,2,4,6,8,10],X1,Y1)
+    logalpha_lasso, r_cv_l = gridsearch(model.Lasso,[-4,-3,-2,-1,0,1],X1,Y1)
+
+    MOD =[]
+    MOD.append(model.L2regression(alpha=np.exp(logalpha_ridge)))
+    MOD.append(model.Lasso(alpha=np.exp(logalpha_lasso)))
+    MOD.append(model.WTA_OLD())
+    MOD.append(model.WTA())
+    model_name = ['ridge','lasso','WTA_old','WTA']
+    logalpha  = [logalpha_ridge,logalpha_lasso,np.nan,np.nan]
+
+    for m in range(len(MOD)):
+
+        MOD[m].fit(X1,Y1)
+        Ypred1 = MOD[m].predict(X1)
+        Ypred2 = MOD[m].predict(X2)
+        r1,_ = eval.calculate_R(Y1a,Ypred1)
+        r2,_ = eval.calculate_R(Y2,Ypred2)
+        T=pd.DataFrame({'conn_type':[conn_type],
+                    'model':[model_name[m]],
+                    'modelNum':[m],
+                    'numtessels':[Q],
+                    'logalpha':[logalpha[m]],
+                    'Rin':[r1],
+                    'Rout':[r2]})
+        D=pd.concat([D,T])
     return D
 
 if __name__ == "__main__":
-    D= sim_from_cortex()
-    plt.subplot(1,2,1)
-    sns.barplot(data=D,x='model',y='Rin')
-    plt.subplot(1,2,2)
-    sns.barplot(data=D,x='model',y='Rout')
-
+    conn_type=['one2one','sparse','normal']
+    sigma = [1.2,1.2,1.2]
+    D=pd.DataFrame()
+    Q =[7,80,300]
+    for i,ct in enumerate(conn_type):
+        for q in Q:
+            T = sim_random(Q=q,sigma=sigma[i],conn_type=ct)
+            D=pd.concat([D,T],ignore_index=True)
+        plt.subplot(3,1,i+1)
+        sns.lineplot(data=D[D.conn_type==ct],x='numtessels',y='Rout',hue='model')
+        pass
     pass
