@@ -91,7 +91,7 @@ class LASSO(Lasso, ModelMixin):
         Xs = np.nan_to_num(Xs) # there are 0 values after scaling
         return Xs @ self.coef_.T  # weights need to be transposed (throws error otherwise)
 
-class WTA(LinearRegression, ModelMixin):
+class WTA_OLD(LinearRegression, ModelMixin):
     """
     WTA model
     It performs scaling by stdev, but not by mean before fitting and prediction
@@ -122,6 +122,37 @@ class WTA(LinearRegression, ModelMixin):
         Xs = X / self.scale_
         Xs = np.nan_to_num(Xs) # there are 0 values after scaling
         return Xs @ self.coef_.T  # weights need to be transposed (throws error otherwise)
+
+class WTA(BaseEstimator, ModelMixin):
+    """
+    WTA model
+    It performs scaling by stdev, but not by mean before fitting and prediction
+    """
+
+    def __init__(self):
+        """
+        Simply calls the superordinate construction - but does not fit intercept, as this is tightly controlled in Dataset.get_data()
+        """
+        super().__init__()
+
+    def fit(self, X, Y):
+        self.scale_ = np.sqrt(np.sum(X ** 2, 0) / X.shape[0])
+        Xs = X / self.scale_
+        Xs = np.nan_to_num(Xs) # there are 0 values after scaling
+        self.coef_ = Y.T @ Xs  # This is the correlation (non-standardized)
+        self.labels = np.argmax(self.coef_, axis=1)
+        wta_coef_ = np.amax(self.coef_, axis=1)
+        self.coef_ = np.zeros((self.coef_.shape))
+        num_vox = self.coef_.shape[0]
+        self.coef_[np.arange(num_vox), self.labels] = wta_coef_
+        self.labels = self.labels + 1 # we don't want zero-indexed label
+        return self.coef_, self.labels
+
+    def predict(self, X):
+        Xs = X / self.scale_
+        Xs = np.nan_to_num(Xs) # there are 0 values after scaling
+        return Xs @ self.coef_.T  # weights need to be transposed (throws error otherwise)
+
 
 class NNLS(BaseEstimator, ModelMixin):
     """
@@ -177,7 +208,7 @@ class NNLS(BaseEstimator, ModelMixin):
     def predict(self, X):
         Xs = X / self.scale_
         Xs = np.nan_to_num(Xs) # there are 0 values after scaling
-        return Xs @ self.coef_.T 
+        return Xs @ self.coef_.T
 
 class PLSRegress(PLSRegression, ModelMixin):
     """
@@ -191,19 +222,19 @@ class PLSRegress(PLSRegression, ModelMixin):
 
     def __init__(self, n_components = 1):
         super().__init__(n_components =n_components)
-        
+
     def fit(self, X, Y):
         """
-        uses nipals algorithm 
+        uses nipals algorithm
         """
 
-        Xs = X / np.sqrt(np.sum(X**2,0)/X.shape[0]) # Control scaling 
+        Xs = X / np.sqrt(np.sum(X**2,0)/X.shape[0]) # Control scaling
 
         Xs = np.nan_to_num(Xs)
         return super().fit(Xs,Y)
 
     def predict(self, X):
-        Xs = X / np.sqrt(np.sum(X**2,0)/X.shape[0]) # Control scaling 
+        Xs = X / np.sqrt(np.sum(X**2,0)/X.shape[0]) # Control scaling
         Xs = np.nan_to_num(Xs)
         return super().predict(Xs)
 
@@ -211,9 +242,9 @@ class WINNERS(ModelMixin):
 
     def __init__(self, n_features_to_select = 1):
         self.n_featrues_to_select = n_features_to_select
-        
+
     def add_features(self, X, y, selected = []):
-       
+
         """
         1. start with evaluation of individual features
         2. select the one feature that results in the best performance
@@ -221,19 +252,19 @@ class WINNERS(ModelMixin):
         3. Consider all the possible combinations of the selected feature and another feature and select the best combination
         4. Repeat 1 to 3 untill you have the desired number of features
 
-        Args: 
-        X(np.ndarray)   -    design matrix   
+        Args:
+        X(np.ndarray)   -    design matrix
         Y(np.ndarray)   -    response variables
         n(int)          -    number of features to select
         """
         remaining = list(set(range(X.shape[1])) - set(selected)) #list containing features that are to be examined
 
         # 2. loop over features
-        while (remaining) and (len(selected) < self.n_featrues_to_select): # while remaining is not empty and n features are not selected 
-            
-            scores = pd.Series(np.empty((len(remaining))), index=remaining) # the scores will be stored in this 
+        while (remaining) and (len(selected) < self.n_featrues_to_select): # while remaining is not empty and n features are not selected
+
+            scores = pd.Series(np.empty((len(remaining))), index=remaining) # the scores will be stored in this
             for i in remaining:
-        
+
                 candidates = selected +[i] # list containing the current features that will be used in regression
                 # fit the model
                 ## get the features from X
@@ -257,7 +288,7 @@ class WINNERS(ModelMixin):
                 score_i, _    = ev.calculate_R(y, y_pred)
                 # print(score_i)
                 scores.loc[i] = score_i
-                                
+
 
             # find the feature/feature combination with the best score
             best       = scores.idxmax()
@@ -296,17 +327,17 @@ class WINNERS(ModelMixin):
                 # add features to the selected set
                 feats = self.add_features(X, Y[:, vox], selected = initial_feats)
 
-                # update support 
+                # update support
                 self.support_[vox, feats] = int(1)
 
         return self.support_
-        
+
 class WNTA(Ridge, ModelMixin):
 
     def __init__(self, winner_model = None, alpha = 0, n_features_to_select = 1):
         """
-        should be initialized with an instance of WINNERS class. 
-        if None is entered, it will start from scratch, create an instance of WINNERS 
+        should be initialized with an instance of WINNERS class.
+        if None is entered, it will start from scratch, create an instance of WINNERS
         and get the support_ for selecting features. Otherwise, It uses the support_ attribute
         of the WINNERS class
         """
@@ -316,24 +347,24 @@ class WNTA(Ridge, ModelMixin):
         if winner_model is None:
             # initialize a winner model class
             self.winner_model = WINNERS(n_features_to_select = n_features_to_select)
-        else: 
+        else:
             self.winner_model = winner_model
-            
+
 
         self.n_features_to_select = n_features_to_select
-          
+
     def fit(self, X, Y):
 
         # get the scaling
         self.scale_ = np.sqrt(np.nansum(X ** 2, 0) / X.shape[0])
 
         # first get the winners
-        if hasattr(self.winner_model, "support_"): # if it has support_ then it's already been done 
+        if hasattr(self.winner_model, "support_"): # if it has support_ then it's already been done
             self.winner_model.n_featrues_to_select = self.n_features_to_select # update the number of features to be selected
             self.feature_mask = self.winner_model.set_support_(X, Y, self.winner_model.support_)
         else: # then it hasn't been done, so do it
             self.feature_mask = self.winner_model.set_support_(X, Y)
-            
+
         # loop over voxels and fit ridge
         wnta_coef = np.zeros((Y.shape[1], X.shape[1]))
         for vox in range(Y.shape[1]):
@@ -342,7 +373,7 @@ class WNTA(Ridge, ModelMixin):
                 # get the selected features for the current voxel
                 selected_vox = list(np.where(self.feature_mask[vox, :] == 1)[0])
 
-                ## use the selected featuers to do a ridge regression 
+                ## use the selected featuers to do a ridge regression
                 X_selected = X[:, selected_vox]
 
                 ### scale X_selected
