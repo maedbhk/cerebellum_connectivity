@@ -24,11 +24,8 @@ export PYTHONPATH
 
 cd /global/scratch/users/maedbhking/projects/cerebellum_connectivity/connectivity/scripts
 
-# atlases=(yeo7 yeo17 mdtb1002_007 mdtb1002_025 mdtb1002_050 mdtb1002_100 mdtb1002_150 mdtb1002_200)
-# atlases=(tessels0042 tessels0162 tessels0362 tessels0642 tessels1002)
-# atlases=(mdtb_wb_007 mdtb_wb_025 arslan_50 arslan_100 arslan_200 arslan_250)
-atlases=(mdtb4002_wb_indv_7 mdtb4002_wb_indv_10 mdtb4002_wb_indv_17)
-models=(WTA ridge)
+atlases=(tessels0042 tessels0162 tessels0362 tessels0642 tessels1002 yeo7 yeo17 arslan_50 arslan_100 arslan_200 arslan_250 Schaefer_7_100 Schaefer_7_200 Schaefer_7_300 fan gordon shen)
+models=(WTA)
 
 # train models
 for ((m=0; m<${#models[@]}; m++)); do \
