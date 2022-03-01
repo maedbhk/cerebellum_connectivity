@@ -16,6 +16,7 @@ import connectivity.evaluation as eval
 from SUITPy import flatmap
 import itertools
 import nibabel as nib
+import nilearn.plotting as nip 
 import h5py
 import deepdish as dd
 import seaborn as sns
@@ -183,7 +184,7 @@ def sim_scenario2():
     return D 
 
 def plot_scaling(atlas='tessels0162', exp='sc1'): 
-    for i,s in enumerate(const.return_subjs):
+    for i,s in enumerate(const.return_subjs): # 
         Xdata = Dataset(exp,'glm7',atlas,s)
         Xdata.load_mat() # Load from Matlab
         X, INFO1 = Xdata.get_data(averaging="sess") # Get numpy
@@ -193,7 +194,14 @@ def plot_scaling(atlas='tessels0162', exp='sc1'):
         std[i,:] = np.sqrt(np.sum(X ** 2, 0) / X.shape[0])
     
     gii,name = data.convert_cortex_to_gifti(std.mean(axis=0),atlas=atlas)
-    nio.view_cortex(gii[0],hemisphere='L')
+    atl_dir = const.base_dir / 'sc1' / 'surfaceWB' / 'group32k'
+    surf = []
+    surf.append(str(atl_dir / 'fs_LR.32k.L.very_inflated.surf.gii'))
+    surf.append(str(atl_dir  / 'fs_LR.32k.R.very_inflated.surf.gii'))
+    gdata = gii[0].agg_data()
+    view =  nip.view_surf(surf[0],surf_map=gdata,
+                vmin=0,vmax=np.max(gdata[np.logical_not(np.isnan(gdata))]),cmap='hot',symmetric_cmap=False)
+    return view
 
 def sim_cortex_differences(P=2000,atlas='tessels0162',
                     sigma=2.0,conn_type='one2one'):
@@ -223,10 +231,17 @@ def sim_cortex_differences(P=2000,atlas='tessels0162',
     
     
     gii,name = data.convert_cortex_to_gifti(area.mean(axis=0),atlas=atlas)
-    nio.view_cortex(gii[0],hemisphere='L')
-    pass
+    atl_dir = const.base_dir / 'sc1' / 'surfaceWB' / 'group32k'
+    surf = []
+    surf.append(str(atl_dir / 'fs_LR.32k.L.very_inflated.surf.gii'))
+    surf.append(str(atl_dir  / 'fs_LR.32k.R.very_inflated.surf.gii'))
+    gdata = gii[0].agg_data()
+    view =  nip.view_surf(surf[0],surf_map=gdata,
+                vmin=0,vmax=np.max(gdata[np.logical_not(np.isnan(gdata))]),cmap='hot',symmetric_cmap=False)
+    return view
 
 
 
 if __name__ == "__main__":
-    sim_cortex_differences()
+    plot_scaling()
+    # sim_cortex_differences()
