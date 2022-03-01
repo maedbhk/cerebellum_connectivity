@@ -23,7 +23,6 @@ def train_ridge(
     cerebellum="cerebellum_suit",
     log_locally=True,
     model_ext=None,
-    experimenter='mk'
     ):
     """Train model
 
@@ -74,10 +73,7 @@ def train_ridge(
 
     # save out train summary
     dirs = const.Dirs(exp_name=train_exp)
-    if experimenter:
-        fpath = os.path.join(dirs.conn_train_dir, f'train_summary_{experimenter}.csv')
-    else:
-        fpath = os.path.join(dirs.conn_train_dir, f'train_summary.csv')
+    fpath = os.path.join(dirs.conn_train_dir, f'train_summary_ridge.csv')
 
     # save out weight maps
     if config['save_weights']:
@@ -97,7 +93,6 @@ def train_WTA(
     positive=True,
     log_locally=True,
     model_ext=None,
-    experimenter='mk'
     ):
     """Train model
 
@@ -146,10 +141,7 @@ def train_WTA(
 
     # save out train summary
     dirs = const.Dirs(exp_name=train_exp)
-    if experimenter:
-        fpath = os.path.join(dirs.conn_train_dir, f'train_summary_{experimenter}.csv')
-    else:
-        fpath = os.path.join(dirs.conn_train_dir, f'train_summary.csv')
+    fpath = os.path.join(dirs.conn_train_dir, f'train_summary_WTA.csv')
 
     # save out weight maps
     if config['save_weights']:
