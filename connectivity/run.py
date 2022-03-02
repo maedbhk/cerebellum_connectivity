@@ -337,10 +337,11 @@ def _get_XYdata(config, exp, subj):
 
     # figure out splitby
     subset = None
-    if config['splitby']!='all':
-        subset = (df['split']==config['splitby'])
-    else:
-        subset = df['task']>0 # Should be all true
+    if 'splitby' in config:
+        if config['splitby']!='all':
+            subset = (df['split']==config['splitby'])
+        else:
+            subset = df['task']>0 # Should be all true
 
     # Include the instructions?
     if not config['incl_inst']:
