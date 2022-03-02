@@ -358,21 +358,6 @@ def _delete_models(exp, best_model):
     for fpath in model_fpaths:
         if best_model != Path(fpath).name:
             shutil.rmtree(fpath)
-        
-def _log_models(exp):
-    dirs = const.Dirs(exp_name=exp)
-
-    dataframe = summary.train_summary(exps=[exp])
-
-    # groupby train_name
-    dataframe = dataframe.groupby('name').first().reset_index()[['train_name', 'train_exp', 'train_X_data', 'train_Y_data', 'train_model', 'train_glm', 'train_averaging', 'train_validate_model', 'train_weighting']]
-    
-    fpath = os.path.join(dirs.base_dir, 'model_logs.csv')
-    if os.path.isfile(fpath):
-        dataframe = pd.concat([dataframe, pd.read_csv(fpath)])
-   
-    # save out train summary
-    dataframe.to_csv(fpath, index=False)
 
 def _check_eval(model_name, train_exp, eval_exp):
     """determine if `model_name` should be evaluated
@@ -428,9 +413,6 @@ def run(cortex="tessels0362",
             train_NNLS(alphas=[0], gammas=[0], train_exp="sc1", cortex=cortex)
         else:
             print('please enter a model (ridge, WTA, NNLS)')
-        
-        # log models
-        _log_models(exp=f"sc1")
 
     elif train_or_eval=="eval":
         # get best model (for each method and parcellation)
