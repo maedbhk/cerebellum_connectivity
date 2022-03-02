@@ -121,7 +121,7 @@ def train_WTA(
     if model_ext is not None:
         name = f"{name}_{model_ext}"
     config["name"] = name
-    config["param"] = {"positive": positive}
+    config["param"] = {} # {"positive": positive}
     config["model"] = 'WTA'
     config["X_data"] = cortex
     config["Y_data"] = cerebellum
