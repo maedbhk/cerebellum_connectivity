@@ -16,7 +16,7 @@ import connectivity.evaluation as eval
 from SUITPy import flatmap
 import itertools
 import nibabel as nib
-import nilearn.plotting as nip 
+import nilearn.plotting as nip
 import h5py
 import deepdish as dd
 import seaborn as sns
@@ -41,7 +41,7 @@ def getX_cortex(atlas='tessels0042',sub = 's02'):
     XTdata = Dataset('sc2','glm7',atlas,sub)
     XTdata.load_mat() # Load from Matlab
     X2, INFO2 = XTdata.get_data(averaging="sess") # Get numpy
-    # z-standardize cortical regressors 
+    # z-standardize cortical regressors
     X1 = X1 / np.sqrt(np.sum(X1 ** 2, 0) / X1.shape[0])
     X2 = X2 / np.sqrt(np.sum(X2 ** 2, 0) / X1.shape[0])
     X1 = np.nan_to_num(X1)
@@ -51,15 +51,25 @@ def getX_cortex(atlas='tessels0042',sub = 's02'):
     # rel = np.sum(X1[i1,:]*X1[i2,:])/np.sqrt(np.sum(X1[i1,:]**2) * np.sum(X1[i2,:]**2))
     return X1,X2,INFO1,INFO2
 
-def getW(P,Q,conn_type='one2one',sparse_prob=0.05):
+def getW(P,Q,conn_type='one2one',X=None,sparse_prob=0.05):
     if conn_type=='one2one':
         k = np.int(np.ceil(P/Q))
         W = np.kron(np.ones((k,1)),np.eye(Q))
         W = W[0:P,:]
     elif conn_type=='sparse':
-        W=np.random.choice([0,1],p=[1-sparse_prob,sparse_prob],size=(P,Q))
+        num=np.max([2,np.int(sparse_prob*Q)])
+        W=np.zeros((P,Q))
+        for i in range(W.shape[0]):
+            ind = np.random.choice(Q,size=(num,1),replace=True)
+            W[i,ind]=1
     elif conn_type=='normal':
         W=np.random.normal(0,0.2,(P,Q))
+    if X is not None:
+        p = X @ W.T
+        w = np.sqrt(np.sum(p**2,axis=0))
+        print(f"zeros={np.sum(w==0)/w.shape[0]:.3f}")
+        w[w==0]=1
+        W = W / w.reshape((-1,1))
     return W
 
 
@@ -76,7 +86,7 @@ def sim_random(N=60,Q=80,P=1000,sigma=0.1,conn_type='one2one'):
     #  alphaR = validate_hyper(X,Y,model.L2regression)
     D=pd.DataFrame()
     X1,X2 = getX_random(N,Q)
-    W = getW(P,Q,conn_type)
+    W = getW(P,Q,conn_type,X=X1)
     Y1  = X1 @ W.T + np.random.normal(0,sigma,(N,P))
     Y1a = X1 @ W.T + np.random.normal(0,sigma,(N,P)) # Within sample replication
     Y2 = X2 @ W.T  + np.random.normal(0,sigma,(N,P)) # Out of sample
@@ -88,10 +98,9 @@ def sim_random(N=60,Q=80,P=1000,sigma=0.1,conn_type='one2one'):
     MOD =[]
     MOD.append(model.L2regression(alpha=np.exp(logalpha_ridge)))
     MOD.append(model.Lasso(alpha=np.exp(logalpha_lasso)))
-    MOD.append(model.WTA_OLD())
     MOD.append(model.WTA())
-    model_name = ['ridge','lasso','WTA_old','WTA']
-    logalpha  = [logalpha_ridge,logalpha_lasso,np.nan,np.nan]
+    model_name = ['ridge','lasso','WTA']
+    logalpha  = [logalpha_ridge,logalpha_lasso,np.nan]
 
     for m in range(len(MOD)):
 
@@ -118,7 +127,7 @@ def sim_cortical(P=2000,atlas='tessels0042',sub = 's02',
     X1,X2,I1,I2 = getX_cortex(atlas,sub)
     N1,Q = X1.shape
     N2,_ = X2.shape
-    W = getW(P,Q,conn_type)
+    W = getW(P,Q,conn_type,X=X1)
     Y1  = X1 @ W.T + np.random.normal(0,sigma,(N1,P))
     Y1a = X1 @ W.T + np.random.normal(0,sigma,(N1,P)) # Within sample replication
     Y2 = X2 @ W.T  + np.random.normal(0,sigma,(N2,P)) # Out of sample
@@ -154,20 +163,20 @@ def sim_cortical(P=2000,atlas='tessels0042',sub = 's02',
         D=pd.concat([D,T])
     return D
 
-def sim_scenario1(): 
-    conn_type=['one2one','sparse','normal']
-    sigma = [1.4,2.0,1.2]
+def sim_scenario1():
+    conn_type=['sparse','one2one','normal']
+    sigma = 0.3
     D=pd.DataFrame()
     Q =[7,40,80,160,240]
     for i,ct in enumerate(conn_type):
         for q in Q:
             print(f"{ct} for {q}")
-            T = sim_random(Q=q,sigma=sigma[i],conn_type=ct)
+            T = sim_random(Q=q,sigma=sigma,conn_type=ct)
             D=pd.concat([D,T],ignore_index=True)
-    D.to_csv('simulation_iid.csv')
-    return D 
+    D.to_csv('notebooks/simulation_iid.csv')
+    return D
 
-def sim_scenario2(): 
+def sim_scenario2():
     conn_type=['one2one','sparse','normal']
     atlas = ['tessels0042','tessels0162','tessels0362','tessels0642','tessels1002']
     atlas = ['tessels0162']
@@ -180,11 +189,11 @@ def sim_scenario2():
                 print(f"{ct} for {a} for {s}")
                 T = sim_cortical(sigma=sigma[i],conn_type=ct,atlas=a,sub=s)
                 D=pd.concat([D,T],ignore_index=True)
-    D.to_csv('simulation_cortex_0162.csv')
-    return D 
+    D.to_csv('notebooks/simulation_cortex_0162.csv')
+    return D
 
-def plot_scaling(atlas='tessels0162', exp='sc1'): 
-    for i,s in enumerate(const.return_subjs): # 
+def plot_scaling(atlas='tessels0162', exp='sc1'):
+    for i,s in enumerate(const.return_subjs): #
         Xdata = Dataset(exp,'glm7',atlas,s)
         Xdata.load_mat() # Load from Matlab
         X, INFO1 = Xdata.get_data(averaging="sess") # Get numpy
@@ -192,7 +201,7 @@ def plot_scaling(atlas='tessels0162', exp='sc1'):
         if i ==0:
             std=np.empty((24,Q))
         std[i,:] = np.sqrt(np.sum(X ** 2, 0) / X.shape[0])
-    
+
     gii,name = data.convert_cortex_to_gifti(std.mean(axis=0),atlas=atlas)
     atl_dir = const.base_dir / 'sc1' / 'surfaceWB' / 'group32k'
     surf = []
@@ -214,7 +223,7 @@ def sim_cortex_differences(P=2000,atlas='tessels0162',
         W = getW(P,Q,conn_type)
         Y1  = X1 @ W.T + np.random.normal(0,sigma,(N1,P))
 
-        MOD =[]; 
+        MOD =[];
         MOD.append(model.L2regression(alpha=np.exp(3)))
         MOD.append(model.Lasso(alpha=np.exp(-1)))
 
@@ -223,13 +232,13 @@ def sim_cortex_differences(P=2000,atlas='tessels0162',
         if i ==0:
             correct=np.empty((24,Q))
             area=np.empty((24,Q))
-            
-        numsim=W.sum(axis=0) # Simulations per cortical parcels 
+
+        numsim=W.sum(axis=0) # Simulations per cortical parcels
         conn = W.T @ (np.abs(MOD[1].coef_)>0)
-        correct[i,:] = np.diag(conn)/numsim 
+        correct[i,:] = np.diag(conn)/numsim
         area[i,:] = conn.sum(axis=1)/numsim
-    
-    
+
+
     gii,name = data.convert_cortex_to_gifti(area.mean(axis=0),atlas=atlas)
     atl_dir = const.base_dir / 'sc1' / 'surfaceWB' / 'group32k'
     surf = []
@@ -243,5 +252,5 @@ def sim_cortex_differences(P=2000,atlas='tessels0162',
 
 
 if __name__ == "__main__":
-    plot_scaling()
+    sim_scenario1()
     # sim_cortex_differences()
