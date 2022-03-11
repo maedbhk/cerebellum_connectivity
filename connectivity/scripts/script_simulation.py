@@ -92,8 +92,8 @@ def sim_random(N=60,Q=80,P=1000,sigma=0.1,conn_type='one2one'):
     Y2 = X2 @ W.T  + np.random.normal(0,sigma,(N,P)) # Out of sample
 
     # Tune hyper parameters for Ridge and Lasso model
-    logalpha_ridge, r_cv_r = gridsearch(model.L2regression,[-4,-2,0,2,4,6,8,10],X1,Y1)
-    logalpha_lasso, r_cv_l = gridsearch(model.Lasso,[-4,-3,-2,-1,0,1],X1,Y1)
+    logalpha_ridge, r_cv_r = gridsearch(model.L2regression,[-2,0,2,4,6,7,8,9,10,11,12],X1,Y1)
+    logalpha_lasso, r_cv_l = gridsearch(model.Lasso,[-6,-5,-4,-3,-2,-1,0,1],X1,Y1)
 
     MOD =[]
     MOD.append(model.L2regression(alpha=np.exp(logalpha_ridge)))
@@ -133,16 +133,15 @@ def sim_cortical(P=2000,atlas='tessels0042',sub = 's02',
     Y2 = X2 @ W.T  + np.random.normal(0,sigma,(N2,P)) # Out of sample
 
     # Tune hyper parameters for Ridge and Lasso model
-    logalpha_ridge, r_cv_r = gridsearch(model.L2regression,[-4,-2,0,2,4,6,8,10],X1,Y1)
-    logalpha_lasso, r_cv_l = gridsearch(model.Lasso,[-3,-2,-1,0,1],X1,Y1)
+    logalpha_ridge, r_cv_r = gridsearch(model.L2regression,[0,2,4,6,8,10,12],X1,Y1)
+    logalpha_lasso, r_cv_l = gridsearch(model.Lasso,[-5,-4,-3,-2,-1,0,1],X1,Y1)
 
     MOD =[]
     MOD.append(model.L2regression(alpha=np.exp(logalpha_ridge)))
     MOD.append(model.Lasso(alpha=np.exp(logalpha_lasso)))
-    MOD.append(model.WTA_OLD())
     MOD.append(model.WTA())
-    model_name = ['ridge','lasso','WTA_old','WTA']
-    logalpha  = [logalpha_ridge,logalpha_lasso,np.nan,np.nan]
+    model_name = ['ridge','lasso','WTA']
+    logalpha  = [logalpha_ridge,logalpha_lasso,np.nan]
 
     for m in range(len(MOD)):
 
@@ -178,18 +177,17 @@ def sim_scenario1():
 
 def sim_scenario2():
     conn_type=['one2one','sparse','normal']
-    atlas = ['tessels0042','tessels0162','tessels0362','tessels0642','tessels1002']
-    atlas = ['tessels0162']
-    sigma = [2.0,3.0,2.0]
+    atlas = ['tessels0642','tessels1002']
+    sigma = 0.25
     sn = const.return_subjs
-    D=pd.DataFrame()
-    for i,ct in enumerate(conn_type):
-        for s in sn:
-            for a in atlas:
+    for a in atlas:
+        D=pd.DataFrame()
+        for i,ct in enumerate(conn_type):
+            for s in sn:
                 print(f"{ct} for {a} for {s}")
-                T = sim_cortical(sigma=sigma[i],conn_type=ct,atlas=a,sub=s)
+                T = sim_cortical(sigma=sigma,conn_type=ct,atlas=a,sub=s)
                 D=pd.concat([D,T],ignore_index=True)
-    D.to_csv('notebooks/simulation_cortex_0162.csv')
+        D.to_csv('notebooks/simulation_cortex_' + a + '.csv')
     return D
 
 def plot_scaling(atlas='tessels0162', exp='sc1'):
@@ -252,5 +250,5 @@ def sim_cortex_differences(P=2000,atlas='tessels0162',
 
 
 if __name__ == "__main__":
-    sim_scenario1()
+    sim_scenario2()
     # sim_cortex_differences()
