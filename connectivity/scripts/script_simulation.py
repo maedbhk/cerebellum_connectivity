@@ -52,6 +52,22 @@ def getX_cortex(atlas='tessels0042',sub = 's02'):
     return X1,X2,INFO1,INFO2
 
 def getW(P,Q,conn_type='one2one',X=None,sparse_prob=0.05):
+    """_summary_
+
+    Args:
+        P (int): number of cerebellar voxels 
+        Q (int): number of cortical oarceks 
+        conn_type (str): Connectivity type 
+            - 'one2one': One-to-one connectivity 
+            - 'sparse': Uniform within a random 5% 
+            - 'laplace': Laplace distribution (L1-equivalent)
+            - 'normal': Normal distribution (L2-equivalent)
+        X (nd-array): Designmmartrix when given, ensures that predicted profiles are unit length
+        sparse_prob: (float): Defaults to 0.05. For sparse only 
+
+    Returns:
+        W: (nd.array)
+    """
     if conn_type=='one2one':
         k = np.int(np.ceil(P/Q))
         W = np.kron(np.ones((k,1)),np.eye(Q))
@@ -62,6 +78,8 @@ def getW(P,Q,conn_type='one2one',X=None,sparse_prob=0.05):
         for i in range(W.shape[0]):
             ind = np.random.choice(Q,size=(num,1),replace=True)
             W[i,ind]=1
+    elif conn_type=='laplace':  
+        W = np.random.laplace(0,1,size=(P,Q))
     elif conn_type=='normal':
         W=np.random.normal(0,0.2,(P,Q))
     if X is not None:
@@ -93,7 +111,7 @@ def sim_random(N=60,Q=80,P=1000,sigma=0.1,conn_type='one2one'):
 
     # Tune hyper parameters for Ridge and Lasso model
     logalpha_ridge, r_cv_r = gridsearch(model.L2regression,[-2,0,2,4,6,7,8,9,10,11,12],X1,Y1)
-    logalpha_lasso, r_cv_l = gridsearch(model.Lasso,[-6,-5,-4,-3,-2,-1,0,1],X1,Y1)
+    logalpha_lasso, r_cv_l = gridsearch(model.Lasso,[-7,-6.5,-6,-5.5,-5,-4.5,-4,-3,-2],X1,Y1)
 
     MOD =[]
     MOD.append(model.L2regression(alpha=np.exp(logalpha_ridge)))
@@ -163,10 +181,10 @@ def sim_cortical(P=2000,atlas='tessels0042',sub = 's02',
     return D
 
 def sim_scenario1():
-    conn_type=['sparse','one2one','normal']
+    conn_type=['laplace','sparse','one2one','normal']
     sigma = 0.3
     D=pd.DataFrame()
-    Q =[7,40,80,160,240]
+    Q =[7,40,80,160,240] # ,160,240
     for i,ct in enumerate(conn_type):
         for q in Q:
             print(f"{ct} for {q}")
@@ -250,5 +268,5 @@ def sim_cortex_differences(P=2000,atlas='tessels0162',
 
 
 if __name__ == "__main__":
-    sim_scenario2()
+    sim_scenario1()
     # sim_cortex_differences()
