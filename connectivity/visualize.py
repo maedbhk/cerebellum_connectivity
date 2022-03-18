@@ -110,7 +110,6 @@ def get_summary(
 
 def get_summary_learning(
     summary_name=None,
-    best_models=False,
     splitby=None,
     method=None,
     atlas=None,
@@ -145,10 +144,6 @@ def get_summary_learning(
     # load dataframe
     df = pd.read_csv(fpath)
     
-    if best_models:
-        print('filtering for best models')
-        df = df[df['name'].isin(['RIDGE_Icosahedron-1002_alpha_8', 'LASSO_Icosahedron-362_alpha_-3', 'WTA_Icosahedron-42'])].reset_index()
-
     # reformat columns
     df['atlas'] = df['X_data'].apply(lambda x: _add_atlas(x))
     df['cortex'] = df['X_data']
@@ -158,7 +153,7 @@ def get_summary_learning(
     df['trial_type'] = df['task'] + ' (' + df['trial_type'].str.split('_').str.get(-1) + ")"
     df['condition'] = df['trial_type'].str.extract(r'\(([a-z].*)\)')
     df['sess_id'] = 'ses-' + df['sess_id'].astype(int).astype(str)
-    df['R_eval'] = df['R']
+    df['R_eval'] = df['R_trial_type']
     df['exp'] = 'Learning'
 
     # filter task
@@ -373,7 +368,7 @@ def plot_eval_predictions(
     dataframe,
     x='num_regions',
     normalize=True,
-    noiseceiling='Y',
+    noiseceiling=None,
     hue=None,
     save=False,
     ax=None,
@@ -390,7 +385,7 @@ def plot_eval_predictions(
         dataframe (pd dataframe):
         x (str or None): default is 'num_regions'
         normalize (bool): default is True
-        noiseceiling (str): options: 'Y', 'Y_group'. default is 'Y'
+        noiseceiling (str or None): options: 'Y', 'Y_group'. default is None
         hue (str of None): default is None
         save (bool): default is False
         ax (mpl axis or None): default is None
