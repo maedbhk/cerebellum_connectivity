@@ -208,6 +208,42 @@ def sim_scenario2():
         D.to_csv('notebooks/simulation_cortex_' + a + '.csv')
     return D
 
+def plot_sim_scenario2(): 
+    atlas = ['tessels0042','tessels0162','tessels0362','tessels0642','tessels1002']
+    conn_type=['one2one','normal']
+    T=pd.DataFrame()
+    for a in atlas: 
+        D = pd.read_csv(f'notebooks/simulation_cortex_{a}.csv')
+        T=pd.concat([T,D])
+    
+    # conn_type = np.unique(D.conn_type)
+    plt.style.use('seaborn-poster') 
+    params = {'axes.labelsize': 12,
+            'axes.titlesize': 12,
+            'legend.fontsize': 12,
+            'xtick.labelsize': 10,
+            'ytick.labelsize': 10,
+            'font.weight': 'regular',
+            'font.family': 'sans-serif',
+            'lines.markersize': 3,
+            'lines.linewidth': 3
+            }
+    plt.rcParams.update(params)
+    plt.figure(figsize=(7,3.4))
+
+    for i,ct in enumerate(conn_type):
+        plt.subplot(1,2,i+1)
+        # plt.style.use('seaborn-poster') # ggplot
+        sns.lineplot(data=T[T.conn_type==ct],x='numtessels',hue='model',y='Rout',err_style='bars', markers='o', palette='rocket')
+        plt.ylim(0.08,.4)
+        plt.xticks([80,304,670,1190,1848])
+        plt.title(ct)
+    pass
+    plt.savefig('FigS1.pdf')
+    plt.savefig('FigS1.svg')
+
+
+
 def plot_scaling(atlas='tessels0162', exp='sc1'):
     for i,s in enumerate(const.return_subjs): #
         Xdata = Dataset(exp,'glm7',atlas,s)
@@ -254,7 +290,6 @@ def sim_cortex_differences(P=2000,atlas='tessels0162',
         correct[i,:] = np.diag(conn)/numsim
         area[i,:] = conn.sum(axis=1)/numsim
 
-
     gii,name = data.convert_cortex_to_gifti(area.mean(axis=0),atlas=atlas)
     atl_dir = const.base_dir / 'sc1' / 'surfaceWB' / 'group32k'
     surf = []
@@ -268,5 +303,6 @@ def sim_cortex_differences(P=2000,atlas='tessels0162',
 
 
 if __name__ == "__main__":
-    sim_scenario1()
+    plot_sim_scenario2()
+    pass
     # sim_cortex_differences()
