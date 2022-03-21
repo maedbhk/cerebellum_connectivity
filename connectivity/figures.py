@@ -95,7 +95,7 @@ def fig2(format='svg'):
     save_path = os.path.join(dirs.figure, f'fig2.svg')
     plt.savefig(save_path, bbox_inches="tight", dpi=300)
 
-def fig2_plot_eval_uncorrected(save=True, ax=None):
+def fig2_plot_eval_uncorrected(save=False, ax=None):
 
     x_pos = -0.1
     y_pos = 1.1
@@ -110,11 +110,16 @@ def fig2_plot_eval_uncorrected(save=True, ax=None):
     result = sp.ttest_rel(df.ridge, df.lasso, nan_policy='omit')
     res = [f'T stat {t:.3f}: pval {r:.3f}' for (t,r) in zip(result.statistic, result.pvalue)]
     print(f'T test for evaluation between ridge and lasso for TESSELS is: {res}')
+    
+    result = sp.f_oneway(df.ridge, df.lasso)
+    print(f'F test for ridge and lasso is {result}')
 
-        # do statistics
+    # do statistics
     result = sp.ttest_rel(df.ridge, df.WTA, nan_policy='omit')
     res = [f'T stat {t:.3f}: pval {r:.3f}' for (t,r) in zip(result.statistic, result.pvalue)]
     print(f'T test for evaluation between ridge and lasso for TESSELS is: {res}')
+    result = sp.f_oneway(df.ridge, df.WTA)
+    print(f'F test for ridge and WTA is {result}')
 
     plt.subplots_adjust(left=0.125, bottom=0.001, right=2.0, top=2.0, wspace=.2, hspace=.3)
     return result
@@ -404,37 +409,6 @@ def fig5():
     plt.savefig(os.path.join(dirs.figure, f'fig5.svg'), bbox_inches="tight", dpi=300)
 
 def figS1():
-
-    dirs = const.Dirs()
-    vis.plotting_style()
-
-    fig = plt.figure()
-    gs = GridSpec(1, 2, figure=fig)
-
-    x_pos = -0.1
-    y_pos = 1.1
-    labelsize = 50
-
-    ax1 = fig.add_subplot(gs[0,0])
-    df = vis.get_summary("train", exps='sc1', method=['ridge'], atlas=['tessels'], summary_name=[''])
-    vis.plot_train_predictions(df, x='hyperparameter', hue='num_regions', ax=ax1)
-    ax1.set_xlabel('Hyperparameter')
-    ax1.text(x_pos, y_pos, 'A', transform=ax1.transAxes, fontsize=labelsize, verticalalignment='top')
-    ax1.set_ylim([.05, .4])
-    print(df.groupby(['num_regions', 'hyperparameter'])['R_cv'].agg({'mean', 'std'}))
-
-    ax2 = fig.add_subplot(gs[0,1])
-    df = vis.get_summary("train", exps='sc1', method=['lasso'], atlas=['tessels'], summary_name=[''])
-    vis.plot_train_predictions(df, x='hyperparameter', hue='num_regions', ax=ax2)
-    ax2.set_xlabel('Hyperparameter')
-    ax2.text(x_pos, y_pos, 'B', transform=ax2.transAxes, fontsize=labelsize, verticalalignment='top')
-    ax2.set_ylim([.05, .4])
-    print(df.groupby(['num_regions', 'hyperparameter'])['R_cv'].agg({'mean', 'std'}))
-
-    plt.subplots_adjust(left=0.125, bottom=0.001, right=2.0, top=2.0, wspace=.2, hspace=.3)
-    plt.savefig(os.path.join(dirs.figure, f'figS1.svg'), bbox_inches="tight", dpi=300)
-
-def figS2():
     plt.clf()
     vis.plotting_style()
 
@@ -467,10 +441,10 @@ def figS2():
     print(f'F test for evaluation between WTA and ridge for FUNCTIONAL is: {result}')
 
     plt.subplots_adjust(left=0.125, bottom=0.001, right=2.0, top=2.0, wspace=.2, hspace=.3)
-    save_path = os.path.join(dirs.figure, f'figS2.svg')
+    save_path = os.path.join(dirs.figure, f'figS1.svg')
     plt.savefig(save_path, bbox_inches="tight", dpi=300)
 
-def figS3():
+def figS2():
     plt.clf()
     vis.plotting_style()
 
@@ -568,10 +542,10 @@ def figS3():
     print(f'F test for dispersion is {result}')
 
     plt.subplots_adjust(left=0.125, bottom=0.001, right=2.0, top=2.0, wspace=.2, hspace=.3)
-    save_path = os.path.join(dirs.figure, f'figS3.svg')
+    save_path = os.path.join(dirs.figure, f'figS2.svg')
     plt.savefig(save_path, bbox_inches="tight", dpi=300)
 
-def figS4():
+def figS3():
     plt.clf()
     vis.plotting_style()
 
@@ -744,10 +718,10 @@ def figS4():
     ax.axis('off')
 
     plt.subplots_adjust(left=0.125, bottom=0.001, right=2.0, top=2.0, wspace=.2, hspace=.3)
-    save_path = os.path.join(dirs.figure, f'figS4.svg')
+    save_path = os.path.join(dirs.figure, f'figS3.svg')
     plt.savefig(save_path, bbox_inches="tight", dpi=300)
 
-def figS5():
+def figS4():
     plt.clf()
     vis.plotting_style()
 
@@ -798,5 +772,37 @@ def figS5():
     ax.axis('off')
 
     plt.subplots_adjust(left=0.125, bottom=0.001, right=2.0, top=2.0, wspace=.2, hspace=.3)
-    save_path = os.path.join(dirs.figure, f'figS5.svg')
+    save_path = os.path.join(dirs.figure, f'figS4.svg')
     plt.savefig(save_path, bbox_inches="tight", dpi=300)
+
+def figS5():
+
+    dirs = const.Dirs()
+    vis.plotting_style()
+
+    fig = plt.figure()
+    gs = GridSpec(1, 2, figure=fig)
+
+    x_pos = -0.1
+    y_pos = 1.1
+    labelsize = 50
+
+    ax1 = fig.add_subplot(gs[0,0])
+    df = vis.get_summary("train", exps='sc1', method=['ridge'], atlas=['tessels'], summary_name=[''])
+    vis.plot_train_predictions(df, x='hyperparameter', hue='num_regions', ax=ax1)
+    ax1.set_xlabel('Hyperparameter')
+    ax1.text(x_pos, y_pos, 'A', transform=ax1.transAxes, fontsize=labelsize, verticalalignment='top')
+    ax1.set_ylim([.15, .35])
+    print(df.groupby(['num_regions', 'hyperparameter'])['R_cv'].agg({'mean', 'std'}))
+
+    ax2 = fig.add_subplot(gs[0,1])
+    df = vis.get_summary("train", exps='sc1', method=['lasso'], atlas=['tessels'], summary_name=[''])
+    vis.plot_train_predictions(df, x='hyperparameter', hue='num_regions', ax=ax2)
+    ax2.set_xlabel('Hyperparameter')
+    ax2.text(x_pos, y_pos, 'B', transform=ax2.transAxes, fontsize=labelsize, verticalalignment='top')
+    ax2.set_ylim([.15, .35])
+    plt.xticks([15, 20, 25])
+    print(df.groupby(['num_regions', 'hyperparameter'])['R_cv'].agg({'mean', 'std'}))
+
+    plt.subplots_adjust(left=0.125, bottom=0.001, right=2.0, top=2.0, wspace=.2, hspace=.3)
+    plt.savefig(os.path.join(dirs.figure, f'figS5.svg'), bbox_inches="tight", dpi=300)
