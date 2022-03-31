@@ -425,7 +425,8 @@ def run(cortex="tessels0362",
             for (best_model, cortex) in zip(models, cortex_names):
                 
                 # should trained model be evaluated?
-                eval = _check_eval(model_name=best_model, train_exp="sc1", eval_exp="sc2")
+                # eval = _check_eval(model_name=best_model, train_exp="sc1", eval_exp="sc2")
+                eval = True
 
                 # delete training models that are suboptimal (save space)
                 if delete_train:
