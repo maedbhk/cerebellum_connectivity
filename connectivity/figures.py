@@ -54,7 +54,7 @@ def make_image(
 
     return img
 
-def fig2(format='svg'):
+def fig2():
     plt.clf()
     vis.plotting_style()
     x_pos = -0.1
@@ -66,8 +66,8 @@ def fig2(format='svg'):
     fig = plt.figure()
     gs = GridSpec(2, 2, figure=fig)
 
-    ax3 = fig.add_subplot(gs[0,0])
-    fig2_plot_eval_uncorrected(save=False, ax=ax3)
+    ax = fig.add_subplot(gs[0,0])
+    ax = fig2_plot_eval_uncorrected(save=False, ax=ax)
     ax.text(x_pos, y_pos, 'A', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
     
     ax = fig.add_subplot(gs[1,0])
@@ -78,8 +78,8 @@ def fig2(format='svg'):
     ax.axis('off')
     ax.text(x_pos, y_pos, 'B', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
 
-    ax4 = fig.add_subplot(gs[0,1])
-    fig2_plot_eval_corrected(save=False, ax=ax4)
+    ax = fig.add_subplot(gs[0,1])
+    ax = fig2_plot_eval_corrected(save=False, ax=ax)
     ax.text(x_pos, y_pos, 'C', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
     
     ax = fig.add_subplot(gs[1,1])
@@ -102,51 +102,92 @@ def fig2_plot_eval_uncorrected(save=False, ax=None):
     labelsize = 40
 
     dataframe = vis.get_summary('eval', exps=['sc2'], atlas=['tessels'], method=['WTA', 'ridge', 'lasso'], summary_name=['weighted_all'])
-    df,ax = vis.plot_eval_predictions(dataframe=dataframe, noiseceiling='Y', normalize=False, hue='method', ax = ax, save = save)
+    df, ax = vis.plot_eval_predictions(dataframe=dataframe, noiseceiling='Y', normalize=False, hue='method', ax=ax, save=save)
     ax.text(x_pos, y_pos, 'C', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
     ax.set_xticks([80, 304, 670, 1190, 1848])
     ax.set_xticklabels([80, 304, 670, 1190, 1848], rotation=45)
-    # do statistics
+
+    # RIDGE AND LASSO STAT: T TEST
     result = sp.ttest_rel(df.ridge, df.lasso, nan_policy='omit')
     res = [f'T stat {t:.3f}: pval {r:.3f}' for (t,r) in zip(result.statistic, result.pvalue)]
     print(f'T test for evaluation between ridge and lasso for TESSELS is: {res}')
     
-    result = sp.f_oneway(df.ridge, df.lasso)
+    #  RIDGE AND LASSO STAT: F TEST - MODELS X GRANULARITY
+    result = sp.f_oneway(df.ridge.mean(), df.lasso.mean())
     print(f'F test for ridge and lasso is {result}')
 
-    # do statistics
+    #  RIDGE AND WTA STAT: T TEST
     result = sp.ttest_rel(df.ridge, df.WTA, nan_policy='omit')
     res = [f'T stat {t:.3f}: pval {r:.3f}' for (t,r) in zip(result.statistic, result.pvalue)]
-    print(f'T test for evaluation between ridge and lasso for TESSELS is: {res}')
-    result = sp.f_oneway(df.ridge, df.WTA)
+    print(f'T test for evaluation between ridge and WTA for TESSELS is: {res}')
+    
+    #  RIDGE AND WTA STAT: F TEST - MODELS X GRANULARITY
+    result = sp.f_oneway(df.ridge.mean(), df.WTA.mean())
     print(f'F test for ridge and WTA is {result}')
 
-    plt.subplots_adjust(left=0.125, bottom=0.001, right=2.0, top=2.0, wspace=.2, hspace=.3)
-    return result
+    # mean predictive accuracy of lasso + ridge models
+    mean_accuracy = (df.ridge.mean().mean() + df.lasso.mean().mean()) / 2
+    print(f'mean predictive accuracy for lasso + ridge is {mean_accuracy}')
 
-def fig2_plot_eval_corrected(save=True, ax=None):
+    # mean predictive accuracy of WTA model
+    mean_accuracy = df.WTA.mean().mean()
+    print(f'mean predictive accuracy for WTA is {mean_accuracy}')
+
+    # cerebellar reliability
+    mean, std = dataframe.groupby('subj_id')['noiseceiling_Y'].mean().agg({'mean', 'std'}) 
+    print(f'mean cerebellar reliability is {mean} (std: {std})')
+
+    plt.subplots_adjust(left=0.125, bottom=0.001, right=2.0, top=2.0, wspace=.2, hspace=.3)
+    return ax
+
+def fig2_plot_eval_corrected(save=False, ax=None):
 
     x_pos = -0.1
     y_pos = 1.1
     labelsize = 40
 
+    # YEO
     dataframe = vis.get_summary('eval', exps=['sc2'], atlas=['yeo'], cortex=['yeo7'], method=['WTA', 'ridge', 'lasso'], summary_name=['weighted_all'])
-    df,ax = vis.plot_eval_predictions(dataframe=dataframe, noiseceiling=None, normalize=True, plot_type='point', hue='method', ax = ax, save = save)
-    # do statistics
-    result = sp.ttest_rel(df.ridge, df.WTA, nan_policy='omit')
-    res = [f'T stat {t:.3f}: pval {r:.3f}' for (t,r) in zip(result.statistic, result.pvalue)]
-    print(f'T test for evaluation between ridge and lasso for TESSELS is: {res}')
+    df, ax = vis.plot_eval_predictions(dataframe=dataframe, noiseceiling=None, normalize=True, plot_type='point', hue='method', ax = ax, save = save)
 
+    # TESSELS
     dataframe = vis.get_summary('eval', exps=['sc2'], atlas=['tessels'], method=['WTA', 'ridge', 'lasso'], summary_name=['weighted_all'])
-    df,_ = vis.plot_eval_predictions(dataframe=dataframe, noiseceiling=None, normalize=True, hue='method', ax=ax)
+    df, _ = vis.plot_eval_predictions(dataframe=dataframe, noiseceiling=None, normalize=True, hue='method', ax=ax)
     ax.text(x_pos, y_pos, 'E', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
     ax.set_xticks([7, 80, 304, 670, 1190, 1848])
     ax.set_xticklabels([7, 80, 304, 670, 1190, 1848], rotation=45)
-    # do statistics
-    result = sp.ttest_rel(df.ridge, df.WTA, nan_policy='omit')
+
+    # RIDGE AND LASSO STAT: T TEST
+    result = sp.ttest_rel(df.ridge, df.lasso, nan_policy='omit')
     res = [f'T stat {t:.3f}: pval {r:.3f}' for (t,r) in zip(result.statistic, result.pvalue)]
     print(f'T test for evaluation between ridge and lasso for TESSELS is: {res}')
-    return
+    
+    #  RIDGE AND LASSO STAT: F TEST - MODELS X GRANULARITY
+    result = sp.f_oneway(df.ridge.mean(), df.lasso.mean())
+    print(f'F test for ridge and lasso is {result}')
+
+    #  RIDGE AND WTA STAT: T TEST
+    result = sp.ttest_rel(df.ridge, df.WTA, nan_policy='omit')
+    res = [f'T stat {t:.3f}: pval {r:.3f}' for (t,r) in zip(result.statistic, result.pvalue)]
+    print(f'T test for evaluation between ridge and WTA for TESSELS is: {res}')
+    
+    #  RIDGE AND WTA STAT: F TEST - MODELS X GRANULARITY
+    result = sp.f_oneway(df.ridge.mean(), df.WTA.mean())
+    print(f'F test for ridge and WTA is {result}')
+
+    # mean predictive accuracy of lasso + ridge models
+    mean_accuracy = (df.ridge.mean().mean() + df.lasso.mean().mean()) / 2
+    print(f'mean predictive accuracy for lasso + ridge is {mean_accuracy}')
+
+    # mean predictive accuracy of WTA model
+    mean_accuracy = df.WTA.mean().mean()
+    print(f'mean predictive accuracy for WTA is {mean_accuracy}')
+
+    # cerebellar reliability
+    mean, std = dataframe.groupby('subj_id')['noiseceiling_Y'].mean().agg({'mean', 'std'}) 
+    print(f'mean cerebellar reliability is {mean} (std: {std})')
+    
+    return ax
 
 def fig3():
     plt.clf()
