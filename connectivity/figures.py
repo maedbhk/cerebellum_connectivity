@@ -899,3 +899,83 @@ def figS7():
 
     plt.subplots_adjust(left=0.125, bottom=0.001, right=2.0, top=2.0, wspace=.2, hspace=.3)
     plt.savefig(os.path.join(dirs.figure, f'figS7.svg'), bbox_inches="tight", dpi=300)
+
+def figS8():
+    plt.clf()
+    vis.plotting_style()
+
+    dirs = const.Dirs()
+
+    fig = plt.figure()
+    gs = GridSpec(2, 4, figure=fig)
+
+    x_pos = -0.1
+    y_pos = 1.1
+    labelsize = 30
+
+    ax = fig.add_subplot(gs[0,0])
+    fpath = os.path.join(dirs.figure, f'MDTB-subregions-reg1A.png')
+    if not os.path.isfile(fpath):
+        nio.view_atlas_cerebellum(outpath=fpath, labels=[1], atlas='MDTB10-subregions_dseg', colorbar=False)
+    vis.plot_png(fpath, ax=ax)
+    ax.text(x_pos, y_pos, '', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+    ax.axis('off')
+
+    ax = fig.add_subplot(gs[0,1])
+    fpath = os.path.join(dirs.figure, f'group_distances_best_model_MDTB10-reg1A.png')
+    if not os.path.isfile(fpath):
+        vis.map_distances_cortex(model_name='best_model', atlas='MDTB10-subregions', surf='inflated', threshold=100, column=0, outpath=fpath)
+    vis.plot_png(fpath, ax=ax)
+    ax.axis('off')
+    ax.text(x_pos, y_pos, '', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+
+    ax = fig.add_subplot(gs[0,2])
+    fpath = os.path.join(dirs.figure, f'MDTB-subregions-reg1B.png')
+    if not os.path.isfile(fpath):
+        nio.view_atlas_cerebellum(outpath=fpath, labels=[11], atlas='MDTB10-subregions_dseg', colorbar=False)
+    vis.plot_png(fpath, ax=ax)
+    ax.text(x_pos, y_pos, '', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+    ax.axis('off')
+
+    ax = fig.add_subplot(gs[0,3])
+    fpath = os.path.join(dirs.figure, f'group_distances_best_model_MDTB10-reg2A.png')
+    if not os.path.isfile(fpath):
+        vis.map_distances_cortex(model_name='best_model', atlas='MDTB10-subregions', surf='inflated', threshold=100, column=10, outpath=fpath)
+    vis.plot_png(fpath, ax=ax)
+    ax.axis('off')
+    ax.text(x_pos, y_pos, '', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+
+    ax = fig.add_subplot(gs[1,0])
+    fpath = os.path.join(dirs.figure, f'MDTB-subregions-reg2A.png')
+    if not os.path.isfile(fpath):
+        nio.view_atlas_cerebellum(outpath=fpath, labels=[2], atlas='MDTB10-subregions_dseg', colorbar=False)
+    vis.plot_png(fpath, ax=ax)
+    ax.text(x_pos, y_pos, '', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+    ax.axis('off')
+
+    ax = fig.add_subplot(gs[1,1])
+    fpath = os.path.join(dirs.figure, f'group_distances_best_model_MDTB10-reg1B.png')
+    if not os.path.isfile(fpath):
+        vis.map_distances_cortex(model_name='best_model', atlas='MDTB10-subregions', surf='inflated', threshold=100, column=1, outpath=fpath)
+    vis.plot_png(fpath, ax=ax)
+    ax.axis('off')
+    ax.text(x_pos, y_pos, '', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+
+    ax = fig.add_subplot(gs[1,2])
+    fpath = os.path.join(dirs.figure, f'MDTB-subregions-reg2B.png')
+    if not os.path.isfile(fpath):
+        nio.view_atlas_cerebellum(outpath=fpath, labels=[12], atlas='MDTB10-subregions_dseg', colorbar=False)
+    vis.plot_png(fpath, ax=ax)
+    ax.text(x_pos, y_pos, '', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+    ax.axis('off')
+
+    ax = fig.add_subplot(gs[1,3])
+    fpath = os.path.join(dirs.figure, f'group_distances_best_model_MDTB10-reg2B.png')
+    if not os.path.isfile(fpath):
+        vis.map_distances_cortex(model_name='best_model', atlas='MDTB10-subregions', surf='inflated', threshold=100, column=11, outpath=fpath)
+    vis.plot_png(fpath, ax=ax)
+    ax.axis('off')
+    ax.text(x_pos, y_pos, '', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+
+    plt.subplots_adjust(left=0.125, bottom=0.001, right=2.0, top=2.0, wspace=.2, hspace=.3)
+    plt.savefig(os.path.join(dirs.figure, f'figS8.svg'), bbox_inches="tight", dpi=300)

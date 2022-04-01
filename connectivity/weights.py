@@ -680,7 +680,6 @@ def surface_cortex(roi_betas, weights = 'nonzero'):
     df = pd.DataFrame({'count':data_nonzero, 'percent':data_nonzero_percent})
     return df
 
-
 def get_labels_hemisphere(
     roi, 
     hemisphere
