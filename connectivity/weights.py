@@ -626,6 +626,7 @@ def dispersion_cortex(roi_betas, cortex):
         w = roi_betas[:,labels]
         w[w<0]=0
         sum_w = w.sum(axis=1)
+        # print(sum_w.shape)
         w = w /sum_w.reshape(-1,1)
 
         # We then define a unit vector for each tessel, v_i:
@@ -653,6 +654,32 @@ def dispersion_cortex(roi_betas, cortex):
         df1 = pd.DataFrame({'Variance':V,'Std':Std,'hem':h*np.ones((num_roi,)),'roi':np.arange(num_roi)+1,'sum_w':sum_w})
         df = pd.concat([df,df1])
     return df
+
+def surface_cortex(roi_betas, weights = 'nonzero'):
+    """Caluclate non zero connectivity weights
+
+    Args:
+        roi_betas (np array):
+        weights (str): 'nonzero' or 'positive' weights
+
+    Returns:
+        dataframe (pd dataframe)
+    """
+
+    if weights=='positive':
+        roi_betas[roi_betas <= 0] = np.nan
+    elif weights=='nonzero':
+        roi_betas[roi_betas == 0] = np.nan
+
+    # count number of non-zero weights
+    data_nonzero = np.count_nonzero(~np.isnan(roi_betas,), axis=1)
+    n_cereb, n_cortex  = roi_betas.shape
+
+    data_nonzero_percent = np.divide(data_nonzero,  n_cortex)*100
+    
+    df = pd.DataFrame({'count':data_nonzero, 'percent':data_nonzero_percent})
+    return df
+
 
 def get_labels_hemisphere(
     roi, 
