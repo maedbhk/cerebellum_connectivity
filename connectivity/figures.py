@@ -150,6 +150,16 @@ def fig2_plot_eval_corrected(save=False, ax=None):
     dataframe = vis.get_summary('eval', exps=['sc2'], atlas=['yeo'], cortex=['yeo7'], method=['WTA', 'ridge', 'lasso'], summary_name=['weighted_all'])
     df, ax = vis.plot_eval_predictions(dataframe=dataframe, noiseceiling=None, normalize=True, plot_type='point', hue='method', ax = ax, save = save)
 
+    #  RIDGE AND WTA STAT: T TEST
+    result = sp.ttest_rel(df.ridge, df.WTA, nan_policy='omit')
+    res = [f'T stat {t:.3f}: pval {r:.3f}' for (t,r) in zip(result.statistic, result.pvalue)]
+    print(f'T test for evaluation between ridge and WTA for YEO is: {res}')
+    
+    #  RIDGE AND LASSO STAT: T TEST
+    result = sp.ttest_rel(df.ridge, df.lasso, nan_policy='omit')
+    res = [f'T stat {t:.3f}: pval {r:.3f}' for (t,r) in zip(result.statistic, result.pvalue)]
+    print(f'T test for evaluation between ridge and lasso for YEO is: {res}')
+
     # TESSELS
     dataframe = vis.get_summary('eval', exps=['sc2'], atlas=['tessels'], method=['WTA', 'ridge', 'lasso'], summary_name=['weighted_all'])
     df, _ = vis.plot_eval_predictions(dataframe=dataframe, noiseceiling=None, normalize=True, hue='method', ax=ax)
@@ -164,7 +174,7 @@ def fig2_plot_eval_corrected(save=False, ax=None):
     
     #  RIDGE AND LASSO STAT: F TEST - MODELS X GRANULARITY
     result = sp.f_oneway(df.ridge.mean(), df.lasso.mean())
-    print(f'F test for ridge and lasso is {result}')
+    print(f'F test for ridge and lasso for TESSELS is {result}')
 
     #  RIDGE AND WTA STAT: T TEST
     result = sp.ttest_rel(df.ridge, df.WTA, nan_policy='omit')
@@ -173,15 +183,15 @@ def fig2_plot_eval_corrected(save=False, ax=None):
     
     #  RIDGE AND WTA STAT: F TEST - MODELS X GRANULARITY
     result = sp.f_oneway(df.ridge.mean(), df.WTA.mean())
-    print(f'F test for ridge and WTA is {result}')
+    print(f'F test for ridge and WTA for TESSELS is {result}')
 
     # mean predictive accuracy of lasso + ridge models
     mean_accuracy = (df.ridge.mean().mean() + df.lasso.mean().mean()) / 2
-    print(f'mean predictive accuracy for lasso + ridge is {mean_accuracy}')
+    print(f'mean predictive accuracy for lasso + ridge for TESSELS is {mean_accuracy}')
 
     # mean predictive accuracy of WTA model
     mean_accuracy = df.WTA.mean().mean()
-    print(f'mean predictive accuracy for WTA is {mean_accuracy}')
+    print(f'mean predictive accuracy for WTA for TESSELS is {mean_accuracy}')
 
     # cerebellar reliability
     mean, std = dataframe.groupby('subj_id')['noiseceiling_Y'].mean().agg({'mean', 'std'}) 
@@ -387,14 +397,14 @@ def fig4():
     ax.text(x_pos, y_pos, 'B', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
 
     ax = fig.add_subplot(gs[0,0])
-    ax,df = vis.plot_surfaces(x='reg_names', hue=None, cortex='tessels0042', method='lasso', regions=None, ax=ax);
+    ax,df = vis.plot_surfaces(x='regions', hue=None, cortex='tessels0042', method='lasso', voxels=True, regions=None, ax=ax);
     ax.text(x_pos, y_pos, 'A', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
     plt.ylabel('% of cortical surface', fontsize=35)
-    plt.ylim([0.2, 2.2])
-    plt.yticks([0.2, 0.6, 1.0, 1.4, 1.8, 2.2], fontsize=40)
+    # plt.ylim([0.2, 2.2])
+    # plt.yticks([0.2, 0.6, 1.0, 1.4, 1.8, 2.2], fontsize=40)
     plt.xticks(fontsize=40)
     result = sp.f_oneway(df[1], df[2], df[3], df[4], df[5], df[6], df[7], df[8], df[9], df[10])
-    print(f'F test for surfaces is {result}')
+    print(f'F stat for surfaces: {result.statistic:.3f}: pval {result.pvalue:.3f}')
 
     ax = fig.add_subplot(gs[1,1])
     fpath = os.path.join(dirs.figure, f'group_lasso_dispersion_cerebellum.png')
@@ -405,14 +415,14 @@ def fig4():
     ax.text(x_pos, y_pos, 'D', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
 
     ax = fig.add_subplot(gs[1,0])
-    ax,df = vis.plot_dispersion(y='var_w', hue=None, y_label='cortical dispersion', cortex='tessels0042', method='lasso', atlas='MDTB10', regions=None, ax=ax);
+    ax,df = vis.plot_dispersion(y='var_w', hue=None, y_label='cortical dispersion', cortex='tessels0042', method='lasso', voxels=True, atlas='MDTB10', regions=None, ax=ax);
     ax.text(x_pos, y_pos, 'C', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
     plt.ylabel('dispersion', fontsize=35)
-    plt.ylim([0.2, 0.6])
-    plt.yticks([0.2, 0.3, 0.4, 0.5, 0.6], fontsize=40)
+    # plt.ylim([0.2, 0.6])
+    # plt.yticks([0.2, 0.3, 0.4, 0.5, 0.6], fontsize=40)
     plt.xticks(fontsize=40)
     result = sp.f_oneway(df[1], df[2], df[3], df[4], df[5], df[6], df[7], df[8], df[9], df[10])
-    print(f'F test for dispersion is {result}')
+    print(f'F stat dispersion {result.statistic:.3f}: pval {result.pvalue:.3f}')
 
     plt.subplots_adjust(left=0.125, bottom=0.001, right=2.0, top=2.0, wspace=.2, hspace=.3)
     save_path = os.path.join(dirs.figure, f'fig4.svg')
@@ -443,8 +453,6 @@ def fig5():
     vis.plot_eval_predictions(dataframe, x='num_regions', normalize=True, noiseceiling=None, hue='method', ax=ax1)
     ax1.set_xticks([80, 304, 670, 1190, 1848])
     ax1.text(x_pos, y_pos, '', transform=ax1.transAxes, fontsize=labelsize, verticalalignment='top')
-
-    # ax2 = fig.add_subplot(gs[0,1])
 
     plt.subplots_adjust(left=0.125, bottom=0.001, right=2.0, top=2.0, wspace=.2, hspace=.3)
     plt.savefig(os.path.join(dirs.figure, f'fig5.svg'), bbox_inches="tight", dpi=300)
@@ -776,14 +784,14 @@ def figS4():
     labelsize = 50
 
     ax = fig.add_subplot(gs[0,0])
-    ax,df = vis.plot_surfaces(x='reg_names', hue=None, cortex='tessels0042', method='ridge', regions=None, ax=ax);
+    ax,df = vis.plot_surfaces(x='regions', hue=None, cortex='tessels0042', method='ridge', regions=None, ax=ax);
     ax.text(x_pos, y_pos, 'A', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
     plt.ylabel('% of cortical surface', fontsize=35)
-    plt.ylim([2, 12])
-    plt.yticks([2, 4, 6, 8, 10, 12], fontsize=40)
+    # plt.ylim([2, 12])
+    # plt.yticks([2, 4, 6, 8, 10, 12], fontsize=40)
     plt.xticks(fontsize=40)
     result = sp.f_oneway(df[1], df[2], df[3], df[4], df[5], df[6], df[7], df[8], df[9], df[10])
-    print(f'F test for surfaces is {result}')
+    print(f'F stat surfaces {result.statistic:.3f}: pval {result.pvalue:.3f}')
 
     ax = fig.add_subplot(gs[0,1])
     fpath = os.path.join(dirs.figure, f'group_ridge_percent_nonzero_cerebellum.png')
@@ -797,11 +805,11 @@ def figS4():
     ax,df = vis.plot_dispersion(y='var_w', hue=None, y_label='cortical dispersion', cortex='tessels0042', method='ridge', atlas='MDTB10', regions=None, ax=ax);
     ax.text(x_pos, y_pos, 'C', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
     plt.ylabel('Dispersion', fontsize=35)
-    plt.ylim([0.65, 0.85])
-    plt.yticks([0.65, 0.7, 0.75, 0.8, 0.85], fontsize=40)
+    # plt.ylim([0.65, 0.85])
+    # plt.yticks([0.65, 0.7, 0.75, 0.8, 0.85], fontsize=40)
     plt.xticks(fontsize=40)
     result = sp.f_oneway(df[1], df[2], df[3], df[4], df[5], df[6], df[7], df[8], df[9], df[10])
-    print(f'F test for dispersion is {result}')
+    print(f'F stat dispersion {result.statistic:.3f}: pval {result.pvalue:.3f}')
 
     ax = fig.add_subplot(gs[1,1])
     ax.text(x_pos, y_pos, 'D', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
@@ -847,3 +855,47 @@ def figS5():
 
     plt.subplots_adjust(left=0.125, bottom=0.001, right=2.0, top=2.0, wspace=.2, hspace=.3)
     plt.savefig(os.path.join(dirs.figure, f'figS5.svg'), bbox_inches="tight", dpi=300)
+
+def figS6():
+    dirs = const.Dirs()
+    vis.plotting_style()
+
+    fig = plt.figure()
+    gs = GridSpec(1, 1, figure=fig)
+
+    x_pos = -0.1
+    y_pos = 1.1
+    labelsize = 50
+
+    ax = fig.add_subplot(gs[0,0])
+    fpath = os.path.join(dirs.figure, f'map_noiseceiling_cerebellum.png')
+    best_model = 'ridge_tessels1002_alpha_8'
+    if not os.path.isfile(fpath):
+        vis.map_eval_cerebellum(data="noiseceiling_Y_R", model_name=best_model, normalize=False, method='ridge', outpath=fpath); # cscale=[0, 0.4]
+    vis.plot_png(fpath, ax=ax)
+    ax.axis('off')
+    ax.text(x_pos, y_pos, 'A', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+
+    plt.subplots_adjust(left=0.125, bottom=0.001, right=2.0, top=2.0, wspace=.2, hspace=.3)
+    plt.savefig(os.path.join(dirs.figure, f'figS6.svg'), bbox_inches="tight", dpi=300)
+
+def figS7():
+    dirs = const.Dirs()
+    vis.plotting_style()
+
+    fig = plt.figure()
+    gs = GridSpec(1, 1, figure=fig)
+
+    x_pos = -0.1
+    y_pos = 1.1
+    labelsize = 50
+
+    ax = fig.add_subplot(gs[0,0])
+    ax,df = vis.plot_surfaces(x='num_regions', hue=None, cortex=None, voxels=True, cortex_group='tessels', method='lasso', plot_type='line', regions=None, ax=ax);
+    ax.text(x_pos, y_pos, 'A', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+    plt.ylabel('% of cortical surface', fontsize=35)
+    ax.set_xticks([80, 304, 670, 1190, 1848])
+    ax.set_xticklabels([80, 304, 670, 1190, 1848])
+
+    plt.subplots_adjust(left=0.125, bottom=0.001, right=2.0, top=2.0, wspace=.2, hspace=.3)
+    plt.savefig(os.path.join(dirs.figure, f'figS7.svg'), bbox_inches="tight", dpi=300)

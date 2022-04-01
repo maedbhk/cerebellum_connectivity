@@ -503,9 +503,9 @@ def plot_surfaces(
     y='percent',    
     cortex_group='tessels',
     cortex='tessels0362',
-    weights='nonzero', 
     method='lasso',
     atlas='MDTB10',
+    voxels=True,
     hue=None,
     regions=None,
     save=True,
@@ -517,13 +517,18 @@ def plot_surfaces(
     dirs = const.Dirs(exp_name=exp)
 
     # load in distances
-    # dataframe_vox = pd.read_csv(os.path.join(dirs.conn_train_dir, 'cortical_surface_voxels_stats.csv')) 
-    dataframe = pd.read_csv(os.path.join(dirs.conn_train_dir, f'cortical_surface_rois_stats_{atlas}.csv')) 
+    if voxels:
+        dataframe = pd.read_csv(os.path.join(dirs.conn_train_dir, f'cortical_surface_stats_vox_{method}_{atlas}.csv')) 
+    else:
+        dataframe = pd.read_csv(os.path.join(dirs.conn_train_dir, f'cortical_surface_rois_stats_{atlas}.csv')) 
 
     # dataframe['subregion'] = dataframe['reg_names'].str.replace(re.compile('[^a-zA-Z]'), '', regex=True)
     dataframe['num_regions'] = dataframe['cortex'].str.split('_').str.get(-1).str.extract('(\d+)').astype(float)*2
     dataframe['cortex_group'] = dataframe['cortex'].apply(lambda x: _add_atlas(x))
-    dataframe['regions'] = dataframe['reg_names'].str.extract('(\d+)').astype(int)
+    try:
+        dataframe['regions'] = dataframe['reg_names'].str.extract('(\d+)').astype(int)
+    except: 
+        dataframe['regions'] = dataframe['roi'] + 1
 
     # hacky 
     if atlas=='MDTB10-subregions':
@@ -539,8 +544,6 @@ def plot_surfaces(
         dataframe = dataframe[dataframe['cortex'].isin([cortex])]
     if atlas is not None:
         dataframe = dataframe[dataframe['atlas'].isin([atlas])]
-    if weights is not None:
-        dataframe = dataframe[dataframe['weights'].isin([weights])]
     if method is not None:
         dataframe = dataframe[dataframe['method'].isin([method])]
 
@@ -651,6 +654,7 @@ def plot_dispersion(
     cortex_group='tessels',
     atlas='MDTB10',
     method='ridge',
+    voxels=True,
     hue=None,
     plt_legend=False,
     regions=None, # [1,2,5]
@@ -662,7 +666,12 @@ def plot_dispersion(
     dirs = const.Dirs(exp_name=exp)
 
     # load in distances
-    dataframe = pd.read_csv(os.path.join(dirs.conn_train_dir, f'cortical_dispersion_stats_{atlas}.csv'))
+    if voxels:
+        dataframe = pd.read_csv(os.path.join(dirs.conn_train_dir, f'cortical_dispersion_stats_vox_{method}_{atlas}.csv'))
+        dataframe['hem'] = dataframe['h']
+        dataframe['roi'] = dataframe['roi']+1
+    else:
+        dataframe = pd.read_csv(os.path.join(dirs.conn_train_dir, f'cortical_dispersion_stats_{atlas}.csv'))
 
     dataframe['hem'] = dataframe['hem'].map({0: 'L', 1: 'R'})
     dataframe['num_regions'] = dataframe['cortex'].str.split('_').str.get(-1).str.extract('(\d+)').astype(float)*2
