@@ -320,12 +320,6 @@ def _threshold_data(
     Returns:
         data (np array); same shape as `data`. NaN replaces all data below threshold
     """
-    # num_vert = data.shape[1]
-    # thresh_regs = round(num_vert*(threshold*.01))
-    # sorted_roi = np.argsort(-data, axis=1)
-    # sorted_idx = sorted_roi[:,thresh_regs:]
-    # np.put_along_axis(data, sorted_idx, np.nan, axis=1)
-    # return data, sorted_idx
 
     return np.where(data < threshold, np.float("nan"), data)
 
@@ -429,17 +423,13 @@ def regions_cortex(
     roi_betas,
     reg_names,
     cortex, 
-    threshold=5,
     ):
     """save weights maps for `cortex` for cerebellar `reg_names`
-
-    Weights are optionally thresholded. threshold=100 is equivalent to no threshold.
 
     Args:
         roi_betas (np array): (shape; n_cerebellar_regs x n_cortical_regs)
         reg_names (list of str): shape (n_cerebellar_regs,)
         cortex (str): e.g. 'tessels1002'
-        threshold (int or None): default is 5 (top 5%)
     
     Returns: 
         giis (list of giftis; 'L', and 'R' hem)
@@ -452,11 +442,6 @@ def regions_cortex(
 
         labels = get_labels_hemisphere(roi=cortex, hemisphere=hem)
         roi_mean_hem = roi_betas[:,labels]
-
-        # optionally threshold data
-        if threshold is not None:
-            # optionally threshold weights based on `threshold` (separately for each hem)
-            roi_mean_hem, _ = _threshold_data(data=roi_mean_hem, threshold=threshold)
 
         # loop over columns
         giis = []

@@ -37,10 +37,13 @@ def cortical_weight_maps(
 
     dirs = const.Dirs(exp_name=exp)
 
-    dataframe = summary.get_summary(exps=[exp], summary_type='train', method=[method])
+    dataframe = summary.get_summary(exps=[exp], summary_type='train', summary_name=method, method=[method])
     models, cortex_names= summary.get_best_models(dataframe)
     models = [m for m in models if 'tessels' in m]
     cortex_names = [c for c in cortex_names if 'tessels' in c]
+
+    models = ['RIDGE_tessels1002_alpha_8']
+    cortex_names = ['tessels1002']
 
     for (best_model, cortex) in zip(models, cortex_names):
         # full path to best model
@@ -51,7 +54,7 @@ def cortical_weight_maps(
         # get alpha for each model
         alpha = int(best_model.split('_')[-1])
         roi_betas_all = []
-        for subj in const.return_subjs:
+        for subj in ['s02']: # const.return_subjs
             roi_betas, reg_names, colors = cweights.average_region_data(subj,
                                     exp=exp, cortex=cortex, 
                                     atlas=atlas, method=method, alpha=alpha, 
@@ -60,8 +63,8 @@ def cortical_weight_maps(
             roi_betas_all.append(roi_betas)
 
         roi_betas_group = np.nanmean(np.stack(roi_betas_all), axis=0)
-        giis = cweights.regions_cortex(roi_betas_group, reg_names, cortex=cortex, threshold=threshold)
-            
+        giis = cweights.regions_cortex(roi_betas_group, reg_names, cortex=cortex)
+
         fname = f'group_{atlas}_threshold_{threshold}'
         [nib.save(gii, os.path.join(fpath, f'{fname}.{hem}.func.gii')) for (gii, hem) in zip(giis, ['L', 'R'])]
 
