@@ -510,6 +510,7 @@ def plot_surfaces(
     regions=None,
     save=True,
     ax=None,
+    average_regions=False,
     plot_type='bar',
     palette=None
     ):
@@ -551,6 +552,16 @@ def plot_surfaces(
     fpath = nio.get_cerebellar_atlases(atlas_keys=[f'atl-{atlas}'])[0]
     _, cpal, _ = nio.get_gifti_colors(fpath, regions=regions)
 
+    if average_regions:
+        dataframe = dataframe[dataframe['regions'].isin([1,2,7,8])]
+        dataframe['average_reg'] = dataframe['regions'].map({1:'motor', 2: 'motor', 7: 'cog', 8: 'cog'})
+        hue = 'average_reg'
+    
+    if hue:
+        df_grouped = dataframe.groupby(['subj', hue, x]).mean().reset_index()
+    else:
+        df_grouped = dataframe.groupby(['subj', x]).mean().reset_index()
+
     palette = 'rocket'
     if hue is None:
         palette = cpal
@@ -559,7 +570,7 @@ def plot_surfaces(
         ax = sns.barplot(x=x, 
             y=y, 
             hue=hue, 
-            data=dataframe,
+            data=df_grouped,
             palette=palette,
             ax=ax
             )
@@ -567,7 +578,7 @@ def plot_surfaces(
         ax = sns.pointplot(x=x, 
             y=y, 
             hue=hue, 
-            data=dataframe,
+            data=df_grouped,
             palette=palette,
             ax=ax
             )
@@ -575,7 +586,7 @@ def plot_surfaces(
         ax = sns.lineplot(x=x, 
             y=y, 
             hue=hue, 
-            data=dataframe,
+            data=df_grouped,
             palette=palette,
             ax=ax
             )

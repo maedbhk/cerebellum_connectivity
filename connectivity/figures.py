@@ -883,19 +883,13 @@ def figS7():
     dirs = const.Dirs()
     vis.plotting_style()
 
-    fig = plt.figure()
+    fig = plt.figure(figsize=(4,4))
     gs = GridSpec(1, 1, figure=fig)
 
-    x_pos = -0.1
-    y_pos = 1.1
-    labelsize = 50
-
-    ax = fig.add_subplot(gs[0,0])
-    ax,df = vis.plot_surfaces(x='num_regions', hue=None, cortex=None, voxels=True, cortex_group='tessels', method='lasso', plot_type='line', regions=None, ax=ax);
-    ax.text(x_pos, y_pos, 'A', transform=ax.transAxes, fontsize=labelsize, verticalalignment='top')
+    vis.plot_surfaces(x='num_regions', hue=None, cortex=None, voxels=True, average_regions=True, cortex_group='tessels', method='lasso', plot_type='line', regions=[1,2,7,8]);
     plt.ylabel('% of cortical surface', fontsize=35)
-    ax.set_xticks([80, 304, 670, 1190, 1848])
-    ax.set_xticklabels([80, 304, 670, 1190, 1848])
+    plt.xticks([80, 304, 670, 1190, 1848])
+    # plt.xticklabels([80, 304, 670, 1190, 1848])
 
     plt.subplots_adjust(left=0.125, bottom=0.001, right=2.0, top=2.0, wspace=.2, hspace=.3)
     plt.savefig(os.path.join(dirs.figure, f'figS7.svg'), bbox_inches="tight", dpi=300)
