@@ -13,6 +13,7 @@ import connectivity.visualize as vis
 import connectivity.figures as fig
 import connectivity.io as cio
 import connectivity.evaluation as eval
+import connectivity.matrix as matrix
 from SUITPy import flatmap
 import itertools
 import nibabel as nib
@@ -22,7 +23,7 @@ import deepdish as dd
 import seaborn as sns
 from sklearn.model_selection import cross_val_score
 import connectivity.nib_utils as nio
-
+from numpy import kron,ones,zeros,random, sum, sqrt
 
 def getX_random(N=60,Q=80):
     """Generates an artificial data set using iid data for Cortex
@@ -30,6 +31,22 @@ def getX_random(N=60,Q=80):
     X1 = np.random.normal(0,1,(N,Q))
     X2 = np.random.normal(0,1,(N,Q))
     return X1, X2
+
+def getX_clusters(N=20,Q=40,K=10,eps=0.4):
+    """ Make 2 clustered data sets with random
+    Args:
+        N (int): Number of observations
+        Q (int): Number of cortical voxels
+        K (int): Number of cluster
+    """
+    k = kron(np.arange(K),ones(int(Q/K),))
+    U = matrix.indicator(k).T
+    V = random.normal(0,1,size=(N,K))
+    V = V/sqrt(sum(V**2,axis=0))
+    s = random.chisquare(df=4,size=(Q,))
+    X1 = (V@U)*s+random.normal(0,1,size=(N,Q))*eps
+    X2 = (V@U)*s+random.normal(0,1,size=(N,Q))*eps
+    return X1,X2
 
 def getX_cortex(atlas='tessels0042',sub = 's02'):
     """Generates an artificial data set using real cortical data
@@ -51,19 +68,19 @@ def getX_cortex(atlas='tessels0042',sub = 's02'):
     # rel = np.sum(X1[i1,:]*X1[i2,:])/np.sqrt(np.sum(X1[i1,:]**2) * np.sum(X1[i2,:]**2))
     return X1,X2,INFO1,INFO2
 
-def getW(P,Q,conn_type='one2one',X=None,sparse_prob=0.05):
+def getW(P,Q,conn_type='one2one',X=None,sparse_num=2):
     """_summary_
 
     Args:
-        P (int): number of cerebellar voxels 
-        Q (int): number of cortical oarceks 
-        conn_type (str): Connectivity type 
-            - 'one2one': One-to-one connectivity 
-            - 'sparse': Uniform within a random 5% 
+        P (int): number of cerebellar voxels
+        Q (int): number of cortical oarceks
+        conn_type (str): Connectivity type
+            - 'one2one': One-to-one connectivity
+            - 'sparse': select sparse_num random parcels for each voxel
             - 'laplace': Laplace distribution (L1-equivalent)
             - 'normal': Normal distribution (L2-equivalent)
         X (nd-array): Designmmartrix when given, ensures that predicted profiles are unit length
-        sparse_prob: (float): Defaults to 0.05. For sparse only 
+        sparse_prob: (float): Defaults to 0.05. For sparse only
 
     Returns:
         W: (nd.array)
@@ -71,14 +88,14 @@ def getW(P,Q,conn_type='one2one',X=None,sparse_prob=0.05):
     if conn_type=='one2one':
         k = np.int(np.ceil(P/Q))
         W = np.kron(np.ones((k,1)),np.eye(Q))
-        W = W[0:P,:]
+        W = W[0:P,0:Q]
     elif conn_type=='sparse':
-        num=np.max([2,np.int(sparse_prob*Q)])
+        num=np.max([1,sparse_num])
         W=np.zeros((P,Q))
         for i in range(W.shape[0]):
             ind = np.random.choice(Q,size=(num,1),replace=True)
             W[i,ind]=1
-    elif conn_type=='laplace':  
+    elif conn_type=='laplace':
         W = np.random.laplace(0,1,size=(P,Q))
     elif conn_type=='normal':
         W=np.random.normal(0,0.2,(P,Q))
@@ -300,9 +317,45 @@ def sim_cortex_differences(P=2000,atlas='tessels0162',
                 vmin=0,vmax=np.max(gdata[np.logical_not(np.isnan(gdata))]),cmap='hot',symmetric_cmap=False)
     return view
 
-
+def sim_mappings(type='iid'):
+    """
+        Explore influence and dectabaility of different mappings between cortex and cerebellum
+    """
+    P=50
+    Q=50
+    K=5
+    N=4
+    X1, X2 = getX_clusters(N,Q,K,eps=0.3)
+    fig = plt.figure()
+    ax = fig.add_subplot(projection='3d')
+    ax.scatter(X1[0,:],X1[1,:],X1[2,:])
+    if type=='iid':
+        W = np.eye(Q)
+    if type=='weight':
+        sizeP = np.array([15,15,10,5,5])
+        sizeQ = np.array([10,10,10,10,10])
+        W = zeros((P,Q))
+        q = 0
+        p = 0
+        for k in range(K):
+            W[p:p+sizeP[k], q:q+sizeQ[k]]=getW(sizeP[k],sizeQ[k],'sparse',sparse_num=1)
+            p+=sizeP[k]
+            q+=sizeQ[k]
+    if type=='mix':
+        pass
+    if type=='mixweight':
+        pass
+    Y1 = W @ X1
+    G1=X1@X1.T/Q
+    G2=W@X1@X1.T
 
 if __name__ == "__main__":
+<<<<<<< Updated upstream
     plot_sim_scenario2()
     pass
     # sim_cortex_differences()
+=======
+    # sim_scenario1()
+    # sim_cortex_differences()
+    sim_mappings(type='weight')
+>>>>>>> Stashed changes
