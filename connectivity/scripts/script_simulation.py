@@ -23,6 +23,7 @@ import deepdish as dd
 import seaborn as sns
 from sklearn.model_selection import cross_val_score
 import connectivity.nib_utils as nio
+import PcmPy as pcm 
 from numpy import kron,ones,zeros,random, sum, sqrt
 
 def getX_random(N=60,Q=80):
@@ -327,7 +328,7 @@ def sim_mappings(type='iid'):
     N=4
     X1, X2 = getX_clusters(N,Q,K,eps=0.3)
     fig = plt.figure()
-    ax = fig.add_subplot(projection='3d')
+    ax = fig.add_subplot(2,3,1,projection='3d')
     ax.scatter(X1[0,:],X1[1,:],X1[2,:])
     if type=='iid':
         W = np.eye(Q)
@@ -345,17 +346,22 @@ def sim_mappings(type='iid'):
         pass
     if type=='mixweight':
         pass
-    Y1 = W @ X1
-    G1=X1@X1.T/Q
-    G2=W@X1@X1.T
+    Y1 = X1 @ W
+    G1=X1@X1.T / Q
+    G2=Y1@Y1.T / Q
+    alpha = cosang(G1,G2)
+    V1=pcm.util.classical_mds(G1)
+    pass
+
+
+def cosang(G1,G2):
+    cosang=sum(G1*G2)/sqrt(sum(G1*G1)*sum(G2*G2))
+    return cosang
 
 if __name__ == "__main__":
-<<<<<<< Updated upstream
-    plot_sim_scenario2()
-    pass
+    # plot_sim_scenario2()
+    # ass
     # sim_cortex_differences()
-=======
     # sim_scenario1()
     # sim_cortex_differences()
     sim_mappings(type='weight')
->>>>>>> Stashed changes
