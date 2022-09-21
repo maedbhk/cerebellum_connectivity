@@ -333,7 +333,7 @@ def sim_mappings(type='iid'):
     if type=='iid':
         W = np.eye(Q)
     if type=='weight':
-        sizeP = np.array([15,15,10,5,5])
+        sizeP = np.array([50,0,0,0,0])
         sizeQ = np.array([10,10,10,10,10])
         W = zeros((P,Q))
         q = 0
@@ -347,16 +347,40 @@ def sim_mappings(type='iid'):
     if type=='mixweight':
         pass
     Y1 = X1 @ W
+    X1 = X1 - X1.mean(axis=0)
+    Y1 = Y1 - Y1.mean(axis=0)
     G1=X1@X1.T / Q
     G2=Y1@Y1.T / Q
     alpha = cosang(G1,G2)
-    V1=pcm.util.classical_mds(G1)
+
+    # MDS Plot of first matrix 
+    V1,lam=pcm.util.classical_mds(G1)
+    ax = fig.add_subplot(2,3,2)
+    sns.scatterplot(x=V1[:,0],y=V1[:,1],hue=np.arange(N),legend=False)
+    ax.axis('equal')
+
+    # MDS Plot of second matrix 
+    V2,lam=pcm.util.classical_mds(G2,align=V1)
+    ax = fig.add_subplot(2,3,3)
+    sns.scatterplot(x=V2[:,0],y=V2[:,1],hue=np.arange(N),legend=False)
+    ax.axis('equal')
+    ax.set_title(f'Alpha = {alpha:.2f}')
+
     pass
 
 
 def cosang(G1,G2):
     cosang=sum(G1*G2)/sqrt(sum(G1*G1)*sum(G2*G2))
     return cosang
+
+def mmd(X,Y,kernel='ip'): 
+    """Calculate maximum mean divergence, based on a specific kernel 
+
+    Args:
+        X (M x Q ndarray): sample 1
+        Y (N x Q ndarray): sample 2
+    """
+    
 
 if __name__ == "__main__":
     # plot_sim_scenario2()
