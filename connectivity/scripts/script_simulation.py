@@ -23,7 +23,7 @@ import deepdish as dd
 import seaborn as sns
 from sklearn.model_selection import cross_val_score
 import connectivity.nib_utils as nio
-import PcmPy as pcm 
+import PcmPy as pcm
 from numpy import kron,ones,zeros,random, sum, sqrt
 
 def getX_random(N=60,Q=80):
@@ -226,16 +226,16 @@ def sim_scenario2():
         D.to_csv('notebooks/simulation_cortex_' + a + '.csv')
     return D
 
-def plot_sim_scenario2(): 
+def plot_sim_scenario2():
     atlas = ['tessels0042','tessels0162','tessels0362','tessels0642','tessels1002']
     conn_type=['one2one','normal']
     T=pd.DataFrame()
-    for a in atlas: 
+    for a in atlas:
         D = pd.read_csv(f'notebooks/simulation_cortex_{a}.csv')
         T=pd.concat([T,D])
-    
+
     # conn_type = np.unique(D.conn_type)
-    plt.style.use('seaborn-poster') 
+    plt.style.use('seaborn-poster')
     params = {'axes.labelsize': 12,
             'axes.titlesize': 12,
             'legend.fontsize': 12,
@@ -346,25 +346,27 @@ def sim_mappings(type='iid'):
         pass
     if type=='mixweight':
         pass
-    Y1 = X1 @ W
+    Y1 = X1 @ W.T
     X1 = X1 - X1.mean(axis=0)
     Y1 = Y1 - Y1.mean(axis=0)
     G1=X1@X1.T / Q
     G2=Y1@Y1.T / Q
     alpha = cosang(G1,G2)
 
-    # MDS Plot of first matrix 
+    # MDS Plot of first matrix
     V1,lam=pcm.util.classical_mds(G1)
     ax = fig.add_subplot(2,3,2)
     sns.scatterplot(x=V1[:,0],y=V1[:,1],hue=np.arange(N),legend=False)
     ax.axis('equal')
 
-    # MDS Plot of second matrix 
+    # MDS Plot of second matrix
     V2,lam=pcm.util.classical_mds(G2,align=V1)
     ax = fig.add_subplot(2,3,3)
     sns.scatterplot(x=V2[:,0],y=V2[:,1],hue=np.arange(N),legend=False)
     ax.axis('equal')
     ax.set_title(f'Alpha = {alpha:.2f}')
+
+    div1 = mmd(X1,Y1,kernel='ip')
 
     pass
 
@@ -373,14 +375,26 @@ def cosang(G1,G2):
     cosang=sum(G1*G2)/sqrt(sum(G1*G1)*sum(G2*G2))
     return cosang
 
-def mmd(X,Y,kernel='ip'): 
-    """Calculate maximum mean divergence, based on a specific kernel 
+def mmd(X,Y,kernel='ip'):
+    """Calculate maximum mean divergence, based on a specific kernel
 
     Args:
-        X (M x Q ndarray): sample 1
-        Y (N x Q ndarray): sample 2
+        X (Q x M ndarray): sample 1
+        Y (Q x N ndarray): sample 2
     """
-    
+    M = X.shape[1]
+    N = Y.shape[1]
+    D = np.concatenate([X,Y],axis=1)
+    if kernel == 'ip':
+        G = D.T @ D
+    elif kernel == 'sq':
+        G = np.sqrt(D.T @ D)
+    else:
+        raise(NameError('Unknown kernel'))
+    div = sum(G[0:M,0:M])/(M**2)+sum(G[M:,M:])/(N**2)-2*sum(G[0:M,M:])/(M*N)
+    return div
+
+
 
 if __name__ == "__main__":
     # plot_sim_scenario2()
