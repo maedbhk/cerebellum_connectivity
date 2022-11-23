@@ -54,6 +54,28 @@ def calc_vif(cortex = "tessels1002", logalpha = 8, sn = const.return_subjs):
         nib.save(func_gii, os.path.join(const.base_dir,f'sc1/conn_models/vif_{cortex}_logalpha{logalpha}.{hem}.func.gii'))
     return
 
+def calc_snr(cortex = "tessels1002", sn = const.return_subjs):
+
+    # (X′X+λIp)^(−1)X′X(X′X+λIp)^(−1)
+    # get cortical data for the average subject
+    Xdata = Dataset(experiment = "sc1", glm = "glm7", roi = cortex, subj_id = "all") # Any list of subjects will do (experiment=experiment, roi='cerebellum_suit', subj_id=s)
+    Xdata.load_h5()
+    X, X_info = Xdata.get_data()                           
+    snr = np.sqrt(np.sum(X ** 2, 0) / X.shape[0])
+    # create and save the cortical map
+    func_giis, hem_names = cdata.convert_cortex_to_gifti(
+                                                            snr, 
+                                                            atlas = cortex,
+                                                            data_type='func',
+                                                            column_names=None,
+                                                            label_names=None,
+                                                            label_RGBA=None,
+                                                            hem_names=['L', 'R'])
+
+    for (func_gii, hem) in zip(func_giis, hem_names):
+        nib.save(func_gii, os.path.join(const.base_dir,f'sc1/conn_models/snr_{cortex}.{hem}.func.gii'))
+    return
+
 def calc_vif_lambda(cortex = "tessels0162", 
             logalpha = np.linspace(-5,10,15)):
 
@@ -97,4 +119,5 @@ def calc_vif_lambda(cortex = "tessels0162",
 
 if __name__ == "__main__":
     # calc_vif_lambda(cortex = "tessels0642")
-    calc_vif(cortex = "tessels0362", logalpha = 6, sn = const.return_subjs)
+    # calc_vif(cortex = "tessels0362", logalpha = 6, sn = const.return_subjs)
+    calc_snr(cortex = "tessels1002")
