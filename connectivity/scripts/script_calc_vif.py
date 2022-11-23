@@ -23,15 +23,22 @@ def calc_vif(cortex = "tessels1002", logalpha = 8, sn = const.return_subjs):
     # (X′X+λIp)^(−1)X′X(X′X+λIp)^(−1)
     # get cortical data for the average subject
     Xdata = Dataset(experiment = "sc1", glm = "glm7", roi = cortex, subj_id = "all") # Any list of subjects will do (experiment=experiment, roi='cerebellum_suit', subj_id=s)
-    Xdata.load_h5()  
+    Xdata.load_h5()
     X, X_info = Xdata.get_data()                           # Load from Matlab
+    # In the normal Ridge model we standarize the data, so we need to do this here as well 
+    scale = np.sqrt(np.sum(X ** 2, 0) / X.shape[0])
+    X = X / scale
+
     alpha_ridge = np.exp(logalpha)
 
-    # calculate VIF 
-    term1 = (X.T@X + alpha_ridge*np.eye(X.shape[1]))
-    term2 = X.T@X
-    var_B = np.linalg.inv(term1)@ term2 @ np.linalg.inv(term1)
-    vif  = np.diag(var_B)
+    # calculate Variance under the full model and under the diagonal model
+    XX = X.T@X  # Gram Matrix 
+    dXX = np.diag(np.diag(XX)) # diagnonal of the gram matrix 
+    Pa = (XX + alpha_ridge*np.eye(X.shape[1]))
+    Pb = (dXX + alpha_ridge*np.eye(X.shape[1]))
+    var_Ba = np.linalg.inv(Pa)@ XX @ np.linalg.inv(Pa)
+    var_Bb = np.linalg.inv(Pb)@ XX @ np.linalg.inv(Pb)
+    vif  = np.diag(var_Ba)/np.diag(var_Bb)
 
     # create and save the cortical map
     func_giis, hem_names = cdata.convert_cortex_to_gifti(
@@ -44,9 +51,50 @@ def calc_vif(cortex = "tessels1002", logalpha = 8, sn = const.return_subjs):
                                                             hem_names=['L', 'R'])
 
     for (func_gii, hem) in zip(func_giis, hem_names):
-        nib.save(func_gii, os.path.join(const.base_dir,f'vif_{cortex}_logalpha{logalpha}.{hem}.func.gii'))
+        nib.save(func_gii, os.path.join(const.base_dir,f'sc1/conn_models/vif_{cortex}_logalpha{logalpha}.{hem}.func.gii'))
+    return
+
+def calc_vif_lambda(cortex = "tessels0162", 
+            logalpha = np.linspace(-5,10,15)):
+
+    # (X′X+λIp)^(−1)X′X(X′X+λIp)^(−1)
+    # get cortical data for the average subject
+    Xdata = Dataset(experiment = "sc1", glm = "glm7", roi = cortex, subj_id = "all") # Any list of subjects will do (experiment=experiment, roi='cerebellum_suit', subj_id=s)
+    Xdata.load_h5()
+    X, X_info = Xdata.get_data()                           # Load from Matlab
+    # In the normal Ridge model we standarize the data, so we need to do this here as well 
+    scale = np.sqrt(np.sum(X ** 2, 0) / X.shape[0])
+    X = X / scale
+
+    meanVIF = np.zeros(logalpha.shape)
+    minVIF = np.zeros(logalpha.shape)
+    maxVIF = np.zeros(logalpha.shape)
+    stdVIF = np.zeros(logalpha.shape)
+
+    for i,la in enumerate(logalpha):
+        alpha_ridge = np.exp(la)
+
+        # calculate Variance under the full model and under the diagonal model
+        XX = X.T@X  # Gram Matrix 
+        dXX = np.diag(np.diag(XX)) # diagnonal of the gram matrix 
+        Pa = (XX + alpha_ridge*np.eye(X.shape[1]))
+        Pb = (dXX + alpha_ridge*np.eye(X.shape[1]))
+        var_Ba = np.linalg.inv(Pa)@ XX @ np.linalg.inv(Pa)
+        var_Bb = np.linalg.inv(Pb)@ XX @ np.linalg.inv(Pb)
+        vif  = np.diag(var_Ba)/np.diag(var_Bb)
+        meanVIF[i] = np.nanmean(vif)
+        maxVIF[i] = vif.max()
+        minVIF[i] = vif.min()
+        stdVIF[i] = vif.std()
+
+    pass
+    plt.plot(logalpha,meanVIF,'k')
+    plt.plot(logalpha,minVIF,'k:')
+    plt.plot(logalpha,maxVIF,'k:')
+
     return
 
 
 if __name__ == "__main__":
-    calc_vif(cortex = "tessels1002", logalpha = 8, sn = const.return_subjs)
+    # calc_vif_lambda(cortex = "tessels0642")
+    calc_vif(cortex = "tessels0362", logalpha = 6, sn = const.return_subjs)
