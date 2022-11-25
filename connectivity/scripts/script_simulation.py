@@ -7,7 +7,7 @@ import os
 import connectivity.constants as const
 from connectivity.data import Dataset
 import connectivity.model as model
-import connectivity.data as data
+import connectivity.data as cdata
 import connectivity.run as run
 import connectivity.visualize as vis
 import connectivity.figures as fig
@@ -200,7 +200,7 @@ def plot_scaling(atlas='tessels0162', exp='sc1'):
             std=np.empty((24,Q))
         std[i,:] = np.sqrt(np.sum(X ** 2, 0) / X.shape[0])
 
-    gii,name = data.convert_cortex_to_gifti(std.mean(axis=0),atlas=atlas)
+    gii,name = cdata.convert_cortex_to_gifti(std.mean(axis=0),atlas=atlas)
     atl_dir = const.base_dir / 'sc1' / 'surfaceWB' / 'group32k'
     surf = []
     surf.append(str(atl_dir / 'fs_LR.32k.L.very_inflated.surf.gii'))
@@ -210,45 +210,61 @@ def plot_scaling(atlas='tessels0162', exp='sc1'):
                 vmin=0,vmax=np.max(gdata[np.logical_not(np.isnan(gdata))]),cmap='hot',symmetric_cmap=False)
     return view
 
-def sim_cortex_differences(P=2000,atlas='tessels0162',
-                    sigma=2.0,conn_type='one2one'):
+def sim_cortex_differences(sim_per_parcel=20,
+                    atlas='tessels0162',
+                    sigma=2.0,
+                    conn_type='one2one'):
     #  alphaR = validate_hyper(X,Y,model.L2regression)
     D=pd.DataFrame()
-    for i,s in enumerate(const.return_subjs):
+    sn = const.return_subjs
+    for i,s in enumerate(sn):
+        print(s)
         X1,X2,I1,I2 = getX_cortex(atlas,s)
         N1,Q = X1.shape
         N2,_ = X2.shape
+        P = Q * sim_per_parcel
         W = getW(P,Q,conn_type)
         Y1  = X1 @ W.T + np.random.normal(0,sigma,(N1,P))
 
         MOD =[];
         MOD.append(model.L2regression(alpha=np.exp(3)))
         MOD.append(model.Lasso(alpha=np.exp(-1)))
+        MOD.append(model.WTA())
 
         for m in range(len(MOD)):
             MOD[m].fit(X1,Y1)
         if i ==0:
-            correct=np.empty((24,Q))
-            area=np.empty((24,Q))
+            correct_wta=np.zeros((len(sn),Q))
+            correct_lasso=np.zeros((len(sn),Q))
+            area_lasso=np.zeros((len(sn),Q))
 
         numsim=W.sum(axis=0) # Simulations per cortical parcels
         conn = W.T @ (np.abs(MOD[1].coef_)>0)
-        correct[i,:] = np.diag(conn)/numsim
-        area[i,:] = conn.sum(axis=1)/numsim
+        correct_lasso[i,:] = np.diag(conn)/numsim
+        area_lasso[i,:] = conn.sum(axis=1)/numsim
+        conn = W.T @ (np.abs(MOD[2].coef_)>0)
+        correct_wta[i,:] = np.diag(conn)/numsim
 
+    data = np.c_[correct_lasso.mean(axis=0),
+                area_lasso.mean(axis=0),
+                area_lasso.std(axis=0),
+                correct_wta.mean(axis=0)]
+    func_giis, hem_names = cdata.convert_cortex_to_gifti(
+                        data, 
+                        atlas = atlas,
+                        data_type='func',
+                        column_names=['correct_lasso',
+                            'area_lasso',
+                            'std_lasso',
+                            'correct_wta'],
+                        hem_names=['L', 'R'])
 
-    gii,name = data.convert_cortex_to_gifti(area.mean(axis=0),atlas=atlas)
-    atl_dir = const.base_dir / 'sc1' / 'surfaceWB' / 'group32k'
-    surf = []
-    surf.append(str(atl_dir / 'fs_LR.32k.L.very_inflated.surf.gii'))
-    surf.append(str(atl_dir  / 'fs_LR.32k.R.very_inflated.surf.gii'))
-    gdata = gii[0].agg_data()
-    view =  nip.view_surf(surf[0],surf_map=gdata,
-                vmin=0,vmax=np.max(gdata[np.logical_not(np.isnan(gdata))]),cmap='hot',symmetric_cmap=False)
-    return view
-
+    for (func_gii, hem) in zip(func_giis, hem_names):
+        nib.save(func_gii, os.path.join(const.base_dir,f'sc1/conn_models/area_{atlas}.{hem}.func.gii'))
+    
 
 
 if __name__ == "__main__":
-    sim_scenario2()
-    # sim_cortex_differences()
+    # sim_scenario2()
+    # sim_cortex_differences(atlas='tessels0162',sigma=2.0)
+    sim_cortex_differences(atlas='tessels1002',sigma=2.0)

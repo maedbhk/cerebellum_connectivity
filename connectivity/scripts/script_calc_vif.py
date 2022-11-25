@@ -19,36 +19,47 @@ import deepdish as dd
 
 
 def calc_vif(cortex = "tessels1002", logalpha = 8, sn = const.return_subjs):
-
     # (X′X+λIp)^(−1)X′X(X′X+λIp)^(−1)
     # get cortical data for the average subject
-    Xdata = Dataset(experiment = "sc1", glm = "glm7", roi = cortex, subj_id = "all") # Any list of subjects will do (experiment=experiment, roi='cerebellum_suit', subj_id=s)
-    Xdata.load_h5()
-    X, X_info = Xdata.get_data()                           # Load from Matlab
-    # In the normal Ridge model we standarize the data, so we need to do this here as well 
-    scale = np.sqrt(np.sum(X ** 2, 0) / X.shape[0])
-    X = X / scale
+    vif = []
+    for i,s in enumerate(sn):
+        print(f'calculcating {s}')
+        Xdata = Dataset(experiment = "sc1", glm = "glm7", 
+                        roi = cortex, 
+                        subj_id = s) 
+        Xdata.load_mat()
+        X, X_info = Xdata.get_data()                           # Load from Matlab
+        # In the normal Ridge model we standarize the data, so we need to do this here as well 
+        scale = np.sqrt(np.sum(X ** 2, 0) / X.shape[0])
+        X = X / scale
 
-    alpha_ridge = np.exp(logalpha)
+        alpha_ridge = np.exp(logalpha)
 
-    # calculate Variance under the full model and under the diagonal model
-    XX = X.T@X  # Gram Matrix 
-    dXX = np.diag(np.diag(XX)) # diagnonal of the gram matrix 
-    Pa = (XX + alpha_ridge*np.eye(X.shape[1]))
-    Pb = (dXX + alpha_ridge*np.eye(X.shape[1]))
-    var_Ba = np.linalg.inv(Pa)@ XX @ np.linalg.inv(Pa)
-    var_Bb = np.linalg.inv(Pb)@ XX @ np.linalg.inv(Pb)
-    vif  = np.diag(var_Ba)/np.diag(var_Bb)
+        # calculate Variance under the full model and under the diagonal model
+        good = np.logical_not(np.isnan(X.sum(axis=0)))
+        X = X[:,good]
+        XX = X.T@X  # Gram Matrix 
+        dXX = np.diag(np.diag(XX)) # diagnonal of the gram matrix 
+        Pa = (XX + alpha_ridge*np.eye(X.shape[1]))
+        Pb = (dXX + alpha_ridge*np.eye(X.shape[1]))
+        var_Ba = np.linalg.inv(Pa)@ XX @ np.linalg.inv(Pa)
+        var_Bb = np.linalg.inv(Pb)@ XX @ np.linalg.inv(Pb)
+        v = np.diag(var_Ba)/np.diag(var_Bb)
+        if i==0:
+            vif = np.zeros((len(good),len(sn)))*np.nan
+        vif[good,i]=v
+    m = np.nanmean(vif,axis=1,keepdims=True)
+    vif = np.concatenate([vif,m],axis=1)
 
     # create and save the cortical map
     func_giis, hem_names = cdata.convert_cortex_to_gifti(
-                                                            vif, 
-                                                            atlas = cortex,
-                                                            data_type='func',
-                                                            column_names=None,
-                                                            label_names=None,
-                                                            label_RGBA=None,
-                                                            hem_names=['L', 'R'])
+                                vif, 
+                                atlas = cortex,
+                                data_type='func',
+                                column_names=sn+['mean'],
+                                label_names=None,
+                                label_RGBA=None,
+                                hem_names=['L', 'R'])
 
     for (func_gii, hem) in zip(func_giis, hem_names):
         nib.save(func_gii, os.path.join(const.base_dir,f'sc1/conn_models/vif_{cortex}_logalpha{logalpha}.{hem}.func.gii'))
@@ -119,5 +130,5 @@ def calc_vif_lambda(cortex = "tessels0162",
 
 if __name__ == "__main__":
     # calc_vif_lambda(cortex = "tessels0642")
-    # calc_vif(cortex = "tessels0362", logalpha = 6, sn = const.return_subjs)
-    calc_snr(cortex = "tessels1002")
+    calc_vif(cortex = "tessels1002", logalpha = 8, sn = const.return_subjs)
+    # calc_snr(cortex = "tessels1002")

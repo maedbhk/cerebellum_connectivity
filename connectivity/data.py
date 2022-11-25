@@ -336,15 +336,11 @@ def convert_cortex_to_gifti(
         # ensure that data is float
         data = data.astype(float)
 
-        n_row = data.shape
-        c_data = np.insert(data, 0, np.nan)
+        if data.ndim == 1:
+            data = data.reshape(-1,1)
+        c_data = np.insert(data, 0, np.nan,axis =0)
         # Fastest way: prepend a NaN for ROI 0 (medial wall)
-        try:
-            mapped_data = c_data[labels, None]
-        except:
-            idx = labels-n_row
-            np.put_along_axis(idx, np.where(idx<0)[0], 0, axis=0)
-            mapped_data = c_data[idx, None]
+        mapped_data = c_data[labels, :]
 
         if data_type=='func':
             gii = nio.make_func_gifti_cortex(
