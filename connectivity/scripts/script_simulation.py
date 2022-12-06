@@ -13,6 +13,7 @@ import connectivity.visualize as vis
 import connectivity.figures as fig
 import connectivity.io as cio
 import connectivity.evaluation as eval
+import connectivity.weights as cweights 
 from SUITPy import flatmap
 import itertools
 import nibabel as nib
@@ -211,7 +212,7 @@ def plot_scaling(atlas='tessels0162', exp='sc1'):
     return view
 
 def sim_cortex_differences(sim_per_parcel=20,
-                    atlas='tessels0162',
+                    atlas='tessels0042',
                     sigma=2.0,
                     conn_type='one2one'):
     #  alphaR = validate_hyper(X,Y,model.L2regression)
@@ -261,10 +262,40 @@ def sim_cortex_differences(sim_per_parcel=20,
 
     for (func_gii, hem) in zip(func_giis, hem_names):
         nib.save(func_gii, os.path.join(const.base_dir,f'sc1/conn_models/area_{atlas}.{hem}.func.gii'))
-    
+    return area_lasso
 
+
+def summarize_cortex_differences(atlas='tessels0042'):
+    # get the weights from the lasso model for all subjects 
+    W = cweights.get_model_data('lasso_tessels0042_alpha_-3')
+    
+    # Get the index for the MDTB regions 
+    atlas_dir = '/Volumes/diedrichsen_data$/data/FunctionalFusion/Atlases/tpl-SUIT'
+    cerebellum_nifti = os.path.join(atlas_dir, f'atl-MDTB10_space-SUIT_dseg.nii')
+    index = cdata.read_suit_nii(cerebellum_nifti)
+    
+    # Average weights for each regions in each subject 
+    Wm = np.zeros((W.shape[0],W.shape[2],11))
+    for s in range(W.shape[0]):
+        Wm[s], reg = cdata.average_by_roi(W[s].T,index)
+
+    # Simulate difference for different cortical areas
+    area_lasso = sim_cortex_differences(atlas='tessels0042',sigma=2.0)
+
+    D = pd.DataFrame()
+    for s in range(24):
+        for m in range(10):
+            indx = np.argmax(Wm[s,:,m+1])
+            area = area_lasso[s,indx]/80
+            d = pd.DataFrame({'sn':[s+1],'region':[m+1],'area':[area]})
+            D = pd.concat([D,d], ignore_index=True)
+    filename = os.path.join(const.base_dir,f'sc1/conn_models/area_{atlas}.summary.tsv')
+    D.to_csv(filename,index=False)
+    return D
 
 if __name__ == "__main__":
     # sim_scenario2()
-    # sim_cortex_differences(atlas='tessels0162',sigma=2.0)
-    sim_cortex_differences(atlas='tessels1002',sigma=2.0)
+    # sim_cortex_differences(atlas='tessels0042',sigma=2.0)
+    # sim_cortex_differences(atlas='tessels1002',sigma=2.0)
+    D = summarize_cortex_differences()
+    pass 
